@@ -1,0 +1,6 @@
+Bootstrap: docker
+From: benlangmead/hisat2
+
+%runscript
+
+    exec /home/biodocker/bin/hisat2 "$@"
