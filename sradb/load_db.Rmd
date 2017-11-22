@@ -1,0 +1,69 @@
+---
+title: "sradb_collect"
+output: html_document
+---
+
+```{r setwd}
+# setwd('~/git/recount-pump/sradb/')
+```
+
+```{r libraries}
+library('SRAdb')
+```
+
+```{r load_sradb}
+sqlfile <- file.path('.', 'SRAmetadb.sqlite')
+if(!file.exists('SRAmetadb.sqlite')) sqlfile <<- getSRAdbFile()
+sra_con <- dbConnect(SQLite(),sqlfile)
+```
+
+```{r query_helper}
+q <- function(x) { dbGetQuery(sra_con, x) }
+```
+
+```{r tax_ids}
+species_to_tax_id = list(
+  'caenorhabditis_elegans'=6239,
+  'drosophila_melanogaster'=7227,
+  'homo_sapiens'=9606,
+  'mus_musculus'=10090)
+
+species_table <- function(taxid) {
+  q(paste(
+    "SELECT * FROM sra ",
+    "WHERE platform = 'ILLUMINA'",
+    "  AND library_strategy = 'RNA-Seq'",
+    "  AND library_source = 'TRANSCRIPTOMIC'",
+    sprintf(" AND taxon_id = %d", taxid)))
+}
+tabs <- lapply(species_to_tax_id, species_table)
+```
+
+```{r projects}
+project_to_srp = list(
+  'allen_brain'='SRP061902',
+  'geuvadis'='ERP001942',
+  'gtex'='SRP012682',
+  'seqc'='SRP025982',
+  'ss_glio'='SRP042161'
+)
+
+project_table <- function(proj) {
+  q(sprintf('SELECT * FROM sra WHERE study_accession = "%s"', proj))
+}
+projs <- lapply(project_to_srp, project_table)
+```
+
+```{r disconnect}
+dbDisconnect(sra_con)
+```
+
+```{r save}
+save(tabs, projs, file='sra_db_processed.RData')
+```
+
+```{r reproducibility}
+# Ensure reproducibility
+options(width = 120)
+devtools::session_info()
+```
