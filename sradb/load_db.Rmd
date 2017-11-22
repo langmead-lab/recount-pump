@@ -21,22 +21,51 @@ sra_con <- dbConnect(SQLite(),sqlfile)
 q <- function(x) { dbGetQuery(sra_con, x) }
 ```
 
+```{r species_counts}
+taxids <- q(paste(
+  'SELECT sra.taxon_id FROM sra, fastq',
+  'WHERE sra.platform = "ILLUMINA"',
+  '  AND sra.library_strategy = "RNA-Seq"',
+  '  AND sra.library_source = "TRANSCRIPTOMIC"',
+  '  AND sra.run_accession = fastq.run_accession',
+  '  AND fastq.FASTQ_FILES > 0'))
+
+print(sort(table(taxids),decreasing=TRUE)[1:10])
+```
+
 ```{r tax_ids}
 species_to_tax_id = list(
-  'caenorhabditis_elegans'=6239,
-  'drosophila_melanogaster'=7227,
-  'homo_sapiens'=9606,
-  'mus_musculus'=10090)
+  'arabidopsis_thaliana'=3702,     # 4. arabidopsis
+  'bos_taurus'=9913,               # 9: cow
+  'caenorhabditis_elegans'=6239,   # >10: roundworm
+  'danio_rerio'=7955,              # 3: zebrafish
+  'drosophila_melanogaster'=7227,  # 5: fruitfly
+  'homo_sapiens'=9606,             # 2: human
+  'mus_musculus'=10090,            # 1: mouse
+  'ovis_aries'=9940,               # 10: sheep
+  'rattus_norvegicus'=10116,       # 7: rat
+  'saccharomyces_cerevisiae'=4932, # 6: yeast
+  'zea_mays'=4577)                 # 8: corn
+
+# > sort(table(taxids),decreasing=TRUE)[1:10]
+# taxids
+#  10090   9606   7955   3702   7227   4932  10116   4577   9913   9940 
+# 195878 156394  23590  17296  17006   7997   7098   7018   5173   5018 
 
 species_table <- function(taxid) {
   q(paste(
-    "SELECT * FROM sra ",
-    "WHERE platform = 'ILLUMINA'",
-    "  AND library_strategy = 'RNA-Seq'",
-    "  AND library_source = 'TRANSCRIPTOMIC'",
-    sprintf(" AND taxon_id = %d", taxid)))
+    'SELECT * FROM sra, study, submission, fastq, run',
+    'WHERE sra.platform = "ILLUMINA"',
+    '  AND sra.library_strategy = "RNA-Seq"',
+    '  AND sra.library_source = "TRANSCRIPTOMIC"',
+    '  AND sra.submission_accession = submission.submission_accession',
+    '  AND sra.study_accession = study.study_accession',
+    '  AND sra.run_accession = fastq.run_accession',
+    '  AND sra.run_accession = run.run_accession',
+    '  AND fastq.FASTQ_FILES > 0',
+    sprintf('AND sra.taxon_id = %d', taxid)))
 }
-tabs <- lapply(species_to_tax_id, species_table)
+runs_by_species <- lapply(species_to_tax_id, species_table)
 ```
 
 ```{r projects}
@@ -49,9 +78,21 @@ project_to_srp = list(
 )
 
 project_table <- function(proj) {
-  q(sprintf('SELECT * FROM sra WHERE study_accession = "%s"', proj))
+  q(paste(
+    'SELECT * FROM sra, study, submission, fastq, run',
+    'WHERE sra.submission_accession = submission.submission_accession',
+    '  AND sra.study_accession = study.study_accession',
+    '  AND sra.run_accession = fastq.run_accession',
+    '  AND sra.run_accession = run.run_accession',
+    '  AND fastq.FASTQ_FILES > 0',
+    sprintf('AND sra.study_accession = "%s"', proj)))
 }
-projs <- lapply(project_to_srp, project_table)
+runs_by_study <- lapply(project_to_srp, project_table)
+
+study_table <- function(proj) {
+  q(sprintf('SELECT * FROM study WHERE study_accession = "%s"', proj))
+}
+studies <- lapply(project_to_srp, study_table)
 ```
 
 ```{r disconnect}
@@ -59,7 +100,7 @@ dbDisconnect(sra_con)
 ```
 
 ```{r save}
-save(tabs, projs, file='sra_db_processed.RData')
+save(runs_by_species, runs_by_study, studies, file='sra_db_processed.RData')
 ```
 
 ```{r reproducibility}
