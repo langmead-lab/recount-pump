@@ -1,6 +1,25 @@
 Bootstrap: docker
 From: benlangmead/hisat2
 
+%post
+
+    cat >/home/biodocker/bin/hs2 <<'EOF'
+#!/bin/sh
+cmd=$1
+shift
+if [ "${cmd}" = "align" ] ; then
+   /home/biodocker/bin/hisat2 $@
+elif [ "${cmd}" = "inspect" ] ; then
+   /home/biodocker/bin/hisat2-inspect $@
+elif [ "${cmd}" = "build" ] ; then
+   /home/biodocker/bin/hisat2-build $@
+else
+   echo "Bad command: $cmd" && exit 1
+fi
+EOF
+    chmod a+x /home/biodocker/bin/hs2
+    mkdir -p /home1 /work /scratch  # for stampede 2
+
 %runscript
 
-    exec /home/biodocker/bin/hisat2 "$@"
+    exec /home/biodocker/bin/hs2 "$@"
