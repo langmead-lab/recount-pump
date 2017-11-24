@@ -6,6 +6,7 @@ From: benlangmead/hisat2
     cat >/home/biodocker/bin/hs2 <<'EOF'
 #!/bin/sh
 cmd=$1
+[ -z "${cmd}" ] && echo "Error from container: First argument must be align, inspect or build" && exit 1
 shift
 if [ "${cmd}" = "align" ] ; then
    /home/biodocker/bin/hisat2 $@
