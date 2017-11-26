@@ -88,10 +88,17 @@ if [ ! -d ${NM} ] ; then
 #SBATCH --mem=100G
 #SBATCH --time=2:00:00
 #SBATCH --ntasks-per-node=24
-sing hisat2 build \
-    --threads 24 \
-    igenomes/${SPECIES}/${SOURCE}/${NM}/Sequence/WholeGenomeFasta/genome.fa \
-    ${NM}/hisat2_idx/genome
+
+set -e
+
+mkdir -p ${SINGULARITY_SCRATCH}/hisat2_input ${SINGULARITY_SCRATCH}/hisat2_output
+cp igenomes/${SPECIES}/${SOURCE}/${NM}/Sequence/WholeGenomeFasta/genome.fa ${SINGULARITY_SCRATCH}/hisat2_input
+
+sing hisat2 build --threads 24 /scratch/hisat2_input/genome.fa /scratch/hisat2_output/genome
+
+rm -rf ${SINGULARITY_SCRATCH}/hisat2_input
+cp ${SINGULARITY_SCRATCH}/hisat2_output/* ${NM}/hisat2_idx/
+rm -rf ${SINGULARITY_SCRATCH}/hisat2_output
 EOF
     echo "sbatch .hisat2_${NM}.sh"
 
@@ -108,11 +115,20 @@ EOF
 #SBATCH --time=2:00:00
 #SBATCH --ntasks-per-node=24
 
+set -e
+
+mkdir -p ${SINGULARITY_SCRATCH}/star_input ${SINGULARITY_SCRATCH}/star_output
+cp igenomes/${SPECIES}/${SOURCE}/${NM}/Sequence/WholeGenomeFasta/genome.fa ${SINGULARITY_SCRATCH}/star_input
+
 sing star \
     --runThreadN 24 \
     --runMode genomeGenerate \
-    --genomeDir ${NM}/star_idx \
-    --genomeFastaFiles igenomes/${SPECIES}/${SOURCE}/${NM}/Sequence/WholeGenomeFasta/genome.fa
+    --genomeDir /scratch/star_output \
+    --genomeFastaFiles /scratch/star_input/genome.fa
+
+rm -rf ${SINGULARITY_SCRATCH}/star_input
+cp ${SINGULARITY_SCRATCH}/star_output/* ${NM}/star_idx/
+rm -rf ${SINGULARITY_SCRATCH}/star_output
 EOF
     echo "sbatch .star_${NM}.sh"
 
