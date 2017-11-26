@@ -14,7 +14,7 @@ NM=$2
 SPECIES=$3
 SOURCE=$4
 
-which singularity >/dev/null 2>/dev/null && echo "No singularity in PATH" && exit 1 
+which singularity >/dev/null 2>/dev/null || (echo "No singularity in PATH" && exit 1) 
 
 [ ! -d igenomes ] && echo "Expected igenomes subdir" && exit 1
 
