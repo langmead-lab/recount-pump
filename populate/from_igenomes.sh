@@ -16,6 +16,8 @@ SOURCE=$4
 
 which singularity >/dev/null 2>/dev/null && echo "No singularity in PATH" && exit 1 
 
+[ ! -d igenomes ] && echo "Expected igenomes subdir" && exit 1
+
 [ -z "${SINGULARITY_CACHEDIR}" ] && echo "Set SINGULARITY_CACHEDIR first" && exit 1
 
 [ ! -f "${SINGULARITY_CACHEDIR}/star.simg" ] && echo "Run get_simgs.sh first" && exit 1
@@ -29,29 +31,29 @@ FN=`basename ${URL}`
 
 if [ ! -d ${NM} ] ; then
     
-    if [ ! -f ${FN} ] ; then
-        wget -O ${FN} ${URL}
-        tar zvfx ${FN}
+    if [ ! -f igenomes/${FN} ] ; then
+        wget -O igenomes/${FN} ${URL}
+        cd igenomes && tar zvfx ${FN} && cd ..
     fi
     
     mkdir -p ${NM}/fasta
-    cp ${SPECIES}/${SOURCE}/${NM}/Sequence/WholeGenomeFasta/genome.* ${NM}/fasta/
+    cp igenomes/${SPECIES}/${SOURCE}/${NM}/Sequence/WholeGenomeFasta/genome.* ${NM}/fasta/
     
     mkdir -p ${NM}/gtf
-    cp ${SPECIES}/${SOURCE}/${NM}/Annotation/Genes/genes.gtf ${NM}/gtf/
-    cp ${SPECIES}/${SOURCE}/${NM}/Annotation/Genes.gencode/genes.gtf ${NM}/gtf/genes_gencode.gtf
+    cp igenomes/${SPECIES}/${SOURCE}/${NM}/Annotation/Genes/genes.gtf ${NM}/gtf/
+    cp igenomes/${SPECIES}/${SOURCE}/${NM}/Annotation/Genes.gencode/genes.gtf ${NM}/gtf/genes_gencode.gtf
     
     mkdir -p ${NM}/ucsc_tracks
     # TODO
     
     mkdir -p ${NM}/bowtie_idx
-    cp ${SPECIES}/${SOURCE}/${NM}/Sequence/BowtieIndex/*.ebwt ${NM}/bowtie_idx
+    cp igenomes/${SPECIES}/${SOURCE}/${NM}/Sequence/BowtieIndex/*.ebwt ${NM}/bowtie_idx
     
     mkdir -p ${NM}/bowtie2_idx
-    cp ${SPECIES}/${SOURCE}/${NM}/Sequence/Bowtie2Index/*.bt2 ${NM}/bowtie2_idx
+    cp igenomes/${SPECIES}/${SOURCE}/${NM}/Sequence/Bowtie2Index/*.bt2 ${NM}/bowtie2_idx
 
     mkdir -p ${NM}/bwa_idx
-    cp ${SPECIES}/${SOURCE}/${NM}/Sequence/BWAIndex/genome.fa* ${NM}/bwa_idx
+    cp igenomes/${SPECIES}/${SOURCE}/${NM}/Sequence/BWAIndex/genome.fa* ${NM}/bwa_idx
 
     mkdir -p ${NM}/hisat2_idx    
     cat >.hisat2_${NM}.sh << EOF
@@ -66,7 +68,7 @@ if [ ! -d ${NM} ] ; then
 #SBATCH --ntasks-per-node=24
 sing hisat2 build \
     --threads 24 \
-    ${SPECIES}/${SOURCE}/${NM}/Sequence/WholeGenomeFasta/genome.fa \
+    igenomes/${SPECIES}/${SOURCE}/${NM}/Sequence/WholeGenomeFasta/genome.fa \
     ${NM}/hisat2_idx/genome
 EOF
     echo "sbatch .hisat2_${NM}.sh"
@@ -88,7 +90,7 @@ sing star \
     --runThreadN 24 \
     --runMode genomeGenerate \
     --genomeDir ${NM}/star_idx \
-    --genomeFastaFiles ${SPECIES}/${SOURCE}/${NM}/Sequence/WholeGenomeFasta/genome.fa
+    --genomeFastaFiles igenomes/${SPECIES}/${SOURCE}/${NM}/Sequence/WholeGenomeFasta/genome.fa
 EOF
     echo "sbatch .star_${NM}.sh"
 
