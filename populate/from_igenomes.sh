@@ -9,6 +9,8 @@
 #   Homo_sapiens
 #   UCSC
 
+set -e
+
 URL=$1
 NM=$2
 SPECIES=$3
@@ -32,8 +34,11 @@ FN=`basename ${URL}`
 if [ ! -d ${NM} ] ; then
     
     if [ ! -f igenomes/${FN} ] ; then
+        echo "Downloading iGenomes package"
         wget -O igenomes/${FN} ${URL}
         cd igenomes && tar zvfx ${FN} && cd ..
+    else
+        echo "iGenomes package already present"
     fi
     
     GENOME_FA="igenomes/${SPECIES}/${SOURCE}/${NM}/Sequence/WholeGenomeFasta/genome.fa"
@@ -43,27 +48,37 @@ if [ ! -d ${NM} ] ; then
         exit 1
     fi
     
+    echo "Populating ${NM}/fasta"
     mkdir -p ${NM}/fasta
     cp igenomes/${SPECIES}/${SOURCE}/${NM}/Sequence/WholeGenomeFasta/genome.* ${NM}/fasta/
     
+    echo "Populating ${NM}/gtf"
     mkdir -p ${NM}/gtf
     cp igenomes/${SPECIES}/${SOURCE}/${NM}/Annotation/Genes/genes.gtf ${NM}/gtf/
     cp igenomes/${SPECIES}/${SOURCE}/${NM}/Annotation/Genes.gencode/genes.gtf ${NM}/gtf/genes_gencode.gtf
     
+    echo "Populating ${NM}/ucsc_tracks"
     mkdir -p ${NM}/ucsc_tracks
     # TODO
     
+    echo "Populating ${NM}/bowtie_idx"
     mkdir -p ${NM}/bowtie_idx
     cp igenomes/${SPECIES}/${SOURCE}/${NM}/Sequence/BowtieIndex/*.ebwt ${NM}/bowtie_idx
     
+    echo "Populating ${NM}/bowtie2_idx"
     mkdir -p ${NM}/bowtie2_idx
     cp igenomes/${SPECIES}/${SOURCE}/${NM}/Sequence/Bowtie2Index/*.bt2 ${NM}/bowtie2_idx
 
+    echo "Populating ${NM}/bwa_idx"
     mkdir -p ${NM}/bwa_idx
     cp igenomes/${SPECIES}/${SOURCE}/${NM}/Sequence/BWAIndex/genome.fa* ${NM}/bwa_idx
 
+    echo "To populate ${NM}/hisat2_idx and ${NM}/star_idx, run the below commands"
+    echo "==========="
+
     mkdir -p ${NM}/hisat2_idx    
     cat >.hisat2_${NM}.sh << EOF
+#!/bin/bash -l
 #SBATCH
 #SBATCH --job-name=hisat2_build
 #SBATCH --partition=parallel
