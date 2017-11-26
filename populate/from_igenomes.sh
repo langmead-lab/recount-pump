@@ -36,6 +36,13 @@ if [ ! -d ${NM} ] ; then
         cd igenomes && tar zvfx ${FN} && cd ..
     fi
     
+    GENOME_FA="igenomes/${SPECIES}/${SOURCE}/${NM}/Sequence/WholeGenomeFasta/genome.fa"
+    if [ ! -f "${GENOME_FA}" ] ; then
+        echo "No genome FASTA!  Check if igenomes download and explode worked."
+        echo "${GENOME_FA}"
+        exit 1
+    fi
+    
     mkdir -p ${NM}/fasta
     cp igenomes/${SPECIES}/${SOURCE}/${NM}/Sequence/WholeGenomeFasta/genome.* ${NM}/fasta/
     
