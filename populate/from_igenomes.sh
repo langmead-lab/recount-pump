@@ -29,12 +29,18 @@ if [ ! -d ${NM} ] ; then
     
     if [ ! -f igenomes/${FN} ] ; then
         echo "Downloading iGenomes package"
+        
+        # Download & explode
         wget -O igenomes/${FN} ${URL}
         cd igenomes && tar zvfx ${FN} && cd ..
+        
+        # Don't need per-chromosome FASTAs
+        rm -rf igenomes/${SPECIES}/${SOURCE}/${NM}/Sequence/Chromosomes
     else
         echo "iGenomes package already present"
     fi
     
+    # Double-check that it looks good
     GENOME_FA="igenomes/${SPECIES}/${SOURCE}/${NM}/Sequence/WholeGenomeFasta/genome.fa"
     if [ ! -f "${GENOME_FA}" ] ; then
         echo "No genome FASTA!  Check if igenomes download and explode worked."
