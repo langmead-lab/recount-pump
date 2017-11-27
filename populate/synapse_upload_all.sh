@@ -2,6 +2,7 @@
 
 for i in `find -name gtf | sed 's/^\.\///' | sed 's/\/.*//'` ; do
     cat >.$i.upload.sh <<EOF
+#!/bin/bash -l
 #SBATCH
 #SBATCH --job-name=upload_${i}
 #SBATCH --partition=parallel
