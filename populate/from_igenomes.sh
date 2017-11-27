@@ -7,7 +7,7 @@
 # sh from_igenomes.sh ftp://igenome:G3nom3s4u@ussd-ftp.illumina.com/Mus_musculus/UCSC/mm10/Mus_musculus_UCSC_mm10.tar.gz mm10 Mus_musculus UCSC
 # sh from_igenomes.sh ftp://igenome:G3nom3s4u@ussd-ftp.illumina.com/Drosophila_melanogaster/UCSC/dm6/Drosophila_melanogaster_UCSC_dm6.tar.gz dm6 Drosophila_melanogaster UCSC
 # sh from_igenomes.sh ftp://igenome:G3nom3s4u@ussd-ftp.illumina.com/Danio_rerio/UCSC/danRer10/Danio_rerio_UCSC_danRer10.tar.gz danRer10 Danio_rerio UCSC
-# sh from_igenomes.sh ftp://igenome:G3nom3s4u@ussd-ftp.illumina.com/Rattus_norvegicus/UCSC/rn6/Rattus_norvegicus_UCSC_rn6.tar.gz rn6 UCSC
+# sh from_igenomes.sh ftp://igenome:G3nom3s4u@ussd-ftp.illumina.com/Rattus_norvegicus/UCSC/rn6/Rattus_norvegicus_UCSC_rn6.tar.gz rn6 Rattus_norvegicus UCSC
 
 set -e
 
@@ -16,13 +16,7 @@ NM=$2
 SPECIES=$3
 SOURCE=$4
 
-which singularity >/dev/null 2>/dev/null || (echo "No singularity in PATH" && exit 1) 
-
 [ ! -d igenomes ] && echo "Expected igenomes subdir" && exit 1
-
-[ -z "${SINGULARITY_CACHEDIR}" ] && echo "Set SINGULARITY_CACHEDIR first" && exit 1
-
-[ ! -f "${SINGULARITY_CACHEDIR}/star.simg" ] && echo "Run get_simgs.sh first" && exit 1
 
 [ -z "${URL}"     ] && echo "Must specify URL as first argument" && exit 1
 [ -z "${NM}"      ] && echo "Must specify shortname as 2nd argument" && exit 1
@@ -93,14 +87,13 @@ if [ ! -d ${NM} ] ; then
 
 set -e
 
-mkdir -p ${SINGULARITY_SCRATCH}/hisat2_input ${SINGULARITY_SCRATCH}/hisat2_output
-cp igenomes/${SPECIES}/${SOURCE}/${NM}/Sequence/WholeGenomeFasta/genome.fa ${SINGULARITY_SCRATCH}/hisat2_input
+NM=${NM}
+SOURCE=${SOURCE}
+SPECIES=${SPECIES}
+IN=igenomes/\${SPECIES}/\${SOURCE}/\${NM}/Sequence/WholeGenomeFasta/genome.fa
+OUT=\${NM}/hisat2_idx
 
-sing hisat2 build --threads 24 /scratch/hisat2_input/genome.fa /scratch/hisat2_output/genome
-
-rm -rf ${SINGULARITY_SCRATCH}/hisat2_input
-cp ${SINGULARITY_SCRATCH}/hisat2_output/* ${NM}/hisat2_idx/
-rm -rf ${SINGULARITY_SCRATCH}/hisat2_output
+hisat2-build --threads 24 \${IN} \${OUT}/genome
 EOF
     echo "sbatch .hisat2_${NM}.sh"
 
@@ -120,19 +113,23 @@ EOF
 
 set -e
 
-mkdir -p ${SINGULARITY_SCRATCH}/star_input ${SINGULARITY_SCRATCH}/star_output
-cp igenomes/${SPECIES}/${SOURCE}/${NM}/Sequence/WholeGenomeFasta/genome.fa ${SINGULARITY_SCRATCH}/star_input
+NM=${NM}
+SOURCE=${SOURCE}
+SPECIES=${SPECIES}
+IN=igenomes/\${SPECIES}/\${SOURCE}/\${NM}/Sequence/WholeGenomeFasta/genome.fa
+OUT=\${NM}/star_idx
+TMP=\${NM}/star_tmp
 
-sing star \
+rm -rf \${TMP}
+
+STAR \
     --runThreadN 24 \
     --runMode genomeGenerate \
-    --genomeDir /scratch/star_output \
-    --outTmpDir /scratch/star_temp \
-    --genomeFastaFiles /scratch/star_input/genome.fa
+    --genomeDir \${OUT} \
+    --outTmpDir \${TMP} \
+    --genomeFastaFiles \${IN}
 
-rm -rf ${SINGULARITY_SCRATCH}/star_input
-cp ${SINGULARITY_SCRATCH}/star_output/* ${NM}/star_idx/
-rm -rf ${SINGULARITY_SCRATCH}/star_output
+rm -rf \${TMP}
 EOF
     echo "sbatch .star_${NM}.sh"
 
