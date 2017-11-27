@@ -58,7 +58,7 @@ if [ ! -d ${NM} ] ; then
     mkdir -p ${NM}/gtf
     GENES_DIR="igenomes/${SPECIES}/${SOURCE}/${NM}/Annotation/Genes"
     cp "$GENES_DIR/genes.gtf" ${NM}/gtf/
-    [ -d "${GENES_DIR}.gencode" ] && cp "${GENES_DIR}.gencode/genes_gencode.gtf" ${NM}/gtf/genes_gencode.gtf
+    [ -d "${GENES_DIR}.gencode" ] && cp "${GENES_DIR}.gencode/genes.gtf" ${NM}/gtf/genes_gencode.gtf
     
     echo "Populating ${NM}/ucsc_tracks"
     mkdir -p ${NM}/ucsc_tracks
