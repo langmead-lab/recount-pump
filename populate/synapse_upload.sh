@@ -10,11 +10,11 @@ dr=$1
 scr_dir=`dirname $0`
 ref_id=`cat ${scr_dir}/synapse_references_id.txt`
 
-[ -z "${ref_id}" ] && echo "Could not get ref_id" && exit 1
+[ -n "${ref_id}" ]
 
 # Create new subdirectory for this species
-species_id=`synapse create -parentid ${ref_id} -name ${dr} | awk '{print $3}'`
-[ -z "${species_id}" ] && echo "Could not get species_id" && exit 1
+species_id=`synapse create -parentid ${ref_id} -name ${dr} Folder | awk '{print $3}'`
+[ -n "${species_id}" ]
 
 # For populating the description field
 host=`hostname -f`
