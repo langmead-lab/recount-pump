@@ -27,11 +27,13 @@ FN=`basename ${URL}`
 
 if [ ! -d ${NM} ] ; then
     
-    if [ ! -f igenomes/${FN} ] ; then
-        echo "Downloading iGenomes package"
-        
-        # Download & explode
-        wget -O igenomes/${FN} ${URL}
+    if [ ! -d igenomes/${SPECIES}/${SOURCE} ] ; then
+        if [ ! -f igenomes/${FN} ] ; then
+            echo "Downloading iGenomes package"
+            
+            # Download & explode
+            wget -O igenomes/${FN} ${URL}
+        fi
         cd igenomes && tar zvfx ${FN} && cd ..
         
         # Don't need per-chromosome FASTAs
