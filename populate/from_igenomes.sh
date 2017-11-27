@@ -3,11 +3,11 @@
 # Author: Ben Langmead
 #   Date: 11/26/17
 
-# sh from_igenomes.sh \
-#   ftp://igenome:G3nom3s4u@ussd-ftp.illumina.com/Homo_sapiens/UCSC/hg38/Homo_sapiens_UCSC_hg38.tar.gz \
-#   hg38
-#   Homo_sapiens
-#   UCSC
+# sh from_igenomes.sh ftp://igenome:G3nom3s4u@ussd-ftp.illumina.com/Homo_sapiens/UCSC/hg38/Homo_sapiens_UCSC_hg38.tar.gz hg38 Homo_sapiens UCSC
+# sh from_igenomes.sh ftp://igenome:G3nom3s4u@ussd-ftp.illumina.com/Mus_musculus/UCSC/mm10/Mus_musculus_UCSC_mm10.tar.gz mm10 Mus_musculus UCSC
+# sh from_igenomes.sh ftp://igenome:G3nom3s4u@ussd-ftp.illumina.com/Drosophila_melanogaster/UCSC/dm6/Drosophila_melanogaster_UCSC_dm6.tar.gz dm6 Drosophila_melanogaster UCSC
+# sh from_igenomes.sh ftp://igenome:G3nom3s4u@ussd-ftp.illumina.com/Danio_rerio/UCSC/danRer10/Danio_rerio_UCSC_danRer10.tar.gz danRer10 Danio_rerio UCSC
+# sh from_igenomes.sh ftp://igenome:G3nom3s4u@ussd-ftp.illumina.com/Rattus_norvegicus/UCSC/rn6/Rattus_norvegicus_UCSC_rn6.tar.gz rn6 UCSC
 
 set -e
 
@@ -54,8 +54,9 @@ if [ ! -d ${NM} ] ; then
     
     echo "Populating ${NM}/gtf"
     mkdir -p ${NM}/gtf
-    cp igenomes/${SPECIES}/${SOURCE}/${NM}/Annotation/Genes/genes.gtf ${NM}/gtf/
-    cp igenomes/${SPECIES}/${SOURCE}/${NM}/Annotation/Genes.gencode/genes.gtf ${NM}/gtf/genes_gencode.gtf
+    GENES_DIR="igenomes/${SPECIES}/${SOURCE}/${NM}/Annotation/Genes"
+    cp "$GENES_DIR/genes.gtf" ${NM}/gtf/
+    [ -d "${GENES_DIR}.gencode" ] && cp "${GENES_DIR}.gencode/genes_gencode.gtf" ${NM}/gtf/genes_gencode.gtf
     
     echo "Populating ${NM}/ucsc_tracks"
     mkdir -p ${NM}/ucsc_tracks
@@ -76,6 +77,7 @@ if [ ! -d ${NM} ] ; then
     echo "To populate ${NM}/hisat2_idx and ${NM}/star_idx, run the below commands"
     echo "==========="
 
+    # hisat2: 2.1.0 py27pl5.22.0_0 bioconda
     mkdir -p ${NM}/hisat2_idx    
     cat >.hisat2_${NM}.sh << EOF
 #!/bin/bash -l
@@ -102,6 +104,7 @@ rm -rf ${SINGULARITY_SCRATCH}/hisat2_output
 EOF
     echo "sbatch .hisat2_${NM}.sh"
 
+    # star: 2.5.3a-0 bioconda
     mkdir -p ${NM}/star_idx
     cat >.star_${NM}.sh << EOF
 #!/bin/bash -l
@@ -124,6 +127,7 @@ sing star \
     --runThreadN 24 \
     --runMode genomeGenerate \
     --genomeDir /scratch/star_output \
+    --outTmpDir /scratch/star_temp \
     --genomeFastaFiles /scratch/star_input/genome.fa
 
 rm -rf ${SINGULARITY_SCRATCH}/star_input
