@@ -9,6 +9,7 @@ output: html_document
 
 ```{r libraries}
 library('SRAdb')
+library('devtools')
 ```
 
 ```{r load_sradb}
@@ -97,6 +98,12 @@ studies <- lapply(project_to_srp, study_table)
 
 ```{r disconnect}
 dbDisconnect(sra_con)
+```
+
+```{r csvize}
+for(species in names(runs_by_species)) {
+  write.csv(runs_by_species[[species]], file=paste0(species, '.csv'))
+}
 ```
 
 ```{r save}
