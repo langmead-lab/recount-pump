@@ -65,7 +65,19 @@ def install_retriever():
 if __name__ == '__main__':
     import sys
 
-    if '--test' in sys.argv:
+    if len(sys.argv) == 1:
+        print('''
+Usage: input.py <cmd> [options]*
+
+Commands:
+    test           run unit tests
+    make_project   make project
+
+Options:
+    db
+'''.strip())
+
+    if sys.argv[1] == 'test':
         import unittest
         from sqlalchemy import create_engine
         from sqlalchemy.orm import sessionmaker
@@ -138,6 +150,9 @@ if __name__ == '__main__':
                 self.assertEqual(0, len(list(self.session.query(InputSet))))
                 self.assertEqual(0, len(list(self.session.query(input_association_table))))
 
-        sys.argv.remove('--test')
+        sys.argv.remove('test')
         unittest.main()
+
+    else:
+        raise ValueError('Unrecognized command "%s"' % sys.argv[1])
 
