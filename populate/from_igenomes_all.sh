@@ -5,7 +5,7 @@
 
 set -ex
 
-sh from_igenomes.sh ftp://igenome:G3nom3s4u@ussd-ftp.illumina.com/Arabidopsis_thaliana/NCBI/TAIR10/Arabidopsis_thaliana_NCBI_TAIR10.tar.gz tair10 Arabidopsis_thaliana NCBI
+sh from_igenomes.sh ftp://igenome:G3nom3s4u@ussd-ftp.illumina.com/Arabidopsis_thaliana/NCBI/TAIR10/Arabidopsis_thaliana_NCBI_TAIR10.tar.gz TAIR10 Arabidopsis_thaliana NCBI
 sh from_igenomes.sh ftp://igenome:G3nom3s4u@ussd-ftp.illumina.com/Bos_taurus/UCSC/bosTau8/Bos_taurus_UCSC_bosTau8.tar.gz bosTau8 Bos_taurus UCSC
 sh from_igenomes.sh ftp://igenome:G3nom3s4u@ussd-ftp.illumina.com/Caenorhabditis_elegans/UCSC/ce10/Caenorhabditis_elegans_UCSC_ce10.tar.gz ce10 Caenorhabditis_elegans UCSC
 sh from_igenomes.sh ftp://igenome:G3nom3s4u@ussd-ftp.illumina.com/Danio_rerio/UCSC/danRer10/Danio_rerio_UCSC_danRer10.tar.gz danRer10 Danio_rerio UCSC
