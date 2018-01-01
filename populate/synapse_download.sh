@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Upload directory with reference files to Synapse as single tarball. 
+# Download reference files from synapse and expand 
 
 set -e
 
@@ -11,5 +11,10 @@ synid=`synapse list ${refid} | grep ${species} | awk '{print $1}'`
 
 test -n $synid
 
-mkdir -p $synid
-pushd $synid && synapse get -r $synid && popd
+mkdir -p $species
+pushd $species
+synapse get -r $synid
+for i in *.tar.gz ; do
+    tar zxvf $i
+done
+popd
