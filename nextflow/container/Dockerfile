@@ -15,6 +15,7 @@ MAINTAINER Ben Langmead <ben.langmead@gmail.com>
 ################## INSTALLATION ######################
 
 ADD rna_seq.yml /tmp/
+ADD rna_seq.nf /home/biodocker/bin/
 RUN conda env create -f /tmp/rna_seq.yml
 RUN git clone https://github.com/griffithlab/regtools.git -- regtools && \
     cd regtools && \
@@ -29,4 +30,4 @@ RUN git clone https://github.com/griffithlab/regtools.git -- regtools && \
 
 WORKDIR /data
 
-CMD ["source activate rnaseq_v0 && nextflow rna-seq.nf"]
+CMD ["source activate rnaseq_v0 && rna-seq.nf"]
