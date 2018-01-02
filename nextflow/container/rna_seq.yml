@@ -1,0 +1,16 @@
+name: rnaseq_v0
+channels:
+  - r
+  - defaults
+  - conda-forge
+  - bioconda
+dependencies:
+  - python=2.7
+  - hisat2=2.0.5
+  - sra-tools=2.8.2
+  - wiggletools=1.2.2
+  - subread=1.6.0
+  - nextflow=0.25.1
+  - stringtie=1.3.3
+  - deeptools=2.5.4
+  - sambamba=0.6.6
