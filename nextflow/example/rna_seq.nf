@@ -3,7 +3,7 @@
 /*
  * Example RNA-seq pipeilne
  * Author: Ben Langmead
- *   Date: 12/31/2017s
+ *   Date: 12/31/2017
  *
  * Requires:
  * - hisat2
@@ -13,6 +13,7 @@
  * - bamCoverage (deepTools)
  * - regtools (not in conda as of now; must install via GitHub)
  * - wiggletools
+ * - featureCounts (subread)
  *
  * Published outputs:
  * - Alignment log (<accession>_align_log.txt)
@@ -20,24 +21,21 @@
  *   + Unique (<accession>.unique.bw)
  *   + All (<accession>.all.bw)
  * - AUCs for BigWigs (<accession>.unique.auc, <accession>.all.auc)
- * - Junction counts (<accession>.jx_count)
- *   + similar to bed_to_juncs output, but includes count and accession
+ * - Junction counts (<accession>.jx_bed)
+ *   + similar to bed_to_juncs output, but includes count, accession, motif, annotation status
  * - Assembly (<accession>.gtf)
+ * - Gene & exon counts (<accession>.all.gene_count, <accession>.unique.gene_count)
  *
  * TODO:
  * - Let input csv specify URL and/or retrieval method
  *   + As of now retrieval is always with fastq-dump
- * - Add more recount/Snaptron postprocessing
- *   + Junction annotation
- *   + Annotation quantification (gene & exon)
  */
 
-params.in         = 'accessions.txt'
-params.temp       = '/tmp'
-params.refdir     = '${HOME}/recount-refs'
-params.outdir     = 'results'
-params.cpus       = 8
-params.stop_after_alignment = false
+params.in     = 'accessions.txt'
+params.temp   = '/tmp'
+params.refdir = '${HOME}/recount-refs'
+params.outdir = 'results'
+params.cpus   = 8
 
 srr = Channel
       .fromPath(params.in)
@@ -56,13 +54,23 @@ process preliminary {
     set srr, species into srr2
     
     """
-    # Ensure all the expected support files are around
+    # Ensure expected reference files are around
     test -d ${params.refdir}/${species}
     for i in 1 2 3 4 5 6 7 8 ; do
         test -f ${params.refdir}/${species}/hisat2_idx/genome.\${i}.ht2
     done
     test -f ${params.refdir}/${species}/fasta/genome.fa
     test -f ${params.refdir}/${species}/gtf/genes.gtf
+    
+    # Ensure tools are installed
+    which hisat2
+    which fastq-dump
+    which sambamba
+    which stringtie
+    which bamCoverage
+    which regtools
+    which wiggletools
+    which featureCounts
     """
 }
 
@@ -147,10 +155,8 @@ process bam_sort {
     // Channels can't be reused, so I have to make several.
     // Is there a less silly way to funnel output to N other process?
     output:
-    set srr, species, 'o.sorted.bam', 'o.sorted.bam.bai' into sorted_bam1
-    set srr, species, 'o.sorted.bam', 'o.sorted.bam.bai' into sorted_bam2
-    set srr, species, 'o.sorted.bam', 'o.sorted.bam.bai' into sorted_bam3
-    set srr, species, 'o.sorted.bam', 'o.sorted.bam.bai' into sorted_bam4
+    set srr, species, 'o.sorted.bam', 'o.sorted.bam.bai' into sorted_bam1, sorted_bam2, sorted_bam3,
+                                                              sorted_bam4, sorted_bam5, sorted_bam6
     
     """
     sambamba sort --tmpdir=${params.temp} -p -m 10G -t ${task.cpus} -o o.sorted.bam ${bam}
@@ -253,12 +259,13 @@ process publish_bw_unique {
 
 process extract_junctions {
     tag { srr }
+    publishDir params.outdir, mode: 'copy'
 
     input:
     set srr, species, file(sbam), file(sbam_idx) from sorted_bam4
 
     output:
-    set srr, 'o.jx_bed' into jx_bed
+    file('*.jx_bed') into jx_bed_final
     
     """
     # Options:
@@ -268,35 +275,8 @@ process extract_junctions {
 
     FA=${params.refdir}/${species}/fasta/genome.fa
     GTF=${params.refdir}/${species}/gtf/genes.gtf
-    regtools junctions extract -i 20 -a 1 -o o.jx_bed ${sbam}
-    #regtools junctions extract -i 20 -a 1 -o otmp.jx_bed ${sbam}
-    #regtools junctions annotate -E -o o.jx_bed otmp.jx_bed \${FA} \${GTF}
-    """
-}
-
-process count_junctions {
-    tag { srr }
-    publishDir params.outdir, mode: 'copy'
-    
-    input:
-    set srr, file(jxb) from jx_bed
-    
-    output:
-    file('*.jx_count') into jx_count_final
-    
-    """
-#!/usr/bin/env python
-with open('$jxb', 'r') as ifh:
-    with open('$srr' + '.jx_count', 'w') as ofh:
-        for i, ln in enumerate(ifh):
-            toks = ln.rstrip().split('\\t')
-            assert len(toks) == 12, (i, ln)
-            chrom, strand = toks[0], toks[5]
-            starts = list(map(int, toks[11].split(",")))
-            size = int(toks[10].split(",")[0])
-            left_pos = int(toks[1]) + starts[0] + size + 1
-            right_pos = int(toks[1]) + starts[1]
-            ofh.write('\\t'.join(map(str, ['$srr', chrom, left_pos, right_pos, strand, toks[4]])) + '\\n')
+    regtools junctions extract -i 20 -a 1 -o o.jx_tmp ${sbam}
+    regtools junctions annotate -E -o ${srr}.jx_bed o.jx_tmp \${FA} \${GTF}
     """
 }
 
@@ -331,5 +311,39 @@ process calc_unique_auc {
     # wiggletools expects .bw suffix for bigWig input
     mv $bw i.bw
     wiggletools print ${srr}.unique.auc AUC i.bw
+    """
+}
+
+process gene_count_all {
+    tag { srr }
+    publishDir params.outdir, mode: 'copy'
+    
+    input:
+    set srr, species, file(bam), file(bai) from sorted_bam5
+    
+    output:
+    file('*.all.gene_count') into gene_count_all_final
+    
+    """
+    GTF=${params.refdir}/${species}/gtf/genes.gtf
+    featureCounts -T ${task.cpus} -f -p -a \${GTF} -F GTF -t exon -g gene_id -o tmp ${bam}
+    awk -v OFS='\\t' '\$1 !~ /^#/ && \$1 !~ /^Geneid/ && \$NF != 0 {print "${srr}",\$0}' tmp > ${srr}.all.gene_count
+    """
+}
+
+process gene_count_unique {
+    tag { srr }
+    publishDir params.outdir, mode: 'copy'
+    
+    input:
+    set srr, species, file(bam), file(bai) from sorted_bam6
+    
+    output:
+    file('*.unique.gene_count') into gene_count_unique_final
+    
+    """
+    GTF=${params.refdir}/${species}/gtf/genes.gtf
+    featureCounts -Q 10 -T ${task.cpus} -f -p -a \${GTF} -F GTF -t exon -g gene_id -o tmp ${bam}
+    awk -v OFS='\\t' '\$1 !~ /^#/ && \$1 !~ /^Geneid/ && \$NF != 0 {print "${srr}",\$0}' tmp > ${srr}.unique.gene_count
     """
 }
