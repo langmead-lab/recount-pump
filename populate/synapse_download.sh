@@ -14,7 +14,7 @@ test -n $synid
 mkdir -p $species
 pushd $species
 synapse get -r $synid
-for i in *.tar.gz ; do
-    tar zxvf $i
-done
+#for i in *.tar.gz ; do
+#    tar zxvf $i
+#done
 popd
