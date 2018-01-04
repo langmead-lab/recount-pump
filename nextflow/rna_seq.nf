@@ -31,10 +31,11 @@
  *   + As of now retrieval is always with fastq-dump
  */
 
-params.in     = 'accessions.txt'
-params.temp   = '/tmp'
-params.refdir = '${HOME}/recount-refs'
-params.outdir = 'results'
+params.in   = 'accessions.txt'
+params.out  = 'results'
+params.ref  = '${RECOUNT_REF}'
+params.temp = '${RECOUNT_TMP}'
+
 params.cpus   = 8
 
 srr = Channel
@@ -54,14 +55,17 @@ process preliminary {
     set srr, species into srr2
     
     """
+    test -d ${params.temp}
+    test -d ${params.ref}
+
     # Ensure expected reference files are around
-    test -d ${params.refdir}/${species}
+    test -d ${params.ref}/${species}
     for i in 1 2 3 4 5 6 7 8 ; do
-        test -f ${params.refdir}/${species}/hisat2_idx/genome.\${i}.ht2
+        test -f ${params.ref}/${species}/hisat2_idx/genome.\${i}.ht2
     done
-    test -f ${params.refdir}/${species}/fasta/genome.fa
-    test -f ${params.refdir}/${species}/gtf/genes.gtf
-    
+    test -f ${params.ref}/${species}/fasta/genome.fa
+    test -f ${params.ref}/${species}/gtf/genes.gtf
+        
     # Ensure tools are installed
     which hisat2
     which fastq-dump
@@ -103,7 +107,7 @@ process align {
     set srr, 'o.log' into align_log
 
     """
-    IDX=${params.refdir}/${species}/hisat2_idx/genome
+    IDX=${params.ref}/${species}/hisat2_idx/genome
     if [[ -f 2.fastq ]] ; then
         hisat2 -x \${IDX} --min-intronlen 20 -1 1.fastq -2 2.fastq -S o.sam -t 2>o.log
     elif [[ -f 1.fastq ]] ; then
@@ -273,8 +277,8 @@ process extract_junctions {
     # -i INT   Minimum intron length. [70]
     # -I INT   Maximum intron length. [500000]
 
-    FA=${params.refdir}/${species}/fasta/genome.fa
-    GTF=${params.refdir}/${species}/gtf/genes.gtf
+    FA=${params.ref}/${species}/fasta/genome.fa
+    GTF=${params.ref}/${species}/gtf/genes.gtf
     regtools junctions extract -i 20 -a 1 -o o.jx_tmp ${sbam}
     regtools junctions annotate -E -o ${srr}.jx_bed o.jx_tmp \${FA} \${GTF}
     """
@@ -325,7 +329,7 @@ process gene_count_all {
     file('*.all.gene_count') into gene_count_all_final
     
     """
-    GTF=${params.refdir}/${species}/gtf/genes.gtf
+    GTF=${params.ref}/${species}/gtf/genes.gtf
     featureCounts -T ${task.cpus} -f -p -a \${GTF} -F GTF -t exon -g gene_id -o tmp ${bam}
     awk -v OFS='\\t' '\$1 !~ /^#/ && \$1 !~ /^Geneid/ && \$NF != 0 {print "${srr}",\$0}' tmp > ${srr}.all.gene_count
     """
@@ -342,7 +346,7 @@ process gene_count_unique {
     file('*.unique.gene_count') into gene_count_unique_final
     
     """
-    GTF=${params.refdir}/${species}/gtf/genes.gtf
+    GTF=${params.ref}/${species}/gtf/genes.gtf
     featureCounts -Q 10 -T ${task.cpus} -f -p -a \${GTF} -F GTF -t exon -g gene_id -o tmp ${bam}
     awk -v OFS='\\t' '\$1 !~ /^#/ && \$1 !~ /^Geneid/ && \$NF != 0 {print "${srr}",\$0}' tmp > ${srr}.unique.gene_count
     """
