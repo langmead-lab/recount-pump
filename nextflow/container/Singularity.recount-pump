@@ -1,0 +1,8 @@
+Bootstrap: docker
+From: benlangmead/recount-pump
+
+%post
+
+%runscript
+
+    exec bash -c "source activate rnaseq_v0 && bash /home/biodocker/bin/rna_seq.bash"
