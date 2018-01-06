@@ -1,23 +1,40 @@
 #!/usr/bin/env bash
 
+# Author: Ben Langmead
+#  Email: langmea@cs.jhu.edu
+#   Date: 1/5/2018
+
+# Designed to run the nextflow script from inside a container where the
+# supporting directories have already been set up, i.e.:
+#  /recount-input
+#  /recount-output
+#  /recount-ref
+#  /recount-temp
+
 set -ex
 
 d=`dirname $0`
 
-INPUT=$1
-shift
+test -d /recount-input
+test -d /recount-output
+test -d /recount-ref
+test -d /recount-temp
 
-test -n ${INPUT}
-test -f ${INPUT}
+RESULTS_DIR=/recount-output/results
 
-test -n ${RECOUNT_TMP}
-test -d ${RECOUNT_TMP}
+ls /recount-input
 
-$d/rna_seq.nf --in ${INPUT} --out /app/results --ref /ref $*
-test -d /app/results
+INPUT=`ls /recount-input/*`
+
+$d/rna_seq.nf \
+    --in ${INPUT} \
+    --out ${RESULTS_DIR} \
+    --ref /recount-ref \
+    --temp /recount-temp $*
 
 md5sum ${INPUT} | cut -d' ' -f 1 > .input.md5
-mv /app/results /app/results-`cat .input.md5`
+RESULTS_DIR_FINAL=$RESULTS_DIR-`cat .input.md5`
+mv $RESULTS_DIR $RESULTS_DIR_FINAL
 
 globus login --no-local-server
 globus endpoint search marcc | grep 'marcc#dtn' | cut -d' ' -f1 > .marcc.id

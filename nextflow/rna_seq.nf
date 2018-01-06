@@ -34,9 +34,7 @@
 params.in   = 'accessions.txt'
 params.out  = 'results'
 params.ref  = '${RECOUNT_REF}'
-params.temp = '${RECOUNT_TMP}'
-
-params.cpus   = 8
+params.temp = '${RECOUNT_TEMP}'
 
 srr = Channel
       .fromPath(params.in)
@@ -121,7 +119,7 @@ process align {
 
 process publish_align_logs {
     tag { srr }
-    publishDir params.outdir, mode: 'copy'
+    publishDir params.out, mode: 'copy'
 
     input:
     set srr, file(logf) from align_log
@@ -136,7 +134,6 @@ process publish_align_logs {
 
 process sam_to_bam {
     tag { srr }
-    cpus params.cpus
 
     input:
     set srr, species, file(samf) from sam
@@ -145,13 +142,12 @@ process sam_to_bam {
     set srr, species, 'o.bam' into bam
     
     """
-    sambamba view -S -f bam -t ${task.cpus} ${samf} > o.bam
+    sambamba view -S -f bam ${samf} > o.bam
     """
 }
 
 process bam_sort {
     tag { srr }
-    cpus params.cpus
 
     input:
     set srr, species, file(bam) from bam
@@ -163,8 +159,8 @@ process bam_sort {
                                                               sorted_bam4, sorted_bam5, sorted_bam6
     
     """
-    sambamba sort --tmpdir=${params.temp} -p -m 10G -t ${task.cpus} -o o.sorted.bam ${bam}
-    sambamba index -t ${task.cpus} o.sorted.bam
+    sambamba sort --tmpdir=${params.temp} -p -m 10G -o o.sorted.bam ${bam}
+    sambamba index o.sorted.bam
     """
 }
 
@@ -184,7 +180,7 @@ process assemble {
 
 process publish_gtf {
     tag { srr }
-    publishDir params.outdir, mode: 'copy'
+    publishDir params.out, mode: 'copy'
     
     input:
     set srr, file(gtf) from gtf_publish
@@ -233,7 +229,7 @@ process bam_to_bw_unique {
 
 process publish_bw_all {
     tag { srr }
-    publishDir params.outdir, mode: 'copy'
+    publishDir params.out, mode: 'copy'
     
     input:
     set srr, file(bw) from bw_all_publish
@@ -248,7 +244,7 @@ process publish_bw_all {
 
 process publish_bw_unique {
     tag { srr }
-    publishDir params.outdir, mode: 'copy'
+    publishDir params.out, mode: 'copy'
     
     input:
     set srr, file(bw) from bw_unique_publish
@@ -263,7 +259,7 @@ process publish_bw_unique {
 
 process extract_junctions {
     tag { srr }
-    publishDir params.outdir, mode: 'copy'
+    publishDir params.out, mode: 'copy'
 
     input:
     set srr, species, file(sbam), file(sbam_idx) from sorted_bam4
@@ -286,7 +282,7 @@ process extract_junctions {
 
 process calc_all_auc {
     tag { srr }
-    publishDir params.outdir, mode: 'copy'
+    publishDir params.out, mode: 'copy'
 
     input:
     set srr, file(bw) from bw_all
@@ -303,7 +299,7 @@ process calc_all_auc {
 
 process calc_unique_auc {
     tag { srr }
-    publishDir params.outdir, mode: 'copy'
+    publishDir params.out, mode: 'copy'
 
     input:
     set srr, file(bw) from bw_unique
@@ -320,7 +316,7 @@ process calc_unique_auc {
 
 process gene_count_all {
     tag { srr }
-    publishDir params.outdir, mode: 'copy'
+    publishDir params.out, mode: 'copy'
     
     input:
     set srr, species, file(bam), file(bai) from sorted_bam5
@@ -330,14 +326,14 @@ process gene_count_all {
     
     """
     GTF=${params.ref}/${species}/gtf/genes.gtf
-    featureCounts -T ${task.cpus} -f -p -a \${GTF} -F GTF -t exon -g gene_id -o tmp ${bam}
+    featureCounts -f -p -a \${GTF} -F GTF -t exon -g gene_id -o tmp ${bam}
     awk -v OFS='\\t' '\$1 !~ /^#/ && \$1 !~ /^Geneid/ && \$NF != 0 {print "${srr}",\$0}' tmp > ${srr}.all.gene_count
     """
 }
 
 process gene_count_unique {
     tag { srr }
-    publishDir params.outdir, mode: 'copy'
+    publishDir params.out, mode: 'copy'
     
     input:
     set srr, species, file(bam), file(bai) from sorted_bam6
@@ -347,7 +343,7 @@ process gene_count_unique {
     
     """
     GTF=${params.ref}/${species}/gtf/genes.gtf
-    featureCounts -Q 10 -T ${task.cpus} -f -p -a \${GTF} -F GTF -t exon -g gene_id -o tmp ${bam}
+    featureCounts -Q 10 -f -p -a \${GTF} -F GTF -t exon -g gene_id -o tmp ${bam}
     awk -v OFS='\\t' '\$1 !~ /^#/ && \$1 !~ /^Geneid/ && \$NF != 0 {print "${srr}",\$0}' tmp > ${srr}.unique.gene_count
     """
 }
