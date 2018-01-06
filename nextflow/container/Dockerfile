@@ -15,7 +15,7 @@ MAINTAINER Ben Langmead <ben.langmead@gmail.com>
 ################## INSTALLATION ######################
 
 # install conda environment
-ADD rna_seq.yml /tmp/
+COPY rna_seq.yml /tmp/rna_seq.yml
 RUN conda env create -f /tmp/rna_seq.yml
 
 # install globus-cli using pipe

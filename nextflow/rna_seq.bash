@@ -22,10 +22,20 @@ test -d /recount-temp
 
 RESULTS_DIR=/recount-output/results
 
+# Gather inputs
 ls /recount-input
-
 INPUT=`ls /recount-input/*`
+test -n "${INPUT}"
 
+# Set cache directory for fastq-dump
+mkdir -p $HOME/.ncbi
+mkdir -p /recount-temp/ncbi
+
+cat >$HOME/.ncbi/user-settings.mkfg <<EOF
+/repository/user/main/public/root = "/recount-temp/ncbi"
+EOF
+
+# Run nextflow workflow
 $d/rna_seq.nf \
     --in ${INPUT} \
     --out ${RESULTS_DIR} \
