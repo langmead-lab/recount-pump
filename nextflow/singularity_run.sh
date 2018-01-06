@@ -4,7 +4,7 @@
 #  Email: langmea@cs.jhu.edu
 #   Date: 1/5/2018
 
-# Runs a docker container containing the next flow script and its
+# Runs a singularity container containing the next flow script and its
 # in-container driver, setting up these directory mappings ahead of
 # time:
 #  first arg -> /recount-input
