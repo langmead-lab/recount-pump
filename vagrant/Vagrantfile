@@ -1,0 +1,57 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+ENV['VAGRANT_DEFAULT_PROVIDER'] = 'aws'
+
+Vagrant.configure("2") do |config|
+
+    config.vm.box = "dummy"
+    config.vm.synced_folder ".", "/vagrant", disabled: true
+
+    config.vm.provider :aws do |aws, override|
+        aws.region = "us-east-1"
+        aws.ami = "ami-13401669"
+        aws.tags = { 'Application' => 'docker' }
+        aws.instance_type = 'c4.2xlarge'
+        aws.keypair_name = "default"
+        aws.subnet_id = "subnet-1fc8de7a"
+        aws.security_groups = ["sg-16845a6e"]
+        aws.associate_public_ip = true
+
+        aws.block_device_mapping = [{
+            'DeviceName' => "/dev/sdf",
+            'VirtualName' => "ephemeral0",
+            'Ebs.VolumeSize' => 100,
+            'Ebs.DeleteOnTermination' => true,
+            'Ebs.VolumeType' => 'gp2'
+        }]
+
+        override.ssh.username = "ec2-user"
+        override.ssh.private_key_path = "~/.ec2_jhu/default.pem"
+    end
+
+    ssh_key_path = "~/.ssh/"
+    config.vm.provision "file", source: "#{ ssh_key_path + 'id_rsa' }", destination: "~ec2-user/.ssh/id_rsa"
+    config.vm.provision "file", source: "#{ ssh_key_path + 'id_rsa.pub' }", destination: "~ec2-user/.ssh/id_rsa.pub"
+
+    config.vm.provision "shell", inline: <<-SHELL
+	if [ ! -d /work ] ; then
+            sudo mkfs -t ext4 /dev/xvdf
+            sudo mkdir /work
+            sudo mount /dev/xvdf /work/
+	    sudo chmod a+w /work
+        fi
+        sudo yum -y install emacs-nox git wget gcc g++
+
+	if ! which singularity ; then
+            VER=2.4.2
+            wget https://github.com/singularityware/singularity/releases/download/$VER/singularity-$VER.tar.gz
+            tar xvf singularity-$VER.tar.gz
+            cd singularity-$VER
+            ./configure --prefix=/usr/local --sysconfdir=/etc
+            make
+            sudo make install
+	    cd ..
+        fi
+    SHELL
+end
