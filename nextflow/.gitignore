@@ -2,3 +2,5 @@ results
 work
 .nextflow
 .nextflow.*
+input
+output
