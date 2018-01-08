@@ -15,10 +15,22 @@ set -ex
 
 d=`dirname $0`
 
+# Ensure directories
 test -d /recount-input
 test -d /recount-output
 test -d /recount-ref
 test -d /recount-temp
+
+# Ensure tools are installed
+which hisat2
+which fastq-dump
+which sambamba
+which stringtie
+which bamCoverage
+which regtools
+which wiggletools
+which featureCounts
+which nextflow
 
 RESULTS_DIR=/recount-output/results
 
