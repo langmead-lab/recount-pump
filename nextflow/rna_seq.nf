@@ -53,9 +53,6 @@ process preliminary {
     set srr, species into srr2
     
     """
-    test -d ${params.temp}
-    test -d ${params.ref}
-
     # Ensure expected reference files are around
     test -d ${params.ref}/${species}
     for i in 1 2 3 4 5 6 7 8 ; do
@@ -63,16 +60,6 @@ process preliminary {
     done
     test -f ${params.ref}/${species}/fasta/genome.fa
     test -f ${params.ref}/${species}/gtf/genes.gtf
-        
-    # Ensure tools are installed
-    which hisat2
-    which fastq-dump
-    which sambamba
-    which stringtie
-    which bamCoverage
-    which regtools
-    which wiggletools
-    which featureCounts
     """
 }
 
