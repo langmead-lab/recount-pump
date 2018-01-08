@@ -33,25 +33,66 @@ Vagrant.configure("2") do |config|
     ssh_key_path = "~/.ssh/"
     config.vm.provision "file", source: "#{ ssh_key_path + 'id_rsa' }", destination: "~ec2-user/.ssh/id_rsa"
     config.vm.provision "file", source: "#{ ssh_key_path + 'id_rsa.pub' }", destination: "~ec2-user/.ssh/id_rsa.pub"
+    config.vm.provision "file", source: "~/.synapseConfig", destination: "~ec2-user/.synapseConfig"
+    config.vm.provision "file", source: "~/.docker/creds.txt", destination: "~ec2-user/.docker/creds.txt"
 
-    config.vm.provision "shell", inline: <<-SHELL
-	if [ ! -d /work ] ; then
-            sudo mkfs -t ext4 /dev/xvdf
-            sudo mkdir /work
-            sudo mount /dev/xvdf /work/
-	    sudo chmod a+w /work
+    config.vm.provision "shell", privileged: true, inline: <<-SHELL
+        if [ ! -d /work ] ; then
+            mkfs -t ext4 /dev/xvdf
+            mkdir /work
+            mount /dev/xvdf /work/
+            chmod a+w /work
         fi
-        sudo yum -y install emacs-nox git wget gcc g++
+        yum -y install emacs-nox git wget gcc g++
 
-	if ! which singularity ; then
-            VER=2.4.2
+        if ! which singularity ; then
+        
+            # The TACC version of singularity is 2.3.1
+            
+            VER=2.3.1
             wget https://github.com/singularityware/singularity/releases/download/$VER/singularity-$VER.tar.gz
             tar xvf singularity-$VER.tar.gz
             cd singularity-$VER
             ./configure --prefix=/usr/local --sysconfdir=/etc
             make
-            sudo make install
-	    cd ..
+            make install
+            cd ..
         fi
+        
+        if ! which pip ; then
+            wget https://bootstrap.pypa.io/get-pip.py
+            python get-pip.py
+        fi
+
+        if ! which synapse ; then
+            /usr/local/bin/pip install synapseclient
+        fi
+        
+        if ! which globus ; then
+            pip install globus-cli
+        fi
+    SHELL
+    
+    config.vm.provision "shell", privileged: false, inline: <<-SHELL
+        # How do I control *which* user this is?  Want it to be ec2-user
+        echo "Host github.com" > ~/.ssh/config
+        echo "  HostName github.com" >> ~/.ssh/config
+        echo "  User git" >> ~/.ssh/config
+        echo "  IdentityFile ~/.ssh/id_rsa" >> ~/.ssh/config
+        echo "  StrictHostKeyChecking no" >> ~/.ssh/config
+        chmod go-rwx ~/.ssh/config
+        
+        cd /work
+        git clone git@github.com:langmead-lab/recount-pump.git
+        cd recount-pump/nextflow
+        
+        docker login -u `cut -d' ' -f1 ~/.docker/creds.txt` \
+                     -p `cut -d' ' -f2 ~/.docker/creds.txt`
+        
+        docker pull benlangmead/recount-pump
+        
+        ./docker_build.sh
+        
+        docker push benlangmead/recount-pump
     SHELL
 end
