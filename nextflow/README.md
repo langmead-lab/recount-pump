@@ -4,13 +4,14 @@ Scripts in this directory, in rough order of execution:
 
 * On the build server:
     * `docker_push.sh`
-        * Pull the most recently published `recount-pump` image.  Unless you're internet uplink is very slow, this usually speeds up the following build step.
+        * Pull the most recently published `recount-pump` image.  Unless your internet uplink is very slow, doing this before `docker_build.sh` is usually a net speed win.
     * `docker_build.sh`
         * Build the docker container in the `container` subdirectory
     * `docker_push.sh`
         * Push the most recently built container to [Docker Hub](https://hub.docker.com/r/benlangmead/recount-pump/).
     * `singularity_convert.sh`
         * Convert the most recently built Docker image to a Singularity image.  Once finished, the singularity image will be in the current directory with a name like `benlangmead_recount-pump-2018-01-08-93d2c60d1ee8.img`.
+    * **NOTE:** right now this process is tied by my Docker Hub account, `benlangmead`
 * On the runtime server (but not within the container):
     * `prep_test.sh`
         * Creates and prepares `input` and `output` subdirectories for a small test run.
