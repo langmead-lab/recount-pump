@@ -32,7 +32,7 @@ test -d "${RECOUNT_REF}"
 test -n "${RECOUNT_TEMP}"
 test -d "${RECOUNT_TEMP}"
 
-singularity run \
+singularity exec \
     --bind ${INPUT_DIR}:/recount-input \
     --bind ${OUTPUT_DIR}:/recount-output \
     --bind ${RECOUNT_REF}:/recount-ref \
