@@ -20,8 +20,11 @@ RUN conda env create -f /tmp/rna_seq.yml
 
 # install globus-cli using pipe
 RUN bash -c "source activate rnaseq_v0 && pip install globus-cli"
+
 # triggers nextflow dependency downloads
+# not sure whether the first one is needed anymore
 RUN bash -c "source activate rnaseq_v0 && (nextflow clean -f || true)"
+RUN bash -c "source activate rnaseq_v0 && (nextflow -self-update || true)"
 
 # install regtools from github
 RUN git clone https://github.com/griffithlab/regtools.git -- regtools && \
