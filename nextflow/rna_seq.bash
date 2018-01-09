@@ -16,13 +16,13 @@ set -ex
 d=`dirname $0`
 
 # Ensure directories
-test -z "${INPUT}"
+test -n "${INPUT}"
 test -d "${INPUT}"
-test -z "${OUTPUT}"
+test -n "${OUTPUT}"
 test -d "${OUTPUT}"
-test -z "${RECOUNT_REF}"
+test -n "${RECOUNT_REF}"
 test -d "${RECOUNT_REF}"
-test -z "${RECOUNT_TEMP}"
+test -n "${RECOUNT_TEMP}"
 test -d "${RECOUNT_TEMP}"
 
 # Ensure tools are installed
