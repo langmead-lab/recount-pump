@@ -6,7 +6,11 @@
 
 # Runs a singularity container containing the next flow script and its
 # in-container driver, setting up these directory mappings ahead of
-# time:
+# time.
+
+# Note that TACC has restrictions on directory binding.  They are
+# described here:
+
 #  first arg -> /recount-input
 #  second arg -> /recount-output
 #  ${RECOUNT_REF} -> /recount-ref

@@ -15,11 +15,25 @@ set -ex
 
 d=`dirname $0`
 
+INPUT="/recount-input"
+OUTPUT="/recount-output"
+RECOUNT_REF="/recount-ref"
+RECOUNT_TEMP="/recount-temp"
+
+if [[ -d "/work" && -d "/home1" && -d "/scratch" ]] ; then
+    # Assume we're on TACC since we see its automatic bind points
+    test -n "${RECOUNT_JOB}"
+    INPUT="/scratch/recount-pump/${RECOUNT_JOB}/input"
+    OUTPUT="/scratch/recount-pump/${RECOUNT_JOB}/output"
+    RECOUNT_TEMP="/scratch/recount-pump/${RECOUNT_JOB}/temp"
+    RECOUNT_REF="/work/recount-pump/ref"
+fi
+
 # Ensure directories
-test -d /recount-input
-test -d /recount-output
-test -d /recount-ref
-test -d /recount-temp
+test -d "${INPUT}"
+test -d "${OUTPUT}"
+test -d "${RECOUNT_REF}"
+test -d "${RECOUNT_TEMP}"
 
 # Ensure tools are installed
 which hisat2
@@ -32,31 +46,27 @@ which wiggletools
 which featureCounts
 which nextflow
 
-RESULTS_DIR=/recount-output/results
-
 # Gather inputs
-ls /recount-input
-INPUT=`ls /recount-input/*`
-test -n "${INPUT}"
+ls "${INPUT}"
+INPUT_FILES=`ls ${INPUT}/*`
+test -n "${INPUT_FILES}"
 
 # Set cache directory for fastq-dump
-mkdir -p $HOME/.ncbi
-mkdir -p /recount-temp/ncbi
+mkdir -p "$HOME/.ncbi"
+mkdir -p "${RECOUNT_TEMP}/ncbi"
 
 cat >$HOME/.ncbi/user-settings.mkfg <<EOF
-/repository/user/main/public/root = "/recount-temp/ncbi"
+/repository/user/main/public/root = "${RECOUNT_TEMP}/ncbi"
 EOF
 
 # Run nextflow workflow
 $d/rna_seq.nf \
-    --in ${INPUT} \
-    --out ${RESULTS_DIR} \
-    --ref /recount-ref \
-    --temp /recount-temp $*
+    --in "${INPUT_FILES}" \
+    --out "${OUTPUT}" \
+    --ref "${RECOUNT_REF}" \
+    --temp "${RECOUNT_TEMP}" $*
 
 md5sum ${INPUT} | cut -d' ' -f 1 > .input.md5
-RESULTS_DIR_FINAL=$RESULTS_DIR-`cat .input.md5`
-mv $RESULTS_DIR $RESULTS_DIR_FINAL
 
 if false ; then
     # This is some dummy code to see if we can run the Globus CLI in a
