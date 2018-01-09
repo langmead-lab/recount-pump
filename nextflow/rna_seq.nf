@@ -38,7 +38,7 @@ params.temp = '${RECOUNT_TEMP}'
 
 srr = Channel
       .fromPath(params.in)
-      .splitCsv(header: ['srr', 'species'])
+      .splitCsv(header: ['srr', 'srp', 'species'])
       .ifEmpty { error "Cannot find any accessions in: ${params.in}" }
 
 
@@ -47,10 +47,10 @@ process preliminary {
     tag { srr }
     
     input:
-    set srr, species from srr
+    set srr, srp, species from srr
     
     output:
-    set srr, species into srr2
+    set srr, srp, species into srr2
     
     """
     # Ensure expected reference files are around
@@ -67,10 +67,10 @@ process sra_fastq {
     tag { srr }
 
     input:
-    set srr, species from srr2
+    set srr, srp, species from srr2
     
     output:
-    set srr, species, '*.fastq' into fastq
+    set srr, srp, species, '*.fastq' into fastq
     
     """
     fastq-dump ${srr} --split-files -I --skip-technical
@@ -85,11 +85,11 @@ process align {
     tag { srr }
 
     input:
-    set srr, species, file('?.fastq') from fastq
+    set srr, srp, species, file('?.fastq') from fastq
 
     output:
-    set srr, species, 'o.sam' into sam
-    set srr, 'o.log' into align_log
+    set srr, srp, species, 'o.sam' into sam
+    set srr, srp, 'o.log' into align_log
 
     """
     IDX=${params.ref}/${species}/hisat2_idx/genome
@@ -109,7 +109,7 @@ process publish_align_logs {
     publishDir params.out, mode: 'copy'
 
     input:
-    set srr, file(logf) from align_log
+    set srr, srp, file(logf) from align_log
 
     output:
     file('*_align_log.txt') into align_log_final
@@ -123,10 +123,10 @@ process sam_to_bam {
     tag { srr }
 
     input:
-    set srr, species, file(samf) from sam
+    set srr, srp, species, file(samf) from sam
     
     output:
-    set srr, species, 'o.bam' into bam
+    set srr, srp, species, 'o.bam' into bam
     
     """
     sambamba view -S -f bam ${samf} > o.bam
@@ -137,13 +137,13 @@ process bam_sort {
     tag { srr }
 
     input:
-    set srr, species, file(bam) from bam
+    set srr, srp, species, file(bam) from bam
     
     // Channels can't be reused, so I have to make several.
     // Is there a less silly way to funnel output to N other process?
     output:
-    set srr, species, 'o.sorted.bam', 'o.sorted.bam.bai' into sorted_bam1, sorted_bam2, sorted_bam3,
-                                                              sorted_bam4, sorted_bam5, sorted_bam6
+    set srr, srp, species, 'o.sorted.bam', 'o.sorted.bam.bai' into sorted_bam1, sorted_bam2, sorted_bam3,
+                                                                   sorted_bam4, sorted_bam5, sorted_bam6
     
     """
     sambamba sort --tmpdir=${params.temp} -p -m 10G -o o.sorted.bam ${bam}
@@ -155,10 +155,10 @@ process assemble {
     tag { srr }
     
     input:
-    set srr, species, file(sbam), file(sbam_idx) from sorted_bam1
+    set srr, srp, species, file(sbam), file(sbam_idx) from sorted_bam1
 
     output:
-    set srr, file('o.gtf') into gtf_publish
+    set srr, srp, file('o.gtf') into gtf_publish
 
     """
     stringtie -l ${srr} ${sbam} > o.gtf
@@ -170,7 +170,7 @@ process publish_gtf {
     publishDir params.out, mode: 'copy'
     
     input:
-    set srr, file(gtf) from gtf_publish
+    set srr, srp, file(gtf) from gtf_publish
     
     output:
     file('*.gtf') into gtf_final
@@ -184,11 +184,11 @@ process bam_to_bw_all {
     tag { srr }
     
     input:
-    set srr, species, file(sbam), file(sbam_idx) from sorted_bam2
+    set srr, srp, species, file(sbam), file(sbam_idx) from sorted_bam2
 
     output:
-    set srr, file('o.all.bw') into bw_all_publish
-    set srr, file('o.all.bw') into bw_all
+    set srr, srp, file('o.all.bw') into bw_all_publish
+    set srr, srp, file('o.all.bw') into bw_all
     
     """
     mv ${sbam} i.bam
@@ -201,11 +201,11 @@ process bam_to_bw_unique {
     tag { srr }
     
     input:
-    set srr, species, file(sbam), file(sbam_idx) from sorted_bam3
+    set srr, srp, species, file(sbam), file(sbam_idx) from sorted_bam3
 
     output:
-    set srr, file('o.unique.bw') into bw_unique_publish
-    set srr, file('o.unique.bw') into bw_unique
+    set srr, srp, file('o.unique.bw') into bw_unique_publish
+    set srr, srp, file('o.unique.bw') into bw_unique
     
     """
     mv ${sbam} i.bam
@@ -219,7 +219,7 @@ process publish_bw_all {
     publishDir params.out, mode: 'copy'
     
     input:
-    set srr, file(bw) from bw_all_publish
+    set srr, srp, file(bw) from bw_all_publish
     
     output:
     file('*.all.bw') into bw_all_final
@@ -234,7 +234,7 @@ process publish_bw_unique {
     publishDir params.out, mode: 'copy'
     
     input:
-    set srr, file(bw) from bw_unique_publish
+    set srr, srp, file(bw) from bw_unique_publish
     
     output:
     file('*.unique.bw') into bw_unique_final
@@ -249,7 +249,7 @@ process extract_junctions {
     publishDir params.out, mode: 'copy'
 
     input:
-    set srr, species, file(sbam), file(sbam_idx) from sorted_bam4
+    set srr, srp, species, file(sbam), file(sbam_idx) from sorted_bam4
 
     output:
     file('*.jx_bed') into jx_bed_final
@@ -272,7 +272,7 @@ process calc_all_auc {
     publishDir params.out, mode: 'copy'
 
     input:
-    set srr, file(bw) from bw_all
+    set srr, srp, file(bw) from bw_all
     
     output:
     file('*.auc') into auc_all_final
@@ -289,7 +289,7 @@ process calc_unique_auc {
     publishDir params.out, mode: 'copy'
 
     input:
-    set srr, file(bw) from bw_unique
+    set srr, srp, file(bw) from bw_unique
     
     output:
     file('*.auc') into auc_unique_final
@@ -306,7 +306,7 @@ process gene_count_all {
     publishDir params.out, mode: 'copy'
     
     input:
-    set srr, species, file(bam), file(bai) from sorted_bam5
+    set srr, srp, species, file(bam), file(bai) from sorted_bam5
     
     output:
     file('*.all.gene_count') into gene_count_all_final
@@ -323,7 +323,7 @@ process gene_count_unique {
     publishDir params.out, mode: 'copy'
     
     input:
-    set srr, species, file(bam), file(bai) from sorted_bam6
+    set srr, srp, species, file(bam), file(bai) from sorted_bam6
     
     output:
     file('*.unique.gene_count') into gene_count_unique_final
