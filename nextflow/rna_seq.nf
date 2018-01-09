@@ -36,10 +36,10 @@ params.out  = 'results'
 params.ref  = '${RECOUNT_REF}'
 params.temp = '${RECOUNT_TEMP}'
 
-srr = Channel
-      .fromPath(params.in)
-      .splitCsv(header: ['srr', 'srp', 'species'])
-      .ifEmpty { error "Cannot find any accessions in: ${params.in}" }
+srrs = Channel
+       .fromPath(params.in)
+       .splitCsv(header: ['srr', 'srp', 'species'])
+       .ifEmpty { error "Cannot find any accessions in: ${params.in}" }
 
 
 // Doing this first means checks are skipped when pipeline is resumed?
@@ -47,10 +47,10 @@ process preliminary {
     tag { srr }
     
     input:
-    set srr, srp, species from srr
+    set srr, srp, species from srrs
     
     output:
-    set srr, srp, species into srr2
+    set srr, srp, species into srrs2
     
     """
     # Ensure expected reference files are around
@@ -67,7 +67,7 @@ process sra_fastq {
     tag { srr }
 
     input:
-    set srr, srp, species from srr2
+    set srr, srp, species from srrs2
     
     output:
     set srr, srp, species, '*.fastq' into fastq
