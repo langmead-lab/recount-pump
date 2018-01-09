@@ -52,10 +52,10 @@ REF_DIR="${WORK}/recount-pump/ref"
 test -n "${REF_DIR}"
 test -d "${REF_DIR}"
 
-INPUT="${INPUT_DIR}" && \
-OUTPUT="${OUTPUT_DIR}" && \
-RECOUNT_REF="${REF_DIR}" && \
-RECOUNT_TEMP="${TEMP_DIR}" && \
+export INPUT="${INPUT_DIR}" && \
+export OUTPUT="${OUTPUT_DIR}" && \
+export RECOUNT_REF="${REF_DIR}" && \
+export RECOUNT_TEMP="${TEMP_DIR}" && \
 singularity exec \
     $* \
     ${image} \

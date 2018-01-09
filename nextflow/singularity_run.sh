@@ -45,10 +45,10 @@ test -d "${RECOUNT_REF}"
 test -n "${RECOUNT_TEMP}"
 test -d "${RECOUNT_TEMP}"
 
-INPUT="/recount-input" && \
-OUTPUT="/recount-output" && \
-RECOUNT_REF="/recount-ref" && \
-RECOUNT_TEMP="/recount-temp" && \
+export INPUT="/recount-input" && \
+export OUTPUT="/recount-output" && \
+export RECOUNT_REF="/recount-ref" && \
+export RECOUNT_TEMP="/recount-temp" && \
 singularity exec \
     --bind ${input_dir}:/recount-input \
     --bind ${output_dir}:/recount-output \
