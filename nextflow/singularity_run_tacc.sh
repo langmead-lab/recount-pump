@@ -24,7 +24,7 @@ image=$3
 shift 3
 
 if [ -n "${image}" ] ; then
-    if ! grep -q '^shub' ${image} ; then
+    if ! echo ${image} | grep -q '^shub' ; then
         # not a URL, so must be extant file
         test -f "${image}"
     fi 
