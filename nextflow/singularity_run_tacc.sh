@@ -19,9 +19,12 @@
 set -ex
 
 job_name=$1
-image_file=$2
+input_dir=$2
+image_file=$3
 
 test -n "${job_name}"
+test -n "${input_dir}"
+test -d "${input_dir}"
 test -n "${image_file}"
 test -f "${image_file}"
 
@@ -33,11 +36,11 @@ OUTPUT_DIR="${SCRATCH}/recount-pump/${job_name}/output"
 TEMP_DIR="${SCRATCH}/recount-pump/${job_name}/temp"
 
 mkdir -p "${INPUT_DIR}" "${OUTPUT_DIR}" "${TEMP_DIR}"
+cp "${input_dir}/*" "${INPUT_DIR}"
 
-RECOUNT_REF="${WORK}/recount-pump/ref"
-
-test -n "${RECOUNT_REF}"
-test -d "${RECOUNT_REF}"
+REF_DIR="${WORK}/recount-pump/ref"
+test -n "${REF_DIR}"
+test -d "${REF_DIR}"
 
 RECOUNT_JOB="${job_name}" && singularity exec \
     ${image_file} \

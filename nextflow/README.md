@@ -22,6 +22,11 @@ Scripts in this directory, in rough order of execution:
     * `singularity_run.sh <input> <output>`
         * Needs same arguments & environment variables as `docker_run.sh` above.
         * Does not depend on Docker image being present; doesn't even depend on Docker being installed.  You just need Singularity and the image file.
+    * `singularity_run_tacc.sh <job-name> <input-dir> <image-file>`
+        * Like `singularity_run.sh` but customized to TACC/Stampede 2 where special rules about directory binding exist.
+        * `<job-name>` determines naming for the input, output and temporary directories, which are all under `$SCRATCH/recount-pump/<job-name>/X` where `X` = `input`, `output` or `temp`.
+        * The contents of `<input-dir>` get copied into `$SCRATCH/recount-pump/<job-name>/input`
+        * `<image-file>` points to the local Singularity image file to run.  Should be a result of the `singularity_convert.sh` script.
 * Within the running container (you don't run these manually):
     * `rna_seq.bash`
         * Driver that checks for input files & appropriate directories.
