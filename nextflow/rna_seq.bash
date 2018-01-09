@@ -15,24 +15,14 @@ set -ex
 
 d=`dirname $0`
 
-INPUT="/recount-input"
-OUTPUT="/recount-output"
-RECOUNT_REF="/recount-ref"
-RECOUNT_TEMP="/recount-temp"
-
-if [[ -d "/work" && -d "/home1" && -d "/scratch" ]] ; then
-    # Assume we're on TACC since we see its automatic bind points
-    test -n "${RECOUNT_JOB}"
-    INPUT="/scratch/recount-pump/${RECOUNT_JOB}/input"
-    OUTPUT="/scratch/recount-pump/${RECOUNT_JOB}/output"
-    RECOUNT_TEMP="/scratch/recount-pump/${RECOUNT_JOB}/temp"
-    RECOUNT_REF="/work/recount-pump/ref"
-fi
-
 # Ensure directories
+test -z "${INPUT}"
 test -d "${INPUT}"
+test -z "${OUTPUT}"
 test -d "${OUTPUT}"
+test -z "${RECOUNT_REF}"
 test -d "${RECOUNT_REF}"
+test -z "${RECOUNT_TEMP}"
 test -d "${RECOUNT_TEMP}"
 
 # Ensure tools are installed
