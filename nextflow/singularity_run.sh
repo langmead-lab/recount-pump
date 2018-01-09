@@ -42,24 +42,24 @@ done
 
 if ! echo ${image} | grep -q '^shub' ; then
     # not a URL, so must be extant file
-    test -f "${image}" || (echo "No such image file: \"${image}\"" && exit 1)
+    if [ ! -f "${image}" ] ; then echo "No such image file: \"${image}\"" ; exit 1 ; fi
 fi 
 echo "Image set to \"${image}\""
 
-test -n "${input_dir}" || (echo "Input directory not set" && exit 1)
-test -d "${input_dir}" || (echo "Input directory \"${input_dir}\" does not exist" && exit 1)
+if [   -z "${input_dir}" ] ; then echo "Input directory not set" ; exit 1 ; fi
+if [ ! -d "${input_dir}" ] ; then echo "Input directory \"${input_dir}\" does not exist" ; exit 1 ; fi
 echo "Input dir \"${input_dir}\" exists"
 
-test -n "${output_dir}" || (echo "Output directory not set" && exit 1)
-test -d "${output_dir}" || (echo "Output directory \"${input_dir}\" does not exist" && exit 1)
-echo "Output dir \"${input_dir}\" exists"
+if [   -z "${output_dir}" ] ; then echo "Output directory not set" ; exit 1 ; fi
+if [ ! -d "${output_dir}" ] ; then echo "Output directory \"${output_dir}\" does not exist" ; exit 1 ; fi
+echo "Output dir \"${output_dir}\" exists"
 
-test -n "${RECOUNT_REF}" || (echo "RECOUNT_REF directory not set" && exit 1)
-test -d "${RECOUNT_REF}" || (echo "RECOUNT_REF directory \"${RECOUNT_REF}\" does not exist" && exit 1)
+if [   -z "${RECOUNT_REF}" ] ; then echo "RECOUNT_REF directory not set" ; exit 1 ; fi
+if [ ! -d "${RECOUNT_REF}" ] ; then echo "RECOUNT_REF directory \"${RECOUNT_REF}\" does not exist" ; exit 1 ; fi
 echo "RECOUNT_REF dir \"${RECOUNT_REF}\" exists"
 
-test -n "${RECOUNT_TEMP}" || (echo "RECOUNT_TEMP directory not set" && exit 1)
-test -d "${RECOUNT_TEMP}" || (echo "RECOUNT_TEMP directory \"${RECOUNT_TEMP}\" does not exist" && exit 1)
+if [   -z "${RECOUNT_TEMP}" ] ; then echo "RECOUNT_TEMP directory not set" ; exit 1 ; fi
+if [ ! -d "${RECOUNT_TEMP}" ] ; then echo "RECOUNT_TEMP directory \"${RECOUNT_TEMP}\" does not exist" ; exit 1 ; fi
 echo "RECOUNT_TEMP dir \"${RECOUNT_TEMP}\" exists"
 
 REF2=${RECOUNT_REF}
