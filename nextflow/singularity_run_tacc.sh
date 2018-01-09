@@ -46,7 +46,7 @@ OUTPUT_DIR="${SCRATCH}/recount-pump/${job_name}/output"
 TEMP_DIR="${SCRATCH}/recount-pump/${job_name}/temp"
 
 mkdir -p "${INPUT_DIR}" "${OUTPUT_DIR}" "${TEMP_DIR}"
-cp "${input_dir}/*" "${INPUT_DIR}"
+cp ${input_dir}/* "${INPUT_DIR}"
 
 REF_DIR="${WORK}/recount-pump/ref"
 test -n "${REF_DIR}"
