@@ -86,12 +86,6 @@ Vagrant.configure("2") do |config|
         ./docker_build.sh
         docker push ${IMAGE}
         
-        docker pull singularityware/docker2singularity
-        docker run \
-            -v /var/run/docker.sock:/var/run/docker.sock \
-            -v $PWD:/output \
-            --privileged -t --rm \
-            singularityware/docker2singularity \
-            ${IMAGE}
+        ./singularity_convert.sh
     SHELL
 end
