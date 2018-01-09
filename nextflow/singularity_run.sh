@@ -62,6 +62,9 @@ test -n "${RECOUNT_TEMP}" || (echo "RECOUNT_TEMP directory not set" && exit 1)
 test -d "${RECOUNT_TEMP}" || (echo "RECOUNT_TEMP directory \"${RECOUNT_TEMP}\" does not exist" && exit 1)
 echo "RECOUNT_TEMP dir \"${RECOUNT_TEMP}\" exists"
 
+REF2=${RECOUNT_REF}
+TEMP2=${RECOUNT_TEMP}
+
 set -ex
 
 export INPUT="/recount-input" && \
@@ -69,10 +72,10 @@ export OUTPUT="/recount-output" && \
 export RECOUNT_REF="/recount-ref" && \
 export RECOUNT_TEMP="/recount-temp" && \
 singularity exec \
-    --bind ${input_dir}:/recount-input \
-    --bind ${output_dir}:/recount-output \
-    --bind ${RECOUNT_REF}:/recount-ref \
-    --bind ${RECOUNT_TEMP}:/recount-temp \
+    --bind ${input_dir}:${INPUT} \
+    --bind ${output_dir}:${OUTPUT} \
+    --bind ${REF2}:${RECOUNT_REF} \
+    --bind ${TEMP2}:${RECOUNT_TEMP} \
     ${image} \
     /bin/bash -c \
     "source activate rnaseq_v0 && bash /home/biodocker/bin/rna_seq.bash"
