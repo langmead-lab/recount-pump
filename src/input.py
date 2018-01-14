@@ -3,9 +3,11 @@
 # Author: Ben Langmead <ben.langmead@gmail.com>
 # License: MIT
 
+from __future__ import print_function
 from sqlalchemy import Column, ForeignKey, Integer, String, Sequence, DateTime, Table
 from base import Base
 from sqlalchemy.orm import relationship
+from toolbox import session_maker_from_config
 
 
 class Input(Base):
@@ -40,6 +42,7 @@ class InputSet(Base):
     __tablename__ = 'input_set'
 
     id = Column(Integer, Sequence('input_set_id_seq'), primary_key=True)
+    name = Column(String(1024))
     inputs = relationship("Input", secondary=input_association_table)
 
 
@@ -62,20 +65,61 @@ def install_retriever():
     pass
 
 
+def add_input(url_1, url_2, url_3, checksum_1, checksum_2, checksum_3, retrieval_method, session):
+    """
+    Add new input with associated retrieval info.
+    """
+    i = Input(url_1=url_1, url_2=url_2, url_3=url_3,
+              checksum_1=checksum_1, checksum_2=checksum_2, checksum_3=checksum_3,
+              retrieval_method=retrieval_method)
+    session.add(i)
+    session.commit()
+    return i.id
+
+
+def add_input_set(name, session):
+    """
+    Add new input set with given name.  It's empty at first.  Needs to be
+    populated with, e.g., add-input-to-set.
+    """
+    iset = InputSet(name=name)
+    session.add(iset)
+    session.commit()
+    return iset.id
+
+
+def add_input_to_set(set_id, input_id, session):
+    """
+    Add input to input set.
+    """
+    input = session.query(Input).get(input_id)
+    input_set = session.query(InputSet).get(set_id)
+    input_set.inputs.append(input)
+    session.commit()
+
+
 if __name__ == '__main__':
     import sys
 
-    if len(sys.argv) == 1:
-        print('''
+    usage_msg = '''
 Usage: input.py <cmd> [options]*
 
 Commands:
-    test           run unit tests
-    make_project   make project
 
-Options:
-    db
-'''.strip())
+    add-input <db_config> <url_1> <url_2> <url_3> <checksum_1> <checksum_2> <checksum_3> <retrieval_method>
+    add-input-set <db_config> <name>
+    add-input-to-set <db_config> <set_id> <input_id>
+    import-input-set <db_config> <name> <csv>
+    help
+    test
+'''
+
+    def print_usage():
+        print('\n' + usage_msg.strip() + '\n')
+
+    if len(sys.argv) <= 1 or sys.argv[1] == 'help':
+        print_usage()
+        sys.exit(0)
 
     if sys.argv[1] == 'test':
         import unittest
@@ -153,6 +197,35 @@ Options:
         sys.argv.remove('test')
         unittest.main()
 
-    else:
-        raise ValueError('Unrecognized command "%s"' % sys.argv[1])
+    elif len(sys.argv) >= 3 and sys.argv[1] == 'add-input':
+        if len(sys.argv) < 10:
+            raise ValueError('add-input requires 8 arguments')
+        with open(sys.argv[2]) as cfg_gh:
+            Session = session_maker_from_config(cfg_gh)
+        url_1, url_2, url_3 = sys.argv[3:6]
+        checksum_1, checksum_2, checksum_3 = sys.argv[6:9]
+        retrieval_method = sys.argv[9]
+        print(add_input(url_1, url_2, url_3,
+                        checksum_1, checksum_2, checksum_3,
+                        retrieval_method, Session()))
 
+    elif len(sys.argv) >= 3 and sys.argv[1] == 'add-input-set':
+        if len(sys.argv) < 4:
+            raise ValueError('add-input-set requires 1 argument')
+        with open(sys.argv[2]) as cfg_gh:
+            Session = session_maker_from_config(cfg_gh)
+        name = sys.argv[3]
+        print(add_input_set(name, Session()))
+
+    elif len(sys.argv) >= 3 and sys.argv[1] == 'add-input-to-set':
+        if len(sys.argv) < 5:
+            raise ValueError('add-input-set requires 2 arguments')
+        with open(sys.argv[2]) as cfg_gh:
+            Session = session_maker_from_config(cfg_gh)
+        set_id, input_id = sys.argv[3], sys.argv[4]
+        set_id, input_id = int(set_id), int(input_id)
+        print(add_input_to_set(set_id, input_id, Session()))
+
+    else:
+        print_usage()
+        sys.exit(1)
