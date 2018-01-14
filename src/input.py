@@ -98,6 +98,32 @@ def add_input_to_set(set_id, input_id, session):
     session.commit()
 
 
+def import_input_set(name, csv_fn, session):
+    """
+    Import all the entries from the CSV file into a new InputSet of the given
+    name.
+    """
+    input_set = InputSet(name=name)
+    with open(csv_fn, 'r') as csv_fh:
+        for ln in csv_fh:
+            ln = ln.rstrip()
+            if len(ln) == 0:
+                continue
+            toks = ln.split(',')
+            if len(toks) != 7:
+                raise ValueError('Line did not have 7 tokens: "%s"' % ln)
+            toks = list(map(lambda x: None if x == 'NA' else x, toks))
+            url_1, url_2, url_3, checksum_1, checksum_2, checksum_3, retrieval_method = toks
+            input = Input(url_1=url_1, url_2=url_2, url_3=url_3,
+                          checksum_1=checksum_1, checksum_2=checksum_2, checksum_3=checksum_3,
+                          retrieval_method=retrieval_method)
+            session.add(input)
+            input_set.inputs.append(input)
+    session.add(input_set)
+    session.commit()
+    return input_set.id
+
+
 if __name__ == '__main__':
     import sys
 
@@ -123,7 +149,8 @@ Commands:
 
     if sys.argv[1] == 'test':
         import unittest
-        from sqlalchemy import create_engine
+        import os
+        from sqlalchemy import create_engine, MetaData
         from sqlalchemy.orm import sessionmaker
 
         lambda_reads_1 = 'http://www.cs.jhu.edu/~langmea/resources/reads_1.fq'
@@ -194,6 +221,29 @@ Commands:
                 self.assertEqual(0, len(list(self.session.query(InputSet))))
                 self.assertEqual(0, len(list(self.session.query(input_association_table))))
 
+            def test_import_inputset(self):
+                csv_text = '''ftp://genomi.cs/1.fastq.gz,ftp://genomi.cs/2.fastq.gz,NA,NA,NA,NA,wget'''
+                with open('.tmp.csv', 'w') as ofh:
+                    ofh.write(csv_text)
+                import_input_set('test_inputset', '.tmp.csv', self.session)
+                inputs, input_sets, input_assocs = list(self.session.query(Input)),\
+                                                   list(self.session.query(InputSet)),\
+                                                   list(self.session.query(input_association_table))
+
+                self.assertEqual(1, len(inputs))
+                self.assertEqual(1, len(input_sets))
+                self.assertEqual(1, len(input_assocs))
+                #self.session.query(input_association_table).delete()
+                self.session.query(Input).delete()
+                self.session.query(InputSet).delete()
+                self.assertEqual(0, len(list(self.session.query(Input))))
+                self.assertEqual(0, len(list(self.session.query(InputSet))))
+                #self.assertEqual(0, len(list(self.session.query(input_association_table))))
+
+                # BTL: I can't easily figure out how to delete the entries in the association table
+
+                os.remove('.tmp.csv')
+
         sys.argv.remove('test')
         unittest.main()
 
@@ -225,6 +275,14 @@ Commands:
         set_id, input_id = sys.argv[3], sys.argv[4]
         set_id, input_id = int(set_id), int(input_id)
         print(add_input_to_set(set_id, input_id, Session()))
+
+    elif len(sys.argv) >= 3 and sys.argv[1] == 'import-input-set':
+        if len(sys.argv) < 5:
+            raise ValueError('import-input-set requires 2 arguments')
+        with open(sys.argv[2]) as cfg_gh:
+            Session = session_maker_from_config(cfg_gh)
+        name, csv_fn = sys.argv[3], sys.argv[4]
+        print(import_input_set(name, csv_fn, Session()))
 
     else:
         print_usage()
