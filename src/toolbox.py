@@ -19,3 +19,20 @@ def generate_file_md5(fn, blocksize=2**20):
                 break
             m.update(buf)
     return m.hexdigest()
+
+
+def session_maker_from_config(fn):
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from base import Base
+    try:
+        from ConfigParser import RawConfigParser
+    except ImportError:
+        from configparser import RawConfigParser
+
+    config = RawConfigParser(allow_no_value=True)
+    config.readfp(fn)
+    engine_url = config.get("recount", "url")
+    engine = create_engine(engine_url, echo=True)
+    Base.metadata.create_all(engine)
+    return sessionmaker(bind=engine)

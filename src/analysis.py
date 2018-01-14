@@ -6,6 +6,7 @@
 from sqlalchemy import Column, ForeignKey, Integer, String, Sequence, DateTime, Table
 from base import Base
 from sqlalchemy.orm import relationship
+from toolbox import session_maker_from_config
 
 
 class Analysis(Base):
@@ -24,8 +25,8 @@ class Analysis(Base):
 
 class Cluster(Base):
     """
-    A cluster has a name which should be the contents of $HOME/cluster.txt on
-    all cluster nodes.
+    A cluster has a name which should be the contents of
+    $HOME/.recount/cluster.txt on all cluster nodes.
     """
     __tablename__ = 'cluster'
 
@@ -94,11 +95,16 @@ Usage: analysis.py <cmd> [options]*
 
 Commands:
 
-    add-cluster <engine_url> <name>
-    add-analysis <engine_url> <name> <image_url>
-    add-cluster-analysis <engine_url> <cluster_id> <analysis_id> <wrapper_url>
+    add-cluster <db_config> <name>
+    add-analysis <db_config> <name> <image_url>
+    add-cluster-analysis <db_config> <cluster_id> <analysis_id> <wrapper_url>
     help
-    test'''
+    test
+
+On each cluster, the user running the jobs should create a file
+`$HOME/.recount/cluster.txt` containing the name of the cluster, matching the
+<name> used to add the corresponding record with `add-cluster`.
+'''
 
     def print_usage():
         print('\n' + usage_msg.strip() + '\n')
@@ -125,20 +131,23 @@ Commands:
                 self.session.close()
 
             def test_analysis1(self):
-                a1 = Analysis(name='recount-rna-seq-v1',
-                              image_url='s3://recount-pump/analysis/recount-rna-seq-v1.img')
+                analysis_name = 'recount-rna-seq-v1'
+                image_url = 's3://recount-pump/analysis/recount-rna-seq-v1.img'
+                wrapper_url = 's3://recount-pump/analysis/recount-rna-seq-v1/cluster/'
+                cluster_name = 'stampede2'
+
+                a1 = Analysis(name=analysis_name, image_url=image_url)
                 self.assertEqual(0, len(list(self.session.query(Analysis))))
                 self.session.add(a1)
                 self.session.commit()
                 self.assertEqual(1, len(list(self.session.query(Analysis))))
-                cluster_name = 'stampede2'
                 c1 = Cluster(name=cluster_name)
                 self.assertEqual(0, len(list(self.session.query(Cluster))))
                 self.session.add(c1)
                 self.session.commit()
                 self.assertEqual(1, len(list(self.session.query(Cluster))))
                 ca1 = ClusterAnalysis(analysis_id=a1.id, cluster_id=c1.id,
-                                      wrapper_url='s3://recount-pump/analysis/recount-rna-seq-v1/cluster/' + cluster_name + '.sh')
+                                      wrapper_url=wrapper_url + cluster_name + '.sh')
                 self.assertEqual(0, len(list(self.session.query(ClusterAnalysis))))
                 self.session.add(ca1)
                 self.session.commit()
@@ -156,39 +165,27 @@ Commands:
         sys.argv.remove('test')
         unittest.main()
 
-    elif len(sys.argv) >= 3 and sys.argv[2] == 'add-cluster':
-        engine_url = sys.argv[1]
-        engine = create_engine(engine_url, echo=True)
-        Base.metadata.create_all(engine)
-        Session = sessionmaker(bind=engine)
-
+    elif len(sys.argv) >= 3 and sys.argv[1] == 'add-cluster':
         if len(sys.argv) < 4:
             raise ValueError('add-cluster requires 1 argument')
-
+        with open(sys.argv[2]) as cfg_gh:
+            Session = session_maker_from_config(cfg_gh)
         name = sys.argv[3]
         print(add_cluster(name, Session()))
 
-    elif len(sys.argv) >= 3 and sys.argv[2] == 'add-analysis':
-        engine_url = sys.argv[1]
-        engine = create_engine(engine_url, echo=True)
-        Base.metadata.create_all(engine)
-        Session = sessionmaker(bind=engine)
-
+    elif len(sys.argv) >= 3 and sys.argv[1] == 'add-analysis':
         if len(sys.argv) < 5:
             raise ValueError('add-analysis requires 2 arguments')
-
+        with open(sys.argv[2]) as cfg_gh:
+            Session = session_maker_from_config(cfg_gh)
         name, image_url = sys.argv[3], sys.argv[4]
         print(add_analysis(name, image_url, Session()))
 
-    elif len(sys.argv) >= 3 and sys.argv[2] == 'add-cluster-analysis':
-        engine_url = sys.argv[1]
-        engine = create_engine(engine_url, echo=True)
-        Base.metadata.create_all(engine)
-        Session = sessionmaker(bind=engine)
-
+    elif len(sys.argv) >= 3 and sys.argv[1] == 'add-cluster-analysis':
         if len(sys.argv) < 6:
             raise ValueError('add-cluster-analysis requires 3 arguments')
-
+        with open(sys.argv[2]) as cfg_gh:
+            Session = session_maker_from_config(cfg_gh)
         cluster_id, analysis_id, wrapper_url = sys.argv[3], sys.argv[4], sys.argv[5]
         print(add_cluster_analysis(cluster_id, analysis_id, wrapper_url, Session()))
 
