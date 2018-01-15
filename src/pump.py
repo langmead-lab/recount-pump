@@ -7,7 +7,7 @@ from sqlalchemy import Column, ForeignKey, Integer, String, Sequence, DateTime
 from base import Base
 from sqlalchemy.orm import relationship
 from input import import_input_set, Input, InputSet
-from analysis import add_analysis_ex, parse_cluster_analyses, Analysis
+from analysis import add_analysis_ex, parse_cluster_analyses, Analysis, Cluster, ClusterAnalysis
 from toolbox import session_maker_from_config
 
 
@@ -119,9 +119,15 @@ def add_project_ex(name, analysis_name, analysis_image_url, cluster_analyses,
     cluster/analysis combinations, populate the database accordingly.  This is
     a helpful all-in-one call to start from if you are starting a new project.
     """
-    analysis_id = add_analysis_ex(analysis_name, analysis_image_url, cluster_analyses, session)
-    input_set_id = import_input_set(input_set_name, input_set_csv_fn, session)
-    return add_project(name, analysis_id, input_set_id, session)
+    analysis_id, n_added_cluster, n_added_cluster_analysis = \
+        add_analysis_ex(analysis_name, analysis_image_url, cluster_analyses, session)
+    input_set_id, n_added_input = import_input_set(input_set_name, input_set_csv_fn, session)
+    project = session.query(Project).filter_by(name=name).first()
+    if project is not None:
+        raise ValueError('Project with name "%s" already exists' % name)
+    project_id = add_project(name, analysis_id, input_set_id, session)
+    return project_id, analysis_id, input_set_id, \
+           n_added_input, n_added_cluster, n_added_cluster_analysis
 
 
 if __name__ == '__main__':
@@ -152,6 +158,7 @@ On each cluster, the user running the jobs should create a file
         sys.exit(0)
 
     if sys.argv[1] == 'test':
+        import os
         import unittest
         from sqlalchemy import create_engine
         from sqlalchemy.orm import sessionmaker
@@ -189,7 +196,6 @@ On each cluster, the user running the jobs should create a file
                 self.session.add(inp2)
                 self.session.commit()
                 self.assertEqual(2, len(list(self.session.query(Input))))
-                srcs = list(self.session.query(Input))
 
                 # add input sets with associations
                 input_set = InputSet(inputs=[inp1, inp2])
@@ -214,7 +220,36 @@ On each cluster, the user running the jobs should create a file
                 self.assertEqual(0, len(list(self.session.query(Project))))
 
             def test_add_project_ex(self):
-                pass
+                project_name = 'recount-rna-seq-human'
+                analysis_name = 'recount-rna-seq-v1'
+                image_url = 's3://recount-pump/analysis/recount-rna-seq-v1.img'
+                cluster_analyses1 = [
+                    ('stampede2', 's3://recount-pump/analysis/recount-rna-seq-v1/stampede2.sh'),
+                    ('marcc', 's3://recount-pump/analysis/recount-rna-seq-v1/marcc.sh')
+                ]
+                input_set_name = 'all_human'
+                input_set_csv = '\n'.join(['ftp://genomi.cs/1_1.fastq.gz,ftp://genomi.cs/1_2.fastq.gz,NA,NA,NA,NA,wget',
+                                           'ftp://genomi.cs/2_1.fastq.gz,ftp://genomi.cs/2_2.fastq.gz,NA,NA,NA,NA,wget'])
+                csv_fn = '.test_add_project_ex.csv'
+                with open(csv_fn, 'w') as ofh:
+                    ofh.write(input_set_csv)
+                project_id, analysis_id, input_set_id, n_added_input,\
+                n_added_cluster, n_added_cluster_analysis = \
+                    add_project_ex(project_name, analysis_name, image_url,
+                                   cluster_analyses1, input_set_name, csv_fn, self.session)
+                self.assertEqual(2, n_added_input)
+                self.assertEqual(2, n_added_cluster)
+                self.assertEqual(2, n_added_cluster_analysis)
+                self.assertEqual(1, len(list(self.session.query(Project))))
+                self.assertEqual(1, len(list(self.session.query(InputSet))))
+                self.assertEqual(2, len(list(self.session.query(Input))))
+                self.assertEqual(1, len(list(self.session.query(Analysis))))
+                self.assertEqual(2, len(list(self.session.query(Cluster))))
+                self.assertEqual(2, len(list(self.session.query(ClusterAnalysis))))
+                for tab in [Analysis, Input, InputSet, Project, Cluster, ClusterAnalysis]:
+                    self.session.query(tab).delete()
+                    self.assertEqual(0, len(list(self.session.query(tab))))
+                os.remove(csv_fn)
 
         sys.argv.remove('test')
         unittest.main()

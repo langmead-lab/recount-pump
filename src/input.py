@@ -104,6 +104,7 @@ def import_input_set(name, csv_fn, session):
     name.
     """
     input_set = InputSet(name=name)
+    n_added_input = 0
     with open(csv_fn, 'r') as csv_fh:
         for ln in csv_fh:
             ln = ln.rstrip()
@@ -119,9 +120,10 @@ def import_input_set(name, csv_fn, session):
                           retrieval_method=retrieval_method)
             session.add(input)
             input_set.inputs.append(input)
+            n_added_input += 1
     session.add(input_set)
     session.commit()
-    return input_set.id
+    return input_set.id, n_added_input
 
 
 if __name__ == '__main__':
@@ -282,7 +284,8 @@ Commands:
         with open(sys.argv[2]) as cfg_gh:
             Session = session_maker_from_config(cfg_gh)
         name, csv_fn = sys.argv[3], sys.argv[4]
-        print(import_input_set(name, csv_fn, Session()))
+        input_set_id, n_added_input = import_input_set(name, csv_fn, Session())
+        print('%d %d' % (input_set_id, n_added_input))
 
     else:
         print_usage()
