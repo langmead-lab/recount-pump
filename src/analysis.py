@@ -105,6 +105,20 @@ def add_analysis_ex(name, image_url, cluster_analyses, session):
     return analysis_id, n_added_cluster, n_added_cluster_analysis
 
 
+def parse_cluster_analyses(pairs):
+    """
+    Parse cluster analyses formatted like <cluster_name1>:<wrapper_url1>
+    <cluster_name2>:<wrapper_url2>, ...
+    """
+    ret = []
+    for pair in pairs:
+        toks = pair.split(':', 1)
+        if len(toks) < 2:
+            raise ValueError('Expected <cluster_name>:<wrapper_url> pair, got "%s"' % pair)
+        ret.append((toks[0], toks[1]))
+    return ret
+
+
 if __name__ == '__main__':
     import sys
     from sqlalchemy import create_engine
@@ -118,6 +132,7 @@ Commands:
     add-cluster <db_config> <name>
     add-analysis <db_config> <name> <image_url>
     add-cluster-analysis <db_config> <cluster_id> <analysis_id> <wrapper_url>
+    add-analysis-ex <db_config> <name> <image_url> <cluster_name1>:<wrapper_url1> <cluster_name2>:<wrapper_url2>, ...
     help
     test
 
@@ -245,6 +260,16 @@ On each cluster, the user running the jobs should create a file
         cluster_id, analysis_id, wrapper_url = sys.argv[3], sys.argv[4], sys.argv[5]
         print(add_cluster_analysis(cluster_id, analysis_id, wrapper_url, Session()))
 
+    elif len(sys.argv) >= 3 and sys.argv[1] == 'add-analysis-ex':
+        if len(sys.argv) < 6:
+            raise ValueError('add-cluster-analysis requires 4 arguments')
+        with open(sys.argv[2]) as cfg_gh:
+            Session = session_maker_from_config(cfg_gh)
+        name, image_url = sys.argv[3], sys.argv[4]
+        cluster_analyses = parse_cluster_analyses(sys.argv[5:])
+        print(add_analysis_ex(name, image_url, cluster_analyses, Session()))
+
     else:
         print_usage()
         sys.exit(1)
+
