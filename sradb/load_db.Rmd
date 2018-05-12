@@ -22,6 +22,15 @@ sra_con <- dbConnect(SQLite(),sqlfile)
 q <- function(x) { dbGetQuery(sra_con, x) }
 ```
 
+```{r broad_counts}
+taxids <- q(paste(
+  'SELECT sra.taxon_id FROM sra, fastq',
+  'WHERE sra.run_accession = fastq.run_accession',
+  '  AND fastq.FASTQ_FILES > 0'))
+
+print(sort(table(taxids),decreasing=TRUE)[1:10])
+```
+
 ```{r species_counts}
 taxids <- q(paste(
   'SELECT sra.taxon_id FROM sra, fastq',
