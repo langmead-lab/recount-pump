@@ -126,6 +126,9 @@ def import_input_set(name, csv_fn, session):
     return input_set.id, n_added_input
 
 
+# TODO: import directly from an SRAdb CSV file, and put the metadata in there too
+
+
 if __name__ == '__main__':
     import sys
 
