@@ -60,12 +60,12 @@ test -d "${input_dir}" || (echo "Input directory \"${input_dir}\" does not exist
 echo "Input dir \"${input_dir}\" exists"
 
 REF_DIR="${WORK}/recount-pump/ref"
--d "${REF_DIR}" || (echo "Reference dir \"\" does not exist" && exit 1)
+test -d "${REF_DIR}" || (echo "Reference dir \"\" does not exist" && exit 1)
 echo "Reference dir \"${REF_DIR}\" exists"
 
 mkdir -p "${SCRATCH}/recount-pump"
 job_dir="${SCRATCH}/recount-pump/${job_name}"
--d "${job_dir}" && echo "Job directory already exists: \"${job_dir}\"" && exit 1
+test -d "${job_dir}" && echo "Job directory already exists: \"${job_dir}\"" && exit 1
 
 INPUT_DIR="${SCRATCH}/recount-pump/${job_name}/input"
 OUTPUT_DIR="${SCRATCH}/recount-pump/${job_name}/output"
