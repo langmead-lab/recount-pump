@@ -3,9 +3,11 @@
 # Author: Ben Langmead <ben.langmead@gmail.com>
 # License: MIT
 
-from sqlalchemy import Column, ForeignKey, Integer, String, Sequence, DateTime
+import os
+import unittest
+from sqlalchemy import Column, ForeignKey, Integer, String, Sequence, DateTime, create_engine
 from base import Base
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, sessionmaker
 from input import import_input_set, Input, InputSet
 from analysis import add_analysis_ex, parse_cluster_analyses, Analysis, Cluster, ClusterAnalysis
 from toolbox import session_maker_from_config
@@ -130,6 +132,94 @@ def add_project_ex(name, analysis_name, analysis_image_url, cluster_analyses,
            n_added_input, n_added_cluster, n_added_cluster_analysis
 
 
+def _setup():
+    engine = create_engine('sqlite:///:memory:', echo=True)
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    return Session()
+
+
+class TestPump(unittest.TestCase):
+    def setUp(self):
+        self.session = _setup()
+
+    def tearDown(self):
+        self.session.close()
+
+    def test_add_project(self):
+        analysis = Analysis(name='recount-rna-seq-v1', image_url='fake')
+        self.session.add(analysis)
+        self.session.commit()
+        self.assertEqual(1, len(list(self.session.query(Analysis))))
+
+        inp1 = Input(retrieval_method="url",
+                     url_1='fake1', checksum_1='fake1',
+                     url_2='fake2', checksum_2='fake2')
+        inp2 = Input(retrieval_method="url", url_1='fake1', checksum_1='fake1')
+
+        # add inputs
+        self.assertEqual(0, len(list(self.session.query(Input))))
+        self.assertEqual(0, len(list(self.session.query(InputSet))))
+        self.session.add(inp1)
+        self.session.add(inp2)
+        self.session.commit()
+        self.assertEqual(2, len(list(self.session.query(Input))))
+
+        # add input sets with associations
+        input_set = InputSet(inputs=[inp1, inp2])
+        self.session.add(input_set)
+        self.session.commit()
+        self.assertEqual(1, len(list(self.session.query(InputSet))))
+
+        proj = Project(name='my_project', input_set_id=input_set.id, analysis_id=analysis.id)
+        self.session.add(proj)
+        self.session.commit()
+        self.assertEqual(1, len(list(self.session.query(Project))))
+
+        self.session.delete(proj)
+        self.session.delete(input_set)
+        self.session.delete(inp1)
+        self.session.delete(inp2)
+        self.session.delete(analysis)
+        self.session.commit()
+        self.assertEqual(0, len(list(self.session.query(Analysis))))
+        self.assertEqual(0, len(list(self.session.query(Input))))
+        self.assertEqual(0, len(list(self.session.query(InputSet))))
+        self.assertEqual(0, len(list(self.session.query(Project))))
+
+    def test_add_project_ex(self):
+        project_name = 'recount-rna-seq-human'
+        analysis_name = 'recount-rna-seq-v1'
+        image_url = 's3://recount-pump/analysis/recount-rna-seq-v1.img'
+        cluster_analyses1 = [
+            ('stampede2', 's3://recount-pump/analysis/recount-rna-seq-v1/stampede2.sh'),
+            ('marcc', 's3://recount-pump/analysis/recount-rna-seq-v1/marcc.sh')
+        ]
+        input_set_name = 'all_human'
+        input_set_csv = '\n'.join(['ftp://genomi.cs/1_1.fastq.gz,ftp://genomi.cs/1_2.fastq.gz,NA,NA,NA,NA,wget',
+                                   'ftp://genomi.cs/2_1.fastq.gz,ftp://genomi.cs/2_2.fastq.gz,NA,NA,NA,NA,wget'])
+        csv_fn = '.test_add_project_ex.csv'
+        with open(csv_fn, 'w') as ofh:
+            ofh.write(input_set_csv)
+        project_id, analysis_id, input_set_id, n_added_input, \
+        n_added_cluster, n_added_cluster_analysis = \
+            add_project_ex(project_name, analysis_name, image_url,
+                           cluster_analyses1, input_set_name, csv_fn, self.session)
+        self.assertEqual(2, n_added_input)
+        self.assertEqual(2, n_added_cluster)
+        self.assertEqual(2, n_added_cluster_analysis)
+        self.assertEqual(1, len(list(self.session.query(Project))))
+        self.assertEqual(1, len(list(self.session.query(InputSet))))
+        self.assertEqual(2, len(list(self.session.query(Input))))
+        self.assertEqual(1, len(list(self.session.query(Analysis))))
+        self.assertEqual(2, len(list(self.session.query(Cluster))))
+        self.assertEqual(2, len(list(self.session.query(ClusterAnalysis))))
+        for tab in [Analysis, Input, InputSet, Project, Cluster, ClusterAnalysis]:
+            self.session.query(tab).delete()
+            self.assertEqual(0, len(list(self.session.query(tab))))
+        os.remove(csv_fn)
+
+
 if __name__ == '__main__':
     import sys
 
@@ -158,99 +248,6 @@ On each cluster, the user running the jobs should create a file
         sys.exit(0)
 
     if sys.argv[1] == 'test':
-        import os
-        import unittest
-        from sqlalchemy import create_engine
-        from sqlalchemy.orm import sessionmaker
-
-        def _setup():
-            engine = create_engine('sqlite:///:memory:', echo=True)
-            Base.metadata.create_all(engine)
-            Session = sessionmaker(bind=engine)
-            return Session()
-
-
-        class TestPump(unittest.TestCase):
-
-            def setUp(self):
-                self.session = _setup()
-
-            def tearDown(self):
-                self.session.close()
-
-            def test_add_project(self):
-                analysis = Analysis(name='recount-rna-seq-v1', image_url='fake')
-                self.session.add(analysis)
-                self.session.commit()
-                self.assertEqual(1, len(list(self.session.query(Analysis))))
-
-                inp1 = Input(retrieval_method="url",
-                             url_1='fake1', checksum_1='fake1',
-                             url_2='fake2', checksum_2='fake2')
-                inp2 = Input(retrieval_method="url", url_1='fake1', checksum_1='fake1')
-
-                # add inputs
-                self.assertEqual(0, len(list(self.session.query(Input))))
-                self.assertEqual(0, len(list(self.session.query(InputSet))))
-                self.session.add(inp1)
-                self.session.add(inp2)
-                self.session.commit()
-                self.assertEqual(2, len(list(self.session.query(Input))))
-
-                # add input sets with associations
-                input_set = InputSet(inputs=[inp1, inp2])
-                self.session.add(input_set)
-                self.session.commit()
-                self.assertEqual(1, len(list(self.session.query(InputSet))))
-
-                proj = Project(name='my_project', input_set_id=input_set.id, analysis_id=analysis.id)
-                self.session.add(proj)
-                self.session.commit()
-                self.assertEqual(1, len(list(self.session.query(Project))))
-
-                self.session.delete(proj)
-                self.session.delete(input_set)
-                self.session.delete(inp1)
-                self.session.delete(inp2)
-                self.session.delete(analysis)
-                self.session.commit()
-                self.assertEqual(0, len(list(self.session.query(Analysis))))
-                self.assertEqual(0, len(list(self.session.query(Input))))
-                self.assertEqual(0, len(list(self.session.query(InputSet))))
-                self.assertEqual(0, len(list(self.session.query(Project))))
-
-            def test_add_project_ex(self):
-                project_name = 'recount-rna-seq-human'
-                analysis_name = 'recount-rna-seq-v1'
-                image_url = 's3://recount-pump/analysis/recount-rna-seq-v1.img'
-                cluster_analyses1 = [
-                    ('stampede2', 's3://recount-pump/analysis/recount-rna-seq-v1/stampede2.sh'),
-                    ('marcc', 's3://recount-pump/analysis/recount-rna-seq-v1/marcc.sh')
-                ]
-                input_set_name = 'all_human'
-                input_set_csv = '\n'.join(['ftp://genomi.cs/1_1.fastq.gz,ftp://genomi.cs/1_2.fastq.gz,NA,NA,NA,NA,wget',
-                                           'ftp://genomi.cs/2_1.fastq.gz,ftp://genomi.cs/2_2.fastq.gz,NA,NA,NA,NA,wget'])
-                csv_fn = '.test_add_project_ex.csv'
-                with open(csv_fn, 'w') as ofh:
-                    ofh.write(input_set_csv)
-                project_id, analysis_id, input_set_id, n_added_input,\
-                n_added_cluster, n_added_cluster_analysis = \
-                    add_project_ex(project_name, analysis_name, image_url,
-                                   cluster_analyses1, input_set_name, csv_fn, self.session)
-                self.assertEqual(2, n_added_input)
-                self.assertEqual(2, n_added_cluster)
-                self.assertEqual(2, n_added_cluster_analysis)
-                self.assertEqual(1, len(list(self.session.query(Project))))
-                self.assertEqual(1, len(list(self.session.query(InputSet))))
-                self.assertEqual(2, len(list(self.session.query(Input))))
-                self.assertEqual(1, len(list(self.session.query(Analysis))))
-                self.assertEqual(2, len(list(self.session.query(Cluster))))
-                self.assertEqual(2, len(list(self.session.query(ClusterAnalysis))))
-                for tab in [Analysis, Input, InputSet, Project, Cluster, ClusterAnalysis]:
-                    self.session.query(tab).delete()
-                    self.assertEqual(0, len(list(self.session.query(tab))))
-                os.remove(csv_fn)
-
         sys.argv.remove('test')
         unittest.main()
 

@@ -4,9 +4,11 @@
 # License: MIT
 
 from __future__ import print_function
-from sqlalchemy import Column, ForeignKey, Integer, String, Sequence, DateTime, Table
+import os
+import unittest
+from sqlalchemy import Column, ForeignKey, Integer, String, Sequence, Table, create_engine
 from base import Base
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, sessionmaker
 from toolbox import session_maker_from_config
 
 
@@ -129,6 +131,98 @@ def import_input_set(name, csv_fn, session):
 # TODO: import directly from an SRAdb CSV file, and put the metadata in there too
 
 
+_lambda_reads_1 = 'http://www.cs.jhu.edu/~langmea/resources/reads_1.fq'
+_lambda_reads_1_md5 = '8f4a7d568d2e930922e25c9d6e1b482f'
+_lambda_reads_2 = 'http://www.cs.jhu.edu/~langmea/resources/reads_2.fq'
+_lambda_reads_2_md5 = '899e197478a235b2fd29d8501aea4104'
+_longreads = 'longreads.fq'
+_longreads_md5 = '076b0e9f81aa599043b9e4be204a8014'
+
+
+def _setup():
+    engine = create_engine('sqlite:///:memory:', echo=True)
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    return Session()
+
+
+class TestReference(unittest.TestCase):
+    def setUp(self):
+        self.session = _setup()
+
+    def tearDown(self):
+        self.session.close()
+
+    def test_simple_source_insert(self):
+        d1 = Input(retrieval_method='url', url_1=_lambda_reads_1, url_2=_lambda_reads_2)
+        self.assertEqual(0, len(list(self.session.query(Input))))
+        self.session.add(d1)
+        self.session.commit()
+        inputs = list(self.session.query(Input))
+        self.assertEqual(1, len(inputs))
+        self.assertEqual(_lambda_reads_1, inputs[0].url_1)
+        self.assertEqual(_lambda_reads_2, inputs[0].url_2)
+        self.session.delete(d1)
+        self.session.commit()
+        self.assertEqual(0, len(list(self.session.query(Input))))
+
+    def test_simple_inputset_insert(self):
+        inp1 = Input(retrieval_method="url",
+                     url_1=_lambda_reads_1, checksum_1=_lambda_reads_1_md5,
+                     url_2=_lambda_reads_2, checksum_2=_lambda_reads_2_md5)
+        inp2 = Input(retrieval_method="url", url_1=_longreads, checksum_1=_longreads_md5)
+        inp3 = Input(retrieval_method="url", url_1=_lambda_reads_2, checksum_1=_lambda_reads_2_md5)
+
+        # add inputs
+        self.assertEqual(0, len(list(self.session.query(Input))))
+        self.assertEqual(0, len(list(self.session.query(InputSet))))
+        self.session.add(inp1)
+        self.session.add(inp2)
+        self.session.add(inp3)
+        self.session.commit()
+        self.assertEqual(3, len(list(self.session.query(Input))))
+        srcs = list(self.session.query(Input))
+
+        # add input sets with associations
+        self.session.add(InputSet(inputs=[inp1, inp2]))
+        self.session.add(InputSet(inputs=[inp1, inp2, inp3]))
+        self.session.commit()
+        self.assertEqual(2, len(list(self.session.query(InputSet))))
+        sss = list(self.session.query(InputSet))
+        self.assertEqual(2, len(sss[0].inputs))
+        self.assertEqual(3, len(sss[1].inputs))
+        self.assertEqual(5, len(list(self.session.query(input_association_table))))
+
+        for obj in srcs + sss:
+            self.session.delete(obj)
+        self.assertEqual(0, len(list(self.session.query(Input))))
+        self.assertEqual(0, len(list(self.session.query(InputSet))))
+        self.assertEqual(0, len(list(self.session.query(input_association_table))))
+
+    def test_import_inputset(self):
+        csv_text = '''ftp://genomi.cs/1.fastq.gz,ftp://genomi.cs/2.fastq.gz,NA,NA,NA,NA,wget'''
+        with open('.tmp.csv', 'w') as ofh:
+            ofh.write(csv_text)
+        import_input_set('test_inputset', '.tmp.csv', self.session)
+        inputs, input_sets, input_assocs = list(self.session.query(Input)), \
+                                           list(self.session.query(InputSet)), \
+                                           list(self.session.query(input_association_table))
+
+        self.assertEqual(1, len(inputs))
+        self.assertEqual(1, len(input_sets))
+        self.assertEqual(1, len(input_assocs))
+        # self.session.query(input_association_table).delete()
+        self.session.query(Input).delete()
+        self.session.query(InputSet).delete()
+        self.assertEqual(0, len(list(self.session.query(Input))))
+        self.assertEqual(0, len(list(self.session.query(InputSet))))
+        # self.assertEqual(0, len(list(self.session.query(input_association_table))))
+
+        # BTL: I can't easily figure out how to delete the entries in the association table
+
+        os.remove('.tmp.csv')
+
+
 if __name__ == '__main__':
     import sys
 
@@ -153,102 +247,6 @@ Commands:
         sys.exit(0)
 
     if sys.argv[1] == 'test':
-        import unittest
-        import os
-        from sqlalchemy import create_engine, MetaData
-        from sqlalchemy.orm import sessionmaker
-
-        lambda_reads_1 = 'http://www.cs.jhu.edu/~langmea/resources/reads_1.fq'
-        lambda_reads_1_md5 = '8f4a7d568d2e930922e25c9d6e1b482f'
-        lambda_reads_2 = 'http://www.cs.jhu.edu/~langmea/resources/reads_2.fq'
-        lambda_reads_2_md5 = '899e197478a235b2fd29d8501aea4104'
-        longreads = 'longreads.fq'
-        longreads_md5 = '076b0e9f81aa599043b9e4be204a8014'
-
-        def _setup():
-            engine = create_engine('sqlite:///:memory:', echo=True)
-            Base.metadata.create_all(engine)
-            Session = sessionmaker(bind=engine)
-            return Session()
-
-
-        class TestReference(unittest.TestCase):
-
-            def setUp(self):
-                self.session = _setup()
-
-            def tearDown(self):
-                self.session.close()
-
-            def test_simple_source_insert(self):
-                d1 = Input(retrieval_method='url', url_1=lambda_reads_1, url_2=lambda_reads_2)
-                self.assertEqual(0, len(list(self.session.query(Input))))
-                self.session.add(d1)
-                self.session.commit()
-                inputs = list(self.session.query(Input))
-                self.assertEqual(1, len(inputs))
-                self.assertEqual(lambda_reads_1, inputs[0].url_1)
-                self.assertEqual(lambda_reads_2, inputs[0].url_2)
-                self.session.delete(d1)
-                self.session.commit()
-                self.assertEqual(0, len(list(self.session.query(Input))))
-
-            def test_simple_inputset_insert(self):
-                inp1 = Input(retrieval_method="url",
-                             url_1=lambda_reads_1, checksum_1=lambda_reads_1_md5,
-                             url_2=lambda_reads_2, checksum_2=lambda_reads_2_md5)
-                inp2 = Input(retrieval_method="url", url_1=longreads, checksum_1=longreads_md5)
-                inp3 = Input(retrieval_method="url", url_1=lambda_reads_2, checksum_1=lambda_reads_2_md5)
-
-                # add inputs
-                self.assertEqual(0, len(list(self.session.query(Input))))
-                self.assertEqual(0, len(list(self.session.query(InputSet))))
-                self.session.add(inp1)
-                self.session.add(inp2)
-                self.session.add(inp3)
-                self.session.commit()
-                self.assertEqual(3, len(list(self.session.query(Input))))
-                srcs = list(self.session.query(Input))
-
-                # add input sets with associations
-                self.session.add(InputSet(inputs=[inp1, inp2]))
-                self.session.add(InputSet(inputs=[inp1, inp2, inp3]))
-                self.session.commit()
-                self.assertEqual(2, len(list(self.session.query(InputSet))))
-                sss = list(self.session.query(InputSet))
-                self.assertEqual(2, len(sss[0].inputs))
-                self.assertEqual(3, len(sss[1].inputs))
-                self.assertEqual(5, len(list(self.session.query(input_association_table))))
-
-                for obj in srcs + sss:
-                    self.session.delete(obj)
-                self.assertEqual(0, len(list(self.session.query(Input))))
-                self.assertEqual(0, len(list(self.session.query(InputSet))))
-                self.assertEqual(0, len(list(self.session.query(input_association_table))))
-
-            def test_import_inputset(self):
-                csv_text = '''ftp://genomi.cs/1.fastq.gz,ftp://genomi.cs/2.fastq.gz,NA,NA,NA,NA,wget'''
-                with open('.tmp.csv', 'w') as ofh:
-                    ofh.write(csv_text)
-                import_input_set('test_inputset', '.tmp.csv', self.session)
-                inputs, input_sets, input_assocs = list(self.session.query(Input)),\
-                                                   list(self.session.query(InputSet)),\
-                                                   list(self.session.query(input_association_table))
-
-                self.assertEqual(1, len(inputs))
-                self.assertEqual(1, len(input_sets))
-                self.assertEqual(1, len(input_assocs))
-                #self.session.query(input_association_table).delete()
-                self.session.query(Input).delete()
-                self.session.query(InputSet).delete()
-                self.assertEqual(0, len(list(self.session.query(Input))))
-                self.assertEqual(0, len(list(self.session.query(InputSet))))
-                #self.assertEqual(0, len(list(self.session.query(input_association_table))))
-
-                # BTL: I can't easily figure out how to delete the entries in the association table
-
-                os.remove('.tmp.csv')
-
         sys.argv.remove('test')
         unittest.main()
 
