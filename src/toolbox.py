@@ -3,6 +3,7 @@
 # Author: Ben Langmead <ben.langmead@gmail.com>
 # License: MIT
 
+import os
 import hashlib
 
 
@@ -36,3 +37,21 @@ def session_maker_from_config(fn):
     engine = create_engine(engine_url, echo=True)
     Base.metadata.create_all(engine)
     return sessionmaker(bind=engine)
+
+
+def which(program):
+    def is_exe(fp):
+        return os.path.isfile(fp) and os.access(fp, os.X_OK)
+
+    fpath, fname = os.path.split(program)
+    if fpath:
+        if is_exe(program):
+            return program
+    else:
+        for path in os.environ["PATH"].split(os.pathsep):
+            path = path.strip('"')
+            exe_file = os.path.join(path, program)
+            if is_exe(exe_file):
+                return exe_file
+
+    return None
