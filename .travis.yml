@@ -1,0 +1,7 @@
+sudo: true
+language: python
+cache: apt
+branches:
+  only:
+  - master
+script: nosetests src/*.py
