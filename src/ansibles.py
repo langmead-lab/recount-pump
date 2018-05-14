@@ -31,9 +31,14 @@ THE SOFTWARE.
 from __future__ import print_function
 import os
 import time
-import urllib
-import urllib2
-# For signing requests as per AWS API
+try:
+    from urllib.parse import urlparse, urlencode, quote_plus
+    from urllib.request import urlopen, Request
+    from urllib.error import HTTPError, URLError
+except ImportError:
+    from urlparse import urlparse
+    from urllib import urlencode, quote_plus
+    from urllib2 import urlopen, Request, HTTPError, URLError
 import hashlib
 import hmac
 import binascii
@@ -512,8 +517,8 @@ def retry(ExceptionToCheck, tries=4, delay=3, backoff=2, logger=None):
 
 
 @retry(socket.error, tries=4, delay=3, backoff=2)
-@retry(urllib2.URLError, tries=4, delay=3, backoff=2)
-@retry(urllib2.HTTPError, tries=4, delay=3, backoff=2)
+@retry(URLError, tries=4, delay=3, backoff=2)
+@retry(HTTPError, tries=4, delay=3, backoff=2)
 def urlopen_with_retry(request):
     """ Facilitates retries when opening URLs.
 
@@ -522,7 +527,7 @@ def urlopen_with_retry(request):
         Return value: file-like object of type urllib2.urlopen with
             response
     """
-    return urllib2.urlopen(request)
+    return urlopen(request)
 
 
 def parsed_credentials(profile='default', base=None):
@@ -654,7 +659,7 @@ class AWSAnsible(object):
                                 if segment]
         self.service = split_base_suffix[0].partition('.')[0]
         try:
-            self.canonical_uri = '/' + '/'.join([urllib.quote_plus(segment) 
+            self.canonical_uri = '/' + '/'.join([quote_plus(segment) 
                 for segment in split_base_suffix[1:]])
         except IndexError:
             # No segments
@@ -742,8 +747,8 @@ class AWSAnsible(object):
                 'SignedHeaders=%s, Signature=%s'
             ) % (self.algorithm, self._aws_access_key_id, datestamp,
                  self.region, self.service, signed_headers, signature)
-        request = urllib2.Request(''.join([self.base_prefix, self.host_header,
-                                           self.canonical_uri]),
+        request = Request(''.join([self.base_prefix, self.host_header,
+                                   self.canonical_uri]),
                                   headers=headers,
                                   data=payload)
         return urlopen_with_retry(request)
