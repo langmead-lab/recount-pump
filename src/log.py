@@ -5,7 +5,11 @@
 
 import os
 import logging
-from ConfigParser import RawConfigParser
+import unittest
+try:
+    from configparser import RawConfigParser
+except ImportError:
+    from ConfigParser import RawConfigParser
 
 log_ini_dir = os.path.expanduser('~/.recount')
 log_ini_fn = os.path.join(log_ini_dir, 'log.ini')
@@ -48,6 +52,26 @@ def add_syslog_handler(logger):
 
     syslog.setFormatter(formatter)
     logger.addHandler(syslog)
+
+
+class TestReference(unittest.TestCase):
+
+    def test_simple_source_insert(self):
+        config = """[mylog]
+host = blah.log_agg.com
+port = 999
+format = %(asctime)s %(hostname)s recount-pump: %(message)s
+datefmt = %b %d %H:%M:%S
+"""
+        test_fn = '.tmp.init'
+        with open(test_fn, 'w') as fh:
+            fh.write(config)
+        host, port, format, datefmt = read_log_config(config_fn=test_fn, section='mylog')
+        self.assertEqual('blah.log_agg.com', host)
+        self.assertEqual(999, port)
+        self.assertEqual('%(asctime)s %(hostname)s recount-pump: %(message)s', format)
+        self.assertEqual('%b %d %H:%M:%S', datefmt)
+        os.remove(test_fn)
 
 
 if __name__ == '__main__':
