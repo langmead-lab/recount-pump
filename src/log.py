@@ -11,11 +11,31 @@ try:
 except ImportError:
     from ConfigParser import RawConfigParser
 
-log_ini_dir = os.path.expanduser('~/.recount')
-log_ini_fn = os.path.join(log_ini_dir, 'log.ini')
+_log_ini_dir = os.path.expanduser('~/.recount')
+_log_ini_fn = os.path.join(_log_ini_dir, 'log.ini')
+_default_format = '%(asctime)s %(message)s'
+_default_datefmt = '%b %d %H:%M:%S'
 
 
-def read_log_config(config_fn=log_ini_fn, section='log'):
+def new_default_formatter():
+    return logging.Formatter(fmt=_default_format, datefmt=_default_datefmt)
+
+
+def new_logger(with_aggregation=True, level=logging.INFO):
+    logger = logging.getLogger()
+    if with_aggregation:
+        add_hostname_filter(logger)
+        add_syslog_handler(logger)
+    formatter = new_default_formatter()
+    handler = logging.StreamHandler()
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    logger.setLevel(level)
+    logger.debug('Created logger')
+    return logger
+
+
+def read_log_config(config_fn=_log_ini_fn, section='log'):
     cfg = RawConfigParser()
     cfg.read(config_fn)
     if section not in cfg.sections():
