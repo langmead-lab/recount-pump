@@ -2,3 +2,4 @@ SQLAlchemy
 boto3
 globus-sdk
 pika
+docopt

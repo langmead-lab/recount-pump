@@ -3,8 +3,24 @@
 # Author: Ben Langmead <ben.langmead@gmail.com>
 # License: MIT
 
+"""pump
+
+Usage:
+  pump add-project <db-config> <name> <analysis-id> <input-set-id>
+  pump add-project-ex <db-config> <name> <analysis-name> <analysis-image-url>
+                      <input-set-name> <input-set-table>
+                      (<cluster-name> <wrapper-url>)...
+  pump test
+
+Options:
+  -h, --help    Show this screen.
+  --version     Show version.
+"""
+
 import os
+import sys
 import unittest
+from docopt import docopt
 from sqlalchemy import Column, ForeignKey, Integer, String, Sequence, DateTime, create_engine
 from base import Base
 from sqlalchemy.orm import relationship, sessionmaker
@@ -221,57 +237,19 @@ class TestPump(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    import sys
-
-    usage_msg = '''
-Usage: pump.py <cmd> [options]*
-
-Commands:
-
-    add-project <db_config> <name> <analysis_id> <input_set_id>
-    add-project-ex <db_config> <name> <analysis_name> <analysis_image_url>
-                   <input_set_name> <input_set_csv>
-                   <cluster_name1>:<wrapper_url1> <cluster_name2>:<wrapper_url2>, ...
-    help
-    test
-
-On each cluster, the user running the jobs should create a file
-`$HOME/.recount/cluster.txt` containing the name of the cluster, matching the
-<name> used to add the corresponding record with `add-cluster`.
-'''
-
-    def print_usage():
-        print('\n' + usage_msg.strip() + '\n')
-
-    if len(sys.argv) <= 1 or sys.argv[1] == 'help':
-        print_usage()
-        sys.exit(0)
-
-    if sys.argv[1] == 'test':
+    args = docopt(__doc__)
+    if args['add-project']:
+        with open(args['<db-config>']) as cfg_gh:
+            Session = session_maker_from_config(cfg_gh)
+        print(add_project(args['<name>'], args['<analysis-id>'],
+                          args['<input-set-id>'], Session()))
+    elif args['add-project-ex']:
+        with open(args['<db-config>']) as cfg_gh:
+            Session = session_maker_from_config(cfg_gh)
+        print(add_project_ex(args['<name>'], args['<analysis-name>'],
+                             args['<analysis-image-url>'],
+                             args['<input-set-name>'], args['<input-set-csv>'],
+                             args['<cluster-analyses>'], Session()))
+    elif args['test']:
         sys.argv.remove('test')
         unittest.main()
-
-    elif len(sys.argv) >= 3 and sys.argv[1] == 'add-project':
-        if len(sys.argv) < 6:
-            raise ValueError('add-project requires 3 arguments')
-        with open(sys.argv[2]) as cfg_gh:
-            Session = session_maker_from_config(cfg_gh)
-        name, analysis_id, input_set_id = sys.argv[3], sys.argv[4], sys.argv[5]
-        print(add_project(name, analysis_id, input_set_id, Session()))
-
-    elif len(sys.argv) >= 3 and sys.argv[1] == 'add-project-ex':
-        if len(sys.argv) < 9:
-            raise ValueError('add-project-ex requires 9 or more arguments')
-        with open(sys.argv[2]) as cfg_gh:
-            Session = session_maker_from_config(cfg_gh)
-        name, analysis_name, analysis_image_url = sys.argv[3], sys.argv[4], sys.argv[5]
-        input_set_name, input_set_csv = sys.argv[6], sys.argv[7]
-        cluster_analyses = parse_cluster_analyses(sys.argv[8:])
-        print(add_project_ex(name, analysis_name, analysis_image_url,
-                             input_set_name, input_set_csv, cluster_analyses,
-                             Session()))
-
-    else:
-        print_usage()
-        sys.exit(1)
-

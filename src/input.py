@@ -3,9 +3,27 @@
 # Author: Ben Langmead <ben.langmead@gmail.com>
 # License: MIT
 
+"""input
+
+Usage:
+  input add-input <db-config> <url-1> <url-2> <url-3>
+                 <checksum-1> <checksum-2> <checksum-3>
+                 <retrieval-method>
+  input add-input-set <db-config> <name>
+  input add-inputs-to-set <db_config> (<set_id> <input_id>)...
+  input test
+
+Options:
+  -h, --help    Show this screen.
+  --version     Show version.
+"""
+
+
 from __future__ import print_function
 import os
+import sys
 import unittest
+from docopt import docopt
 from sqlalchemy import Column, ForeignKey, Integer, String, Sequence, Table, create_engine
 from base import Base
 from sqlalchemy.orm import relationship, sessionmaker
@@ -90,13 +108,14 @@ def add_input_set(name, session):
     return iset.id
 
 
-def add_input_to_set(set_id, input_id, session):
+def add_inputs_to_set(set_ids, input_ids, session):
     """
-    Add input to input set.
+    Add inputs to input set.
     """
-    input = session.query(Input).get(input_id)
-    input_set = session.query(InputSet).get(set_id)
-    input_set.inputs.append(input)
+    for input_id, set_id in zip(set_ids, input_ids):
+        inp = session.query(Input).get(input_id)
+        input_set = session.query(InputSet).get(set_id)
+        input_set.inputs.append(inp)
     session.commit()
 
 
@@ -224,70 +243,21 @@ class TestReference(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    import sys
-
-    usage_msg = '''
-Usage: input.py <cmd> [options]*
-
-Commands:
-
-    add-input <db_config> <url_1> <url_2> <url_3> <checksum_1> <checksum_2> <checksum_3> <retrieval_method>
-    add-input-set <db_config> <name>
-    add-input-to-set <db_config> <set_id> <input_id>
-    import-input-set <db_config> <name> <csv>
-    help
-    test
-'''
-
-    def print_usage():
-        print('\n' + usage_msg.strip() + '\n')
-
-    if len(sys.argv) <= 1 or sys.argv[1] == 'help':
-        print_usage()
-        sys.exit(0)
-
-    if sys.argv[1] == 'test':
+    args = docopt(__doc__)
+    if args['add-input']:
+        with open(args['<db-config>']) as cfg_gh:
+            Session = session_maker_from_config(cfg_gh)
+        print(add_input(args['<url-1>'], args['<url-2>'], args['<url-3>'],
+                        args['<checksum-1>'], args['<checksum-2>'], args['<checksum-3>'],
+                        args['<retrieval-method>'], Session()))
+    elif args['add-input-set']:
+        with open(args['<db-config>']) as cfg_gh:
+            Session = session_maker_from_config(cfg_gh)
+        print(add_input_set(args['<name>'], Session()))
+    elif args['add-inputs-to-set']:
+        with open(args['<db-config>']) as cfg_gh:
+            Session = session_maker_from_config(cfg_gh)
+        print(add_inputs_to_set(args['<set-id>'], args['<input-id>'], Session()))
+    elif args['test']:
         sys.argv.remove('test')
         unittest.main()
-
-    elif len(sys.argv) >= 3 and sys.argv[1] == 'add-input':
-        if len(sys.argv) < 10:
-            raise ValueError('add-input requires 8 arguments')
-        with open(sys.argv[2]) as cfg_gh:
-            Session = session_maker_from_config(cfg_gh)
-        url_1, url_2, url_3 = sys.argv[3:6]
-        checksum_1, checksum_2, checksum_3 = sys.argv[6:9]
-        retrieval_method = sys.argv[9]
-        print(add_input(url_1, url_2, url_3,
-                        checksum_1, checksum_2, checksum_3,
-                        retrieval_method, Session()))
-
-    elif len(sys.argv) >= 3 and sys.argv[1] == 'add-input-set':
-        if len(sys.argv) < 4:
-            raise ValueError('add-input-set requires 1 argument')
-        with open(sys.argv[2]) as cfg_gh:
-            Session = session_maker_from_config(cfg_gh)
-        name = sys.argv[3]
-        print(add_input_set(name, Session()))
-
-    elif len(sys.argv) >= 3 and sys.argv[1] == 'add-input-to-set':
-        if len(sys.argv) < 5:
-            raise ValueError('add-input-set requires 2 arguments')
-        with open(sys.argv[2]) as cfg_gh:
-            Session = session_maker_from_config(cfg_gh)
-        set_id, input_id = sys.argv[3], sys.argv[4]
-        set_id, input_id = int(set_id), int(input_id)
-        print(add_input_to_set(set_id, input_id, Session()))
-
-    elif len(sys.argv) >= 3 and sys.argv[1] == 'import-input-set':
-        if len(sys.argv) < 5:
-            raise ValueError('import-input-set requires 2 arguments')
-        with open(sys.argv[2]) as cfg_gh:
-            Session = session_maker_from_config(cfg_gh)
-        name, csv_fn = sys.argv[3], sys.argv[4]
-        input_set_id, n_added_input = import_input_set(name, csv_fn, Session())
-        print('%d %d' % (input_set_id, n_added_input))
-
-    else:
-        print_usage()
-        sys.exit(1)
