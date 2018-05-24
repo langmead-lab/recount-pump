@@ -9,7 +9,15 @@ output: html_document
 
 ```{r libraries}
 library('SRAdb')
+
+# install.packages('devtools')
 library('devtools')
+
+# brew install mariadb-connector-c
+# install.library('RMySQL')
+library('RMySQL')
+# install.packages('ini')
+library('ini')
 ```
 
 ```{r load_sradb}
@@ -19,27 +27,44 @@ sra_con <- dbConnect(SQLite(),sqlfile)
 ```
 
 ```{r query_helper}
-q <- function(x) { dbGetQuery(sra_con, x) }
+q <- function(x) {
+    res <- dbGetQuery(sra_con, x)
+    res[, !duplicated(colnames(res))]
+}
+```
+
+```{r fastq_filter}
+fastq_filter <- '>='
 ```
 
 ```{r broad_counts}
-taxids <- q(paste(
-  'SELECT sra.taxon_id FROM sra, fastq',
-  'WHERE sra.run_accession = fastq.run_accession',
-  '  AND fastq.FASTQ_FILES > 0'))
-
+if(fastq_filter == '>=') {
+    taxids <- q(paste('SELECT sra.taxon_id FROM sra'))
+} else {
+    taxids <- q(paste(
+      'SELECT sra.taxon_id FROM sra, fastq',
+      'WHERE sra.run_accession = fastq.run_accession',
+      '  AND fastq.FASTQ_FILES', fastq_filter, '0'))
+}
 print(sort(table(taxids),decreasing=TRUE)[1:10])
 ```
 
 ```{r species_counts}
-taxids <- q(paste(
-  'SELECT sra.taxon_id FROM sra, fastq',
-  'WHERE sra.platform = "ILLUMINA"',
-  '  AND sra.library_strategy = "RNA-Seq"',
-  '  AND sra.library_source = "TRANSCRIPTOMIC"',
-  '  AND sra.run_accession = fastq.run_accession',
-  '  AND fastq.FASTQ_FILES > 0'))
-
+if(fastq_filter == '>=') {
+    taxids <- q(paste(
+      'SELECT sra.taxon_id FROM sra',
+      'WHERE sra.platform = "ILLUMINA"',
+      '  AND sra.library_strategy = "RNA-Seq"',
+      '  AND sra.library_source = "TRANSCRIPTOMIC"'))
+} else {
+    taxids <- q(paste(
+      'SELECT sra.taxon_id FROM sra, fastq',
+      'WHERE sra.platform = "ILLUMINA"',
+      '  AND sra.library_strategy = "RNA-Seq"',
+      '  AND sra.library_source = "TRANSCRIPTOMIC"',
+      '  AND sra.run_accession = fastq.run_accession',
+      '  AND fastq.FASTQ_FILES', fastq_filter, '0'))
+}
 print(sort(table(taxids),decreasing=TRUE)[1:10])
 ```
 
@@ -62,18 +87,32 @@ species_to_tax_id = list(
 #  10090   9606   7955   3702   7227   4932  10116   4577   9913   9940 
 # 195878 156394  23590  17296  17006   7997   7098   7018   5173   5018 
 
-species_table <- function(taxid) {
-  q(paste(
-    'SELECT * FROM sra, study, submission, fastq, run',
-    'WHERE sra.platform = "ILLUMINA"',
-    '  AND sra.library_strategy = "RNA-Seq"',
-    '  AND sra.library_source = "TRANSCRIPTOMIC"',
-    '  AND sra.submission_accession = submission.submission_accession',
-    '  AND sra.study_accession = study.study_accession',
-    '  AND sra.run_accession = fastq.run_accession',
-    '  AND sra.run_accession = run.run_accession',
-    '  AND fastq.FASTQ_FILES > 0',
-    sprintf('AND sra.taxon_id = %d', taxid)))
+if(fastq_filter == '>=') {
+    species_table <- function(taxid) {
+      q(paste(
+        'SELECT * FROM sra, study, submission, run',
+        'WHERE sra.platform = "ILLUMINA"',
+        '  AND sra.library_strategy = "RNA-Seq"',
+        '  AND sra.library_source = "TRANSCRIPTOMIC"',
+        '  AND sra.submission_accession = submission.submission_accession',
+        '  AND sra.study_accession = study.study_accession',
+        '  AND sra.run_accession = run.run_accession',
+        sprintf('AND sra.taxon_id = %d', taxid)))
+    }
+} else {
+    species_table <- function(taxid) {
+      q(paste(
+        'SELECT * FROM sra, study, submission, fastq, run',
+        'WHERE sra.platform = "ILLUMINA"',
+        '  AND sra.library_strategy = "RNA-Seq"',
+        '  AND sra.library_source = "TRANSCRIPTOMIC"',
+        '  AND sra.submission_accession = submission.submission_accession',
+        '  AND sra.study_accession = study.study_accession',
+        '  AND sra.run_accession = fastq.run_accession',
+        '  AND sra.run_accession = run.run_accession',
+        '  AND fastq.FASTQ_FILES > 0',
+        sprintf('AND sra.taxon_id = %d', taxid)))
+    }
 }
 runs_by_species <- lapply(species_to_tax_id, species_table)
 ```
@@ -88,14 +127,23 @@ project_to_srp = list(
 )
 
 project_table <- function(proj) {
-  q(paste(
-    'SELECT * FROM sra, study, submission, fastq, run',
-    'WHERE sra.submission_accession = submission.submission_accession',
-    '  AND sra.study_accession = study.study_accession',
-    '  AND sra.run_accession = fastq.run_accession',
-    '  AND sra.run_accession = run.run_accession',
-    '  AND fastq.FASTQ_FILES > 0',
-    sprintf('AND sra.study_accession = "%s"', proj)))
+    if(fastq_filter == '>=') {
+      q(paste(
+        'SELECT * FROM sra, study, submission, run',
+        'WHERE sra.submission_accession = submission.submission_accession',
+        '  AND sra.study_accession = study.study_accession',
+        '  AND sra.run_accession = run.run_accession',
+        sprintf('AND sra.study_accession = "%s"', proj)))
+    } else {
+      q(paste(
+        'SELECT * FROM sra, study, submission, fastq, run',
+        'WHERE sra.submission_accession = submission.submission_accession',
+        '  AND sra.study_accession = study.study_accession',
+        '  AND sra.run_accession = fastq.run_accession',
+        '  AND sra.run_accession = run.run_accession',
+        '  AND fastq.FASTQ_FILES > 0',
+        sprintf('AND sra.study_accession = "%s"', proj)))
+    }
 }
 runs_by_study <- lapply(project_to_srp, project_table)
 
@@ -117,6 +165,20 @@ for(species in names(runs_by_species)) {
 
 ```{r save}
 save(runs_by_species, runs_by_study, studies, file='sra_db_processed.RData')
+```
+
+```{r mysql_import}
+import_to_local_mysql <- F
+local_mysql_prefix <- 'test_'
+if(import_to_local_mysql) {
+    cfg <- read.ini('~/.recount/local_db.ini')
+    con <- dbConnect(MySQL(), host=cfg$client$host, port=as.integer(cfg$client$port),
+                     dbname="recount", cfg$client$user, cfg$client$password)
+    for(species in names(runs_by_species)) {
+      dbWriteTable(con, value=runs_by_species[[species]],
+                   name = paste(local_mysql_prefix, species, sep='_'))
+    }
+}
 ```
 
 ```{r reproducibility}
