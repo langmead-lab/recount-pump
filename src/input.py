@@ -10,14 +10,15 @@ Usage:
                  <checksum-1> <checksum-2> <checksum-3>
                  <retrieval-method>
   input add-input-set <db-config> <name>
-  input add-inputs-to-set <db_config> (<set_id> <input_id>)...
+  input add-inputs-to-set <db-config> (<set-id> <input-id>)...
+  input filter-table <db-config> <prefix> <species> <sql-filter>
+  input inputs-from-table <db-config> <prefix> <species> <sql-filter>
   input test
 
 Options:
   -h, --help    Show this screen.
   --version     Show version.
 """
-
 
 from __future__ import print_function
 import os
@@ -27,6 +28,7 @@ from docopt import docopt
 from sqlalchemy import Column, ForeignKey, Integer, String, Sequence, Table, create_engine
 from base import Base
 from sqlalchemy.orm import relationship, sessionmaker
+from sqlalchemy.sql import text
 from toolbox import session_maker_from_config
 
 
@@ -39,13 +41,15 @@ class Input(Base):
     __tablename__ = 'input'
 
     id = Column(Integer, Sequence('input_id_seq'), primary_key=True)
-    url_1 = Column(String(1024))  # URL where obtained
-    url_2 = Column(String(1024))
-    url_3 = Column(String(1024))
-    checksum_1 = Column(String(256))
-    checksum_2 = Column(String(256))
-    checksum_3 = Column(String(256))
-    retrieval_method = Column(String(64))
+    acc_r = Column(String(64))        # run accession
+    acc_s = Column(String(64))        # study accession
+    url_1 = Column(String(1024))      # URL for sample, or for just mate 1
+    url_2 = Column(String(1024))      # URL for mate 2
+    url_3 = Column(String(1024))      # unlikely to be used; maybe for barcode?
+    checksum_1 = Column(String(256))  # checksum for file at url_1
+    checksum_2 = Column(String(256))  # checksum for file at url_2
+    checksum_3 = Column(String(256))  # checksum for file at url_3
+    retrieval_method = Column(String(64))  # suggested retrieval method
 
 
 # Creates many-to-many association between Annotations and AnnotationSets
@@ -85,11 +89,11 @@ def install_retriever():
     pass
 
 
-def add_input(url_1, url_2, url_3, checksum_1, checksum_2, checksum_3, retrieval_method, session):
+def add_input(acc_r, acc_s, url_1, url_2, url_3, checksum_1, checksum_2, checksum_3, retrieval_method, session):
     """
     Add new input with associated retrieval info.
     """
-    i = Input(url_1=url_1, url_2=url_2, url_3=url_3,
+    i = Input(acc_r=acc_r, acc_s=acc_s, url_1=url_1, url_2=url_2, url_3=url_3,
               checksum_1=checksum_1, checksum_2=checksum_2, checksum_3=checksum_3,
               retrieval_method=retrieval_method)
     session.add(i)
@@ -132,11 +136,11 @@ def import_input_set(name, csv_fn, session):
             if len(ln) == 0:
                 continue
             toks = ln.split(',')
-            if len(toks) != 7:
-                raise ValueError('Line did not have 7 tokens: "%s"' % ln)
+            if len(toks) != 9:
+                raise ValueError('Line did not have 9 tokens: "%s"' % ln)
             toks = list(map(lambda x: None if x == 'NA' else x, toks))
-            url_1, url_2, url_3, checksum_1, checksum_2, checksum_3, retrieval_method = toks
-            input = Input(url_1=url_1, url_2=url_2, url_3=url_3,
+            acc_r, acc_s, url_1, url_2, url_3, checksum_1, checksum_2, checksum_3, retrieval_method = toks
+            input = Input(acc_r=acc_r, acc_s=acc_s, url_1=url_1, url_2=url_2, url_3=url_3,
                           checksum_1=checksum_1, checksum_2=checksum_2, checksum_3=checksum_3,
                           retrieval_method=retrieval_method)
             session.add(input)
@@ -147,7 +151,32 @@ def import_input_set(name, csv_fn, session):
     return input_set.id, n_added_input
 
 
-# TODO: import directly from an SRAdb CSV file, and put the metadata in there too
+def _fetcher(prefix, species, sql_filter, session):
+    table_name = '_'.join([prefix, species])
+    sql = "SELECT run_accession, study_accession FROM %s" % table_name
+    if sql_filter is not None and len(sql_filter) > 0:
+        sql += ' WHERE ' + sql_filter
+    sql += ';'
+    return session.execute(text(sql)).fetchall()
+
+
+def filter_table(prefix, species, sql_filter, session):
+    for tup in _fetcher(prefix, species, sql_filter, session):
+        run_acc, study_acc = tup
+        print('%s,%s' % (run_acc, study_acc))
+    return 'DONE'
+
+
+def inputs_from_table(prefix, species, sql_filter, session):
+    for tup in _fetcher(prefix, species, sql_filter, session):
+        run_acc, study_acc = tup
+        inp = Input(acc_r=run_acc, acc_s=study_acc,
+                    url_1=None, url_2=None, url_3=None,
+                    checksum_1=None, checksum_2=None, checksum_3=None,
+                    retrieval_method='sra')
+        session.add(inp)
+    session.commit()
+    return 'DONE'
 
 
 _lambda_reads_1 = 'http://www.cs.jhu.edu/~langmea/resources/reads_1.fq'
@@ -219,7 +248,7 @@ class TestReference(unittest.TestCase):
         self.assertEqual(0, len(list(self.session.query(input_association_table))))
 
     def test_import_inputset(self):
-        csv_text = '''ftp://genomi.cs/1.fastq.gz,ftp://genomi.cs/2.fastq.gz,NA,NA,NA,NA,wget'''
+        csv_text = '''NA,NA,ftp://genomi.cs/1.fastq.gz,ftp://genomi.cs/2.fastq.gz,NA,NA,NA,NA,wget'''
         with open('.tmp.csv', 'w') as ofh:
             ofh.write(csv_text)
         import_input_set('test_inputset', '.tmp.csv', self.session)
@@ -245,19 +274,22 @@ class TestReference(unittest.TestCase):
 if __name__ == '__main__':
     args = docopt(__doc__)
     if args['add-input']:
-        with open(args['<db-config>']) as cfg_gh:
-            Session = session_maker_from_config(cfg_gh)
+        Session = session_maker_from_config(args['<db-config>'])
         print(add_input(args['<url-1>'], args['<url-2>'], args['<url-3>'],
                         args['<checksum-1>'], args['<checksum-2>'], args['<checksum-3>'],
                         args['<retrieval-method>'], Session()))
     elif args['add-input-set']:
-        with open(args['<db-config>']) as cfg_gh:
-            Session = session_maker_from_config(cfg_gh)
+        Session = session_maker_from_config(args['<db-config>'])
         print(add_input_set(args['<name>'], Session()))
     elif args['add-inputs-to-set']:
-        with open(args['<db-config>']) as cfg_gh:
-            Session = session_maker_from_config(cfg_gh)
+        Session = session_maker_from_config(args['<db-config>'])
         print(add_inputs_to_set(args['<set-id>'], args['<input-id>'], Session()))
+    elif args['filter-table']:
+        Session = session_maker_from_config(args['<db-config>'])
+        print(filter_table(args['<prefix>'], args['<species>'], args['<sql-filter>'], Session()))
+    elif args['inputs-from-table']:
+        Session = session_maker_from_config(args['<db-config>'])
+        print(filter_table(args['<prefix>'], args['<species>'], args['<sql-filter>'], Session()))
     elif args['test']:
         sys.argv.remove('test')
         unittest.main()
