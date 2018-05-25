@@ -32,8 +32,10 @@ def session_maker_from_config(fn):
         from configparser import RawConfigParser
 
     config = RawConfigParser(allow_no_value=True)
-    config.readfp(fn)
-    engine_url = config.get("recount", "url")
+    if not os.path.exists(fn):
+        raise RuntimeError('No such ini file: "%s"' % fn)
+    config.read(fn)
+    engine_url = config.get("client", "url")
     engine = create_engine(engine_url, echo=True)
     Base.metadata.create_all(engine)
     return sessionmaker(bind=engine)
