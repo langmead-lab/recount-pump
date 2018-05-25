@@ -212,8 +212,8 @@ class TestPump(unittest.TestCase):
             ('marcc', 's3://recount-pump/analysis/recount-rna-seq-v1/marcc.sh')
         ]
         input_set_name = 'all_human'
-        input_set_csv = '\n'.join(['ftp://genomi.cs/1_1.fastq.gz,ftp://genomi.cs/1_2.fastq.gz,NA,NA,NA,NA,wget',
-                                   'ftp://genomi.cs/2_1.fastq.gz,ftp://genomi.cs/2_2.fastq.gz,NA,NA,NA,NA,wget'])
+        input_set_csv = '\n'.join(['NA,NA,ftp://genomi.cs/1_1.fastq.gz,ftp://genomi.cs/1_2.fastq.gz,NA,NA,NA,NA,wget',
+                                   'NA,NA,ftp://genomi.cs/2_1.fastq.gz,ftp://genomi.cs/2_2.fastq.gz,NA,NA,NA,NA,wget'])
         csv_fn = '.test_add_project_ex.csv'
         with open(csv_fn, 'w') as ofh:
             ofh.write(input_set_csv)
