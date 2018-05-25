@@ -11,8 +11,9 @@ Usage:
                  <retrieval-method>
   input add-input-set <db-config> <name>
   input add-inputs-to-set <db-config> (<set-id> <input-id>)...
+  input list-input-set <db-config> <name>
   input filter-table <db-config> <prefix> <species> <sql-filter>
-  input inputs-from-table <db-config> <prefix> <species> <sql-filter>
+  input inputs-from-table <db-config> <prefix> <species> <sql-filter> <input-set-name>
   input test
 
 Options:
@@ -50,6 +51,11 @@ class Input(Base):
     checksum_2 = Column(String(256))  # checksum for file at url_2
     checksum_3 = Column(String(256))  # checksum for file at url_3
     retrieval_method = Column(String(64))  # suggested retrieval method
+
+    def __repr__(self):
+        return ' '.join(map(str, [self.id, self.acc_r, self.acc_s, self.url_1, self.url_2, self.url_3,
+                                  self.checksum_1, self.checksum_2, self.checksum_3,
+                                  self.retrieval_method]))
 
 
 # Creates many-to-many association between Annotations and AnnotationSets
@@ -112,11 +118,23 @@ def add_input_set(name, session):
     return iset.id
 
 
+def list_input_set(name, session):
+    """
+    Add new input set with given name.  It's empty at first.  Needs to be
+    populated with, e.g., add-input-to-set.
+    """
+    input_set = session.query(InputSet).filter_by(name=name).first()
+    if input_set is None:
+        raise RuntimeError('No InputSet with name "%s"' % name)
+    for input in input_set.inputs:
+        print(name + ' ' + str(input))
+
+
 def add_inputs_to_set(set_ids, input_ids, session):
     """
     Add inputs to input set.
     """
-    for input_id, set_id in zip(set_ids, input_ids):
+    for set_id, input_id in zip(set_ids, input_ids):
         inp = session.query(Input).get(input_id)
         input_set = session.query(InputSet).get(set_id)
         input_set.inputs.append(inp)
@@ -152,6 +170,10 @@ def import_input_set(name, csv_fn, session):
 
 
 def _fetcher(prefix, species, sql_filter, session):
+    """
+    Helper function for fetching data from a metadata table with name given by
+    prefix/species, with optional SQL filter criteria specified
+    """
     table_name = '_'.join([prefix, species])
     sql = "SELECT run_accession, study_accession FROM %s" % table_name
     if sql_filter is not None and len(sql_filter) > 0:
@@ -167,16 +189,14 @@ def filter_table(prefix, species, sql_filter, session):
     return 'DONE'
 
 
-def inputs_from_table(prefix, species, sql_filter, session):
+def inputs_from_table(prefix, species, sql_filter, input_set_name, session):
+    input_ids = []
     for tup in _fetcher(prefix, species, sql_filter, session):
         run_acc, study_acc = tup
-        inp = Input(acc_r=run_acc, acc_s=study_acc,
-                    url_1=None, url_2=None, url_3=None,
-                    checksum_1=None, checksum_2=None, checksum_3=None,
-                    retrieval_method='sra')
-        session.add(inp)
-    session.commit()
-    return 'DONE'
+        input_ids.append(add_input(run_acc, study_acc, None, None, None, None, None, None, None, session))
+    set_id = add_input_set(input_set_name, session)
+    add_inputs_to_set([set_id] * len(input_ids), input_ids, session)
+    return set_id, input_ids
 
 
 _lambda_reads_1 = 'http://www.cs.jhu.edu/~langmea/resources/reads_1.fq'
@@ -281,6 +301,9 @@ if __name__ == '__main__':
     elif args['add-input-set']:
         Session = session_maker_from_config(args['<db-config>'])
         print(add_input_set(args['<name>'], Session()))
+    elif args['list-input-set']:
+        Session = session_maker_from_config(args['<db-config>'])
+        print(list_input_set(args['<name>'], Session()))
     elif args['add-inputs-to-set']:
         Session = session_maker_from_config(args['<db-config>'])
         print(add_inputs_to_set(args['<set-id>'], args['<input-id>'], Session()))
@@ -289,7 +312,8 @@ if __name__ == '__main__':
         print(filter_table(args['<prefix>'], args['<species>'], args['<sql-filter>'], Session()))
     elif args['inputs-from-table']:
         Session = session_maker_from_config(args['<db-config>'])
-        print(filter_table(args['<prefix>'], args['<species>'], args['<sql-filter>'], Session()))
+        print(inputs_from_table(args['<prefix>'], args['<species>'],
+                                args['<sql-filter>'], args['<input-set-name>'], Session()))
     elif args['test']:
         sys.argv.remove('test')
         unittest.main()
