@@ -3,6 +3,7 @@
 # Author: Ben Langmead <ben.langmead@gmail.com>
 # License: MIT
 
+import unittest
 import boto3
 
 
@@ -54,6 +55,12 @@ def send_message(session, body):
 def get_queue_attributes(client, q_url):
     resp = client.get_queue_attributes(QueueUrl=q_url, AttributeNames=['All'])
     return resp[u'Attributes']
+
+
+class TestSqs(unittest.TestCase):
+
+    def test_simple_source_insert(self):
+        
 
 
 if __name__ == '__main__':

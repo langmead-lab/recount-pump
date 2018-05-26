@@ -9,7 +9,7 @@ def ftp_dir_exists(dir, ftps):
     try:
         ftps.cwd(dir)
     except ftplib.error_perm as err:
-        if err[0].startswith('550'):
+        if err.args[0].startswith('550'):
             return False
         else:
             raise err
