@@ -3,9 +3,24 @@
 # Author: Ben Langmead <ben.langmead@gmail.com>
 # License: MIT
 
+"""log
+
+Usage:
+  log test
+  log message
+
+Options:
+  -h, --help            Show this screen.
+  --version             Show version.
+"""
+
 import os
+import sys
 import logging
+import socket
 import unittest
+from docopt import docopt
+from logging.handlers import SysLogHandler
 try:
     from configparser import RawConfigParser
 except ImportError:
@@ -14,6 +29,7 @@ except ImportError:
 _log_ini_dir = os.path.expanduser('~/.recount')
 _log_ini_fn = os.path.join(_log_ini_dir, 'log.ini')
 _default_format = '%(asctime)s %(message)s'
+_default_format_with_hostname = '%(asctime)s %(hostname)s %(message)s'
 _default_datefmt = '%b %d %H:%M:%S'
 
 
@@ -21,12 +37,14 @@ def new_default_formatter():
     return logging.Formatter(fmt=_default_format, datefmt=_default_datefmt)
 
 
-def new_logger(with_aggregation=True, level=logging.INFO):
-    logger = logging.getLogger()
+def new_logger(name, with_aggregation=True, level=logging.INFO):
+    logger = logging.getLogger(name)
     if with_aggregation:
         add_hostname_filter(logger)
         add_syslog_handler(logger)
-    formatter = new_default_formatter()
+        formatter = logging.Formatter(fmt=_default_format_with_hostname, datefmt=_default_datefmt)
+    else:
+        formatter = logging.Formatter(fmt=_default_format, datefmt=_default_datefmt)
     handler = logging.StreamHandler()
     handler.setFormatter(formatter)
     logger.addHandler(handler)
@@ -60,8 +78,7 @@ def add_hostname_filter(logger):
             record.hostname = ContextFilter.hostname
             return True
 
-    f = ContextFilter()
-    logger.addFilter(f)
+    logger.addFilter(ContextFilter())
 
 
 def add_syslog_handler(logger):
@@ -95,12 +112,14 @@ datefmt = %b %d %H:%M:%S
 
 
 if __name__ == '__main__':
-    import socket
-    from logging.handlers import SysLogHandler
+    args = docopt(__doc__)
 
-    logger = logging.getLogger()
-    logger.setLevel(logging.INFO)
-    add_hostname_filter(logger)
-    add_syslog_handler(logger)
-
-    logger.info("This is a message")
+    if args['test']:
+        del sys.argv[1:]
+        unittest.main()
+    elif args['message']:
+        logger = logging.getLogger()
+        logger.setLevel(logging.INFO)
+        add_hostname_filter(logger)
+        add_syslog_handler(logger)
+        logger.info("This is a message")
