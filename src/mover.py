@@ -22,6 +22,7 @@ from __future__ import print_function
 import os
 import time
 import logging
+import unittest
 from log import new_logger
 from docopt import docopt
 try:
@@ -502,6 +503,61 @@ class Mover(object):
             self.web_mover.put(source, dst)
 
 
+class TestUrl(unittest.TestCase):
+
+    def test_url1(self):
+        u = Url('http://www.test.com/xyz')
+        self.assertTrue(u.is_curlable)
+        self.assertFalse(u.is_local)
+        self.assertFalse(u.is_s3)
+        self.assertFalse(u.is_sra)
+
+    def test_url2(self):
+        u = Url('s3://recount-pump/ref/test')
+        self.assertFalse(u.is_curlable)
+        self.assertFalse(u.is_local)
+        self.assertTrue(u.is_s3)
+        self.assertFalse(u.is_sra)
+
+    def test_url3(self):
+        for proto in ['s3', 's3n']:
+            a, b, c = parse_s3_url(proto + '://recount-pump/ref/test')
+            self.assertEqual('recount-pump', a)
+            self.assertEqual('ref/test', b)
+            self.assertEqual('test', c)
+
+
+class TestMover(unittest.TestCase):
+
+    def setUp(self):
+        self.fn = '.TestMover.1'
+        with open(self.fn, 'wb') as ofh:
+            ofh.write('test')
+
+    def tearDown(self):
+        os.remove(self.fn)
+
+    def test_exists(self):
+        m = Mover()
+        self.assertTrue(m.exists(self.fn))
+
+    def test_put(self):
+        m = Mover()
+        dst = self.fn + '.put'
+        self.assertFalse(os.path.exists(dst))
+        m.put(self.fn, dst)
+        self.assertTrue(os.path.exists(dst))
+        os.remove(dst)
+
+    def test_get(self):
+        m = Mover()
+        dst = self.fn + '.get'
+        self.assertFalse(os.path.exists(dst))
+        m.get(self.fn, dst)
+        self.assertTrue(os.path.exists(dst))
+        os.remove(dst)
+
+
 if __name__ == '__main__':
     args = docopt(__doc__)
     new_logger(__name__, with_aggregation=args['--aggregate-logs'], level=logging.INFO)
@@ -519,7 +575,7 @@ if __name__ == '__main__':
         elif args['test']:
             del sys.argv[1:]
             _log_info('running tests')
-            #unittest.main(exit=False)
+            unittest.main(exit=False)
         elif args['nop']:
             pass
     except Exception:

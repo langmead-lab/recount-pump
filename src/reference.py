@@ -8,11 +8,12 @@ import unittest
 import tempfile
 import shutil
 import logging
+
 from sqlalchemy import Column, ForeignKey, Integer, String, Sequence, Table, create_engine
 from base import Base
 from sqlalchemy.orm import relationship, sessionmaker
-from ansibles import Ansible
 from toolbox import generate_file_md5
+from mover import Mover
 
 
 class Source(Base):
@@ -96,7 +97,7 @@ class Annotation(Base):
     md5 = Column(String(32))
 
 
-def download_reference(session, dest_dir='.', ref_name=None, aws_exe='aws',
+def download_reference(session, dest_dir='.', ref_name=None,
                        profile='default', curl_exe='curl', decompress=True):
     """
     Download all relevant supporting files for a reference, or for all
@@ -120,7 +121,7 @@ def download_reference(session, dest_dir='.', ref_name=None, aws_exe='aws',
     for ss in sss:
         for src in ss.sources:
             ll.add(src)
-    ans = Ansible(aws_exe=aws_exe, profile=profile, curl_exe=curl_exe)
+    mover = Mover(profile=profile, curl_exe=curl_exe)
     # TODO: deal with gene annotations too
     for l in ll:
         for url, cksum in [(l.url_1, l.checksum_1),
@@ -132,7 +133,7 @@ def download_reference(session, dest_dir='.', ref_name=None, aws_exe='aws',
                 if os.path.exists(dest_fn):
                     raise ValueError('Destination already exists: ' + dest_fn)
                 logging.info('retrieving "%s" into "%s"' % (url, dest_dir))
-                ans.get(url, dest_dir)
+                mover.get(url, dest_dir)
                 if not os.path.exists(dest_fn):
                     raise IOError('Failed to obtain "%s"' % url)
                 if cksum is not None and len(cksum) > 0:
