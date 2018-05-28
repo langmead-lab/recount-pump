@@ -6,31 +6,39 @@
 """input
 
 Usage:
-  input add-input <db-config> <url-1> <url-2> <url-3>
+  input [-a] add-input <db-config> <acc-r> <acc-s>
+                 <url-1> <url-2> <url-3>
                  <checksum-1> <checksum-2> <checksum-3>
                  <retrieval-method>
-  input add-input-set <db-config> <name>
-  input add-inputs-to-set <db-config> (<set-id> <input-id>)...
-  input list-input-set <db-config> <name>
-  input filter-table <db-config> <prefix> <species> <sql-filter>
-  input inputs-from-table <db-config> <prefix> <species> <sql-filter> <input-set-name>
-  input test
+  input [-a] add-input-set <db-config> <name>
+  input [-a] add-inputs-to-set <db-config> (<set-id> <input-id>)...
+  input [-a] list-input-set <db-config> <name>
+  input [-a] filter-table <db-config> <prefix> <species> <sql-filter>
+  input [-a] inputs-from-table <db-config> <prefix> <species> <sql-filter> <input-set-name>
+  input [-a] test
 
 Options:
-  -h, --help    Show this screen.
-  --version     Show version.
+  -h, --help            Show this screen.
+  --version             Show version.
+  -a, --aggregate-logs  Send log messages to aggregator.
 """
 
 from __future__ import print_function
 import os
 import sys
 import unittest
+import logging
+from log import new_logger
 from docopt import docopt
 from sqlalchemy import Column, ForeignKey, Integer, String, Sequence, Table, create_engine
 from base import Base
 from sqlalchemy.orm import relationship, sessionmaker
 from sqlalchemy.sql import text
 from toolbox import session_maker_from_config
+
+
+def _log_info(st):
+    logging.getLogger(__name__).info('input.py: ' + st)
 
 
 class Input(Base):
@@ -95,7 +103,9 @@ def install_retriever():
     pass
 
 
-def add_input(acc_r, acc_s, url_1, url_2, url_3, checksum_1, checksum_2, checksum_3, retrieval_method, session):
+def add_input(acc_r, acc_s, url_1, url_2, url_3,
+              checksum_1, checksum_2, checksum_3,
+              retrieval_method, session):
     """
     Add new input with associated retrieval info.
     """
@@ -104,6 +114,7 @@ def add_input(acc_r, acc_s, url_1, url_2, url_3, checksum_1, checksum_2, checksu
               retrieval_method=retrieval_method)
     session.add(i)
     session.commit()
+    _log_info('Added 1 input')
     return i.id
 
 
@@ -115,6 +126,7 @@ def add_input_set(name, session):
     iset = InputSet(name=name)
     session.add(iset)
     session.commit()
+    _log_info('Added input set "%s"' % name)
     return iset.id
 
 
@@ -138,6 +150,7 @@ def add_inputs_to_set(set_ids, input_ids, session):
         inp = session.query(Input).get(input_id)
         input_set = session.query(InputSet).get(set_id)
         input_set.inputs.append(inp)
+    _log_info('Imported %d inputs to sets' % len(input_ids))
     session.commit()
 
 
@@ -164,6 +177,7 @@ def import_input_set(name, csv_fn, session):
             session.add(input)
             input_set.inputs.append(input)
             n_added_input += 1
+    _log_info('Imported %d items from input set' % len(input_set.inputs))
     session.add(input_set)
     session.commit()
     return input_set.id, n_added_input
@@ -196,6 +210,7 @@ def inputs_from_table(prefix, species, sql_filter, input_set_name, session):
         input_ids.append(add_input(run_acc, study_acc, None, None, None, None, None, None, None, session))
     set_id = add_input_set(input_set_name, session)
     add_inputs_to_set([set_id] * len(input_ids), input_ids, session)
+    _log_info('Added %d inputs' % len(input_ids))
     return set_id, input_ids
 
 
@@ -293,27 +308,38 @@ class TestReference(unittest.TestCase):
 
 if __name__ == '__main__':
     args = docopt(__doc__)
-    if args['add-input']:
-        Session = session_maker_from_config(args['<db-config>'])
-        print(add_input(args['<url-1>'], args['<url-2>'], args['<url-3>'],
-                        args['<checksum-1>'], args['<checksum-2>'], args['<checksum-3>'],
-                        args['<retrieval-method>'], Session()))
-    elif args['add-input-set']:
-        Session = session_maker_from_config(args['<db-config>'])
-        print(add_input_set(args['<name>'], Session()))
-    elif args['list-input-set']:
-        Session = session_maker_from_config(args['<db-config>'])
-        print(list_input_set(args['<name>'], Session()))
-    elif args['add-inputs-to-set']:
-        Session = session_maker_from_config(args['<db-config>'])
-        print(add_inputs_to_set(args['<set-id>'], args['<input-id>'], Session()))
-    elif args['filter-table']:
-        Session = session_maker_from_config(args['<db-config>'])
-        print(filter_table(args['<prefix>'], args['<species>'], args['<sql-filter>'], Session()))
-    elif args['inputs-from-table']:
-        Session = session_maker_from_config(args['<db-config>'])
-        print(inputs_from_table(args['<prefix>'], args['<species>'],
-                                args['<sql-filter>'], args['<input-set-name>'], Session()))
-    elif args['test']:
-        sys.argv.remove('test')
-        unittest.main()
+    # Can't get the following to work.  sqlalchemy messages cause KeyError on
+    # 'hostname' as though ContextFilter is not working
+    #for nm in [__name__, 'sqlalchemy.engine', 'sqlalchemy.dialects', 'sqlalchemy.pool', 'sqlalchemy.orm']:
+    for nm in [__name__]:
+        new_logger(nm, with_aggregation=args['--aggregate-logs'], level=logging.INFO)
+    try:
+        if args['add-input']:
+            Session = session_maker_from_config(args['<db-config>'])
+            print(add_input(args['<acc-r>'], args['<acc-s>'],
+                            args['<url-1>'], args['<url-2>'], args['<url-3>'],
+                            args['<checksum-1>'], args['<checksum-2>'], args['<checksum-3>'],
+                            args['<retrieval-method>'], Session()))
+        elif args['add-input-set']:
+            Session = session_maker_from_config(args['<db-config>'])
+            print(add_input_set(args['<name>'], Session()))
+        elif args['list-input-set']:
+            Session = session_maker_from_config(args['<db-config>'])
+            print(list_input_set(args['<name>'], Session()))
+        elif args['add-inputs-to-set']:
+            Session = session_maker_from_config(args['<db-config>'])
+            print(add_inputs_to_set(args['<set-id>'], args['<input-id>'], Session()))
+        elif args['filter-table']:
+            Session = session_maker_from_config(args['<db-config>'])
+            print(filter_table(args['<prefix>'], args['<species>'], args['<sql-filter>'], Session()))
+        elif args['inputs-from-table']:
+            Session = session_maker_from_config(args['<db-config>'])
+            print(inputs_from_table(args['<prefix>'], args['<species>'],
+                                    args['<sql-filter>'], args['<input-set-name>'], Session()))
+        elif args['test']:
+            del sys.argv[1:]
+            _log_info('running tests')
+            unittest.main(exit=False)
+    except Exception:
+        logging.getLogger(__name__).error('input.py: Uncaught exception:', exc_info=True)
+        raise
