@@ -59,8 +59,16 @@ Vagrant.configure("2") do |config|
         fi
         
         ! which pip && wget https://bootstrap.pypa.io/get-pip.py && python get-pip.py
-        ! which synapse && /usr/local/bin/pip install synapseclient
-        ! which globus && /usr/local/bin/pip install globus-cli
+        export PATH=$PATH:/usr/local/bin
+        pip install argparse
+        pip install cheetah
+        pip install oauth
+        pip install PrettyTable
+        pip install pyserial 
+        pip install synapseclient
+        rm -rf /usr/lib/python2.7/dist-packages/chardet*
+        rm -rf /usr/lib/python2.7/dist-packages/configobj*
+        pip install globus-cli
     SHELL
     
     config.vm.provision "shell", privileged: false, inline: <<-SHELL
