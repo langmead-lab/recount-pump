@@ -3,3 +3,7 @@ boto3
 globus-sdk
 pika
 docopt
+MySQLdb
+pandas
+numpy
+mysqlclient
