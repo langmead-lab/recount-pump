@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-"""mover
+"""mover -- copy files around, supporting local, web, S3 and Globus
 
 Usage:
   mover get <source> <dest> [options]
@@ -10,19 +10,23 @@ Usage:
   mover nop
 
 Options:
-  -h, --help            Show this screen.
-  --version             Show version.
-  -a, --aggregate-logs  Send log messages to aggregator.
-  --profile=<profile>   AWS credentials profile section [default: 'default'].
-  --curl=<curl>         curl executable [default: 'curl'].
+  -h, --help                 Show this screen.
+  --version                  Show version.
+  -a, --aggregate-logs       Send log messages to aggregator.
+  --profile=<profile>        AWS credentials profile section [default: default].
+  --curl=<curl>              curl executable [default: curl].
+  --globus-ini=<path>        Path to globus ini file [default: ~/.recount/globus.ini].
+  --globus-section=<string>  Section header for globus in ini file [default: globus].
 """
 
 
 from __future__ import print_function
 import os
+import re
 import time
 import logging
 import unittest
+import globus_sdk
 from log import new_logger
 from docopt import docopt
 try:
@@ -33,6 +37,10 @@ except ImportError:
     from urlparse import urlparse
     from urllib import urlencode, quote_plus
     from urllib2 import urlopen, Request, HTTPError, URLError
+try:
+    from configparser import RawConfigParser
+except ImportError:
+    from ConfigParser import RawConfigParser
 import subprocess
 from functools import wraps
 from shutil import copyfile
@@ -96,20 +104,12 @@ def path_join(unix, *args):
 
 
 def parse_s3_url(url):
-    """ Extracts a bucket name from an S3 URL.
-
-        url: an S3 URL, or what should be one
-
-        Return value: bucket name from S3 URL
     """
-    if url[:6] == 's3n://':
-        start_index = 6
-    elif url[:5] == 's3://':
-        start_index = 5
-    elif url[0] == '/':
-        start_index = 1
-    else:
-        start_index = 0
+    Parses s3:// URL and returns (bucket name, key, basename)
+    """
+    if not url.startswith('s3://') and not url.startswith('s3n://'):
+        raise RuntimeError('Bad S3 URL: "%s"' % url)
+    start_index = 5 if url[:5] == 's3://' else 6
     while url[start_index] == '/':
         start_index += 1
     next_slash = url.index('/', start_index)
@@ -119,7 +119,7 @@ def parse_s3_url(url):
 
 class S3Mover(object):
 
-    def __init__(self, profile='default', iface=None):
+    def __init__(self, profile='default'):
         self.session = boto3.Session(profile_name=profile)
         self.s3 = self.session.resource('s3')
 
@@ -150,6 +150,114 @@ class S3Mover(object):
             raise RuntimeError('Destination of get already exists: "%s"' % destination)
         bucket = self.s3.Bucket(bucket_str)
         bucket.download_file(path_str, destination)
+
+
+def parse_globus_url(url):
+    """
+    Parses globus:// URL and returns (endpoint id, path, basename)
+    """
+    if not url.startswith('globus://'):
+        raise RuntimeError('Bad globus URL: "%s"' % url)
+    start_index = 9
+    while url[start_index] == '/':
+        start_index += 1
+    next_slash = url.index('/', start_index)
+    last_slash = url.rindex('/')
+    return url[start_index:next_slash], url[next_slash:], url[last_slash+1:]
+
+
+def replace_endpoint(url, replacement):
+    if not url.startswith('globus://'):
+        raise RuntimeError('Bad globus URL: "%s"' % url)
+    start_index = 9
+    while url[start_index] == '/':
+        start_index += 1
+    next_slash = url.index('/', start_index)
+    return 'globus://' + replacement + url[next_slash:]
+
+
+def read_globus_config(config_fn, section='globus'):
+    cfg = RawConfigParser()
+    if not os.path.exists(config_fn):
+        raise RuntimeError('No such globus ini file: "%s"' % config_fn)
+    cfg.read(config_fn)
+    print(cfg.sections())
+    if section not in cfg.sections():
+        raise RuntimeError('No [%s] section in log ini file "%s"' % (section, config_fn))
+    return cfg
+
+
+class GlobusMover(object):
+    """
+    Does not currently handle endpoint activation.  Next step might be to look
+    at MyProxy.
+    """
+
+    UUID_RE = re.compile(r'^[a-f\d]{8}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{12}$', re.IGNORECASE)
+
+    @classmethod
+    def is_uuid(cls, st):
+        return bool(cls.UUID_RE.search(st))
+
+    def eid_from_name(self, name):
+        return self.cfg.get(self.section, name)
+
+    def __init__(self, ini_fn, section):
+        self.section = section
+        self.cfg = read_globus_config(ini_fn, section=section)
+        auth_client = globus_sdk.ConfidentialAppAuthClient(client_id=self.cfg.get(section, 'id'),
+                                                           client_secret=self.cfg.get(section, 'secret'))
+        tokens = auth_client.oauth2_client_credentials_tokens()
+        transfer_data = tokens.by_resource_server['transfer.api.globus.org']
+        authorizer = globus_sdk.AccessTokenAuthorizer(transfer_data['access_token'])
+        self.client = globus_sdk.TransferClient(authorizer=authorizer)
+
+    def exists(self, url):
+        endpoint_id, path, basename = parse_globus_url(url)
+        orig_endpoint_id = endpoint_id
+        if not self.is_uuid(endpoint_id):
+            endpoint_id = self.eid_from_name(endpoint_id)
+        r = self.client.endpoint_autoactivate(endpoint_id, if_expires_in=3600)
+        if r["code"] == "AutoActivationFailed":
+            raise RuntimeError('Failed to autoactivate endpoint "%s": %s' % (orig_endpoint_id, str(r)))
+        for entry in self.client.operation_ls(endpoint_id, path=path):
+            assert entry['endpoint'] == endpoint_id
+            assert entry['path'] == path
+            return True
+        return False
+
+    def put(self, source, destination, type='put', timeout=100000, poll_interval=60):
+        endpoint_id_src, path_src, basename_src = parse_globus_url(source)
+        endpoint_id_dst, path_dst, basename_dst = parse_globus_url(destination)
+        if not self.is_uuid(endpoint_id_src):
+            endpoint_id_src = self.eid_from_name(endpoint_id_src)
+            source = replace_endpoint(source, endpoint_id_src)
+        if not self.is_uuid(endpoint_id_dst):
+            endpoint_id_dst = self.eid_from_name(endpoint_id_dst)
+            destination = replace_endpoint(destination, endpoint_id_dst)
+        assert self.is_uuid(endpoint_id_src)
+        assert self.is_uuid(endpoint_id_dst)
+        tdata = globus_sdk.TransferData(
+            self.client,
+            endpoint_id_src,
+            endpoint_id_dst,
+            label='GlobusMover ' + type,
+            sync_level="checksum",
+            verify_checksum=True,
+            encrypt_data=True)
+        tdata.add_item(path_src, path_dst)
+        transfer_result = self.client.submit_transfer(tdata)
+        task_id = transfer_result['task_id']
+        while self.client.get_task(task_id)['status'] == 'ACTIVE':
+            _log_info('Waiting for globus cp "%s" -> "%s" (task %s)' %
+                      (source, destination, task_id))
+            self.client.task_wait(task_id, timeout, poll_interval)
+        final_status = self.client.get_task(task_id)['status']
+        _log_info('Finished globus cp "%s" -> "%s" (task %s) with final status %s' %
+                  (source, destination, task_id, final_status))
+
+    def get(self, source, destination):
+        self.put(source, destination, type='get')
 
 
 def retry(ExceptionToCheck, tries=4, delay=3, backoff=2, logger=None):
@@ -215,6 +323,8 @@ class Url(object):
                 self.type = 'sra'
             elif prefix[:5] == 'dbgap':
                 self.type = 'dbgap'
+            elif prefix[:6] == 'globus':
+                self.type = 'globus'
             else:
                 raise RuntimeError(('Unrecognized URL %s; it\'s not S3, '
                                     'HTTP, FTP, or local.') % url)
@@ -227,6 +337,7 @@ class Url(object):
         self.is_local = self.type == 'local'
         self.is_sra = (self.type == 'sra' or self.type == 'dbgap')
         self.is_dbgap = self.type == 'dbgap'
+        self.is_globus = self.type == 'globus'
 
     def to_url(self, caps=False):
         """ Returns URL string: an absolute path if local or an URL.
@@ -241,55 +352,6 @@ class Url(object):
             return self.type.upper() + ':' + self.suffix
         elif self.type[:3] == 'sra' or self.type[:5] == 'dbgap':
             return self.suffix.upper()
-        else:
-            return self.type + ':' + self.suffix
-
-    def plus(self, file_or_subdirectory):
-        """ Returns a new URL + file_or_subdirectory.
-
-            file_or_subdirectory: file or subdirectory of URL
-
-            Return value: Url object with file_or_directory tacked on
-        """
-        original_url = self.to_url()
-        if self.is_local:
-            return Url(os.path.join(original_url, file_or_subdirectory))
-        else:
-            return Url(path_join(True, original_url, file_or_subdirectory))
-
-    def upper_url(self):
-        """ Uppercases an URL's prefix or gives a local URL's absolute path.
-
-            This is Useful for hiding protocol names from Elastic MapReduce so
-            it doesn't mistake a URL passed as a mapper argument as an input
-            URL.
-
-            Return value: transformed URL string
-        """
-        if self.type == 'local':
-            absolute_path = os.path.abspath(self.suffix)
-            return (absolute_path + '/') if self.suffix[-1] == '/' \
-                else absolute_path
-        else:
-            return self.type.upper() + ':' + self.suffix
-
-    def to_nonnative_url(self):
-        """ Converts s3n:// URLs to s3:// URLs 
-
-            Return value: converted URL
-        """
-        if self.type[:2] == 's3':
-            return 's3:' + self.suffix
-        else:
-            return self.type + ':' + self.suffix
-
-    def to_native_url(self):
-        """ Converts s3:// URLs to s3n:// URLs 
-
-            Return value: converted URL
-        """
-        if self.type[:2] == 's3':
-            return 's3n:' + self.suffix
         else:
             return self.type + ':' + self.suffix
 
@@ -315,12 +377,10 @@ class WebMover(object):
         For now, just distinguishes among S3, the local filesystem, and the
         web.
     """
-    def __init__(self, curl_exe='curl', keep_alive=False):
+    def __init__(self, curl_exe='curl'):
         """ curl_exe: curl executable
-            keep_alive: True iff status messages should be written to stderr
         """
         self.curl = curl_exe
-        self.keep_alive = keep_alive
         self._osdevnull = open(os.devnull, 'w')
 
     def exists(self, path):
@@ -382,9 +442,6 @@ class WebMover(object):
             while curl_thread.is_alive():
                 now_time = time.time()
                 if now_time - last_print_time > 160:
-                    if self.keep_alive:
-                        print('\nreporter:status:alive', file=sys.stderr)
-                        sys.stderr.flush()
                     try:
                         new_size = os.path.getsize(filename)
                     except OSError:
@@ -432,9 +489,19 @@ class Mover(object):
         For now, just distinguishes among S3, the local filesystem, and the
         web. Perhaps class structure could be improved.
     """
-    def __init__(self, profile='default', curl_exe='curl', keep_alive=False):
-        self.s3_mover = S3Mover(profile=profile)
-        self.web_mover = WebMover(curl_exe=curl_exe, keep_alive=keep_alive)
+    def __init__(self, profile='default', curl_exe='curl',
+                 globus_ini='~/.recount/globus.ini',
+                 globus_section='globus', enable_web=False, enable_s3=False,
+                 enable_globus=False):
+        self.enable_web = enable_web
+        self.enable_s3 = enable_s3
+        self.enable_globus = enable_globus
+        if enable_s3:
+            self.s3_mover = S3Mover(profile=profile)
+        if enable_globus:
+            self.globus_mover = GlobusMover(ini_fn=os.path.expanduser(globus_ini), section=globus_section)
+        if enable_web:
+            self.web_mover = WebMover(curl_exe=curl_exe)
 
     def exists(self, url):
         """ Returns whether a given file exists. 
@@ -456,9 +523,18 @@ class Mover(object):
             _log_info('Local exists for "%s"' % url)
             return os.path.exists(os.path.abspath(url.to_url()))
         elif url.is_s3:
+            if not self.enable_s3:
+                raise RuntimeError('exists called on S3 URL "%s" but S3 not enabled' % url)
             _log_info('S3 exists for "%s"' % url)
             return self.s3_mover.exists(url.to_url())
+        elif url.is_globus:
+            if not self.enable_globus:
+                raise RuntimeError('exists called on Globus URL "%s" but Globus not enabled' % url)
+            _log_info('Globus exists for "%s"' % url)
+            return self.globus_mover.exists(url.to_url())
         elif url.is_curlable:
+            if not self.enable_web:
+                raise RuntimeError('exists called on web URL "%s" but web not enabled' % url)
             _log_info('Web exists for "%s"' % url)
             return self.web_mover.exists(url.to_url())
 
@@ -476,9 +552,18 @@ class Mover(object):
             _log_info('Local get from "%s" to "%s"' % (src, dst))
             copyfile(src, dst)
         elif url.is_s3:
+            if not self.enable_s3:
+                raise RuntimeError('get called on S3 URL "%s" but S3 not enabled' % url)
             _log_info('S3 get from "%s" to "%s"' % (src, dst))
             self.s3_mover.get(src, dst)
+        elif url.is_globus:
+            if not self.enable_globus:
+                raise RuntimeError('get called on Globus URL "%s" but Globus not enabled' % url)
+            _log_info('Globus get from "%s" to "%s"' % (src, dst))
+            self.globus_mover.get(src, dst)
         elif url.is_curlable:
+            if not self.enable_web:
+                raise RuntimeError('get called on web URL "%s" but web not enabled' % url)
             _log_info('Web get from "%s" to "%s"' % (src, dst))
             self.web_mover.get(src, dst)
 
@@ -496,9 +581,18 @@ class Mover(object):
             _log_info('Local put from "%s" to "%s"' % (source, dst))
             copyfile(source, dst)
         elif url.is_s3:
+            if not self.enable_s3:
+                raise RuntimeError('put called on S3 URL "%s" but S3 not enabled' % url)
             _log_info('S3 put from "%s" to "%s"' % (source, dst))
             self.s3_mover.put(source, dst)
+        elif url.is_globus:
+            if not self.enable_globus:
+                raise RuntimeError('put called on Globus URL "%s" but Globus not enabled' % url)
+            _log_info('Globus put from "%s" to "%s"' % (source, dst))
+            self.globus_mover.put(source, dst)
         elif url.is_curlable:
+            if not self.enable_web:
+                raise RuntimeError('put called on web URL "%s" but web not enabled' % url)
             _log_info('Web put from "%s" to "%s"' % (source, dst))
             self.web_mover.put(source, dst)
 
@@ -511,6 +605,7 @@ class TestUrl(unittest.TestCase):
         self.assertFalse(u.is_local)
         self.assertFalse(u.is_s3)
         self.assertFalse(u.is_sra)
+        self.assertFalse(u.is_globus)
 
     def test_url2(self):
         u = Url('s3://recount-pump/ref/test')
@@ -518,20 +613,35 @@ class TestUrl(unittest.TestCase):
         self.assertFalse(u.is_local)
         self.assertTrue(u.is_s3)
         self.assertFalse(u.is_sra)
+        self.assertFalse(u.is_globus)
 
     def test_url3(self):
+        u = Url('globus://recount-pump/ref/test')
+        self.assertFalse(u.is_curlable)
+        self.assertFalse(u.is_local)
+        self.assertFalse(u.is_s3)
+        self.assertFalse(u.is_sra)
+        self.assertTrue(u.is_globus)
+
+    def test_parse_url1(self):
         for proto in ['s3', 's3n']:
             a, b, c = parse_s3_url(proto + '://recount-pump/ref/test')
             self.assertEqual('recount-pump', a)
             self.assertEqual('ref/test', b)
             self.assertEqual('test', c)
 
+    def test_parse_url2(self):
+        a, b, c = parse_globus_url('globus://recount-pump/ref/test')
+        self.assertEqual('recount-pump', a)
+        self.assertEqual('/ref/test', b)
+        self.assertEqual('test', c)
+
 
 class TestMover(unittest.TestCase):
 
     def setUp(self):
         self.fn = '.TestMover.1'
-        with open(self.fn, 'wb') as ofh:
+        with open(self.fn, 'w') as ofh:
             ofh.write('test')
 
     def tearDown(self):
@@ -564,13 +674,19 @@ if __name__ == '__main__':
     try:
         _log_info('In main')
         if args['exists']:
-            m = Mover(profile=args['--profile'], curl_exe=args['--curl'], keep_alive=False)
+            m = Mover(profile=args['--profile'], curl_exe=args['--curl'],
+                      globus_ini=args['--globus-ini'], globus_section=args['--globus-section'],
+                      enable_globus=True, enable_s3=True, enable_web=True)
             print(m.exists(args['<file>']))
         if args['get']:
-            m = Mover(profile=args['--profile'], curl_exe=args['--curl'], keep_alive=False)
+            m = Mover(profile=args['--profile'], curl_exe=args['--curl'],
+                      globus_ini=args['--globus-ini'], globus_section=args['--globus-section'],
+                      enable_globus=True, enable_s3=True, enable_web=True)
             m.get(args['<source>'], args['<dest>'])
         elif args['put']:
-            m = Mover(profile=args['--profile'], curl_exe=args['--curl'], keep_alive=False)
+            m = Mover(profile=args['--profile'], curl_exe=args['--curl'],
+                      globus_ini=args['--globus-ini'], globus_section=args['--globus-section'],
+                      enable_globus=True, enable_s3=True, enable_web=True)
             m.put(args['<source>'], args['<dest>'])
         elif args['test']:
             del sys.argv[1:]
