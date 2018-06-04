@@ -6,39 +6,42 @@
 """input
 
 Usage:
-  input [-a] add-input <db-config> <acc-r> <acc-s>
-                 <url-1> <url-2> <url-3>
-                 <checksum-1> <checksum-2> <checksum-3>
-                 <retrieval-method>
-  input [-a] add-input-set <db-config> <name>
-  input [-a] add-inputs-to-set <db-config> (<set-id> <input-id>)...
-  input [-a] list-input-set <db-config> <name>
-  input [-a] filter-table <db-config> <prefix> <species> <sql-filter>
-  input [-a] inputs-from-table <db-config> <prefix> <species> <sql-filter> <input-set-name>
-  input [-a] test
+  input add-input [options] <db-config> <acc-r> <acc-s>
+                  <url-1> <url-2> <url-3>
+                  <checksum-1> <checksum-2> <checksum-3>
+                  <retrieval-method>
+  input add-input-set [options] <db-config> <name>
+  input add-inputs-to-set [options] <db-config> (<set-id> <input-id>)...
+  input list-input-set [options] <db-config> <name>
+  input filter-table [options] <db-config> <prefix> <species> <sql-filter>
+  input inputs-from-table [options] <db-config> <prefix> <species>
+                          <sql-filter> <input-set-name>
+  input test [options]
+  input fail [options]
+  input nop [options]
 
 Options:
+  <db-config>           Database ini file, w/ section named 'client' [default: ~/.recount/db.ini].
+  --log-ini <ini>          ini file for log aggregator [default: ~/.recount/log.ini].
+  --log-section <section>  ini file section for log aggregator [default: log].
+  --log-level <level>      set level for log aggregation; could be CRITICAL,
+                           ERROR, WARNING, INFO, DEBUG [default: INFO].
+  -a, --aggregate          enable log aggregation.
   -h, --help            Show this screen.
   --version             Show version.
-  -a, --aggregate-logs  Send log messages to aggregator.
 """
 
 from __future__ import print_function
 import os
 import sys
 import unittest
-import logging
-from log import new_logger
+import log
 from docopt import docopt
 from sqlalchemy import Column, ForeignKey, Integer, String, Sequence, Table, create_engine
 from base import Base
 from sqlalchemy.orm import relationship, sessionmaker
 from sqlalchemy.sql import text
 from toolbox import session_maker_from_config
-
-
-def _log_info(st):
-    logging.getLogger(__name__).info('input.py: ' + st)
 
 
 class Input(Base):
@@ -114,7 +117,7 @@ def add_input(acc_r, acc_s, url_1, url_2, url_3,
               retrieval_method=retrieval_method)
     session.add(i)
     session.commit()
-    _log_info('Added 1 input')
+    log.info(__name__, 'input.py', 'Added 1 input')
     return i.id
 
 
@@ -126,7 +129,7 @@ def add_input_set(name, session):
     iset = InputSet(name=name)
     session.add(iset)
     session.commit()
-    _log_info('Added input set "%s"' % name)
+    log.info(__name__, 'input.py', 'Added input set "%s"' % name)
     return iset.id
 
 
@@ -150,7 +153,7 @@ def add_inputs_to_set(set_ids, input_ids, session):
         inp = session.query(Input).get(input_id)
         input_set = session.query(InputSet).get(set_id)
         input_set.inputs.append(inp)
-    _log_info('Imported %d inputs to sets' % len(input_ids))
+    log.info(__name__, 'input.py', 'Imported %d inputs to sets' % len(input_ids))
     session.commit()
 
 
@@ -177,7 +180,7 @@ def import_input_set(name, csv_fn, session):
             session.add(input)
             input_set.inputs.append(input)
             n_added_input += 1
-    _log_info('Imported %d items from input set' % len(input_set.inputs))
+    log.info(__name__, 'input.py', 'Imported %d items from input set' % len(input_set.inputs))
     session.add(input_set)
     session.commit()
     return input_set.id, n_added_input
@@ -210,7 +213,7 @@ def inputs_from_table(prefix, species, sql_filter, input_set_name, session):
         input_ids.append(add_input(run_acc, study_acc, None, None, None, None, None, None, None, session))
     set_id = add_input_set(input_set_name, session)
     add_inputs_to_set([set_id] * len(input_ids), input_ids, session)
-    _log_info('Added %d inputs' % len(input_ids))
+    log.info(__name__, 'input.py', 'Added %d inputs' % len(input_ids))
     return set_id, input_ids
 
 
@@ -223,7 +226,8 @@ _longreads_md5 = '076b0e9f81aa599043b9e4be204a8014'
 
 
 def _setup():
-    engine = create_engine('sqlite:///:memory:', echo=True)
+    engine = create_engine('sqlite:///:memory:',
+                           logging_name='sqlal', pool_logging_name='sqlal_pool')
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
     return Session()
@@ -308,11 +312,10 @@ class TestReference(unittest.TestCase):
 
 if __name__ == '__main__':
     args = docopt(__doc__)
-    # Can't get the following to work.  sqlalchemy messages cause KeyError on
-    # 'hostname' as though ContextFilter is not working
-    #for nm in [__name__, 'sqlalchemy.engine', 'sqlalchemy.dialects', 'sqlalchemy.pool', 'sqlalchemy.orm']:
-    for nm in [__name__]:
-        new_logger(nm, with_aggregation=args['--aggregate-logs'], level=logging.INFO)
+    agg_ini = os.path.expanduser(args['--log-ini']) if args['--aggregate'] else None
+    log.init_loggers([__name__, 'sqlal', 'sqlal_pool'], aggregation_ini=agg_ini,
+                     aggregation_section=args['--log-section'],
+                     agg_level=args['--log-level'])
     try:
         if args['add-input']:
             Session = session_maker_from_config(args['<db-config>'])
@@ -338,8 +341,12 @@ if __name__ == '__main__':
                                     args['<sql-filter>'], args['<input-set-name>'], Session()))
         elif args['test']:
             del sys.argv[1:]
-            _log_info('running tests')
+            log.info(__name__, 'input.py', 'running tests')
             unittest.main(exit=False)
+        elif args['fail']:
+            raise RuntimeError('Fake error')
+        elif args['nop']:
+            pass
     except Exception:
-        logging.getLogger(__name__).error('input.py: Uncaught exception:', exc_info=True)
+        log.error(__name__, 'input.py', 'Uncaught exception:')
         raise

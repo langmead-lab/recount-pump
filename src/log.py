@@ -24,7 +24,6 @@ import sys
 import socket
 import unittest
 import logging
-import watchtower
 from docopt import docopt
 from logging.handlers import SysLogHandler
 try:
@@ -42,15 +41,15 @@ _default_datefmt = '%b %d %H:%M:%S'
 
 def msg(name, module, text, level):
     if level == logging.DEBUG:
-        logging.getLogger(name).debug(module + ': ' + text)
+        logging.getLogger(name).debug(module + ': ' + text, exc_info=sys.exc_info()[0] is not None)
     elif level == logging.INFO:
-        logging.getLogger(name).info(module + ': ' + text)
+        logging.getLogger(name).info(module + ': ' + text, exc_info=sys.exc_info()[0] is not None)
     if level == logging.WARNING:
-        logging.getLogger(name).warning(module + ': ' + text)
+        logging.getLogger(name).warning(module + ': ' + text, exc_info=sys.exc_info()[0] is not None)
     if level == logging.ERROR:
-        logging.getLogger(name).error(module + ': ' + text)
+        logging.getLogger(name).error(module + ': ' + text, exc_info=sys.exc_info()[0] is not None)
     if level == logging.CRITICAL:
-        logging.getLogger(name).critical(module + ': ' + text)
+        logging.getLogger(name).critical(module + ': ' + text, exc_info=sys.exc_info()[0] is not None)
 
 
 def debug(name, module, text):
@@ -77,11 +76,15 @@ def new_default_formatter():
     return logging.Formatter(fmt=_default_format, datefmt=_default_datefmt)
 
 
+def get_level(lab):
+    return lab if isinstance(lab, int) else logging.getLevelName(lab)
+
+
 def init_loggers(names, aggregation_ini=None, aggregation_section='log',
-                 level=logging.DEBUG, agg_level=logging.INFO):
+                 level='DEBUG', agg_level='INFO'):
     for name in names:
         lg = logging.getLogger(name)
-        lg.setLevel(level)
+        lg.setLevel(get_level(level))
 
         # First set up default handler, to console with simple message
         default_handler = logging.StreamHandler()
@@ -92,7 +95,7 @@ def init_loggers(names, aggregation_ini=None, aggregation_section='log',
         if aggregation_ini is not None:
             # see comment for syslog_handler_from_ini
             agg_handler = syslog_handler_from_ini(
-                aggregation_ini, aggregation_section, agg_level)
+                aggregation_ini, aggregation_section, get_level(agg_level))
             lg.addHandler(agg_handler)
 
         return lg
