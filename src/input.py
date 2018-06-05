@@ -117,7 +117,7 @@ def add_input(acc_r, acc_s, url_1, url_2, url_3,
               retrieval_method=retrieval_method)
     session.add(i)
     session.commit()
-    log.info(__name__, 'input.py', 'Added 1 input')
+    log.info(__name__, 'Added 1 input', 'input.py')
     return i.id
 
 
@@ -129,7 +129,7 @@ def add_input_set(name, session):
     iset = InputSet(name=name)
     session.add(iset)
     session.commit()
-    log.info(__name__, 'input.py', 'Added input set "%s"' % name)
+    log.info(__name__, 'Added input set "%s"' % name, 'input.py')
     return iset.id
 
 
@@ -153,7 +153,7 @@ def add_inputs_to_set(set_ids, input_ids, session):
         inp = session.query(Input).get(input_id)
         input_set = session.query(InputSet).get(set_id)
         input_set.inputs.append(inp)
-    log.info(__name__, 'input.py', 'Imported %d inputs to sets' % len(input_ids))
+    log.info(__name__, 'Imported %d inputs to sets' % len(input_ids), 'input.py')
     session.commit()
 
 
@@ -180,7 +180,7 @@ def import_input_set(name, csv_fn, session):
             session.add(input)
             input_set.inputs.append(input)
             n_added_input += 1
-    log.info(__name__, 'input.py', 'Imported %d items from input set' % len(input_set.inputs))
+    log.info(__name__, 'Imported %d items from input set' % len(input_set.inputs), 'input.py')
     session.add(input_set)
     session.commit()
     return input_set.id, n_added_input
@@ -213,7 +213,7 @@ def inputs_from_table(prefix, species, sql_filter, input_set_name, session):
         input_ids.append(add_input(run_acc, study_acc, None, None, None, None, None, None, None, session))
     set_id = add_input_set(input_set_name, session)
     add_inputs_to_set([set_id] * len(input_ids), input_ids, session)
-    log.info(__name__, 'input.py', 'Added %d inputs' % len(input_ids))
+    log.info(__name__, 'Added %d inputs' % len(input_ids), 'input.py')
     return set_id, input_ids
 
 
@@ -226,8 +226,7 @@ _longreads_md5 = '076b0e9f81aa599043b9e4be204a8014'
 
 
 def _setup():
-    engine = create_engine('sqlite:///:memory:',
-                           logging_name='sqlal', pool_logging_name='sqlal_pool')
+    engine = create_engine('sqlite:///:memory:')
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
     return Session()
@@ -313,9 +312,13 @@ class TestReference(unittest.TestCase):
 if __name__ == '__main__':
     args = docopt(__doc__)
     agg_ini = os.path.expanduser(args['--log-ini']) if args['--aggregate'] else None
-    log.init_loggers([__name__, 'sqlal', 'sqlal_pool'], aggregation_ini=agg_ini,
+    log.init_logger(__name__, aggregation_ini=agg_ini,
                      aggregation_section=args['--log-section'],
                      agg_level=args['--log-level'])
+    log.init_logger('sqlalchemy', aggregation_ini=agg_ini,
+                     aggregation_section=args['--log-section'],
+                     agg_level=args['--log-level'],
+                     sender='sqlalchemy')
     try:
         if args['add-input']:
             Session = session_maker_from_config(args['<db-config>'])
@@ -341,12 +344,12 @@ if __name__ == '__main__':
                                     args['<sql-filter>'], args['<input-set-name>'], Session()))
         elif args['test']:
             del sys.argv[1:]
-            log.info(__name__, 'input.py', 'running tests')
+            log.info(__name__, 'running tests', 'input.py')
             unittest.main(exit=False)
         elif args['fail']:
             raise RuntimeError('Fake error')
         elif args['nop']:
             pass
     except Exception:
-        log.error(__name__, 'input.py', 'Uncaught exception:')
+        log.error(__name__, 'Uncaught exception:', 'input.py')
         raise

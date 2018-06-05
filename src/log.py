@@ -34,71 +34,79 @@ except ImportError:
 _default_log_ini_dir = os.path.expanduser('~/.recount')
 _default_log_ini_fn = os.path.join(_default_log_ini_dir, 'log.ini')
 _default_log_ini_fn_section = 'log'
-_default_format = '%(asctime)s %(message)s'
-_default_format_with_hostname = '%(asctime)s %(hostname)s %(message)s'
 _default_datefmt = '%b %d %H:%M:%S'
 
 
-def msg(name, module, text, level):
+def msg(name, sender, text, level):
+    if sender is not None and len(sender) > 0:
+        sender += ' '
+    exc_info = sys.exc_info()[0] is not None
+    logger = logging.getLogger(name)
     if level == logging.DEBUG:
-        logging.getLogger(name).debug(module + ': ' + text, exc_info=sys.exc_info()[0] is not None)
+        logger.debug(sender + text, exc_info=exc_info)
     elif level == logging.INFO:
-        logging.getLogger(name).info(module + ': ' + text, exc_info=sys.exc_info()[0] is not None)
+        logger.info(sender + text, exc_info=exc_info)
     if level == logging.WARNING:
-        logging.getLogger(name).warning(module + ': ' + text, exc_info=sys.exc_info()[0] is not None)
+        logger.warning(sender + text, exc_info=exc_info)
     if level == logging.ERROR:
-        logging.getLogger(name).error(module + ': ' + text, exc_info=sys.exc_info()[0] is not None)
+        logger.error(sender + text, exc_info=exc_info)
     if level == logging.CRITICAL:
-        logging.getLogger(name).critical(module + ': ' + text, exc_info=sys.exc_info()[0] is not None)
+        logger.critical(sender + text, exc_info=exc_info)
 
 
-def debug(name, module, text):
-    msg(name, module, text, logging.DEBUG)
+def debug(name, text, sender=''):
+    msg(name, sender, text, logging.DEBUG)
 
 
-def info(name, module, text):
-    msg(name, module, text, logging.INFO)
+def info(name, text, sender=''):
+    msg(name, sender, text, logging.INFO)
 
 
-def warning(name, module, text):
-    msg(name, module, text, logging.WARNING)
+def warning(name, text, sender=''):
+    msg(name, sender, text, logging.WARNING)
 
 
-def error(name, module, text):
-    msg(name, module, text, logging.ERROR)
+def error(name, text, sender=''):
+    msg(name, sender, text, logging.ERROR)
 
 
-def critical(name, module, text):
-    msg(name, module, text, logging.CRITICAL)
+def critical(name, text, sender=''):
+    msg(name, sender, text, logging.CRITICAL)
 
 
-def new_default_formatter():
-    return logging.Formatter(fmt=_default_format, datefmt=_default_datefmt)
+def init_logger(name, aggregation_ini=None, aggregation_section='log',
+                level='DEBUG', agg_level='INFO', sender=None):
+    lg = logging.getLogger(name)
+    lg.setLevel(level if isinstance(level, int) else logging.getLevelName(level))
 
+    # First set up default handler, to console with simple message
+    default_handler = logging.StreamHandler()
+    default_format = '%(asctime)s %(message)s'
+    if sender is not None:
+        # If a sender was specified, include it in the log string
+        default_format = '%(asctime)s %(sender)s %(message)s'
+    default_formatter = logging.Formatter(fmt=default_format, datefmt=_default_datefmt)
+    default_handler.setFormatter(default_formatter)
+    if sender is not None:
+        add_sender_filter(default_handler, sender)
+    lg.addHandler(default_handler)
 
-def get_level(lab):
-    return lab if isinstance(lab, int) else logging.getLevelName(lab)
+    if aggregation_ini is not None:
+        # see comment for syslog_handler_from_ini
 
-
-def init_loggers(names, aggregation_ini=None, aggregation_section='log',
-                 level='DEBUG', agg_level='INFO'):
-    for name in names:
-        lg = logging.getLogger(name)
-        lg.setLevel(get_level(level))
-
-        # First set up default handler, to console with simple message
-        default_handler = logging.StreamHandler()
-        default_formatter = logging.Formatter(fmt=_default_format, datefmt=_default_datefmt)
-        default_handler.setFormatter(default_formatter)
-        lg.addHandler(default_handler)
-
-        if aggregation_ini is not None:
-            # see comment for syslog_handler_from_ini
-            agg_handler = syslog_handler_from_ini(
-                aggregation_ini, aggregation_section, get_level(agg_level))
-            lg.addHandler(agg_handler)
-
-        return lg
+        host, port, fmt, datefmt = read_log_config(config_fn=aggregation_ini,
+                                                   section=aggregation_section)
+        agg_handler = SysLogHandler(address=(host, port))
+        agg_format = '%(asctime)s %(hostname)s %(message)s'
+        if sender is not None:
+            agg_format = '%(asctime)s %(hostname)s %(sender)s %(message)s'
+        agg_formatter = logging.Formatter(fmt=agg_format, datefmt=_default_datefmt)
+        agg_handler.setFormatter(agg_formatter)
+        agg_handler.setLevel(agg_level)
+        add_hostname_filter(agg_handler)
+        if sender is not None:
+            add_sender_filter(agg_handler, sender)
+        lg.addHandler(agg_handler)
 
 
 def read_log_config(config_fn, section):
@@ -108,6 +116,27 @@ def read_log_config(config_fn, section):
         raise RuntimeError('No [%s] section in log ini file "%s"' % (section, config_fn))
     return cfg.get(section, 'host'), int(cfg.get(section, 'port')), \
            cfg.get(section, 'format'), cfg.get(section, 'datefmt')
+
+
+def add_sender_filter(add_to, sender):
+    """
+    add_to could be a handler or a logger.  For our purposes it's probably a
+    handler for a log aggregator.
+    """
+
+    class SenderFilter(logging.Filter):
+        """
+        "Filter" seems just to annotate log messages with hostname
+        """
+        def __init__(self, sender):
+            super(SenderFilter, self).__init__()
+            self.sender = sender
+
+        def filter(self, record):
+            record.sender = self.sender
+            return True
+
+    add_to.addFilter(SenderFilter(sender))
 
 
 def add_hostname_filter(add_to):
@@ -129,28 +158,6 @@ def add_hostname_filter(add_to):
     add_to.addFilter(ContextFilter())
 
 
-def syslog_handler_from_ini(ini_fn=_default_log_ini_fn,
-                            ini_section=_default_log_ini_fn_section,
-                            agg_level=logging.INFO):
-    """
-    For when using a log aggregator is as simple as specifying a few settings
-    like this:
-
-    [log]
-    host = keep-my-logs.service.com
-    port = 777
-    format = %(asctime)s %(hostname)s recount-pump: %(message)s
-    datefmt = %b %d %H:%M:%S
-    """
-    host, port, fmt, datefmt = read_log_config(config_fn=ini_fn, section=ini_section)
-    agg_handler = SysLogHandler(address=(host, port))
-    add_hostname_filter(agg_handler)
-    agg_formatter = logging.Formatter(fmt=_default_format_with_hostname, datefmt=_default_datefmt)
-    agg_handler.setFormatter(agg_formatter)
-    agg_handler.setLevel(agg_level)
-    return agg_handler
-
-
 class TestReference(unittest.TestCase):
 
     def test_simple_source_insert(self):
@@ -163,10 +170,10 @@ datefmt = %b %d %H:%M:%S
         test_fn = '.tmp.init'
         with open(test_fn, 'w') as fh:
             fh.write(config)
-        host, port, format, datefmt = read_log_config(config_fn=test_fn, section='mylog')
+        host, port, fmt, datefmt = read_log_config(config_fn=test_fn, section='mylog')
         self.assertEqual('blah.log_agg.com', host)
         self.assertEqual(999, port)
-        self.assertEqual('%(asctime)s %(hostname)s recount-pump: %(message)s', format)
+        self.assertEqual('%(asctime)s %(hostname)s recount-pump: %(message)s', fmt)
         self.assertEqual('%b %d %H:%M:%S', datefmt)
         os.remove(test_fn)
 
@@ -179,8 +186,8 @@ if __name__ == '__main__':
         unittest.main()
     elif args['message']:
         agg_ini = os.path.expanduser(args['--log-ini']) if args['--aggregate'] else None
-        init_loggers([__name__], aggregation_ini=agg_ini,
-                     aggregation_section=args['--log-section'],
-                     agg_level=args['--log-level'])
-        info(__name__, 'log.py', "This is an info message")
-        debug(__name__, 'log.py', "This is a debug message")
+        init_logger(__name__, aggregation_ini=agg_ini,
+                    aggregation_section=args['--log-section'],
+                    agg_level=args['--log-level'], sender='log.py')
+        info(__name__, 'This is an info message')
+        debug(__name__, 'This is a debug message')
