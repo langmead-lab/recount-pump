@@ -3,6 +3,24 @@
 # Author: Ben Langmead <ben.langmead@gmail.com>
 # License: MIT
 
+"""job_loop
+
+Usage:
+  job_loop add-input [options] <>
+  job_loop test [options]
+
+Options:
+  --max-fail <int>         maximum # poll failures before quitting [default: 5].
+  --poll-seconds <int>     seconds to wait before polling again when poll fails [default: 5].
+  --log-ini <ini>          ini file for log aggregator [default: ~/.recount/log.ini].
+  --log-section <section>  ini file section for log aggregator [default: log].
+  --log-level <level>      set level for log aggregation; could be CRITICAL,
+                           ERROR, WARNING, INFO, DEBUG [default: INFO].
+  -a, --aggregate          enable log aggregation.
+  -h, --help               Show this screen.
+  --version                Show version.
+"""
+
 """
 Runs on the cluster.  Repeatedly checks the queue for another job.  If it gets
 one, fires off a nextflow job to run it.
@@ -27,6 +45,7 @@ import sys
 import log
 import unittest
 from docopt import docopt
+from queueing.service import get_queueing_service
 
 
 def poll_queue():
@@ -37,19 +56,19 @@ def do_job():
     pass
 
 
-def job_loop(logger, max_fails=10, sleep_seconds=10):
+def job_loop(max_fails=10, sleep_seconds=10):
     attempt, success, fail = 0, 0, 0
     while True:
         attempt += 1
         if poll_queue():
             success += 1
-            logger.info('Job began')
+            log.info(__name__, 'Job start', 'job_loop.py')
             do_job()
-            logger.info('Job ended')
+            log.info(__name__, 'Job end', 'job_loop.py')
         else:
             fail += 1
-            if fail > max_fails:
-                logger.info('Job loop ending after %d polling failures' % max_fails)
+            if fail >= max_fails:
+                log.info('Job loop end after %d poll failures' % fail)
                 break
             time.sleep(sleep_seconds)
 
@@ -62,7 +81,8 @@ if __name__ == '__main__':
                      agg_level=args['--log-level'])
     try:
         if args['run']:
-            print(job_loop())
+            print(job_loop(max_fails=args['--max-fail'],
+                           sleep_seconds=args['--poll-seconds']))
         elif args['test']:
             del sys.argv[1:]
             log.info(__name__, 'running tests', 'job_loop.py')
