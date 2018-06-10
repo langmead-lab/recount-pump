@@ -121,7 +121,7 @@ def download_reference(session, dest_dir='.', ref_name=None,
     for ss in sss:
         for src in ss.sources:
             ll.add(src)
-    mover = Mover(profile=profile, curl_exe=curl_exe)
+    mover = Mover(profile=profile, curl_exe=curl_exe, enable_web=True)
     # TODO: deal with gene annotations too
     for l in ll:
         for url, cksum in [(l.url_1, l.checksum_1),
