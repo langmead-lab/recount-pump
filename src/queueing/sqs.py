@@ -7,6 +7,11 @@ import unittest
 import boto3
 
 
+class SqsService(object):
+    def __init__(self):
+        pass
+
+
 def new_session(q_url, fake_client=False):
     return boto3.client('sqs'), q_url
 
@@ -60,7 +65,7 @@ def get_queue_attributes(client, q_url):
 class TestSqs(unittest.TestCase):
 
     def test_simple_source_insert(self):
-        
+        pass
 
 
 if __name__ == '__main__':

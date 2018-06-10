@@ -6,7 +6,8 @@
 import abc
 
 
-class Service(abc.ABC):
+class Service(object):
+    __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
     def get(self, queue):
