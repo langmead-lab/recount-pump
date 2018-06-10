@@ -21,14 +21,14 @@ Usage:
   input nop [options]
 
 Options:
-  <db-config>           Database ini file, w/ section named 'client' [default: ~/.recount/db.ini].
+  <db-config>              Database ini file, w/ section named 'client' [default: ~/.recount/db.ini].
   --log-ini <ini>          ini file for log aggregator [default: ~/.recount/log.ini].
   --log-section <section>  ini file section for log aggregator [default: log].
   --log-level <level>      set level for log aggregation; could be CRITICAL,
                            ERROR, WARNING, INFO, DEBUG [default: INFO].
   -a, --aggregate          enable log aggregation.
-  -h, --help            Show this screen.
-  --version             Show version.
+  -h, --help               Show this screen.
+  --version                Show version.
 """
 
 from __future__ import print_function
