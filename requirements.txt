@@ -8,3 +8,4 @@ numpy==1.13.1
 mysqlclient==1.3.10
 watchtower==0.3.3
 psutil==5.4.6
+globus-sdk==1.3.0
