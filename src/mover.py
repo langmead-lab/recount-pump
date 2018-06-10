@@ -12,11 +12,15 @@ Usage:
 Options:
   -h, --help                 Show this screen.
   --version                  Show version.
-  -a, --aggregate-logs       Send log messages to aggregator.
   --profile=<profile>        AWS credentials profile section [default: default].
   --curl=<curl>              curl executable [default: curl].
   --globus-ini=<path>        Path to globus ini file [default: ~/.recount/globus.ini].
   --globus-section=<string>  Section header for globus in ini file [default: globus].
+  --log-ini <ini>            ini file for log aggregator [default: ~/.recount/log.ini].
+  --log-section <section>    ini file section for log aggregator [default: log].
+  --log-level <level>        set level for log aggregation; could be CRITICAL,
+                             ERROR, WARNING, INFO, DEBUG [default: INFO].
+  -a, --aggregate            enable log aggregation.
 """
 
 
@@ -24,11 +28,18 @@ from __future__ import print_function
 import os
 import re
 import time
-import logging
 import unittest
 import globus_sdk
-from log import new_logger
+import log
 from docopt import docopt
+import subprocess
+from functools import wraps
+from shutil import copyfile
+import threading
+import sys
+import boto3
+import botocore
+
 try:
     from urllib.parse import urlparse, urlencode, quote_plus
     from urllib.request import urlopen, Request
@@ -37,17 +48,12 @@ except ImportError:
     from urlparse import urlparse
     from urllib import urlencode, quote_plus
     from urllib2 import urlopen, Request, HTTPError, URLError
+    sys.exc_clear()
 try:
     from configparser import RawConfigParser
 except ImportError:
     from ConfigParser import RawConfigParser
-import subprocess
-from functools import wraps
-from shutil import copyfile
-import threading
-import sys
-import boto3
-import botocore
+    sys.exc_clear()
 
 """
 mover.py
@@ -77,10 +83,6 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 """
-
-
-def _log_info(st):
-    logging.getLogger(__name__).info('mover.py: ' + st)
 
 
 def path_join(unix, *args):
@@ -249,12 +251,12 @@ class GlobusMover(object):
         transfer_result = self.client.submit_transfer(tdata)
         task_id = transfer_result['task_id']
         while self.client.get_task(task_id)['status'] == 'ACTIVE':
-            _log_info('Waiting for globus cp "%s" -> "%s" (task %s)' %
-                      (source, destination, task_id))
+            log.info(__name__, 'Waiting for globus cp "%s" -> "%s" (task %s)' %
+                      (source, destination, task_id), 'mover.py')
             self.client.task_wait(task_id, timeout, poll_interval)
         final_status = self.client.get_task(task_id)['status']
-        _log_info('Finished globus cp "%s" -> "%s" (task %s) with final status %s' %
-                  (source, destination, task_id, final_status))
+        log.info(__name__, 'Finished globus cp "%s" -> "%s" (task %s) with final status %s' %
+                  (source, destination, task_id, final_status), 'mover.py')
 
     def get(self, source, destination):
         self.put(source, destination, type='get')
@@ -520,22 +522,22 @@ class Mover(object):
         """
         url = Url(url)
         if url.is_local:
-            _log_info('Local exists for "%s"' % url)
+            log.info(__name__, 'Local exists for "%s"' % url, 'mover.py')
             return os.path.exists(os.path.abspath(url.to_url()))
         elif url.is_s3:
             if not self.enable_s3:
                 raise RuntimeError('exists called on S3 URL "%s" but S3 not enabled' % url)
-            _log_info('S3 exists for "%s"' % url)
+            log.info(__name__, 'S3 exists for "%s"' % url, 'mover.py')
             return self.s3_mover.exists(url.to_url())
         elif url.is_globus:
             if not self.enable_globus:
                 raise RuntimeError('exists called on Globus URL "%s" but Globus not enabled' % url)
-            _log_info('Globus exists for "%s"' % url)
+            log.info(__name__, 'Globus exists for "%s"' % url, 'mover.py')
             return self.globus_mover.exists(url.to_url())
         elif url.is_curlable:
             if not self.enable_web:
                 raise RuntimeError('exists called on web URL "%s" but web not enabled' % url)
-            _log_info('Web exists for "%s"' % url)
+            log.info(__name__, 'Web exists for "%s"' % url, 'mover.py')
             return self.web_mover.exists(url.to_url())
 
     def get(self, url, destination='.'):
@@ -549,22 +551,22 @@ class Mover(object):
         url = Url(url)
         src, dst = url.to_url(), destination
         if url.is_local:
-            _log_info('Local get from "%s" to "%s"' % (src, dst))
+            log.info(__name__, 'Local get from "%s" to "%s"' % (src, dst), 'mover.py')
             copyfile(src, dst)
         elif url.is_s3:
             if not self.enable_s3:
                 raise RuntimeError('get called on S3 URL "%s" but S3 not enabled' % url)
-            _log_info('S3 get from "%s" to "%s"' % (src, dst))
+            log.info(__name__, 'S3 get from "%s" to "%s"' % (src, dst), 'mover.py')
             self.s3_mover.get(src, dst)
         elif url.is_globus:
             if not self.enable_globus:
                 raise RuntimeError('get called on Globus URL "%s" but Globus not enabled' % url)
-            _log_info('Globus get from "%s" to "%s"' % (src, dst))
+            log.info(__name__, 'Globus get from "%s" to "%s"' % (src, dst), 'mover.py')
             self.globus_mover.get(src, dst)
         elif url.is_curlable:
             if not self.enable_web:
                 raise RuntimeError('get called on web URL "%s" but web not enabled' % url)
-            _log_info('Web get from "%s" to "%s"' % (src, dst))
+            log.info(__name__, 'Web get from "%s" to "%s"' % (src, dst), 'mover.py')
             self.web_mover.get(src, dst)
 
     def put(self, source, url):
@@ -578,22 +580,22 @@ class Mover(object):
         url = Url(url)
         dst = url.to_url()
         if url.is_local:
-            _log_info('Local put from "%s" to "%s"' % (source, dst))
+            log.info(__name__, 'Local put from "%s" to "%s"' % (source, dst), 'mover.py')
             copyfile(source, dst)
         elif url.is_s3:
             if not self.enable_s3:
                 raise RuntimeError('put called on S3 URL "%s" but S3 not enabled' % url)
-            _log_info('S3 put from "%s" to "%s"' % (source, dst))
+            log.info(__name__, 'S3 put from "%s" to "%s"' % (source, dst), 'mover.py')
             self.s3_mover.put(source, dst)
         elif url.is_globus:
             if not self.enable_globus:
                 raise RuntimeError('put called on Globus URL "%s" but Globus not enabled' % url)
-            _log_info('Globus put from "%s" to "%s"' % (source, dst))
+            log.info(__name__, 'Globus put from "%s" to "%s"' % (source, dst), 'mover.py')
             self.globus_mover.put(source, dst)
         elif url.is_curlable:
             if not self.enable_web:
                 raise RuntimeError('put called on web URL "%s" but web not enabled' % url)
-            _log_info('Web put from "%s" to "%s"' % (source, dst))
+            log.info(__name__, 'Web put from "%s" to "%s"' % (source, dst), 'mover.py')
             self.web_mover.put(source, dst)
 
 
@@ -670,9 +672,12 @@ class TestMover(unittest.TestCase):
 
 if __name__ == '__main__':
     args = docopt(__doc__)
-    new_logger(__name__, with_aggregation=args['--aggregate-logs'], level=logging.INFO)
+    agg_ini = os.path.expanduser(args['--log-ini']) if args['--aggregate'] else None
+    log.init_logger(__name__, aggregation_ini=agg_ini,
+                     aggregation_section=args['--log-section'],
+                     agg_level=args['--log-level'])
     try:
-        _log_info('In main')
+        log.info(__name__, 'In main', 'mover.py')
         if args['exists']:
             m = Mover(profile=args['--profile'], curl_exe=args['--curl'],
                       globus_ini=args['--globus-ini'], globus_section=args['--globus-section'],
@@ -690,10 +695,10 @@ if __name__ == '__main__':
             m.put(args['<source>'], args['<dest>'])
         elif args['test']:
             del sys.argv[1:]
-            _log_info('running tests')
+            log.info(__name__, 'Running tests', 'mover.py')
             unittest.main(exit=False)
         elif args['nop']:
             pass
     except Exception:
-        logging.getLogger(__name__).error('mover.py: Uncaught exception:', exc_info=True)
+        log.error(__name__, 'Uncaught exception:', 'mover.py')
         raise
