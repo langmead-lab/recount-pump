@@ -27,9 +27,10 @@ import logging
 from docopt import docopt
 from logging.handlers import SysLogHandler
 try:
-    from configparser import ConfigParser
+    from configparser import RawConfigParser
 except ImportError:
-    from ConfigParser import ConfigParser
+    from ConfigParser import RawConfigParser
+    sys.exc_clear()
 
 _default_log_ini_dir = os.path.expanduser('~/.recount')
 _default_log_ini_fn = os.path.join(_default_log_ini_dir, 'log.ini')
@@ -110,7 +111,7 @@ def init_logger(name, aggregation_ini=None, aggregation_section='log',
 
 
 def read_log_config(config_fn, section):
-    cfg = ConfigParser()
+    cfg = RawConfigParser()
     cfg.read(config_fn)
     if section not in cfg.sections():
         raise RuntimeError('No [%s] section in log ini file "%s"' % (section, config_fn))
@@ -164,8 +165,8 @@ class TestLog(unittest.TestCase):
         config = """[mylog]
 host = blah.log_agg.com
 port = 999
-format = %%(asctime)s %%(hostname)s recount-pump: %%(message)s
-datefmt = %%b %%d %%H:%%M:%%S
+format = %(asctime)s %(hostname)s recount-pump: %(message)s
+datefmt = %b %d %H:%M:%S
 """
         test_fn = '.tmp.init'
         with open(test_fn, 'w') as fh:
