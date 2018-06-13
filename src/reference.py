@@ -3,16 +3,47 @@
 # Author: Ben Langmead <ben.langmead@gmail.com>
 # License: MIT
 
+"""reference
+
+Usage:
+  reference add-source <url-1> <url-2> <url-3>
+                       <checksum-1> <checksum-2> <checksum-3>
+                       <retrieval-method> [options]
+  reference add-source-set <name> [options]
+  reference add-sources-to-set (<set-id> <source-id>)... [options]
+  reference list-source-set <name> [options]
+  reference add-annotation <tax-id> <url> <md5>
+                           <retrieval-method> [options]
+  reference add-annotation-set <name> [options]
+  reference add-annotations-to-set (<set-id> <annotation-id>)... [options]
+  reference list-annotation-set <name> [options]
+  reference test [options]
+  reference nop [options]
+
+Options:
+  --db-ini <ini>           Database ini file [default: ~/.recount/db.ini].
+  --db-section <section>   ini file section for database [default: client].
+  --log-ini <ini>          ini file for log aggregator [default: ~/.recount/log.ini].
+  --log-section <section>  ini file section for log aggregator [default: log].
+  --log-level <level>      set level for log aggregation; could be CRITICAL,
+                           ERROR, WARNING, INFO, DEBUG [default: INFO].
+  -a, --aggregate          enable log aggregation.
+  -h, --help               Show this screen.
+  --version                Show version.
+"""
+
 import os
+import sys
 import unittest
 import tempfile
 import shutil
-import logging
+import log
+from docopt import docopt
 
 from sqlalchemy import Column, ForeignKey, Integer, String, Sequence, Table, create_engine
 from base import Base
 from sqlalchemy.orm import relationship, sessionmaker
-from toolbox import generate_file_md5
+from toolbox import generate_file_md5, session_maker_from_config
 from mover import Mover
 
 
@@ -24,13 +55,18 @@ class Source(Base):
     __tablename__ = 'source'
 
     id = Column(Integer, Sequence('source_id_seq'), primary_key=True)
-    retrieval_method = Column(String(64))
     url_1 = Column(String(1024))  # URL where obtained
     url_2 = Column(String(1024))  # URL where obtained
     url_3 = Column(String(1024))  # URL where obtained
     checksum_1 = Column(String(256))
     checksum_2 = Column(String(256))
     checksum_3 = Column(String(256))
+    retrieval_method = Column(String(64))
+
+    def __repr__(self):
+        return ' '.join(map(str, [self.id, self.url_1, self.url_2, self.url_3,
+                                  self.checksum_1, self.checksum_2, self.checksum_3,
+                                  self.retrieval_method]))
 
 
 # Creates many-to-many association between Sources and SourceSets
@@ -55,6 +91,20 @@ annotation_association_table = Table('annotation_set_association', Base.metadata
     Column('annotation_id', Integer, ForeignKey('annotation.id')),
     Column('annotation_set_id', Integer, ForeignKey('annotation_set.id'))
 )
+
+
+class Annotation(Base):
+    """
+    Packages gene annotation files needed to study the annotated transcriptome
+    of a species
+    """
+    __tablename__ = 'annotation'
+
+    id = Column(Integer, Sequence('annotation_id_seq'), primary_key=True)
+    tax_id = Column(Integer)  # refers to NCBI tax ids
+    url = Column(String(1024))
+    checksum = Column(String(32))
+    retrieval_method = Column(String(64))
 
 
 class AnnotationSet(Base):
@@ -84,17 +134,106 @@ class Reference(Base):
     annotation_set = Column(Integer, ForeignKey('annotation_set.id'))
 
 
-class Annotation(Base):
+def add_source(url_1, url_2, url_3,
+               checksum_1, checksum_2, checksum_3,
+               retrieval_method, session):
     """
-    Packages gene annotation files needed to study the annotated transcriptome
-    of a species
+    Add new source with associated retrieval info.
     """
-    __tablename__ = 'annotation'
+    url_1 = None if url_1 == 'NA' else url_1
+    url_2 = None if url_2 == 'NA' else url_2
+    url_3 = None if url_3 == 'NA' else url_3
+    checksum_1 = None if checksum_1 == 'NA' else checksum_1
+    checksum_2 = None if checksum_2 == 'NA' else checksum_2
+    checksum_3 = None if checksum_3 == 'NA' else checksum_3
+    i = Source(url_1=url_1, url_2=url_2, url_3=url_3,
+              checksum_1=checksum_1, checksum_2=checksum_2, checksum_3=checksum_3,
+              retrieval_method=retrieval_method)
+    session.add(i)
+    session.commit()
+    log.info(__name__, 'Added 1 source', 'reference.py')
+    return i.id
 
-    id = Column(Integer, Sequence('annotation_id_seq'), primary_key=True)
-    tax_id = Column(Integer)  # refers to NCBI tax ids
-    url1 = Column(String(1024))
-    md5 = Column(String(32))
+
+def add_annotation(tax_id, url, checksum, retrieval_method, session):
+    """
+    Add new annotation.
+    """
+    i = Annotation(tax_id=tax_id, url=url, checksum=checksum, retrieval_method=retrieval_method)
+    session.add(i)
+    session.commit()
+    log.info(__name__, 'Added 1 annotation', 'reference.py')
+    return i.id
+
+
+def add_source_set(name, session):
+    """
+    Add new source set with given name.  It's empty at first.  Needs to be
+    populated with, e.g., add-source-to-set.
+    """
+    sset = SourceSet(name=name)
+    session.add(sset)
+    session.commit()
+    log.info(__name__, 'Added source set "%s"' % name, 'reference.py')
+    return sset.id
+
+
+def add_annotation_set(name, session):
+    """
+    Add new annotation set with given name.  It's empty at first.  Needs to be
+    populated with, e.g., add-annotation-to-set.
+    """
+    aset = AnnotationSet(name=name)
+    session.add(aset)
+    session.commit()
+    log.info(__name__, 'Added annotation set "%s"' % name, 'reference.py')
+    return aset.id
+
+
+def list_source_set(name, session):
+    """
+    Print the names of all the sources in the set with the given name.
+    """
+    source_set = session.query(SourceSet).filter_by(name=name).first()
+    if source_set is None:
+        raise RuntimeError('No SourceSet with name "%s"' % name)
+    for source in source_set.sources:
+        print(name + ' ' + str(source))
+
+
+def list_annotation_set(name, session):
+    """
+    Print the names of all the annotations in the set with the given name.
+    """
+    annotation_set = session.query(AnnotationSet).filter_by(name=name).first()
+    if annotation_set is None:
+        raise RuntimeError('No AnnotationSet with name "%s"' % name)
+    for annotation in annotation_set.annotations:
+        print(name + ' ' + str(annotation))
+
+
+def add_sources_to_set(set_ids, source_ids, session):
+    """
+    Add sources to source set(s).
+    """
+    for set_id, source_id in zip(set_ids, source_ids):
+        inp = session.query(Source).get(source_id)
+        source_set = session.query(SourceSet).get(set_id)
+        source_set.sources.append(inp)
+    log.info(__name__, 'Imported %d sources to sets' % len(source_ids), 'reference.py')
+    session.commit()
+
+
+def add_annotations_to_set(set_ids, annotation_ids, session):
+    """
+    Add annotations to annotation set(s).
+    """
+    for set_id, annotation_id in zip(set_ids, annotation_ids):
+        annotation = session.query(Annotation).get(annotation_id)
+        annotation_set = session.query(AnnotationSet).get(set_id)
+        annotation_set.annotations.append(annotation)
+    log.info(__name__, 'Imported %d annotations to sets' % len(annotation_ids), 'reference.py')
+    session.commit()
 
 
 def download_reference(session, dest_dir='.', ref_name=None,
@@ -132,17 +271,17 @@ def download_reference(session, dest_dir='.', ref_name=None,
                 dest_fn = os.path.join(dest_dir, fn)
                 if os.path.exists(dest_fn):
                     raise ValueError('Destination already exists: ' + dest_fn)
-                logging.info('retrieving "%s" into "%s"' % (url, dest_dir))
+                log.info(__name__, 'retrieve "%s" into "%s"' % (url, dest_dir), 'reference.py')
                 mover.get(url, dest_dir)
                 if not os.path.exists(dest_fn):
                     raise IOError('Failed to obtain "%s"' % url)
                 if cksum is not None and len(cksum) > 0:
-                    logging.info('checking checksum for "%s"' % dest_fn)
-                    dest_md5 = generate_file_md5(dest_fn)
-                    if cksum != dest_md5:
-                        raise IOError('MD5 mismatch; expected %s got %s' % (cksum, dest_md5))
+                    log.info(__name__, 'check checksum for "%s"' % dest_fn, 'reference.py')
+                    dest_checksum = generate_file_md5(dest_fn)
+                    if cksum != dest_checksum:
+                        raise IOError('MD5 mismatch; expected %s got %s' % (cksum, dest_checksum))
                 if fn.endswith('.gz'):
-                    logging.info('decompressing "%s"' % dest_fn)
+                    log.info(__name__, 'decompressing "%s"' % dest_fn, 'reference.py')
                     os.system('gunzip ' + dest_fn)
 
 # This is ~29MB
@@ -195,6 +334,20 @@ class TestReference(unittest.TestCase):
         self.session.commit()
         self.assertEqual(0, len(list(self.session.query(Source))))
 
+    def test_simple_annotation_insert(self):
+        annotation = Annotation(tax_id=9606, retrieval_method="url",
+                                url=_lambda_annot, checksum=_lambda_annot_md5)
+        self.assertEqual(0, len(list(self.session.query(Annotation))))
+        self.session.add(annotation)
+        self.session.commit()
+        annotations = list(self.session.query(Annotation))
+        self.assertEqual(1, len(annotations))
+        self.assertEqual(_lambda_annot, annotations[0].url)
+        self.assertEqual(_lambda_annot_md5, annotations[0].checksum)
+        self.session.delete(annotation)
+        self.session.commit()
+        self.assertEqual(0, len(list(self.session.query(Annotation))))
+
     def test_simple_sourceset_insert(self):
         src1 = Source(retrieval_method="url", url_1=_elegans_url, checksum_1=_elegans_md5)
         src2 = Source(retrieval_method="url", url_1=_elegans_url, checksum_1=_elegans_md5)
@@ -226,6 +379,37 @@ class TestReference(unittest.TestCase):
         self.assertEqual(0, len(list(self.session.query(SourceSet))))
         self.assertEqual(0, len(list(self.session.query(source_association_table))))
 
+    def test_simple_annotationset_insert(self):
+        annot1 = Annotation(retrieval_method="url", url=_lambda_annot, checksum=_lambda_annot_md5)
+        annot2 = Annotation(retrieval_method="url", url=_lambda_annot, checksum=_lambda_annot_md5)
+        annot3 = Annotation(retrieval_method="url", url=_lambda_annot, checksum=_lambda_annot_md5)
+
+        # add annotations
+        self.assertEqual(0, len(list(self.session.query(Annotation))))
+        self.assertEqual(0, len(list(self.session.query(AnnotationSet))))
+        self.session.add(annot1)
+        self.session.add(annot2)
+        self.session.add(annot3)
+        self.session.commit()
+        self.assertEqual(3, len(list(self.session.query(Annotation))))
+        annots = list(self.session.query(Annotation))
+
+        # add annotation sets with associations
+        self.session.add(AnnotationSet(annotations=[annot1, annot2]))
+        self.session.add(AnnotationSet(annotations=[annot1, annot2, annot3]))
+        self.session.commit()
+        self.assertEqual(2, len(list(self.session.query(AnnotationSet))))
+        annot_sets = list(self.session.query(AnnotationSet))
+        self.assertEqual(2, len(annot_sets[0].annotations))
+        self.assertEqual(3, len(annot_sets[1].annotations))
+        self.assertEqual(5, len(list(self.session.query(annotation_association_table))))
+
+        for obj in annots + annot_sets:
+            self.session.delete(obj)
+        self.assertEqual(0, len(list(self.session.query(Annotation))))
+        self.assertEqual(0, len(list(self.session.query(AnnotationSet))))
+        self.assertEqual(0, len(list(self.session.query(annotation_association_table))))
+
     def test_download_all(self):
         src1 = Source(retrieval_method="url", url_1=_lambda_fa, checksum_1=_lambda_fa_md5)
         src2 = Source(retrieval_method="url", url_1=_phix_fa, checksum_1=_phix_md5)
@@ -255,10 +439,46 @@ class TestReference(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    import sys
-
-    if '--test' in sys.argv:
-        sys.argv.remove('--test')
-        unittest.main()
-
-    # Set up session; maybe use a config file to establish 
+    args = docopt(__doc__)
+    agg_ini = os.path.expanduser(args['--log-ini']) if args['--aggregate'] else None
+    log.init_logger(__name__, aggregation_ini=agg_ini,
+                     aggregation_section=args['--log-section'],
+                     agg_level=args['--log-level'])
+    try:
+        db_ini = os.path.expanduser(args['--db-ini'])
+        if args['add-source']:
+            Session = session_maker_from_config(db_ini, args['--db-section'])
+            print(add_source(args['<url-1>'], args['<url-2>'], args['<url-3>'],
+                             args['<checksum-1>'], args['<checksum-2>'], args['<checksum-3>'],
+                             args['<retrieval-method>'], Session()))
+        elif args['add-source-set']:
+            Session = session_maker_from_config(db_ini, args['--db-section'])
+            print(add_source_set(args['<name>'], Session()))
+        elif args['list-source-set']:
+            Session = session_maker_from_config(db_ini, args['--db-section'])
+            print(list_source_set(args['<name>'], Session()))
+        elif args['add-sources-to-set']:
+            Session = session_maker_from_config(db_ini, args['--db-section'])
+            print(add_sources_to_set(args['<set-id>'], args['<source-id>'], Session()))
+        if args['add-annotation']:
+            Session = session_maker_from_config(db_ini, args['--db-section'])
+            print(add_annotation(args['<tax-id>'], args['<url>'], args['<md5>'],
+                                 args['<retrieval-method>'], Session()))
+        elif args['add-annotation-set']:
+            Session = session_maker_from_config(db_ini, args['--db-section'])
+            print(add_annotation_set(args['<name>'], Session()))
+        elif args['list-annotation-set']:
+            Session = session_maker_from_config(db_ini, args['--db-section'])
+            print(list_annotation_set(args['<name>'], Session()))
+        elif args['add-annotations-to-set']:
+            Session = session_maker_from_config(db_ini, args['--db-section'])
+            print(add_annotations_to_set(args['<set-id>'], args['<annotation-id>'], Session()))
+        elif args['test']:
+            del sys.argv[1:]
+            log.info(__name__, 'running tests', 'reference.py')
+            unittest.main(exit=False)
+        elif args['nop']:
+            pass
+    except Exception:
+        log.error(__name__, 'Uncaught exception:', 'reference.py')
+        raise
