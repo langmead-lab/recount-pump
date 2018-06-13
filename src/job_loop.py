@@ -45,7 +45,6 @@ import sys
 import log
 import unittest
 from docopt import docopt
-from queueing.service import get_queueing_service
 
 
 def poll_queue():
