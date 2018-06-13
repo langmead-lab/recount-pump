@@ -22,7 +22,7 @@ def generate_file_md5(fn, blocksize=2**20):
     return m.hexdigest()
 
 
-def session_maker_from_config(fn):
+def session_maker_from_config(fn, section='client'):
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
     from base import Base
@@ -35,7 +35,7 @@ def session_maker_from_config(fn):
     if not os.path.exists(fn):
         raise RuntimeError('No such ini file: "%s"' % fn)
     config.read(fn)
-    engine_url = config.get("client", "url")
+    engine_url = config.get(section, "url")
     engine = create_engine(engine_url, echo=True)
     Base.metadata.create_all(engine)
     return sessionmaker(bind=engine)
