@@ -444,6 +444,10 @@ if __name__ == '__main__':
     log.init_logger(__name__, aggregation_ini=agg_ini,
                      aggregation_section=args['--log-section'],
                      agg_level=args['--log-level'])
+    log.init_logger('sqlalchemy', aggregation_ini=agg_ini,
+                     aggregation_section=args['--log-section'],
+                     agg_level=args['--log-level'],
+                     sender='sqlalchemy')
     try:
         db_ini = os.path.expanduser(args['--db-ini'])
         if args['add-source']:
