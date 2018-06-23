@@ -16,7 +16,6 @@ Usage:
   input filter-table [options] <db-config> <prefix> <species> <sql-filter>
   input inputs-from-table [options] <db-config> <prefix> <species>
                           <sql-filter> <input-set-name>
-  input test [options]
   input fail [options]
   input nop [options]
 
@@ -33,13 +32,12 @@ Options:
 
 from __future__ import print_function
 import os
-import sys
-import unittest
 import log
+import pytest
 from docopt import docopt
 from sqlalchemy import Column, ForeignKey, Integer, String, Sequence, Table, create_engine
+from sqlalchemy.orm import relationship, Session
 from base import Base
-from sqlalchemy.orm import relationship, sessionmaker
 from sqlalchemy.sql import text
 from toolbox import session_maker_from_config
 
@@ -87,8 +85,8 @@ class InputSet(Base):
     inputs = relationship("Input", secondary=input_association_table)
 
 
-def retrieve(input_id, session, toolbox, retries=0, timeout=None):
-    inp = list(session.query(Input).filter_by(id=input_id))
+def retrieve(input_id, my_session, toolbox, retries=0, timeout=None):
+    inp = list(my_session.query(Input).filter_by(id=input_id))
     if len(inp) == 0:
         raise KeyError('No input record with id %d' % input_id)
     if len(inp) > 1:
@@ -108,56 +106,56 @@ def install_retriever():
 
 def add_input(acc_r, acc_s, url_1, url_2, url_3,
               checksum_1, checksum_2, checksum_3,
-              retrieval_method, session):
+              retrieval_method, my_session):
     """
     Add new input with associated retrieval info.
     """
     i = Input(acc_r=acc_r, acc_s=acc_s, url_1=url_1, url_2=url_2, url_3=url_3,
               checksum_1=checksum_1, checksum_2=checksum_2, checksum_3=checksum_3,
               retrieval_method=retrieval_method)
-    session.add(i)
-    session.commit()
+    my_session.add(i)
+    my_session.commit()
     log.info(__name__, 'Added 1 input', 'input.py')
     return i.id
 
 
-def add_input_set(name, session):
+def add_input_set(name, my_session):
     """
     Add new input set with given name.  It's empty at first.  Needs to be
     populated with, e.g., add-input-to-set.
     """
     iset = InputSet(name=name)
-    session.add(iset)
-    session.commit()
+    my_session.add(iset)
+    my_session.commit()
     log.info(__name__, 'Added input set "%s"' % name, 'input.py')
     return iset.id
 
 
-def list_input_set(name, session):
+def list_input_set(name, my_session):
     """
     Add new input set with given name.  It's empty at first.  Needs to be
     populated with, e.g., add-input-to-set.
     """
-    input_set = session.query(InputSet).filter_by(name=name).first()
+    input_set = my_session.query(InputSet).filter_by(name=name).first()
     if input_set is None:
         raise RuntimeError('No InputSet with name "%s"' % name)
     for input in input_set.inputs:
         print(name + ' ' + str(input))
 
 
-def add_inputs_to_set(set_ids, input_ids, session):
+def add_inputs_to_set(set_ids, input_ids, my_session):
     """
     Add inputs to input set.
     """
     for set_id, input_id in zip(set_ids, input_ids):
-        inp = session.query(Input).get(input_id)
-        input_set = session.query(InputSet).get(set_id)
+        inp = my_session.query(Input).get(input_id)
+        input_set = my_session.query(InputSet).get(set_id)
         input_set.inputs.append(inp)
     log.info(__name__, 'Imported %d inputs to sets' % len(input_ids), 'input.py')
-    session.commit()
+    my_session.commit()
 
 
-def import_input_set(name, csv_fn, session):
+def import_input_set(name, csv_fn, my_session):
     """
     Import all the entries from the CSV file into a new InputSet of the given
     name.
@@ -177,12 +175,12 @@ def import_input_set(name, csv_fn, session):
             input = Input(acc_r=acc_r, acc_s=acc_s, url_1=url_1, url_2=url_2, url_3=url_3,
                           checksum_1=checksum_1, checksum_2=checksum_2, checksum_3=checksum_3,
                           retrieval_method=retrieval_method)
-            session.add(input)
+            my_session.add(input)
             input_set.inputs.append(input)
             n_added_input += 1
     log.info(__name__, 'Imported %d items from input set' % len(input_set.inputs), 'input.py')
-    session.add(input_set)
-    session.commit()
+    my_session.add(input_set)
+    my_session.commit()
     return input_set.id, n_added_input
 
 
@@ -225,88 +223,92 @@ _longreads = 'longreads.fq'
 _longreads_md5 = '076b0e9f81aa599043b9e4be204a8014'
 
 
-def _setup():
-    engine = create_engine('sqlite:///:memory:')
+@pytest.fixture(scope='session')
+def engine():
+    return create_engine('sqlite:///:memory:')
+
+
+@pytest.yield_fixture(scope='session')
+def tables(engine):
     Base.metadata.create_all(engine)
-    Session = sessionmaker(bind=engine)
-    return Session()
+    yield
+    Base.metadata.drop_all(engine)
 
 
-class TestReference(unittest.TestCase):
-    def setUp(self):
-        self.session = _setup()
+@pytest.yield_fixture
+def session(engine, tables):
+    """Returns an sqlalchemy session, and after the test tears down everything properly."""
+    connection = engine.connect()
+    # begin the nested transaction
+    transaction = connection.begin()
+    # use the connection with the already started transaction
+    my_session = Session(bind=connection)
 
-    def tearDown(self):
-        self.session.close()
+    yield my_session
 
-    def test_simple_source_insert(self):
-        d1 = Input(retrieval_method='url', url_1=_lambda_reads_1, url_2=_lambda_reads_2)
-        self.assertEqual(0, len(list(self.session.query(Input))))
-        self.session.add(d1)
-        self.session.commit()
-        inputs = list(self.session.query(Input))
-        self.assertEqual(1, len(inputs))
-        self.assertEqual(_lambda_reads_1, inputs[0].url_1)
-        self.assertEqual(_lambda_reads_2, inputs[0].url_2)
-        self.session.delete(d1)
-        self.session.commit()
-        self.assertEqual(0, len(list(self.session.query(Input))))
+    my_session.close()
+    # roll back the broader transaction
+    transaction.rollback()
+    # put back the connection to the connection pool
+    connection.close()
 
-    def test_simple_inputset_insert(self):
-        inp1 = Input(retrieval_method="url",
-                     url_1=_lambda_reads_1, checksum_1=_lambda_reads_1_md5,
-                     url_2=_lambda_reads_2, checksum_2=_lambda_reads_2_md5)
-        inp2 = Input(retrieval_method="url", url_1=_longreads, checksum_1=_longreads_md5)
-        inp3 = Input(retrieval_method="url", url_1=_lambda_reads_2, checksum_1=_lambda_reads_2_md5)
 
-        # add inputs
-        self.assertEqual(0, len(list(self.session.query(Input))))
-        self.assertEqual(0, len(list(self.session.query(InputSet))))
-        self.session.add(inp1)
-        self.session.add(inp2)
-        self.session.add(inp3)
-        self.session.commit()
-        self.assertEqual(3, len(list(self.session.query(Input))))
-        srcs = list(self.session.query(Input))
+def test_simple_source_insert(session):
+    d1 = Input(retrieval_method='url', url_1=_lambda_reads_1, url_2=_lambda_reads_2)
+    assert 0 == len(list(session.query(Input)))
+    session.add(d1)
+    session.commit()
+    inputs = list(session.query(Input))
+    assert 1 == len(inputs)
+    assert _lambda_reads_1 == inputs[0].url_1
+    assert _lambda_reads_2 == inputs[0].url_2
+    session.delete(d1)
+    session.commit()
+    assert 0 == len(list(session.query(Input)))
 
-        # add input sets with associations
-        self.session.add(InputSet(inputs=[inp1, inp2]))
-        self.session.add(InputSet(inputs=[inp1, inp2, inp3]))
-        self.session.commit()
-        self.assertEqual(2, len(list(self.session.query(InputSet))))
-        sss = list(self.session.query(InputSet))
-        self.assertEqual(2, len(sss[0].inputs))
-        self.assertEqual(3, len(sss[1].inputs))
-        self.assertEqual(5, len(list(self.session.query(input_association_table))))
 
-        for obj in srcs + sss:
-            self.session.delete(obj)
-        self.assertEqual(0, len(list(self.session.query(Input))))
-        self.assertEqual(0, len(list(self.session.query(InputSet))))
-        self.assertEqual(0, len(list(self.session.query(input_association_table))))
+def test_simple_inputset_insert(session):
+    inp1 = Input(retrieval_method="url",
+                 url_1=_lambda_reads_1, checksum_1=_lambda_reads_1_md5,
+                 url_2=_lambda_reads_2, checksum_2=_lambda_reads_2_md5)
+    inp2 = Input(retrieval_method="url", url_1=_longreads, checksum_1=_longreads_md5)
+    inp3 = Input(retrieval_method="url", url_1=_lambda_reads_2, checksum_1=_lambda_reads_2_md5)
 
-    def test_import_inputset(self):
-        csv_text = '''NA,NA,ftp://genomi.cs/1.fastq.gz,ftp://genomi.cs/2.fastq.gz,NA,NA,NA,NA,wget'''
-        with open('.tmp.csv', 'w') as ofh:
-            ofh.write(csv_text)
-        import_input_set('test_inputset', '.tmp.csv', self.session)
-        inputs, input_sets, input_assocs = list(self.session.query(Input)), \
-                                           list(self.session.query(InputSet)), \
-                                           list(self.session.query(input_association_table))
+    # add inputs
+    assert 0 == len(list(session.query(Input)))
+    assert 0 == len(list(session.query(InputSet)))
+    session.add(inp1)
+    session.add(inp2)
+    session.add(inp3)
+    session.commit()
+    assert 3 == len(list(session.query(Input)))
 
-        self.assertEqual(1, len(inputs))
-        self.assertEqual(1, len(input_sets))
-        self.assertEqual(1, len(input_assocs))
-        # self.session.query(input_association_table).delete()
-        self.session.query(Input).delete()
-        self.session.query(InputSet).delete()
-        self.assertEqual(0, len(list(self.session.query(Input))))
-        self.assertEqual(0, len(list(self.session.query(InputSet))))
-        # self.assertEqual(0, len(list(self.session.query(input_association_table))))
+    # add input sets with associations
+    session.add(InputSet(inputs=[inp1, inp2]))
+    session.add(InputSet(inputs=[inp1, inp2, inp3]))
+    session.commit()
+    assert 2 == len(list(session.query(InputSet)))
+    sss = list(session.query(InputSet))
+    assert 2 == len(sss[0].inputs)
+    assert 3 == len(sss[1].inputs)
+    assert 5 == len(list(session.query(input_association_table)))
 
-        # BTL: I can't easily figure out how to delete the entries in the association table
 
-        os.remove('.tmp.csv')
+def test_import_inputset(session):
+    assert 0 == len(list(session.query(Input)))
+    assert 0 == len(list(session.query(InputSet)))
+    assert 0 == len(list(session.query(input_association_table)))
+    csv_text = '''NA,NA,ftp://genomi.cs/1.fastq.gz,ftp://genomi.cs/2.fastq.gz,NA,NA,NA,NA,wget'''
+    with open('.tmp.csv', 'w') as ofh:
+        ofh.write(csv_text)
+    import_input_set('test_inputset', '.tmp.csv', session)
+    inputs, input_sets, input_assocs = list(session.query(Input)), \
+                                       list(session.query(InputSet)), \
+                                       list(session.query(input_association_table))
+    assert 1 == len(inputs)
+    assert 1 == len(input_sets)
+    assert 1 == len(input_assocs)
+    os.remove('.tmp.csv')
 
 
 if __name__ == '__main__':
@@ -342,10 +344,6 @@ if __name__ == '__main__':
             Session = session_maker_from_config(args['<db-config>'])
             print(inputs_from_table(args['<prefix>'], args['<species>'],
                                     args['<sql-filter>'], args['<input-set-name>'], Session()))
-        elif args['test']:
-            del sys.argv[1:]
-            log.info(__name__, 'running tests', 'input.py')
-            unittest.main(exit=False)
         elif args['fail']:
             raise RuntimeError('Fake error')
         elif args['nop']:

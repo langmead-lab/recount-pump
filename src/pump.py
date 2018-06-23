@@ -10,22 +10,19 @@ Usage:
   pump add-project-ex <db-config> <name> <analysis-name> <analysis-image-url>
                       <input-set-name> <input-set-table>
                       (<cluster-name> <wrapper-url>)...
-  pump test
 
 Options:
   -h, --help    Show this screen.
   --version     Show version.
 """
 
-import os
-import sys
-import unittest
+import pytest
 from docopt import docopt
 from sqlalchemy import Column, ForeignKey, Integer, String, Sequence, DateTime, create_engine
+from sqlalchemy.orm import relationship, Session
 from base import Base
-from sqlalchemy.orm import relationship, sessionmaker
 from input import import_input_set, Input, InputSet
-from analysis import add_analysis_ex, parse_cluster_analyses, Analysis, Cluster, ClusterAnalysis
+from analysis import add_analysis_ex, Analysis, Cluster, ClusterAnalysis
 from toolbox import session_maker_from_config
 
 
@@ -148,92 +145,105 @@ def add_project_ex(name, analysis_name, analysis_image_url, cluster_analyses,
            n_added_input, n_added_cluster, n_added_cluster_analysis
 
 
-def _setup():
-    engine = create_engine('sqlite:///:memory:', echo=True)
+@pytest.fixture(scope='session')
+def engine():
+    return create_engine('sqlite:///:memory:')
+
+
+@pytest.yield_fixture(scope='session')
+def tables(engine):
     Base.metadata.create_all(engine)
-    Session = sessionmaker(bind=engine)
-    return Session()
+    yield
+    Base.metadata.drop_all(engine)
 
 
-class TestPump(unittest.TestCase):
-    def setUp(self):
-        self.session = _setup()
+@pytest.yield_fixture
+def session(engine, tables):
+    """Returns an sqlalchemy session, and after the test tears down everything properly."""
+    connection = engine.connect()
+    # begin the nested transaction
+    transaction = connection.begin()
+    # use the connection with the already started transaction
+    my_session = Session(bind=connection)
 
-    def tearDown(self):
-        self.session.close()
+    yield my_session
 
-    def test_add_project(self):
-        analysis = Analysis(name='recount-rna-seq-v1', image_url='fake')
-        self.session.add(analysis)
-        self.session.commit()
-        self.assertEqual(1, len(list(self.session.query(Analysis))))
+    my_session.close()
+    # roll back the broader transaction
+    transaction.rollback()
+    # put back the connection to the connection pool
+    connection.close()
 
-        inp1 = Input(retrieval_method="url",
-                     url_1='fake1', checksum_1='fake1',
-                     url_2='fake2', checksum_2='fake2')
-        inp2 = Input(retrieval_method="url", url_1='fake1', checksum_1='fake1')
 
-        # add inputs
-        self.assertEqual(0, len(list(self.session.query(Input))))
-        self.assertEqual(0, len(list(self.session.query(InputSet))))
-        self.session.add(inp1)
-        self.session.add(inp2)
-        self.session.commit()
-        self.assertEqual(2, len(list(self.session.query(Input))))
+def test_add_project(session):
+    analysis = Analysis(name='recount-rna-seq-v1', image_url='fake')
+    session.add(analysis)
+    session.commit()
+    assert 1 == len(list(session.query(Analysis)))
 
-        # add input sets with associations
-        input_set = InputSet(inputs=[inp1, inp2])
-        self.session.add(input_set)
-        self.session.commit()
-        self.assertEqual(1, len(list(self.session.query(InputSet))))
+    inp1 = Input(retrieval_method="url",
+                 url_1='fake1', checksum_1='fake1',
+                 url_2='fake2', checksum_2='fake2')
+    inp2 = Input(retrieval_method="url", url_1='fake1', checksum_1='fake1')
 
-        proj = Project(name='my_project', input_set_id=input_set.id, analysis_id=analysis.id)
-        self.session.add(proj)
-        self.session.commit()
-        self.assertEqual(1, len(list(self.session.query(Project))))
+    # add inputs
+    assert 0 == len(list(session.query(Input)))
+    assert 0 == len(list(session.query(InputSet)))
+    session.add(inp1)
+    session.add(inp2)
+    session.commit()
+    assert 2 == len(list(session.query(Input)))
 
-        self.session.delete(proj)
-        self.session.delete(input_set)
-        self.session.delete(inp1)
-        self.session.delete(inp2)
-        self.session.delete(analysis)
-        self.session.commit()
-        self.assertEqual(0, len(list(self.session.query(Analysis))))
-        self.assertEqual(0, len(list(self.session.query(Input))))
-        self.assertEqual(0, len(list(self.session.query(InputSet))))
-        self.assertEqual(0, len(list(self.session.query(Project))))
+    # add input sets with associations
+    input_set = InputSet(inputs=[inp1, inp2])
+    session.add(input_set)
+    session.commit()
+    assert 1 == len(list(session.query(InputSet)))
 
-    def test_add_project_ex(self):
-        project_name = 'recount-rna-seq-human'
-        analysis_name = 'recount-rna-seq-v1'
-        image_url = 's3://recount-pump/analysis/recount-rna-seq-v1.img'
-        cluster_analyses1 = [
-            ('stampede2', 's3://recount-pump/analysis/recount-rna-seq-v1/stampede2.sh'),
-            ('marcc', 's3://recount-pump/analysis/recount-rna-seq-v1/marcc.sh')
-        ]
-        input_set_name = 'all_human'
-        input_set_csv = '\n'.join(['NA,NA,ftp://genomi.cs/1_1.fastq.gz,ftp://genomi.cs/1_2.fastq.gz,NA,NA,NA,NA,wget',
-                                   'NA,NA,ftp://genomi.cs/2_1.fastq.gz,ftp://genomi.cs/2_2.fastq.gz,NA,NA,NA,NA,wget'])
-        csv_fn = '.test_add_project_ex.csv'
-        with open(csv_fn, 'w') as ofh:
-            ofh.write(input_set_csv)
-        project_id, analysis_id, input_set_id, n_added_input, \
-        n_added_cluster, n_added_cluster_analysis = \
-            add_project_ex(project_name, analysis_name, image_url,
-                           cluster_analyses1, input_set_name, csv_fn, self.session)
-        self.assertEqual(2, n_added_input)
-        self.assertEqual(2, n_added_cluster)
-        self.assertEqual(2, n_added_cluster_analysis)
-        self.assertEqual(1, len(list(self.session.query(Project))))
-        self.assertEqual(1, len(list(self.session.query(InputSet))))
-        self.assertEqual(2, len(list(self.session.query(Input))))
-        self.assertEqual(1, len(list(self.session.query(Analysis))))
-        self.assertEqual(2, len(list(self.session.query(Cluster))))
-        self.assertEqual(2, len(list(self.session.query(ClusterAnalysis))))
-        for tab in [Analysis, Input, InputSet, Project, Cluster, ClusterAnalysis]:
-            self.session.query(tab).delete()
-            self.assertEqual(0, len(list(self.session.query(tab))))
-        os.remove(csv_fn)
+    proj = Project(name='my_project', input_set_id=input_set.id, analysis_id=analysis.id)
+    session.add(proj)
+    session.commit()
+    assert 1 == len(list(session.query(Project)))
+
+    session.delete(proj)
+    session.delete(input_set)
+    session.delete(inp1)
+    session.delete(inp2)
+    session.delete(analysis)
+    session.commit()
+    assert 0 == len(list(session.query(Analysis)))
+    assert 0 == len(list(session.query(Input)))
+    assert 0 == len(list(session.query(InputSet)))
+    assert 0 == len(list(session.query(Project)))
+
+
+def test_add_project_ex(session):
+    project_name = 'recount-rna-seq-human'
+    analysis_name = 'recount-rna-seq-v1'
+    image_url = 's3://recount-pump/analysis/recount-rna-seq-v1.img'
+    cluster_analyses1 = [
+        ('stampede2', 's3://recount-pump/analysis/recount-rna-seq-v1/stampede2.sh'),
+        ('marcc', 's3://recount-pump/analysis/recount-rna-seq-v1/marcc.sh')
+    ]
+    input_set_name = 'all_human'
+    input_set_csv = '\n'.join(['NA,NA,ftp://genomi.cs/1_1.fastq.gz,ftp://genomi.cs/1_2.fastq.gz,NA,NA,NA,NA,wget',
+                               'NA,NA,ftp://genomi.cs/2_1.fastq.gz,ftp://genomi.cs/2_2.fastq.gz,NA,NA,NA,NA,wget'])
+    csv_fn = '.test_add_project_ex.csv'
+    with open(csv_fn, 'w') as ofh:
+        ofh.write(input_set_csv)
+    project_id, analysis_id, input_set_id, n_added_input, \
+    n_added_cluster, n_added_cluster_analysis = \
+        add_project_ex(project_name, analysis_name, image_url,
+                       cluster_analyses1, input_set_name, csv_fn, session)
+    assert 2 == n_added_input
+    assert 2 == n_added_cluster
+    assert 2 == n_added_cluster_analysis
+    assert 1 == len(list(session.query(Project)))
+    assert 1 == len(list(session.query(InputSet)))
+    assert 2 == len(list(session.query(Input)))
+    assert 1 == len(list(session.query(Analysis)))
+    assert 2 == len(list(session.query(Cluster)))
+    assert 2 == len(list(session.query(ClusterAnalysis)))
 
 
 if __name__ == '__main__':
@@ -250,6 +260,3 @@ if __name__ == '__main__':
                              args['<analysis-image-url>'],
                              args['<input-set-name>'], args['<input-set-csv>'],
                              args['<cluster-analyses>'], Session()))
-    elif args['test']:
-        sys.argv.remove('test')
-        unittest.main()

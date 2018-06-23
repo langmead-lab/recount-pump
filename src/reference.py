@@ -17,7 +17,6 @@ Usage:
   reference add-annotation-set <name> [options]
   reference add-annotations-to-set (<set-id> <annotation-id>)... [options]
   reference list-annotation-set <name> [options]
-  reference test [options]
   reference nop [options]
 
 Options:
@@ -33,23 +32,22 @@ Options:
 """
 
 import os
-import sys
-import unittest
+import pytest
 import tempfile
 import shutil
 import log
 from docopt import docopt
 
 from sqlalchemy import Column, ForeignKey, Integer, String, Sequence, Table, create_engine
+from sqlalchemy.orm import relationship, Session
 from base import Base
-from sqlalchemy.orm import relationship, sessionmaker
 from toolbox import generate_file_md5, session_maker_from_config
 from mover import Mover
 
 
 class Source(Base):
     """
-    Supporting files used to analyze input data, like reference genomes,
+    Supporting files used to analyze reference data, like reference genomes,
     indexes, gene annotations, etc.
     """
     __tablename__ = 'source'
@@ -302,140 +300,139 @@ _phix_fa = 'http://www.cs.jhu.edu/~langmea/resources/phix.fa'
 _phix_md5 = 'a1c4cc91480cd3e9e7197d35dbba7929'
 
 
-def _setup():
-    engine = create_engine('sqlite:///:memory:', echo=True)
+@pytest.fixture(scope='session')
+def engine():
+    return create_engine('sqlite:///:memory:')
+
+
+@pytest.yield_fixture(scope='session')
+def tables(engine):
     Base.metadata.create_all(engine)
-    session_mk = sessionmaker(bind=engine)
-    return session_mk()
+    yield
+    Base.metadata.drop_all(engine)
 
 
-class TestReference(unittest.TestCase):
+@pytest.yield_fixture
+def session(engine, tables):
+    """Returns an sqlalchemy session, and after the test tears down everything properly."""
+    connection = engine.connect()
+    # begin the nested transaction
+    transaction = connection.begin()
+    # use the connection with the already started transaction
+    my_session = Session(bind=connection)
 
-    def setUp(self):
-        self.session = _setup()
+    yield my_session
 
-    def tearDown(self):
-        self.session.close()
+    my_session.close()
+    # roll back the broader transaction
+    transaction.rollback()
+    # put back the connection to the connection pool
+    connection.close()
 
-    def test_simple_source_insert(self):
-        src = Source(retrieval_method="url", url_1=_elegans_url, checksum_1=_elegans_md5)
-        self.assertEqual(0, len(list(self.session.query(Source))))
-        self.session.add(src)
-        self.session.commit()
-        sources = list(self.session.query(Source))
-        self.assertEqual(1, len(sources))
-        self.assertEqual(_elegans_url, sources[0].url_1)
-        self.assertEqual(_elegans_md5, sources[0].checksum_1)
-        self.assertIsNone(sources[0].url_2)
-        self.assertIsNone(sources[0].url_3)
-        self.assertIsNone(sources[0].checksum_2)
-        self.assertIsNone(sources[0].checksum_3)
-        self.session.delete(src)
-        self.session.commit()
-        self.assertEqual(0, len(list(self.session.query(Source))))
 
-    def test_simple_annotation_insert(self):
-        annotation = Annotation(tax_id=9606, retrieval_method="url",
-                                url=_lambda_annot, checksum=_lambda_annot_md5)
-        self.assertEqual(0, len(list(self.session.query(Annotation))))
-        self.session.add(annotation)
-        self.session.commit()
-        annotations = list(self.session.query(Annotation))
-        self.assertEqual(1, len(annotations))
-        self.assertEqual(_lambda_annot, annotations[0].url)
-        self.assertEqual(_lambda_annot_md5, annotations[0].checksum)
-        self.session.delete(annotation)
-        self.session.commit()
-        self.assertEqual(0, len(list(self.session.query(Annotation))))
+def test_simple_source_insert(session):
+    src = Source(retrieval_method="url", url_1=_elegans_url, checksum_1=_elegans_md5)
+    assert 0 == len(list(session.query(Source)))
+    session.add(src)
+    session.commit()
+    sources = list(session.query(Source))
+    assert 1 == len(sources)
+    assert _elegans_url == sources[0].url_1
+    assert _elegans_md5 == sources[0].checksum_1
+    assert sources[0].url_2 is None
+    assert sources[0].url_3 is None
+    assert sources[0].checksum_2 is None
+    assert sources[0].checksum_3 is None
+    session.delete(src)
+    session.commit()
+    assert 0 == len(list(session.query(Source)))
 
-    def test_simple_sourceset_insert(self):
-        src1 = Source(retrieval_method="url", url_1=_elegans_url, checksum_1=_elegans_md5)
-        src2 = Source(retrieval_method="url", url_1=_elegans_url, checksum_1=_elegans_md5)
-        src3 = Source(retrieval_method="url", url_1=_elegans_url, checksum_1=_elegans_md5)
 
-        # add sources
-        self.assertEqual(0, len(list(self.session.query(Source))))
-        self.assertEqual(0, len(list(self.session.query(SourceSet))))
-        self.session.add(src1)
-        self.session.add(src2)
-        self.session.add(src3)
-        self.session.commit()
-        self.assertEqual(3, len(list(self.session.query(Source))))
-        srcs = list(self.session.query(Source))
+def test_simple_annotation_insert(session):
+    annotation = Annotation(tax_id=9606, retrieval_method="url",
+                            url=_lambda_annot, checksum=_lambda_annot_md5)
+    assert 0 == len(list(session.query(Annotation)))
+    session.add(annotation)
+    session.commit()
+    annotations = list(session.query(Annotation))
+    assert 1 == len(annotations)
+    assert _lambda_annot == annotations[0].url
+    assert _lambda_annot_md5 == annotations[0].checksum
+    session.delete(annotation)
+    session.commit()
+    assert 0 == len(list(session.query(Annotation)))
 
-        # add source sets with associations
-        self.session.add(SourceSet(sources=[src1, src2]))
-        self.session.add(SourceSet(sources=[src1, src2, src3]))
-        self.session.commit()
-        self.assertEqual(2, len(list(self.session.query(SourceSet))))
-        sss = list(self.session.query(SourceSet))
-        self.assertEqual(2, len(sss[0].sources))
-        self.assertEqual(3, len(sss[1].sources))
-        self.assertEqual(5, len(list(self.session.query(source_association_table))))
 
-        for obj in srcs + sss:
-            self.session.delete(obj)
-        self.assertEqual(0, len(list(self.session.query(Source))))
-        self.assertEqual(0, len(list(self.session.query(SourceSet))))
-        self.assertEqual(0, len(list(self.session.query(source_association_table))))
+def test_simple_sourceset_insert(session):
+    src1 = Source(retrieval_method="url", url_1=_elegans_url, checksum_1=_elegans_md5)
+    src2 = Source(retrieval_method="url", url_1=_elegans_url, checksum_1=_elegans_md5)
+    src3 = Source(retrieval_method="url", url_1=_elegans_url, checksum_1=_elegans_md5)
 
-    def test_simple_annotationset_insert(self):
-        annot1 = Annotation(retrieval_method="url", url=_lambda_annot, checksum=_lambda_annot_md5)
-        annot2 = Annotation(retrieval_method="url", url=_lambda_annot, checksum=_lambda_annot_md5)
-        annot3 = Annotation(retrieval_method="url", url=_lambda_annot, checksum=_lambda_annot_md5)
+    # add sources
+    assert 0 == len(list(session.query(Source)))
+    assert 0 == len(list(session.query(SourceSet)))
+    session.add(src1)
+    session.add(src2)
+    session.add(src3)
+    session.commit()
+    assert 3 == len(list(session.query(Source)))
+    srcs = list(session.query(Source))
 
-        # add annotations
-        self.assertEqual(0, len(list(self.session.query(Annotation))))
-        self.assertEqual(0, len(list(self.session.query(AnnotationSet))))
-        self.session.add(annot1)
-        self.session.add(annot2)
-        self.session.add(annot3)
-        self.session.commit()
-        self.assertEqual(3, len(list(self.session.query(Annotation))))
-        annots = list(self.session.query(Annotation))
+    # add source sets with associations
+    session.add(SourceSet(sources=[src1, src2]))
+    session.add(SourceSet(sources=[src1, src2, src3]))
+    session.commit()
+    assert 2 == len(list(session.query(SourceSet)))
+    sss = list(session.query(SourceSet))
+    assert 2 == len(sss[0].sources)
+    assert 3 == len(sss[1].sources)
+    assert 5 == len(list(session.query(source_association_table)))
 
-        # add annotation sets with associations
-        self.session.add(AnnotationSet(annotations=[annot1, annot2]))
-        self.session.add(AnnotationSet(annotations=[annot1, annot2, annot3]))
-        self.session.commit()
-        self.assertEqual(2, len(list(self.session.query(AnnotationSet))))
-        annot_sets = list(self.session.query(AnnotationSet))
-        self.assertEqual(2, len(annot_sets[0].annotations))
-        self.assertEqual(3, len(annot_sets[1].annotations))
-        self.assertEqual(5, len(list(self.session.query(annotation_association_table))))
 
-        for obj in annots + annot_sets:
-            self.session.delete(obj)
-        self.assertEqual(0, len(list(self.session.query(Annotation))))
-        self.assertEqual(0, len(list(self.session.query(AnnotationSet))))
-        self.assertEqual(0, len(list(self.session.query(annotation_association_table))))
+def test_simple_annotationset_insert(session):
+    annot1 = Annotation(retrieval_method="url", url=_lambda_annot, checksum=_lambda_annot_md5)
+    annot2 = Annotation(retrieval_method="url", url=_lambda_annot, checksum=_lambda_annot_md5)
+    annot3 = Annotation(retrieval_method="url", url=_lambda_annot, checksum=_lambda_annot_md5)
 
-    def test_download_all(self):
-        src1 = Source(retrieval_method="url", url_1=_lambda_fa, checksum_1=_lambda_fa_md5)
-        src2 = Source(retrieval_method="url", url_1=_phix_fa, checksum_1=_phix_md5)
-        self.session.add(src1)
-        self.session.add(src2)
-        ss = SourceSet(sources=[src1, src2])
-        self.session.add(ss)
-        self.session.commit()
-        an1 = Source(retrieval_method="url", url_1=_lambda_annot, checksum_1=_lambda_annot_md5)
-        anset = AnnotationSet(annotations=[an1])
-        ref1 = Reference(tax_id=10710, name='lambda', longname='Enterobacteria phage lambda',
-                         conventions='', comment='', source_set=ss.id, annotation_set=anset.id)
-        self.session.add(ref1)
-        self.session.commit()
-        tmpd = tempfile.mkdtemp()
-        download_reference(self.session, dest_dir=tmpd, ref_name='lambda')
-        self.assertTrue(os.path.exists(os.path.join(tmpd, 'GCF_000840245.1_ViralProj14204_genomic.fna')))
-        self.assertTrue(os.path.exists(os.path.join(tmpd, 'phix.fa')))
-        shutil.rmtree(tmpd)
+    # add annotations
+    assert 0 == len(list(session.query(Annotation)))
+    assert 0 == len(list(session.query(AnnotationSet)))
+    session.add(annot1)
+    session.add(annot2)
+    session.add(annot3)
+    session.commit()
+    assert 3 == len(list(session.query(Annotation)))
 
-        for obj in [src1, src2, ss, ref1]:
-            self.session.delete(obj)
-        self.assertEqual(0, len(list(self.session.query(SourceSet))))
-        self.assertEqual(0, len(list(self.session.query(Source))))
-        self.assertEqual(0, len(list(self.session.query(Reference))))
-        self.assertEqual(0, len(list(self.session.query(source_association_table))))
+    # add annotation sets with associations
+    session.add(AnnotationSet(annotations=[annot1, annot2]))
+    session.add(AnnotationSet(annotations=[annot1, annot2, annot3]))
+    session.commit()
+    assert 2 == len(list(session.query(AnnotationSet)))
+    annot_sets = list(session.query(AnnotationSet))
+    assert 2 == len(annot_sets[0].annotations)
+    assert 3 == len(annot_sets[1].annotations)
+    assert 5 == len(list(session.query(annotation_association_table)))
+
+
+def test_download_all(session):
+    src1 = Source(retrieval_method="url", url_1=_lambda_fa, checksum_1=_lambda_fa_md5)
+    src2 = Source(retrieval_method="url", url_1=_phix_fa, checksum_1=_phix_md5)
+    session.add(src1)
+    session.add(src2)
+    ss = SourceSet(sources=[src1, src2])
+    session.add(ss)
+    session.commit()
+    an1 = Source(retrieval_method="url", url_1=_lambda_annot, checksum_1=_lambda_annot_md5)
+    anset = AnnotationSet(annotations=[an1])
+    ref1 = Reference(tax_id=10710, name='lambda', longname='Enterobacteria phage lambda',
+                     conventions='', comment='', source_set=ss.id, annotation_set=anset.id)
+    session.add(ref1)
+    session.commit()
+    tmpd = tempfile.mkdtemp()
+    download_reference(session, dest_dir=tmpd, ref_name='lambda')
+    assert os.path.exists(os.path.join(tmpd, 'GCF_000840245.1_ViralProj14204_genomic.fna'))
+    assert os.path.exists(os.path.join(tmpd, 'phix.fa'))
+    shutil.rmtree(tmpd)
 
 
 if __name__ == '__main__':
@@ -477,10 +474,6 @@ if __name__ == '__main__':
         elif args['add-annotations-to-set']:
             Session = session_maker_from_config(db_ini, args['--db-section'])
             print(add_annotations_to_set(args['<set-id>'], args['<annotation-id>'], Session()))
-        elif args['test']:
-            del sys.argv[1:]
-            log.info(__name__, 'running tests', 'reference.py')
-            unittest.main(exit=False)
         elif args['nop']:
             pass
     except Exception:

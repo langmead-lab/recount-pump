@@ -6,9 +6,10 @@
 import unittest
 
 import sys
+import pytest
 from sqlalchemy import Column, ForeignKey, Integer, String, Sequence, create_engine
 from base import Base
-from sqlalchemy.orm import relationship, sessionmaker
+from sqlalchemy.orm import relationship, Session
 from toolbox import session_maker_from_config
 
 
@@ -122,86 +123,103 @@ def parse_cluster_analyses(pairs):
     return ret
 
 
-def _setup():
-    engine = create_engine('sqlite:///:memory:', echo=True)
+@pytest.fixture(scope='session')
+def engine():
+    return create_engine('sqlite:///:memory:')
+
+
+@pytest.yield_fixture(scope='session')
+def tables(engine):
     Base.metadata.create_all(engine)
-    Session = sessionmaker(bind=engine)
-    return Session()
+    yield
+    Base.metadata.drop_all(engine)
 
 
-class TestAnalysis(unittest.TestCase):
-    def setUp(self):
-        self.session = _setup()
+@pytest.yield_fixture
+def session(engine, tables):
+    """Returns an sqlalchemy session, and after the test tears down everything properly."""
+    connection = engine.connect()
+    # begin the nested transaction
+    transaction = connection.begin()
+    # use the connection with the already started transaction
+    my_session = Session(bind=connection)
 
-    def tearDown(self):
-        self.session.close()
+    yield my_session
 
-    def test_analysis1(self):
-        analysis_name = 'recount-rna-seq-v1'
-        image_url = 's3://recount-pump/analysis/recount-rna-seq-v1.img'
-        wrapper_url = 's3://recount-pump/analysis/recount-rna-seq-v1/cluster/'
-        cluster_name = 'stampede2'
+    my_session.close()
+    # roll back the broader transaction
+    transaction.rollback()
+    # put back the connection to the connection pool
+    connection.close()
 
-        a1 = Analysis(name=analysis_name, image_url=image_url)
-        self.assertEqual(0, len(list(self.session.query(Analysis))))
-        self.session.add(a1)
-        self.session.commit()
-        self.assertEqual(1, len(list(self.session.query(Analysis))))
-        c1 = Cluster(name=cluster_name)
-        self.assertEqual(0, len(list(self.session.query(Cluster))))
-        self.session.add(c1)
-        self.session.commit()
-        self.assertEqual(1, len(list(self.session.query(Cluster))))
-        ca1 = ClusterAnalysis(analysis_id=a1.id, cluster_id=c1.id,
-                              wrapper_url=wrapper_url + cluster_name + '.sh')
-        self.assertEqual(0, len(list(self.session.query(ClusterAnalysis))))
-        self.session.add(ca1)
-        self.session.commit()
-        self.assertEqual(1, len(list(self.session.query(ClusterAnalysis))))
 
-        self.session.delete(ca1)
-        self.session.delete(a1)
-        self.session.delete(c1)
-        self.session.commit()
-        self.assertEqual(0, len(list(self.session.query(Analysis))))
-        self.assertEqual(0, len(list(self.session.query(Cluster))))
-        self.assertEqual(0, len(list(self.session.query(ClusterAnalysis))))
+def test_analysis1(session):
+    analysis_name = 'recount-rna-seq-v1'
+    image_url = 's3://recount-pump/analysis/recount-rna-seq-v1.img'
+    wrapper_url = 's3://recount-pump/analysis/recount-rna-seq-v1/cluster/'
+    cluster_name = 'stampede2'
 
-    def test_add_analysis_ex(self):
-        analysis_name = 'recount-rna-seq-v1'
-        image_url = 's3://recount-pump/analysis/recount-rna-seq-v1.img'
-        cluster_analyses1 = [
-            ('stampede2', 's3://recount-pump/analysis/recount-rna-seq-v1/stampede2.sh'),
-            ('marcc', 's3://recount-pump/analysis/recount-rna-seq-v1/marcc.sh')
-        ]
-        analysis_id, n_added_cluster, n_added_cluster_analysis = \
-            add_analysis_ex(analysis_name, image_url,
-                            cluster_analyses1, self.session)
-        self.assertEqual(2, n_added_cluster)
-        self.assertEqual(2, n_added_cluster_analysis)
-        self.assertEqual(1, len(list(self.session.query(Analysis))))
-        self.assertEqual(2, len(list(self.session.query(Cluster))))
-        self.assertEqual(2, len(list(self.session.query(ClusterAnalysis))))
-        analysis_name2 = 'recount-rna-seq-v2'
-        image_url2 = 's3://recount-pump/analysis/recount-rna-seq-v2.img'
-        cluster_analyses2 = [
-            ('stampede2', 's3://recount-pump/analysis/recount-rna-seq-v1/stampede3.sh'),
-            ('hhpc', 's3://recount-pump/analysis/recount-rna-seq-v1/hhpc.sh')
-        ]
-        analysis_id2, n_added_cluster2, n_added_cluster_analysis2 = \
-            add_analysis_ex(analysis_name2, image_url2,
-                            cluster_analyses2, self.session)
-        self.assertEqual(1, n_added_cluster2)
-        self.assertEqual(2, n_added_cluster_analysis2)
-        self.assertEqual(2, len(list(self.session.query(Analysis))))
-        self.assertEqual(3, len(list(self.session.query(Cluster))))
-        self.assertEqual(4, len(list(self.session.query(ClusterAnalysis))))
-        self.session.query(ClusterAnalysis).delete()
-        self.session.query(Cluster).delete()
-        self.session.query(Analysis).delete()
-        self.assertEqual(0, len(list(self.session.query(Analysis))))
-        self.assertEqual(0, len(list(self.session.query(Cluster))))
-        self.assertEqual(0, len(list(self.session.query(ClusterAnalysis))))
+    a1 = Analysis(name=analysis_name, image_url=image_url)
+    assert 0 == len(list(session.query(Analysis)))
+    session.add(a1)
+    session.commit()
+    assert 1 == len(list(session.query(Analysis)))
+    c1 = Cluster(name=cluster_name)
+    assert 0 == len(list(session.query(Cluster)))
+    session.add(c1)
+    session.commit()
+    assert 1 == len(list(session.query(Cluster)))
+    ca1 = ClusterAnalysis(analysis_id=a1.id, cluster_id=c1.id,
+                          wrapper_url=wrapper_url + cluster_name + '.sh')
+    assert 0 == len(list(session.query(ClusterAnalysis)))
+    session.add(ca1)
+    session.commit()
+    assert 1 == len(list(session.query(ClusterAnalysis)))
+
+    session.delete(ca1)
+    session.delete(a1)
+    session.delete(c1)
+    session.commit()
+    assert 0 == len(list(session.query(Analysis)))
+    assert 0 == len(list(session.query(Cluster)))
+    assert 0 == len(list(session.query(ClusterAnalysis)))
+
+
+def test_add_analysis_ex(session):
+    analysis_name = 'recount-rna-seq-v1'
+    image_url = 's3://recount-pump/analysis/recount-rna-seq-v1.img'
+    cluster_analyses1 = [
+        ('stampede2', 's3://recount-pump/analysis/recount-rna-seq-v1/stampede2.sh'),
+        ('marcc', 's3://recount-pump/analysis/recount-rna-seq-v1/marcc.sh')
+    ]
+    analysis_id, n_added_cluster, n_added_cluster_analysis = \
+        add_analysis_ex(analysis_name, image_url,
+                        cluster_analyses1, session)
+    assert 2 == n_added_cluster
+    assert 2 == n_added_cluster_analysis
+    assert 1 == len(list(session.query(Analysis)))
+    assert 2 == len(list(session.query(Cluster)))
+    assert 2 == len(list(session.query(ClusterAnalysis)))
+    analysis_name2 = 'recount-rna-seq-v2'
+    image_url2 = 's3://recount-pump/analysis/recount-rna-seq-v2.img'
+    cluster_analyses2 = [
+        ('stampede2', 's3://recount-pump/analysis/recount-rna-seq-v1/stampede3.sh'),
+        ('hhpc', 's3://recount-pump/analysis/recount-rna-seq-v1/hhpc.sh')
+    ]
+    analysis_id2, n_added_cluster2, n_added_cluster_analysis2 = \
+        add_analysis_ex(analysis_name2, image_url2,
+                        cluster_analyses2, session)
+    assert 1 == n_added_cluster2
+    assert 2 == n_added_cluster_analysis2
+    assert 2 == len(list(session.query(Analysis)))
+    assert 3 == len(list(session.query(Cluster)))
+    assert 4 == len(list(session.query(ClusterAnalysis)))
+    session.query(ClusterAnalysis).delete()
+    session.query(Cluster).delete()
+    session.query(Analysis).delete()
+    assert 0 == len(list(session.query(Analysis)))
+    assert 0 == len(list(session.query(Cluster)))
+    assert 0 == len(list(session.query(ClusterAnalysis)))
 
 
 if __name__ == '__main__':

@@ -10,14 +10,13 @@ into SQS:
 https://stackoverflow.com/questions/46880229/migrate-from-amqp-to-amazon-sns-sqs-need-to-understand-concepts
 """
 
-import sys
 import pika
 import pika.exceptions
 import unittest
-import queueing.generic
+import service
 
 
-class RmqService(queueing.generic.Service):
+class RmqService(service.Service):
 
     def __init__(self, host='localhost'):
         self.params = pika.ConnectionParameters(host)
@@ -25,6 +24,9 @@ class RmqService(queueing.generic.Service):
         self.channel = self.connection.channel()
         self.get_outstanding = False
         self.get_queue, self.get_delivery_tag = None, None
+
+    def close(self):
+        self.connection.close()
 
     def get(self, queue):
         # If you want to be notified of Basic.GetEmpty, use the
@@ -78,9 +80,9 @@ class TestRmqService(unittest.TestCase):
             service = RmqService()
             if service.queue_exists('TestRmq'):
                 service.queue_delete('TestRmq')
+            service.close()
         except pika.exceptions.ConnectionClosed:
             self.rabbitmq_running = False
-            sys.exc_clear()
 
     def test_create_delete(self):
         if not self.rabbitmq_running:
@@ -91,6 +93,7 @@ class TestRmqService(unittest.TestCase):
         self.assertTrue(service.queue_exists('TestRmq'))
         service.queue_delete('TestRmq', if_empty=True)
         self.assertFalse(service.queue_exists('TestRmq'))
+        service.close()
 
     def test_publish(self):
         if not self.rabbitmq_running:
@@ -104,6 +107,7 @@ class TestRmqService(unittest.TestCase):
         service.publish('TestRmq', 'test_publish_3')
         service.queue_delete('TestRmq')
         self.assertFalse(service.queue_exists('TestRmq'))
+        service.close()
 
     def test_publish_get_1(self):
         if not self.rabbitmq_running:
@@ -115,25 +119,26 @@ class TestRmqService(unittest.TestCase):
         service.publish('TestRmq', 'test_publish_get_1 2')
         service.publish('TestRmq', 'test_publish_get_1 3')
         msg1 = service.get('TestRmq')
-        self.assertEqual('test_publish_get_1 1', msg1)
+        self.assertEqual(b'test_publish_get_1 1', msg1)
         service.ack()
         msg2 = service.get('TestRmq')
-        self.assertEqual('test_publish_get_1 2', msg2)
+        self.assertEqual(b'test_publish_get_1 2', msg2)
         service.ack()
         msg3 = service.get('TestRmq')
-        self.assertEqual('test_publish_get_1 3', msg3)
+        self.assertEqual(b'test_publish_get_1 3', msg3)
         service.ack()
         # messages might be requeued since they're unacknowledged
         service.queue_delete('TestRmq')
         self.assertFalse(service.queue_exists('TestRmq'))
+        service.close()
 
 
 if __name__ == '__main__':
     rabbitmq_running = True
     try:
-        pika.BlockingConnection(parameters=pika.ConnectionParameters('localhost'))
+        conn = pika.BlockingConnection(parameters=pika.ConnectionParameters('localhost'))
+        conn.close()
     except pika.exceptions.ConnectionClosed:
         rabbitmq_running = False
-        sys.exc_clear()
     if rabbitmq_running:
         unittest.main()
