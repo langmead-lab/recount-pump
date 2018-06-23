@@ -1,0 +1,26 @@
+version: '3'
+services:
+  rmq:
+    image: "rabbitmq:latest"
+    ports:
+      - "15672:15672"
+      - "5672:5672"
+  minio:
+    image: "minio/minio"
+    ports:
+      - "9000:9000"
+    environment:
+      MINIO_ACCESS_KEY: minio
+      MINIO_SECRET_KEY: minio123
+    command: server /data
+  mysql:
+    image: "benlangmead/recount-mysql"
+    ports:
+      - "3306:3306"
+  recount:
+    build: .
+    depends_on:
+      - "rmq"
+      - "minio"
+      - "mysql"
+    command: sh -c "py.test src/*.py src/*/*.py && echo '*** SUCCESS ***'"
