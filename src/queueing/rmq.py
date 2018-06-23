@@ -13,10 +13,9 @@ https://stackoverflow.com/questions/46880229/migrate-from-amqp-to-amazon-sns-sqs
 import pika
 import pika.exceptions
 import unittest
-import service
 
 
-class RmqService(service.Service):
+class RmqService():
 
     def __init__(self, host='localhost'):
         self.params = pika.ConnectionParameters(host)
