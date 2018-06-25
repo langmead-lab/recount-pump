@@ -4,8 +4,8 @@ WORKDIR /code
 RUN apt-get update
 RUN apt-get install -y emacs-nox
 
-ADD src /code/src
 ADD wait-for-it.sh /code
-
 ADD requirements.txt /code
 RUN pip install -r requirements.txt
+
+ADD src /code/src
