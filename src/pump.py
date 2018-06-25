@@ -18,8 +18,8 @@ Options:
 
 import pytest
 from docopt import docopt
-from sqlalchemy import Column, ForeignKey, Integer, String, Sequence, DateTime, create_engine
-from sqlalchemy.orm import relationship, Session
+from sqlalchemy import Column, ForeignKey, Integer, String, Sequence, DateTime
+from sqlalchemy.orm import relationship
 from base import Base
 from input import import_input_set, Input, InputSet
 from analysis import add_analysis_ex, Analysis, Cluster, ClusterAnalysis
@@ -145,34 +145,9 @@ def add_project_ex(name, analysis_name, analysis_image_url, cluster_analyses,
            n_added_input, n_added_cluster, n_added_cluster_analysis
 
 
-@pytest.fixture(scope='session')
-def engine():
-    return create_engine('sqlite:///:memory:')
-
-
-@pytest.yield_fixture(scope='session')
-def tables(engine):
-    Base.metadata.create_all(engine)
-    yield
-    Base.metadata.drop_all(engine)
-
-
-@pytest.yield_fixture
-def session(engine, tables):
-    """Returns an sqlalchemy session, and after the test tears down everything properly."""
-    connection = engine.connect()
-    # begin the nested transaction
-    transaction = connection.begin()
-    # use the connection with the already started transaction
-    my_session = Session(bind=connection)
-
-    yield my_session
-
-    my_session.close()
-    # roll back the broader transaction
-    transaction.rollback()
-    # put back the connection to the connection pool
-    connection.close()
+def test_integration(db_integration):
+    if not db_integration:
+        pytest.skip('db integration testing disabled')
 
 
 def test_add_project(session):

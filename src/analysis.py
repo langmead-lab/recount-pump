@@ -7,9 +7,9 @@ import unittest
 
 import sys
 import pytest
-from sqlalchemy import Column, ForeignKey, Integer, String, Sequence, create_engine
+from sqlalchemy import Column, ForeignKey, Integer, String, Sequence
 from base import Base
-from sqlalchemy.orm import relationship, Session
+from sqlalchemy.orm import relationship
 from toolbox import session_maker_from_config
 
 
@@ -123,34 +123,9 @@ def parse_cluster_analyses(pairs):
     return ret
 
 
-@pytest.fixture(scope='session')
-def engine():
-    return create_engine('sqlite:///:memory:')
-
-
-@pytest.yield_fixture(scope='session')
-def tables(engine):
-    Base.metadata.create_all(engine)
-    yield
-    Base.metadata.drop_all(engine)
-
-
-@pytest.yield_fixture
-def session(engine, tables):
-    """Returns an sqlalchemy session, and after the test tears down everything properly."""
-    connection = engine.connect()
-    # begin the nested transaction
-    transaction = connection.begin()
-    # use the connection with the already started transaction
-    my_session = Session(bind=connection)
-
-    yield my_session
-
-    my_session.close()
-    # roll back the broader transaction
-    transaction.rollback()
-    # put back the connection to the connection pool
-    connection.close()
+def test_integration(db_integration):
+    if not db_integration:
+        pytest.skip('db integration testing disabled')
 
 
 def test_analysis1(session):

@@ -35,8 +35,8 @@ import os
 import log
 import pytest
 from docopt import docopt
-from sqlalchemy import Column, ForeignKey, Integer, String, Sequence, Table, create_engine
-from sqlalchemy.orm import relationship, Session
+from sqlalchemy import Column, ForeignKey, Integer, String, Sequence, Table
+from sqlalchemy.orm import relationship
 from base import Base
 from sqlalchemy.sql import text
 from toolbox import session_maker_from_config
@@ -223,34 +223,9 @@ _longreads = 'longreads.fq'
 _longreads_md5 = '076b0e9f81aa599043b9e4be204a8014'
 
 
-@pytest.fixture(scope='session')
-def engine():
-    return create_engine('sqlite:///:memory:')
-
-
-@pytest.yield_fixture(scope='session')
-def tables(engine):
-    Base.metadata.create_all(engine)
-    yield
-    Base.metadata.drop_all(engine)
-
-
-@pytest.yield_fixture
-def session(engine, tables):
-    """Returns an sqlalchemy session, and after the test tears down everything properly."""
-    connection = engine.connect()
-    # begin the nested transaction
-    transaction = connection.begin()
-    # use the connection with the already started transaction
-    my_session = Session(bind=connection)
-
-    yield my_session
-
-    my_session.close()
-    # roll back the broader transaction
-    transaction.rollback()
-    # put back the connection to the connection pool
-    connection.close()
+def test_integration(db_integration):
+    if not db_integration:
+        pytest.skip('db integration testing disabled')
 
 
 def test_simple_source_insert(session):
