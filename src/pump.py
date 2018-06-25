@@ -182,6 +182,7 @@ def test_add_project(session):
 
     session.delete(proj)
     session.delete(input_set)
+    session.commit()
     session.delete(inp1)
     session.delete(inp2)
     session.delete(analysis)
