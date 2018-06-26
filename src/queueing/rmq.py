@@ -10,15 +10,15 @@ into SQS:
 https://stackoverflow.com/questions/46880229/migrate-from-amqp-to-amazon-sns-sqs-need-to-understand-concepts
 """
 
+import pytest
 import pika
 import pika.exceptions
-import unittest
 
 
 class RmqService():
 
-    def __init__(self, host='localhost'):
-        self.params = pika.ConnectionParameters(host)
+    def __init__(self, host='localhost', port=5672):
+        self.params = pika.ConnectionParameters(host=host, port=port)
         self.connection = pika.BlockingConnection(parameters=self.params)
         self.channel = self.connection.channel()
         self.get_outstanding = False
@@ -71,73 +71,43 @@ class RmqService():
                                    body=message)
 
 
-class TestRmqService(unittest.TestCase):
-
-    def setUp(self):
-        self.rabbitmq_running = True
-        try:
-            service = RmqService()
-            if service.queue_exists('TestRmq'):
-                service.queue_delete('TestRmq')
-            service.close()
-        except pika.exceptions.ConnectionClosed:
-            self.rabbitmq_running = False
-
-    def test_create_delete(self):
-        if not self.rabbitmq_running:
-            return True
-        service = RmqService()
-        self.assertFalse(service.queue_exists('TestRmq'))
-        service.queue_create('TestRmq')
-        self.assertTrue(service.queue_exists('TestRmq'))
-        service.queue_delete('TestRmq', if_empty=True)
-        self.assertFalse(service.queue_exists('TestRmq'))
-        service.close()
-
-    def test_publish(self):
-        if not self.rabbitmq_running:
-            return True
-        service = RmqService()
-        self.assertFalse(service.queue_exists('TestRmq'))
-        service.queue_create('TestRmq')
-        self.assertTrue(service.queue_exists('TestRmq'))
-        service.publish('TestRmq', 'test_publish_1')
-        service.publish('TestRmq', 'test_publish_2')
-        service.publish('TestRmq', 'test_publish_3')
-        service.queue_delete('TestRmq')
-        self.assertFalse(service.queue_exists('TestRmq'))
-        service.close()
-
-    def test_publish_get_1(self):
-        if not self.rabbitmq_running:
-            return True
-        service = RmqService()
-        self.assertFalse(service.queue_exists('TestRmq'))
-        service.queue_create('TestRmq')
-        service.publish('TestRmq', 'test_publish_get_1 1')
-        service.publish('TestRmq', 'test_publish_get_1 2')
-        service.publish('TestRmq', 'test_publish_get_1 3')
-        msg1 = service.get('TestRmq')
-        self.assertEqual(b'test_publish_get_1 1', msg1)
-        service.ack()
-        msg2 = service.get('TestRmq')
-        self.assertEqual(b'test_publish_get_1 2', msg2)
-        service.ack()
-        msg3 = service.get('TestRmq')
-        self.assertEqual(b'test_publish_get_1 3', msg3)
-        service.ack()
-        # messages might be requeued since they're unacknowledged
-        service.queue_delete('TestRmq')
-        self.assertFalse(service.queue_exists('TestRmq'))
-        service.close()
+def test_create_delete(q_enabled, q_service):
+    if not q_enabled: pytest.skip('Skipping RMQ tests')
+    assert not q_service.queue_exists('TestRmq')
+    q_service.queue_create('TestRmq')
+    assert q_service.queue_exists('TestRmq')
+    q_service.queue_delete('TestRmq', if_empty=True)
+    assert not q_service.queue_exists('TestRmq')
 
 
-if __name__ == '__main__':
-    rabbitmq_running = True
-    try:
-        conn = pika.BlockingConnection(parameters=pika.ConnectionParameters('localhost'))
-        conn.close()
-    except pika.exceptions.ConnectionClosed:
-        rabbitmq_running = False
-    if rabbitmq_running:
-        unittest.main()
+def test_publish(q_enabled, q_service):
+    if not q_enabled: pytest.skip('Skipping RMQ tests')
+    assert not q_service.queue_exists('TestRmq')
+    q_service.queue_create('TestRmq')
+    assert q_service.queue_exists('TestRmq')
+    q_service.publish('TestRmq', 'test_publish_1')
+    q_service.publish('TestRmq', 'test_publish_2')
+    q_service.publish('TestRmq', 'test_publish_3')
+    q_service.queue_delete('TestRmq')
+    assert not q_service.queue_exists('TestRmq')
+
+
+def test_publish_get_1(q_enabled, q_service):
+    if not q_enabled: pytest.skip('Skipping RMQ tests')
+    assert not q_service.queue_exists('TestRmq')
+    q_service.queue_create('TestRmq')
+    q_service.publish('TestRmq', 'test_publish_get_1 1')
+    q_service.publish('TestRmq', 'test_publish_get_1 2')
+    q_service.publish('TestRmq', 'test_publish_get_1 3')
+    msg1 = q_service.get('TestRmq')
+    assert b'test_publish_get_1 1' == msg1
+    q_service.ack()
+    msg2 = q_service.get('TestRmq')
+    assert b'test_publish_get_1 2' == msg2
+    q_service.ack()
+    msg3 = q_service.get('TestRmq')
+    assert b'test_publish_get_1 3' == msg3
+    q_service.ack()
+    # messages might be requeued since they're unacknowledged
+    q_service.queue_delete('TestRmq')
+    assert not q_service.queue_exists('TestRmq')
