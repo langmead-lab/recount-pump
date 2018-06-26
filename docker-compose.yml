@@ -29,6 +29,7 @@ services:
       - "db"
     environment:
       RECOUNT_TEST_DB: postgres://recount:recount-postgres@db:5432/recount-test
+      RECOUNT_TEST_Q: q:5672
     command: >
       bash -c "./wait-for-it.sh db:5432 --
                  ./wait-for-it.sh s3:9000 --
