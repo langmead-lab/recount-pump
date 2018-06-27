@@ -10,13 +10,18 @@
 
 set -ex
 
+IMAGE_NAME="benlangmead/recount-minio"
 CONTAINER_NAME=recount-minio
 KEY_ID=$(grep aws_access_key_id credentials | cut -d' ' -f3)
 SECRET=$(grep aws_secret_access_key credentials | cut -d' ' -f3)
 
-docker run -p 9000:9000 -d --name ${CONTAINER_NAME} \
+docker run --rm -p 9000:9000 -d --name ${CONTAINER_NAME} \
     -e "MINIO_ACCESS_KEY=${KEY_ID}" \
     -e "MINIO_SECRET_KEY=${SECRET}" \
-    minio/minio server /data
+    ${IMAGE_NAME} \
+    server /data
 
+./wait-for-it.sh localhost:9000
+sleep 2
+docker exec ${CONTAINER_NAME} sh -c "mv /tmp/staging/* /data/"
 docker logs ${CONTAINER_NAME}
