@@ -18,10 +18,4 @@ SECRET=$(grep aws_secret_access_key credentials | cut -d' ' -f3)
 docker run --rm -p 9000:9000 -d --name ${CONTAINER_NAME} \
     -e "MINIO_ACCESS_KEY=${KEY_ID}" \
     -e "MINIO_SECRET_KEY=${SECRET}" \
-    ${IMAGE_NAME} \
-    server /data
-
-./wait-for-it.sh localhost:9000
-sleep 2
-docker exec ${CONTAINER_NAME} sh -c "mv /tmp/staging/* /data/"
-docker logs ${CONTAINER_NAME}
+    ${IMAGE_NAME}

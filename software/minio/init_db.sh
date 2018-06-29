@@ -18,5 +18,6 @@ setup_refs() {
 
 setup_refs /tmp/manifest.csv
 
-echo "Final contents of ${STAGING}"
-tree ${STAGING}
+echo "Final contents:"
+tree /tmp
+
