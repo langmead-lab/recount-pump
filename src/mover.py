@@ -28,7 +28,7 @@ from __future__ import print_function
 import os
 import re
 import time
-import unittest
+import pytest
 import globus_sdk
 import log
 from docopt import docopt
@@ -599,75 +599,79 @@ class Mover(object):
             self.web_mover.put(source, dst)
 
 
-class TestUrl(unittest.TestCase):
-
-    def test_url1(self):
-        u = Url('http://www.test.com/xyz')
-        self.assertTrue(u.is_curlable)
-        self.assertFalse(u.is_local)
-        self.assertFalse(u.is_s3)
-        self.assertFalse(u.is_sra)
-        self.assertFalse(u.is_globus)
-
-    def test_url2(self):
-        u = Url('s3://recount-pump/ref/test')
-        self.assertFalse(u.is_curlable)
-        self.assertFalse(u.is_local)
-        self.assertTrue(u.is_s3)
-        self.assertFalse(u.is_sra)
-        self.assertFalse(u.is_globus)
-
-    def test_url3(self):
-        u = Url('globus://recount-pump/ref/test')
-        self.assertFalse(u.is_curlable)
-        self.assertFalse(u.is_local)
-        self.assertFalse(u.is_s3)
-        self.assertFalse(u.is_sra)
-        self.assertTrue(u.is_globus)
-
-    def test_parse_url1(self):
-        for proto in ['s3', 's3n']:
-            a, b, c = parse_s3_url(proto + '://recount-pump/ref/test')
-            self.assertEqual('recount-pump', a)
-            self.assertEqual('ref/test', b)
-            self.assertEqual('test', c)
-
-    def test_parse_url2(self):
-        a, b, c = parse_globus_url('globus://recount-pump/ref/test')
-        self.assertEqual('recount-pump', a)
-        self.assertEqual('/ref/test', b)
-        self.assertEqual('test', c)
+@pytest.yield_fixture(scope='session')
+def test_file():
+    fn = '.TestMover.1'
+    with open(fn, 'w') as ofh:
+        ofh.write('test')
+    yield fn
+    if os.path.exists(fn):
+        os.remove(fn)
 
 
-class TestMover(unittest.TestCase):
+def test_url1():
+    u = Url('http://www.test.com/xyz')
+    assert u.is_curlable
+    assert not u.is_local
+    assert not u.is_s3
+    assert not u.is_sra
+    assert not u.is_globus
 
-    def setUp(self):
-        self.fn = '.TestMover.1'
-        with open(self.fn, 'w') as ofh:
-            ofh.write('test')
 
-    def tearDown(self):
-        os.remove(self.fn)
+def test_url2():
+    u = Url('s3://recount-pump/ref/test')
+    assert not u.is_curlable
+    assert not u.is_local
+    assert u.is_s3
+    assert not u.is_sra
+    assert not u.is_globus
 
-    def test_exists(self):
-        m = Mover()
-        self.assertTrue(m.exists(self.fn))
 
-    def test_put(self):
-        m = Mover()
-        dst = self.fn + '.put'
-        self.assertFalse(os.path.exists(dst))
-        m.put(self.fn, dst)
-        self.assertTrue(os.path.exists(dst))
-        os.remove(dst)
+def test_url3():
+    u = Url('globus://recount-pump/ref/test')
+    assert not u.is_curlable
+    assert not u.is_local
+    assert not u.is_s3
+    assert not u.is_sra
+    assert u.is_globus
 
-    def test_get(self):
-        m = Mover()
-        dst = self.fn + '.get'
-        self.assertFalse(os.path.exists(dst))
-        m.get(self.fn, dst)
-        self.assertTrue(os.path.exists(dst))
-        os.remove(dst)
+
+def test_parse_url1():
+    for proto in ['s3', 's3n']:
+        a, b, c = parse_s3_url(proto + '://recount-pump/ref/test')
+        assert 'recount-pump' == a
+        assert 'ref/test' == b
+        assert 'test' == c
+
+
+def test_parse_url2():
+    a, b, c = parse_globus_url('globus://recount-pump/ref/test')
+    assert 'recount-pump' == a
+    assert '/ref/test' == b
+    assert 'test' == c
+
+
+def test_exists(test_file):
+    m = Mover()
+    assert m.exists(test_file)
+
+
+def test_put(test_file):
+    m = Mover()
+    dst = test_file + '.put'
+    assert not os.path.exists(dst)
+    m.put(test_file, dst)
+    assert os.path.exists(dst)
+    os.remove(dst)
+
+
+def test_get(test_file):
+    m = Mover()
+    dst = test_file + '.get'
+    assert not os.path.exists(dst)
+    m.get(test_file, dst)
+    assert os.path.exists(dst)
+    os.remove(dst)
 
 
 if __name__ == '__main__':
@@ -693,10 +697,6 @@ if __name__ == '__main__':
                       globus_ini=args['--globus-ini'], globus_section=args['--globus-section'],
                       enable_globus=True, enable_s3=True, enable_web=True)
             m.put(args['<source>'], args['<dest>'])
-        elif args['test']:
-            del sys.argv[1:]
-            log.info(__name__, 'Running tests', 'mover.py')
-            unittest.main(exit=False)
         elif args['nop']:
             pass
     except Exception:
