@@ -28,8 +28,11 @@ services:
       - "s3"
       - "db"
     environment:
+      AWS_ACCESS_KEY_ID: minio
+      AWS_SECRET_ACCESS_KEY: minio123
       RECOUNT_TEST_DB: postgres://recount:recount-postgres@db:5432/recount-test
       RECOUNT_TEST_Q: q:5672
+      RECOUNT_TEST_S3: http://s3:9000
     command: >
       bash -c "./wait-for-it.sh db:5432 --
                  ./wait-for-it.sh s3:9000 --

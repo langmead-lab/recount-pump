@@ -6,7 +6,6 @@ Usage:
   mover get <source> <dest> [options]
   mover put <source> <dest> [options]
   mover exists <file> [options]
-  mover test [options]
   mover nop
 
 Options:
@@ -121,9 +120,12 @@ def parse_s3_url(url):
 
 class S3Mover(object):
 
-    def __init__(self, profile='default'):
+    def __init__(self, profile=None, endpoint_url=None):
         self.session = boto3.Session(profile_name=profile)
-        self.s3 = self.session.resource('s3')
+        self.s3 = self.session.resource('s3', endpoint_url=endpoint_url)
+
+    def close(self):
+        pass
 
     def exists(self, url):
         bucket_str, path_str, _ = parse_s3_url(url)
@@ -136,6 +138,9 @@ class S3Mover(object):
                 raise  # Something else has gone wrong.
         return True
 
+    def make_bucket(self, bucket):
+        self.s3.create_bucket(Bucket=bucket).wait_until_exists()
+
     def put(self, source, destination):
         if not os.path.exists(source):
             raise RuntimeError('Source file "%s" does not exist')
@@ -143,6 +148,14 @@ class S3Mover(object):
         bucket = self.s3.Bucket(bucket_str)
         with open(source, 'rb') as data:
             bucket.put_object(Key=path_str, Body=data)
+
+    def remove(self, url):
+        bucket_str, path_str, _ = parse_s3_url(url)
+        self.s3.Object(bucket_str, path_str).delete()
+
+    def remove_bucket(self, bucket):
+        bucket = self.s3.Bucket(bucket)
+        bucket.delete()
 
     def get(self, source, destination):
         bucket_str, path_str, file_str = parse_s3_url(source)
@@ -214,6 +227,9 @@ class GlobusMover(object):
         authorizer = globus_sdk.AccessTokenAuthorizer(transfer_data['access_token'])
         self.client = globus_sdk.TransferClient(authorizer=authorizer)
 
+    def close(self):
+        pass
+
     def exists(self, url):
         endpoint_id, path, basename = parse_globus_url(url)
         orig_endpoint_id = endpoint_id
@@ -227,6 +243,9 @@ class GlobusMover(object):
             assert entry['path'] == path
             return True
         return False
+
+    def make_bucket(self, url):
+        raise RuntimeError('No way to make path with Globus mover')
 
     def put(self, source, destination, type='put', timeout=100000, poll_interval=60):
         endpoint_id_src, path_src, basename_src = parse_globus_url(source)
@@ -385,6 +404,9 @@ class WebMover(object):
         self.curl = curl_exe
         self._osdevnull = open(os.devnull, 'w')
 
+    def close(self):
+        pass
+
     def exists(self, path):
         curl_process = subprocess.Popen(
                                 ['curl', '--head', path],
@@ -399,6 +421,9 @@ class WebMover(object):
             # 19 is file doesn't exist; 6 is couldn't resolve host
             return False
         return True
+
+    def make_bucket(self, url):
+        raise RuntimeError('No way to make path with Web mover')
 
     def put(self, source, destination):
         raise RuntimeError('Cannot upload to FTP, HTTP, or HTTPS.')
@@ -491,7 +516,8 @@ class Mover(object):
         For now, just distinguishes among S3, the local filesystem, and the
         web. Perhaps class structure could be improved.
     """
-    def __init__(self, profile='default', curl_exe='curl',
+    def __init__(self, profile=None, endpoint_url=None,
+                 curl_exe='curl',
                  globus_ini='~/.recount/globus.ini',
                  globus_section='globus', enable_web=False, enable_s3=False,
                  enable_globus=False):
@@ -499,11 +525,19 @@ class Mover(object):
         self.enable_s3 = enable_s3
         self.enable_globus = enable_globus
         if enable_s3:
-            self.s3_mover = S3Mover(profile=profile)
+            self.s3_mover = S3Mover(profile=profile, endpoint_url=endpoint_url)
         if enable_globus:
             self.globus_mover = GlobusMover(ini_fn=os.path.expanduser(globus_ini), section=globus_section)
         if enable_web:
             self.web_mover = WebMover(curl_exe=curl_exe)
+
+    def close(self):
+        if self.enable_s3:
+            self.s3_mover.close()
+        if self.enable_globus:
+            self.globus_mover.close()
+        if self.enable_web:
+            self.web_mover.close()
 
     def exists(self, url):
         """ Returns whether a given file exists. 
@@ -539,6 +573,27 @@ class Mover(object):
                 raise RuntimeError('exists called on web URL "%s" but web not enabled' % url)
             log.info(__name__, 'Web exists for "%s"' % url, 'mover.py')
             return self.web_mover.exists(url.to_url())
+
+    def make_bucket(self, url):
+        url = Url(url)
+        if url.is_local:
+            log.info(__name__, 'Local make_bucket for "%s"' % url, 'mover.py')
+            return os.path.exists(os.path.abspath(url.to_url()))
+        elif url.is_s3:
+            if not self.enable_s3:
+                raise RuntimeError('make_bucket called on S3 URL "%s" but S3 not enabled' % url)
+            log.info(__name__, 'S3 make_bucket for "%s"' % url, 'mover.py')
+            return self.s3_mover.make_bucket(url.to_url())
+        elif url.is_globus:
+            if not self.enable_globus:
+                raise RuntimeError('make_bucket called on Globus URL "%s" but Globus not enabled' % url)
+            log.info(__name__, 'Globus make_bucket for "%s"' % url, 'mover.py')
+            return self.globus_mover.make_bucket(url.to_url())
+        elif url.is_curlable:
+            if not self.enable_web:
+                raise RuntimeError('make_bucket called on web URL "%s" but web not enabled' % url)
+            log.info(__name__, 'Web make_bucket for "%s"' % url, 'mover.py')
+            return self.web_mover.make_bucket(url.to_url())
 
     def get(self, url, destination='.'):
         """ Copies a file at url to the local destination.
@@ -672,6 +727,18 @@ def test_get(test_file):
     m.get(test_file, dst)
     assert os.path.exists(dst)
     os.remove(dst)
+
+
+def test_s3_1(s3_enabled, s3_service, test_file):
+    if not s3_enabled: pytest.skip('Skipping S3 tests')
+    bucket_name = 'mover-test'
+    s3_service.make_bucket(bucket_name)
+    dst = ''.join(['s3://', bucket_name, '/', test_file, '.put'])
+    assert not s3_service.exists(dst)
+    s3_service.put(test_file, dst)
+    assert s3_service.exists(dst)
+    s3_service.remove(dst)
+    s3_service.remove_bucket(bucket_name)
 
 
 if __name__ == '__main__':
