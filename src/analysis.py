@@ -3,8 +3,6 @@
 # Author: Ben Langmead <ben.langmead@gmail.com>
 # License: MIT
 
-import unittest
-
 import sys
 import pytest
 from sqlalchemy import Column, ForeignKey, Integer, String, Sequence
@@ -222,11 +220,7 @@ On each cluster, the user running the jobs should create a file
         print_usage()
         sys.exit(0)
 
-    if sys.argv[1] == 'test':
-        sys.argv.remove('test')
-        unittest.main()
-
-    elif len(sys.argv) >= 3 and sys.argv[1] == 'add-cluster':
+    if len(sys.argv) >= 3 and sys.argv[1] == 'add-cluster':
         if len(sys.argv) < 4:
             raise ValueError('add-cluster requires 1 argument')
         with open(sys.argv[2]) as cfg_gh:
