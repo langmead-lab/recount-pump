@@ -33,10 +33,10 @@ Options:
 
 import os
 import pytest
-import tempfile
 import shutil
 import log
 from docopt import docopt
+from tempfile import mkdtemp
 
 from sqlalchemy import Column, ForeignKey, Integer, String, Sequence, Table
 from sqlalchemy.orm import relationship
@@ -234,8 +234,7 @@ def add_annotations_to_set(set_ids, annotation_ids, session):
     session.commit()
 
 
-def download_reference(session, dest_dir='.', ref_name=None,
-                       profile='default', curl_exe='curl', decompress=True):
+def download_reference(session, mover, dest_dir='.', ref_name=None):
     """
     Download all relevant supporting files for a reference, or for all
     references (when ref_name=None) to a directory.  This is something you will
@@ -258,7 +257,6 @@ def download_reference(session, dest_dir='.', ref_name=None,
     for ss in sss:
         for src in ss.sources:
             ll.add(src)
-    mover = Mover(profile=profile, curl_exe=curl_exe, enable_web=True)
     # TODO: deal with gene annotations too
     for l in ll:
         for url, cksum in [(l.url_1, l.checksum_1),
@@ -278,8 +276,11 @@ def download_reference(session, dest_dir='.', ref_name=None,
                     dest_checksum = generate_file_md5(dest_fn)
                     if cksum != dest_checksum:
                         raise IOError('MD5 mismatch; expected %s got %s' % (cksum, dest_checksum))
-                if fn.endswith('.gz'):
-                    log.info(__name__, 'decompressing "%s"' % dest_fn, 'reference.py')
+                if fn.endswith('.tar.gz'):
+                    log.info(__name__, 'decompressing tarball "%s"' % dest_fn, 'reference.py')
+                    os.system('cd %s && gzip -dc %s | tar xf -' % (dest_dir, os.path.basename(dest_fn)))
+                elif fn.endswith('.gz'):
+                    log.info(__name__, 'decompressing gz "%s"' % dest_fn, 'reference.py')
                     os.system('gunzip ' + dest_fn)
 
 # This is ~29MB
@@ -389,24 +390,29 @@ def test_simple_annotationset_insert(session):
     assert 5 == len(list(session.query(annotation_association_table)))
 
 
-def test_download_all(session):
-    src1 = Source(retrieval_method="url", url_1=_lambda_fa, checksum_1=_lambda_fa_md5)
-    src2 = Source(retrieval_method="url", url_1=_phix_fa, checksum_1=_phix_md5)
+def test_download_all(session, s3_enabled, s3_service):
+    if not s3_enabled: pytest.skip('Skipping S3 tests')
+    src1 = Source(retrieval_method="s3",
+                  url_1='s3://recount-pump/ref/ce10/ucsc_tracks.tar.gz', checksum_1='')
+    src2 = Source(retrieval_method="s3",
+                  url_1='s3://recount-pump/ref/ce10/fasta.tar.gz', checksum_1='')
     session.add(src1)
     session.add(src2)
     ss = SourceSet(sources=[src1, src2])
     session.add(ss)
     session.commit()
-    an1 = Source(retrieval_method="url", url_1=_lambda_annot, checksum_1=_lambda_annot_md5)
+    an1 = Source(retrieval_method='s3',
+                 url_1='s3://recount-pump/ref/ce10/gtf.tar.gz', checksum_1='')
     anset = AnnotationSet(annotations=[an1])
-    ref1 = Reference(tax_id=10710, name='lambda', longname='Enterobacteria phage lambda',
+    ref1 = Reference(tax_id=6239, name='celegans', longname='caenorhabditis_elegans',
                      conventions='', comment='', source_set=ss.id, annotation_set=anset.id)
     session.add(ref1)
     session.commit()
-    tmpd = tempfile.mkdtemp()
-    download_reference(session, dest_dir=tmpd, ref_name='lambda')
-    assert os.path.exists(os.path.join(tmpd, 'GCF_000840245.1_ViralProj14204_genomic.fna'))
-    assert os.path.exists(os.path.join(tmpd, 'phix.fa'))
+    tmpd = mkdtemp()
+    download_reference(session, s3_service, dest_dir=tmpd, ref_name='celegans')
+    assert os.path.exists(os.path.join(tmpd, 'fasta/genome.fa'))
+    # TODO: handle annotation
+    #assert os.path.exists(os.path.join(tmpd, 'gtf/genes.gtf'))
     shutil.rmtree(tmpd)
 
 
