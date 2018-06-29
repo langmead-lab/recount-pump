@@ -1,3 +1,3 @@
 #!/bin/sh
 
-py.test -vr src/*.py src/*/*.py
+py.test -v src/*.py src/*/*.py
