@@ -8,12 +8,14 @@
 # container filesystem at the time of container start. But all the data is
 # lost after container exits.
 
+d=`dirname $0`
+
 set -ex
 
 IMAGE_NAME="benlangmead/recount-minio"
 CONTAINER_NAME=recount-minio
-KEY_ID=$(grep aws_access_key_id credentials | cut -d' ' -f3)
-SECRET=$(grep aws_secret_access_key credentials | cut -d' ' -f3)
+KEY_ID=$(grep aws_access_key_id $d/credentials | cut -d' ' -f3)
+SECRET=$(grep aws_secret_access_key $d/credentials | cut -d' ' -f3)
 
 docker run --rm -p 9000:9000 -d --name ${CONTAINER_NAME} \
     -e "MINIO_ACCESS_KEY=${KEY_ID}" \
