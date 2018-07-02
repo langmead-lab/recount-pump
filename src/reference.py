@@ -37,12 +37,10 @@ import shutil
 import log
 from docopt import docopt
 from tempfile import mkdtemp
-
 from sqlalchemy import Column, ForeignKey, Integer, String, Sequence, Table
 from sqlalchemy.orm import relationship
 from base import Base
 from toolbox import generate_file_md5, session_maker_from_config
-from mover import Mover
 
 
 class Source(Base):
@@ -83,6 +81,22 @@ class SourceSet(Base):
     id = Column(Integer, Sequence('source_set_id_seq'), primary_key=True)
     sources = relationship("Source", secondary=source_association_table)
 
+    @classmethod
+    def iterate_by_key(cls, session, source_set_key):
+        sss = list(session.query(SourceSet).filter_by(id=source_set_key))
+        if len(sss) == 0:
+            yield None
+            return
+        sources = set()
+        for ss in sss:
+            sources.update([s for s in ss.sources])
+        for source in sources:
+            for url, cksum in [(source.url_1, source.checksum_1),
+                               (source.url_2, source.checksum_2),
+                               (source.url_3, source.checksum_3)]:
+                if url is not None and len(url) > 0:
+                    yield url, cksum
+
 
 # Creates many-to-many association between Annotations and AnnotationSets
 annotation_association_table = Table('annotation_set_association', Base.metadata,
@@ -113,6 +127,20 @@ class AnnotationSet(Base):
 
     id = Column(Integer, Sequence('annotation_set_id_seq'), primary_key=True)
     annotations = relationship("Annotation", secondary=annotation_association_table)
+
+    @classmethod
+    def iterate_by_key(cls, session, annot_set_key):
+        anss = list(session.query(AnnotationSet).filter_by(id=annot_set_key))
+        if len(anss) == 0:
+            yield None
+            return
+        annotations = set()
+        for ans in anss:
+            annotations.update([an for an in ans.annotations])
+            for annotation in annotations:
+                url, cksum = annotation.url, annotation.checksum
+                if url is not None and len(url) > 0:
+                    yield url, cksum
 
 
 class Reference(Base):
@@ -234,6 +262,28 @@ def add_annotations_to_set(set_ids, annotation_ids, session):
     session.commit()
 
 
+def download_url(url, cksum, mover, dest_dir='.'):
+    fn = os.path.basename(url)
+    dest_fn = os.path.join(dest_dir, fn)
+    if os.path.exists(dest_fn):
+        raise ValueError('Destination already exists: ' + dest_fn)
+    log.info(__name__, 'retrieve "%s" into "%s"' % (url, dest_dir), 'reference.py')
+    mover.get(url, dest_dir)
+    if not os.path.exists(dest_fn):
+        raise IOError('Failed to obtain "%s"' % url)
+    if cksum is not None and len(cksum) > 0:
+        log.info(__name__, 'check checksum for "%s"' % dest_fn, 'reference.py')
+        dest_checksum = generate_file_md5(dest_fn)
+        if cksum != dest_checksum:
+            raise IOError('MD5 mismatch; expected %s got %s' % (cksum, dest_checksum))
+    if fn.endswith('.tar.gz'):
+        log.info(__name__, 'decompressing tarball "%s"' % dest_fn, 'reference.py')
+        os.system('cd %s && gzip -dc %s | tar xf -' % (dest_dir, os.path.basename(dest_fn)))
+    elif fn.endswith('.gz'):
+        log.info(__name__, 'decompressing gz "%s"' % dest_fn, 'reference.py')
+        os.system('gunzip ' + dest_fn)
+
+
 def download_reference(session, mover, dest_dir='.', ref_name=None):
     """
     Download all relevant supporting files for a reference, or for all
@@ -241,6 +291,7 @@ def download_reference(session, mover, dest_dir='.', ref_name=None):
     typically do on a new cluster, letting the destination directory be a
     shared filesystem.
     """
+    # Get reference by name
     if ref_name is not None:
         refs = list(session.query(Reference).filter_by(name=ref_name))
         if len(refs) == 0:
@@ -249,56 +300,19 @@ def download_reference(session, mover, dest_dir='.', ref_name=None):
         refs = list(session.query(Reference))
         if len(refs) == 0:
             raise ValueError('No references')
-    ss_key = refs[0].source_set
-    sss = list(session.query(SourceSet).filter_by(id=ss_key))
-    if len(sss) == 0:
-        raise ValueError('Reference "%s" had invalid source_set key "%d"' % (ref_name, ss_key))
-    ll = set()
-    for ss in sss:
-        for src in ss.sources:
-            ll.add(src)
-    # TODO: deal with gene annotations too
-    for l in ll:
-        for url, cksum in [(l.url_1, l.checksum_1),
-                           (l.url_2, l.checksum_2),
-                           (l.url_3, l.checksum_3)]:
-            if url is not None and len(url) > 0:
-                fn = os.path.basename(url)
-                dest_fn = os.path.join(dest_dir, fn)
-                if os.path.exists(dest_fn):
-                    raise ValueError('Destination already exists: ' + dest_fn)
-                log.info(__name__, 'retrieve "%s" into "%s"' % (url, dest_dir), 'reference.py')
-                mover.get(url, dest_dir)
-                if not os.path.exists(dest_fn):
-                    raise IOError('Failed to obtain "%s"' % url)
-                if cksum is not None and len(cksum) > 0:
-                    log.info(__name__, 'check checksum for "%s"' % dest_fn, 'reference.py')
-                    dest_checksum = generate_file_md5(dest_fn)
-                    if cksum != dest_checksum:
-                        raise IOError('MD5 mismatch; expected %s got %s' % (cksum, dest_checksum))
-                if fn.endswith('.tar.gz'):
-                    log.info(__name__, 'decompressing tarball "%s"' % dest_fn, 'reference.py')
-                    os.system('cd %s && gzip -dc %s | tar xf -' % (dest_dir, os.path.basename(dest_fn)))
-                elif fn.endswith('.gz'):
-                    log.info(__name__, 'decompressing gz "%s"' % dest_fn, 'reference.py')
-                    os.system('gunzip ' + dest_fn)
-
-# This is ~29MB
-_ensembl_fasta = 'ftp://ftp.ensembl.org/pub/release-90/fasta'
-_species = 'caenorhabditis_elegans'
-_fa_prefix = 'Caenorhabditis_elegans.WBcel235'
-_elegans_url = '%s/%s/dna/%s.dna.toplevel.fa.gz' % (_ensembl_fasta, _species, _fa_prefix)
-_elegans_md5 = '151011266f8af1de2ecb11ff4a43a134'
-
-_ncbi_genomes = 'ftp://ftp.ncbi.nlm.nih.gov/genomes'
-_acc = 'GCF_000840245.1_ViralProj14204'
-_lambda_fa = _ncbi_genomes + '/all/GCF/000/840/245/%s/%s_genomic.fna.gz' % (_acc, _acc)
-_lambda_fa_md5 = '7e74fba2c9e1107f228dbb12bada5c1c'
-_lambda_annot = _ncbi_genomes + '/all/GCF/000/840/245/%s/%s_genomic.gff.gz' % (_acc, _acc)
-_lambda_annot_md5 = 'df93ad945b341e7f1b225742f9d8ee6b'
-
-_phix_fa = 'http://www.cs.jhu.edu/~langmea/resources/phix.fa'
-_phix_md5 = 'a1c4cc91480cd3e9e7197d35dbba7929'
+    for ref in refs:
+        log.info(__name__, 'downloading reference ' + ref.name, 'reference.py')
+        for tup in SourceSet.iterate_by_key(session, ref.source_set):
+            if tup is None:
+                raise ValueError('Reference "%s" had invalid SourceSet key "%d"' % (ref_name, ref.source_set))
+            url, cksum = tup
+            download_url(url, cksum, mover, dest_dir=dest_dir)
+        if ref.annotation_set is not None:
+            for tup in AnnotationSet.iterate_by_key(session, ref.annotation_set):
+                if tup is None:
+                    raise ValueError('Reference "%s" had invalid AnnotationSet key "%d"' % (ref.name, ref.annotation_set))
+                url, cksum = tup
+                download_url(url, cksum, mover, dest_dir=dest_dir)
 
 
 def test_integration(db_integration):
@@ -307,14 +321,14 @@ def test_integration(db_integration):
 
 
 def test_simple_source_insert(session):
-    src = Source(retrieval_method="url", url_1=_elegans_url, checksum_1=_elegans_md5)
+    src = Source(retrieval_method="url", url_1='fake-url', checksum_1='fake-cksum')
     assert 0 == len(list(session.query(Source)))
     session.add(src)
     session.commit()
     sources = list(session.query(Source))
     assert 1 == len(sources)
-    assert _elegans_url == sources[0].url_1
-    assert _elegans_md5 == sources[0].checksum_1
+    assert 'fake-url' == sources[0].url_1
+    assert 'fake-cksum' == sources[0].checksum_1
     assert sources[0].url_2 is None
     assert sources[0].url_3 is None
     assert sources[0].checksum_2 is None
@@ -326,23 +340,23 @@ def test_simple_source_insert(session):
 
 def test_simple_annotation_insert(session):
     annotation = Annotation(tax_id=9606, retrieval_method="url",
-                            url=_lambda_annot, checksum=_lambda_annot_md5)
+                            url='fake-url', checksum='fake-cksum')
     assert 0 == len(list(session.query(Annotation)))
     session.add(annotation)
     session.commit()
     annotations = list(session.query(Annotation))
     assert 1 == len(annotations)
-    assert _lambda_annot == annotations[0].url
-    assert _lambda_annot_md5 == annotations[0].checksum
+    assert 'fake-url' == annotations[0].url
+    assert 'fake-cksum' == annotations[0].checksum
     session.delete(annotation)
     session.commit()
     assert 0 == len(list(session.query(Annotation)))
 
 
 def test_simple_sourceset_insert(session):
-    src1 = Source(retrieval_method="url", url_1=_elegans_url, checksum_1=_elegans_md5)
-    src2 = Source(retrieval_method="url", url_1=_elegans_url, checksum_1=_elegans_md5)
-    src3 = Source(retrieval_method="url", url_1=_elegans_url, checksum_1=_elegans_md5)
+    src1 = Source(retrieval_method="url", url_1='fake-url1', checksum_1='fake-cksum1')
+    src2 = Source(retrieval_method="url", url_1='fake-url2', checksum_1='fake-cksum2')
+    src3 = Source(retrieval_method="url", url_1='fake-url3', checksum_1='fake-cksum3')
 
     # add sources
     assert 0 == len(list(session.query(Source)))
@@ -366,9 +380,9 @@ def test_simple_sourceset_insert(session):
 
 
 def test_simple_annotationset_insert(session):
-    annot1 = Annotation(retrieval_method="url", url=_lambda_annot, checksum=_lambda_annot_md5)
-    annot2 = Annotation(retrieval_method="url", url=_lambda_annot, checksum=_lambda_annot_md5)
-    annot3 = Annotation(retrieval_method="url", url=_lambda_annot, checksum=_lambda_annot_md5)
+    annot1 = Annotation(retrieval_method="url", url='fake-url1', checksum='fake-cksum1')
+    annot2 = Annotation(retrieval_method="url", url='fake-url2', checksum='fake-cksum2')
+    annot3 = Annotation(retrieval_method="url", url='fake-url3', checksum='fake-cksum3')
 
     # add annotations
     assert 0 == len(list(session.query(Annotation)))
@@ -398,12 +412,17 @@ def test_download_all(session, s3_enabled, s3_service):
                   url_1='s3://recount-pump/ref/ce10/fasta.tar.gz', checksum_1='')
     session.add(src1)
     session.add(src2)
+    session.commit()
     ss = SourceSet(sources=[src1, src2])
     session.add(ss)
     session.commit()
-    an1 = Source(retrieval_method='s3',
-                 url_1='s3://recount-pump/ref/ce10/gtf.tar.gz', checksum_1='')
+    an1 = Annotation(retrieval_method='s3',
+                     url='s3://recount-pump/ref/ce10/gtf.tar.gz', checksum='')
+    session.add(an1)
+    session.commit()
     anset = AnnotationSet(annotations=[an1])
+    session.add(anset)
+    session.commit()
     ref1 = Reference(tax_id=6239, name='celegans', longname='caenorhabditis_elegans',
                      conventions='', comment='', source_set=ss.id, annotation_set=anset.id)
     session.add(ref1)
@@ -411,8 +430,7 @@ def test_download_all(session, s3_enabled, s3_service):
     tmpd = mkdtemp()
     download_reference(session, s3_service, dest_dir=tmpd, ref_name='celegans')
     assert os.path.exists(os.path.join(tmpd, 'fasta/genome.fa'))
-    # TODO: handle annotation
-    #assert os.path.exists(os.path.join(tmpd, 'gtf/genes.gtf'))
+    assert os.path.exists(os.path.join(tmpd, 'gtf/genes.gtf'))
     shutil.rmtree(tmpd)
 
 
