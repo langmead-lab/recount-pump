@@ -21,7 +21,7 @@ services:
       POSTGRES_PASSWORD: recount-postgres
       POSTGRES_DB: recount-test
   recount:
-    build: .
+    image: "benlangmead/recount-pump"
     depends_on:
       - "q"
       - "s3"
@@ -33,9 +33,9 @@ services:
       RECOUNT_TEST_Q: q:5672
       RECOUNT_TEST_S3: http://s3:9000
     command: >
-      bash -c "./wait-for-it.sh db:5432 --
-                 ./wait-for-it.sh s3:9000 --
-                   ./wait-for-it.sh q:5672 --
+      bash -c "/code/wait-for-it.sh db:5432 --
+                 /code/wait-for-it.sh s3:9000 --
+                   /code/wait-for-it.sh q:5672 --
                      echo '*** STARTING ***' &&
-                     py.test -rv src/*.py src/*/*.py &&
+                     py.test -v src/*.py src/*/*.py &&
                      echo '*** SUCCESS ***'"
