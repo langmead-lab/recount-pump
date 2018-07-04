@@ -208,10 +208,6 @@ def process_search(search, size, gzip_output, output_fn):
             nscrolls += 1
 
 
-def json_to_pandas(json):
-    pandas.read_json(json)
-
-
 if __name__ == '__main__':
     args = docopt(__doc__)
     agg_ini = os.path.expanduser(args['--log-ini']) if args['--aggregate'] else None
