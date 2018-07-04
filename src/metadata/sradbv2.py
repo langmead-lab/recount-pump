@@ -32,7 +32,6 @@ import sys
 import json
 import cgi
 import gzip
-import pandas
 try:
     from urllib.request import urlopen
     from urllib.parse import quote
