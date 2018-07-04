@@ -181,7 +181,11 @@ def process_search(search, size, gzip_output, output_fn):
         num_hits = len(jn['hits']['hits'])
         assert num_hits <= tot_hits
         log.info(__name__, 'Writing hits [%d, %d) out of %d' % (0, num_hits, tot_hits), 'sradbv2.py')
-        fout.write(json.dumps(jn['hits']['hits'], indent=4).encode('UTF-8'))
+        dump = json.dumps(jn['hits']['hits'], indent=4).encode('UTF-8')
+        if num_hits < tot_hits:
+            assert dump[-1] == ']'
+            dump = dump[:-1] + ','  # don't prematurely end list
+        fout.write(dump)
         nscrolls = 1
         while num_hits < tot_hits:
             url = sradbv2_scroll_url + '?scroll_id=' + jn['_scroll_id']
@@ -194,12 +198,18 @@ def process_search(search, size, gzip_output, output_fn):
             assert num_hits <= tot_hits
             log.info(__name__, 'Writing hits [%d, %d) out of %d, scroll=%d' %
                      (old_num_hits, num_hits, tot_hits, nscrolls), 'sradbv2.py')
-            fout.write(json.dumps(jn['hits']['hits'], indent=4).encode('UTF-8'))
+            dump = json.dumps(jn['hits']['hits'], indent=4).encode('UTF-8')
+            assert dump[0] == '['
+            dump = dump[1:]  # make one big list, not many little ones
+            if num_hits < tot_hits:
+                assert dump[-1] == ']'  # don't prematurely end list
+                dump = dump[:-1] + ','
+            fout.write(dump)
             nscrolls += 1
 
 
 def json_to_pandas(json):
-    json.load()
+    pandas.read_json(json)
 
 
 if __name__ == '__main__':
