@@ -21,6 +21,8 @@ Options:
   -a, --aggregate          Enable log aggregation.
   --noheader               Suppress header in output.
   --nostdout               Output to files named by study accession.
+  --gzip                   Gzip outputs.
+  --output <name>          Output filename [default: search.json.temp].
   -h, --help               Show this screen.
   --version                Show version.
 """
@@ -29,6 +31,8 @@ from __future__ import print_function
 import sys
 import json
 import cgi
+import gzip
+import pandas
 try:
     from urllib.request import urlopen
     from urllib.parse import quote
@@ -156,7 +160,14 @@ def query(delay, nostdout, noheader, query_string=None, query_file=None):
         process_study(prev_study, runs_per_study, header_fields, nostdout, noheader)
 
 
-def process_search(search, size):
+def openex(fn, mode, gzip_output):
+    if gzip_output:
+        return gzip.open(fn + '.gz', mode)
+    else:
+        return open(fn, mode)
+
+
+def process_search(search, size, gzip_output, output_fn):
     url = '%s?q=%s&size=%d' % (sradbv2_search_url, quote(search), size)
     log.info(__name__, 'GET ' + url, 'sradbv2.py')
     response = urlopen(url)
@@ -164,13 +175,13 @@ def process_search(search, size):
     encodec = ct.get('charset', 'utf-8')
     log.info(__name__, 'Charset: ' + encodec, 'sradbv2.py')
     payload = response.read().decode(encodec)
-    with open("search.json.temp", "wb") as fout:
+    with openex(output_fn, 'wb', gzip_output) as fout:
         jn = json.loads(payload)
         tot_hits = jn['hits']['total']
         num_hits = len(jn['hits']['hits'])
         assert num_hits <= tot_hits
         log.info(__name__, 'Writing hits [%d, %d) out of %d' % (0, num_hits, tot_hits), 'sradbv2.py')
-        fout.write(json.dumps(jn['hits']['hits'], indent=4))
+        fout.write(json.dumps(jn['hits']['hits'], indent=4).encode('UTF-8'))
         nscrolls = 1
         while num_hits < tot_hits:
             url = sradbv2_scroll_url + '?scroll_id=' + jn['_scroll_id']
@@ -183,8 +194,12 @@ def process_search(search, size):
             assert num_hits <= tot_hits
             log.info(__name__, 'Writing hits [%d, %d) out of %d, scroll=%d' %
                      (old_num_hits, num_hits, tot_hits, nscrolls), 'sradbv2.py')
-            fout.write(json.dumps(jn['hits']['hits'], indent=4))
+            fout.write(json.dumps(jn['hits']['hits'], indent=4).encode('UTF-8'))
             nscrolls += 1
+
+
+def json_to_pandas(json):
+    json.load()
 
 
 if __name__ == '__main__':
@@ -196,7 +211,7 @@ if __name__ == '__main__':
     try:
         if args['search']:
             # sample_taxon_id:6239 AND experiment_library_strategy:"rna seq" AND experiment_library_source:transcriptomic AND experiment_platform:illumina
-            process_search(args['<lucene-search>'], int(args['--size']))
+            process_search(args['<lucene-search>'], int(args['--size']), args['--gzip'], args['--output'])
         elif args['query']:
             query(args['--delay'], args['--nostdout'], args['--noheader'], query_string=args['<SRP>,<SRR>'])
         elif args['query-file']:
