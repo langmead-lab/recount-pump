@@ -17,6 +17,7 @@ Options:
   --log-section <section>  .ini file section for log aggregator [default: log].
   --log-level <level>      Set level for log aggregation; could be CRITICAL,
                            ERROR, WARNING, INFO, DEBUG [default: INFO].
+  --size <size>            Number of records to fetch per call [default: 300].
   -a, --aggregate          Enable log aggregation.
   --noheader               Suppress header in output.
   --nostdout               Output to files named by study accession.
@@ -34,6 +35,7 @@ try:
 except ImportError:
     from urllib import quote
     from urllib2 import urlopen
+    sys.exc_clear()
 import time
 import os
 from docopt import docopt
@@ -42,6 +44,7 @@ import log
 
 sradbv2_api_url = 'https://api-omicidx.cancerdatasci.org/sra/1.0'
 sradbv2_full_url = sradbv2_api_url + '/full'
+sradbv2_scroll_url = sradbv2_api_url + '/scroll'
 sradbv2_search_url = sradbv2_api_url + '/search/full'
 KEY_VALUE_DELIM = '::'
 SUBFIELD_DELIM = '|'
@@ -151,16 +154,37 @@ def query(delay, nostdout, noheader, query_string=None, query_file=None):
             time.sleep(delay)
     if prev_study is not None:
         process_study(prev_study, runs_per_study, header_fields, nostdout, noheader)
-    print(str(header_fields_vec), file=sys.stderr)
 
 
-def process_search(search):
-    url = sradbv2_search_url + '?' + quote(search)
+def process_search(search, size):
+    url = '%s?q=%s&size=%d' % (sradbv2_search_url, quote(search), size)
+    log.info(__name__, 'GET ' + url, 'sradbv2.py')
     response = urlopen(url)
     j, ct = cgi.parse_header(response.headers.get('Content-type', ''))
     encodec = ct.get('charset', 'utf-8')
     log.info(__name__, 'Charset: ' + encodec, 'sradbv2.py')
     payload = response.read().decode(encodec)
+    with open("search.json.temp", "wb") as fout:
+        jn = json.loads(payload)
+        tot_hits = jn['hits']['total']
+        num_hits = len(jn['hits']['hits'])
+        assert num_hits <= tot_hits
+        log.info(__name__, 'Writing hits [%d, %d) out of %d' % (0, num_hits, tot_hits), 'sradbv2.py')
+        fout.write(json.dumps(jn['hits']['hits'], indent=4))
+        nscrolls = 1
+        while num_hits < tot_hits:
+            url = sradbv2_scroll_url + '?scroll_id=' + jn['_scroll_id']
+            log.info(__name__, 'GET ' + url, 'sradbv2.py')
+            response = urlopen(url)
+            payload = response.read().decode(encodec)
+            jn = json.loads(payload)
+            old_num_hits = num_hits
+            num_hits += len(jn['hits']['hits'])
+            assert num_hits <= tot_hits
+            log.info(__name__, 'Writing hits [%d, %d) out of %d, scroll=%d' %
+                     (old_num_hits, num_hits, tot_hits, nscrolls), 'sradbv2.py')
+            fout.write(json.dumps(jn['hits']['hits'], indent=4))
+            nscrolls += 1
 
 
 if __name__ == '__main__':
@@ -171,7 +195,8 @@ if __name__ == '__main__':
                      agg_level=args['--log-level'])
     try:
         if args['search']:
-            process_search(args['<lucene-search>'])
+            # sample_taxon_id:6239 AND experiment_library_strategy:"rna seq" AND experiment_library_source:transcriptomic AND experiment_platform:illumina
+            process_search(args['<lucene-search>'], int(args['--size']))
         elif args['query']:
             query(args['--delay'], args['--nostdout'], args['--noheader'], query_string=args['<SRP>,<SRR>'])
         elif args['query-file']:
