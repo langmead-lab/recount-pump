@@ -16,6 +16,13 @@ setup_refs() {
     done < $manifest
 }
 
+setup_metadata() {
+    mkdir -p $STAGING/meta/ce10_test
+    cd /tmp/src
+    python -m metadata.sradbv2 search 'sample_taxon_id:6239 AND experiment_library_strategy:"rna seq" AND experiment_library_source:transcriptomic AND experiment_platform:illumina' --gzip --output $STAGING/meta/ce10_test/ce10_test.json
+}
+
+setup_metadata
 setup_refs /tmp/manifest.csv
 
 echo "Final contents:"
