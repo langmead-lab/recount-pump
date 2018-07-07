@@ -12,19 +12,32 @@ FROM minio/minio
 # - prepends "minio" onto command
 # - manages docker secrets
 
-RUN apk update
-RUN apk add -u bash
-RUN apk add -u mc
-RUN apk add tree
 RUN wget https://dl.minio.io/client/mc/release/linux-amd64/mc
 RUN chmod a+x mc
 RUN mv mc /usr/local/bin
+
+RUN apk update
+RUN apk add -u bash
+RUN apk add -u mc
+RUN apk add -u tree
+RUN apk add -u gcc
+RUN apk add -u g++
+RUN apk add -u python
+RUN apk add -u python-dev
+RUN python -m ensurepip
+RUN pip install --upgrade pip
+RUN apk add -u musl-dev postgresql-dev postgresql postgresql-libs
+RUN apk add -u linux-headers
+RUN ln -s /usr/include/locale.h /usr/include/xlocale.h
 
 COPY credentials /tmp/credentials
 COPY manifest.csv /tmp/manifest.csv
 COPY wait-for-it.sh /tmp/wait-for-it.sh
 COPY init_db.sh /tmp/init_db.sh
 COPY start_db.sh /tmp/start_db.sh
+COPY src /tmp/src
+COPY requirements.txt /tmp/requirements.txt
+RUN pip install -r /tmp/requirements.txt
 
 RUN . /tmp/init_db.sh
 ENTRYPOINT /tmp/start_db.sh
