@@ -1,3 +1,3 @@
 #!/bin/sh
 
-docker pull rabbitmq:latest
+docker pull $* rabbitmq:latest
