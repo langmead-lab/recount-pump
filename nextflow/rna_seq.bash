@@ -67,7 +67,11 @@ if false ; then
     # and/or pushing them to the ultimate host.
     
     globus login --no-local-server
+    
+    # e92d0fde-2f33-11e7-bc9e-22000b9a448b
     globus endpoint search marcc | grep 'marcc#dtn' | cut -d' ' -f1 > .marcc.id
+    
+    # ceea5ca0-89a9-11e7-a97f-22000a92523b
     globus endpoint search XSEDE | grep 'XSEDE TACC stampede2' | cut -d' ' -f1 > .stampede2.id
     
     MARCC=`cat .marcc.id`

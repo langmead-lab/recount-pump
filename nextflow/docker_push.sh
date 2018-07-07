@@ -1,4 +1,4 @@
 #!/bin/sh
 
-docker push benlangmead/recount-pump
+docker push benlangmead/recount-pump-nextflow
 

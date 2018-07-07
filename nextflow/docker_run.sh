@@ -14,7 +14,7 @@
 
 set -ex
 
-IMAGE="benlangmead/recount-pump"
+IMAGE="benlangmead/recount-pump-nextflow"
 
 INPUT_DIR=`realpath $1`
 OUTPUT_DIR=`realpath $2`

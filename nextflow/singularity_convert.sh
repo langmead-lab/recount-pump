@@ -6,4 +6,4 @@ docker run \
     -v $PWD:/output \
     --privileged -t --rm \
     singularityware/docker2singularity \
-    benlangmead/recount-pump
+    benlangmead/recount-pump-nextflow
