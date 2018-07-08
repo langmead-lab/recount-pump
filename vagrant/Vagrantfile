@@ -17,7 +17,6 @@ Vagrant.configure("2") do |config|
         aws.subnet_id = "subnet-1fc8de7a"
         aws.security_groups = ["sg-16845a6e"]
         aws.associate_public_ip = true
-
         aws.block_device_mapping = [{
             'DeviceName' => "/dev/sdf",
             'VirtualName' => "ephemeral0",
@@ -25,15 +24,12 @@ Vagrant.configure("2") do |config|
             'Ebs.DeleteOnTermination' => true,
             'Ebs.VolumeType' => 'gp2'
         }]
-
         override.ssh.username = "ec2-user"
         override.ssh.private_key_path = "~/.ec2_jhu/default.pem"
     end
 
-    ssh_key_path = "~/.ssh/"
-    config.vm.provision "file", source: "#{ ssh_key_path + 'id_rsa' }", destination: "~ec2-user/.ssh/id_rsa"
-    config.vm.provision "file", source: "#{ ssh_key_path + 'id_rsa.pub' }", destination: "~ec2-user/.ssh/id_rsa.pub"
-    config.vm.provision "file", source: "~/.synapseConfig", destination: "~ec2-user/.synapseConfig"
+    config.vm.provision "file", source: "~/.ssh/id_rsa", destination: "~ec2-user/.ssh/id_rsa"
+    config.vm.provision "file", source: "~/.ssh/id_rsa.pub", destination: "~ec2-user/.ssh/id_rsa.pub"
     config.vm.provision "file", source: "~/.docker/creds.txt", destination: "~ec2-user/.docker/creds.txt"
 
     config.vm.provision "shell", privileged: true, inline: <<-SHELL
@@ -42,58 +38,49 @@ Vagrant.configure("2") do |config|
             mkdir /work
             mount /dev/xvdf /work/
             chmod a+w /work
-        fi
-        yum -y install emacs-nox git wget gcc g++
-
-        if ! which singularity ; then
-        
-            # The TACC version of singularity is 2.3.1
-            
-            VER=2.3.1
-            wget https://github.com/singularityware/singularity/releases/download/$VER/singularity-$VER.tar.gz
-            tar xvf singularity-$VER.tar.gz
-            cd singularity-$VER
-            ./configure --prefix=/usr/local --sysconfdir=/etc
-            make && make install
-            cd ..
-        fi
-        
-        ! which pip && wget https://bootstrap.pypa.io/get-pip.py && python get-pip.py
-        export PATH=$PATH:/usr/local/bin
-        pip install argparse
-        pip install cheetah
-        pip install oauth
-        pip install PrettyTable
-        pip install pyserial 
-        pip install synapseclient
-        rm -rf /usr/lib/python2.7/dist-packages/chardet*
-        rm -rf /usr/lib/python2.7/dist-packages/configobj*
-        pip install globus-cli
+        fi        
+        echo "Install git"
+        yum install -y git
+        echo "Install docker-compose"
+        curl -L https://github.com/docker/compose/releases/download/1.22.0-rc1/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose
+        chmod +x /usr/local/bin/docker-compose
     SHELL
     
     config.vm.provision "shell", privileged: false, inline: <<-SHELL
-        # How do I control *which* user this is?  Want it to be ec2-user
         echo "Host github.com" > ~/.ssh/config
         echo "  HostName github.com" >> ~/.ssh/config
         echo "  User git" >> ~/.ssh/config
         echo "  IdentityFile ~/.ssh/id_rsa" >> ~/.ssh/config
         echo "  StrictHostKeyChecking no" >> ~/.ssh/config
         chmod go-rwx ~/.ssh/config
-        
-        PROJ="recount-pump"
-        IMAGE="benlangmead/recount-pump"
-        
-        cd /work
-        git clone git@github.com:langmead-lab/${PROJ}.git
-        cd ${PROJ}/nextflow
+
+        echo "Clone recount"
+        cd /work && git clone git@github.com:langmead-lab/recount-pump.git
         
         docker login -u `cut -d' ' -f1 ~/.docker/creds.txt` \
                      -p `cut -d' ' -f2 ~/.docker/creds.txt`
+
+        echo "******************************************************"
+        echo "Building recount-pump image"
+        echo "benlangmead/recount-pump"
+        echo "******************************************************"
+        cd /work/recount-pump && ./pull.sh && ./build.sh && ./push.sh
+
+        echo "******************************************************"
+        echo "Building minio image"
+        echo "benlangmead/recount-minio"
+        echo "******************************************************"
+        cd /work/recount-pump/docker/minio && ./pull.sh && ./build.sh && ./push.sh
         
-        docker pull ${IMAGE}
-        ./docker_build.sh
-        docker push ${IMAGE}
-        
-        ./singularity_convert.sh
+        echo "******************************************************"
+        echo "Building nextflow docker & singularity images"
+        echo "benlangmead/recount-pump-nextflow"
+        echo "******************************************************"
+        cd /work/recount-pump/nextflow && ./pull.sh && ./build.sh && ./push.sh && ./singularity_convert.sh
+
+        echo "******************************************************"
+        echo "Running integration test"
+        echo "******************************************************"
+        cd /work/recount-pump && ./integration_test.sh
     SHELL
 end
