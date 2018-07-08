@@ -1,7 +1,11 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
+# vagrant plugin install vagrant-aws
+
 ENV['VAGRANT_DEFAULT_PROVIDER'] = 'aws'
+
+REGION = "us-east-1"
 
 Vagrant.configure("2") do |config|
 
@@ -9,10 +13,10 @@ Vagrant.configure("2") do |config|
     config.vm.synced_folder ".", "/vagrant", disabled: true
 
     config.vm.provider :aws do |aws, override|
-        aws.region = "us-east-1"
+        aws.region = REGION
         aws.ami = "ami-13401669"
         aws.tags = { 'Application' => 'docker' }
-        aws.instance_type = 'c4.2xlarge'
+        aws.instance_type = "c4.xlarge"
         aws.keypair_name = "default"
         aws.subnet_id = "subnet-1fc8de7a"
         aws.security_groups = ["sg-16845a6e"]
@@ -26,6 +30,10 @@ Vagrant.configure("2") do |config|
         }]
         override.ssh.username = "ec2-user"
         override.ssh.private_key_path = "~/.ec2_jhu/default.pem"
+        aws.region_config REGION do |region|
+            region.spot_instance = true
+            region.spot_max_price = "0.06"
+        end
     end
 
     config.vm.provision "file", source: "~/.ssh/id_rsa", destination: "~ec2-user/.ssh/id_rsa"
@@ -34,15 +42,15 @@ Vagrant.configure("2") do |config|
 
     config.vm.provision "shell", privileged: true, inline: <<-SHELL
         if [ ! -d /work ] ; then
-            mkfs -t ext4 /dev/xvdf
+            mkfs -q -t ext4 /dev/xvdf
             mkdir /work
             mount /dev/xvdf /work/
             chmod a+w /work
-        fi        
+        fi
         echo "Install git"
         yum install -y git
         echo "Install docker-compose"
-        curl -L https://github.com/docker/compose/releases/download/1.22.0-rc1/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose
+        curl -s -L https://github.com/docker/compose/releases/download/1.22.0-rc1/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose
         chmod +x /usr/local/bin/docker-compose
     SHELL
     
@@ -55,7 +63,7 @@ Vagrant.configure("2") do |config|
         chmod go-rwx ~/.ssh/config
 
         echo "Clone recount"
-        cd /work && git clone git@github.com:langmead-lab/recount-pump.git
+        cd /work && git clone -q git@github.com:langmead-lab/recount-pump.git
         
         docker login -u `cut -d' ' -f1 ~/.docker/creds.txt` \
                      -p `cut -d' ' -f2 ~/.docker/creds.txt`
@@ -64,23 +72,53 @@ Vagrant.configure("2") do |config|
         echo "Building recount-pump image"
         echo "benlangmead/recount-pump"
         echo "******************************************************"
-        cd /work/recount-pump && ./pull.sh && ./build.sh && ./push.sh
+        cd /work/recount-pump && ./pull.sh > /dev/null && ./build.sh && ./push.sh > /dev/null
+        if [ $? -eq 0 ] ; then
+            echo "===HAPPY benlangmead/recount-pump built and pushed"
+        else
+            echo "===SAD ERROR building and/or pushing benlangmead/recount-pump"
+        fi
 
         echo "******************************************************"
         echo "Building minio image"
         echo "benlangmead/recount-minio"
         echo "******************************************************"
-        cd /work/recount-pump/docker/minio && ./pull.sh && ./build.sh && ./push.sh
+        cd /work/recount-pump/docker/minio && ./pull.sh > /dev/null && ./build.sh && ./push.sh > /dev/null
+        if [ $? -eq 0 ] ; then
+            echo "===HAPPY benlangmead/recount-minio built and pushed"
+        else
+            echo "===SAD ERROR building and/or pushing benlangmead/recount-minio"
+        fi
         
         echo "******************************************************"
-        echo "Building nextflow docker & singularity images"
+        echo "Building nextflow image"
         echo "benlangmead/recount-pump-nextflow"
         echo "******************************************************"
-        cd /work/recount-pump/nextflow && ./pull.sh && ./build.sh && ./push.sh && ./singularity_convert.sh
+        cd /work/recount-pump/nextflow && ./pull.sh > /dev/null && ./build.sh && ./push.sh > /dev/null
+        if [ $? -eq 0 ] ; then
+            echo "===HAPPY benlangmead/recount-pump-nextflow built and pushed"
+        else
+            echo "===SAD ERROR building and/or pushing benlangmead/recount-pump-nextflow"
+        fi
+
+        echo "******************************************************"
+        echo "Converting nextflow image to Singularity"
+        echo "******************************************************"
+        cd /work/recount-pump/nextflow && ./singularity_convert.sh
+        if [ $? -eq 0 ] ; then
+            echo "===HAPPY benlangmead/recount-pump-nextflow Singularity-converted"
+        else
+            echo "===SAD ERROR converting benlangmead/recount-pump-nextflow to Singularity"
+        fi
 
         echo "******************************************************"
         echo "Running integration test"
         echo "******************************************************"
         cd /work/recount-pump && ./integration_test.sh
+        if [ $? -eq 0 ] ; then
+            echo "===HAPPY integration tests passed"
+        else
+            echo "===SAD one or more integrations tests FAILED"
+        fi
     SHELL
 end
