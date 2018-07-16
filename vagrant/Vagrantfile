@@ -40,80 +40,142 @@ Vagrant.configure("2") do |config|
     config.vm.provision "file", source: "~/.ssh/id_rsa.pub", destination: "~ec2-user/.ssh/id_rsa.pub"
     config.vm.provision "file", source: "~/.docker/creds.txt", destination: "~ec2-user/.docker/creds.txt"
 
-    config.vm.provision "shell", privileged: true, inline: <<-SHELL
+    config.vm.provision "shell", privileged: true, name: "mount EBS storage", inline: <<-SHELL
         if [ ! -d /work ] ; then
             mkfs -q -t ext4 /dev/xvdf
             mkdir /work
             mount /dev/xvdf /work/
             chmod a+w /work
         fi
-        echo "Install git"
-        yum install -y git
+    SHELL
+
+    config.vm.provision "shell", privileged: true, name: "install Linux packages", inline: <<-SHELL
+        yum install -q -y git wget gcc g++
+    SHELL
+        
+    config.vm.provision "shell", privileged: true, name: "install docker-compose", inline: <<-SHELL
         echo "Install docker-compose"
-        curl -s -L https://github.com/docker/compose/releases/download/1.22.0-rc1/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose
+        curl -s -L https://github.com/docker/compose/releases/download/1.22.0-rc1/docker-compose-$(uname -s)-$(uname -m) -o /usr/local/bin/docker-compose
         chmod +x /usr/local/bin/docker-compose
     SHELL
+        
+    config.vm.provision "shell", privileged: true, name: "install Singularity", inline: <<-SHELL
+        echo "Install Singualrity"
+        wget -q https://github.com/singularityware/singularity/releases/download/2.3.1/singularity-2.3.1.tar.gz
+        tar xf singularity-2.3.1.tar.gz
+        cd singularity-2.3.1 && \
+            ./configure --prefix=/usr/local > /dev/null && \
+            make > /dev/null && make install > /dev/null && \
+            cd .. && \
+            rm -rf singularity-2.3.1
+    SHELL
     
-    config.vm.provision "shell", privileged: false, inline: <<-SHELL
+    config.vm.provision "shell", privileged: false, name: "setup ssh for git", inline: <<-SHELL
         echo "Host github.com" > ~/.ssh/config
         echo "  HostName github.com" >> ~/.ssh/config
         echo "  User git" >> ~/.ssh/config
         echo "  IdentityFile ~/.ssh/id_rsa" >> ~/.ssh/config
         echo "  StrictHostKeyChecking no" >> ~/.ssh/config
         chmod go-rwx ~/.ssh/config
+    SHELL
 
-        echo "Clone recount"
+    config.vm.provision "shell", privileged: false, name: "clone recount", inline: <<-SHELL
         cd /work && git clone -q git@github.com:langmead-lab/recount-pump.git
+    SHELL
         
-        docker login -u `cut -d' ' -f1 ~/.docker/creds.txt` \
-                     -p `cut -d' ' -f2 ~/.docker/creds.txt`
+    config.vm.provision "shell", privileged: false, name: "docker login", inline: <<-SHELL
+        docker login -u $(cut -d' ' -f1 ~/.docker/creds.txt) \
+                     -p $(cut -d' ' -f2 ~/.docker/creds.txt)
+    SHELL
 
-        echo "******************************************************"
-        echo "Building recount-pump image"
-        echo "benlangmead/recount-pump"
-        echo "******************************************************"
-        cd /work/recount-pump && ./pull.sh > /dev/null && ./build.sh && ./push.sh > /dev/null
+    config.vm.provision "shell", privileged: false, name: "recount-pump image", inline: <<-SHELL
+        cd /work/recount-pump && ./build.sh && ./push.sh > /dev/null
         if [ $? -eq 0 ] ; then
             echo "===HAPPY benlangmead/recount-pump built and pushed"
         else
             echo "===SAD ERROR building and/or pushing benlangmead/recount-pump"
         fi
+    SHELL
+        
+    config.vm.provision "shell", privileged: false, name: "analysis images", inline: <<-SHELL
+        mkdir -p /work/recount-temp /work/recount-ref
+        cd /work/recount-ref && sh /work/recount-pump/workflow/prep_test.sh
+        export RECOUNT_REF=/work/recount-ref
+        export RECOUNT_TEMP=/work/recount-temp
+        
+        for FLOW in rna-seq-lite-nf rna-seq ; do
+            FLOWDIR="/work/recount-pump/workflow/${FLOW}"
+            IMAGE=$(cat ${FLOWDIR}/image.txt)
 
-        echo "******************************************************"
-        echo "Building minio image"
-        echo "benlangmead/recount-minio"
-        echo "******************************************************"
-        cd /work/recount-pump/docker/minio && ./pull.sh > /dev/null && ./build.sh && ./push.sh > /dev/null
+            echo "******************************************************"
+            echo "Processing workflow: \"${FLOW}\""
+            echo "              image: \"${IMAGE}\""
+            echo "******************************************************"
+
+            echo "------------------------------------------------------"
+            echo "Building and pushing (\"$FLOW\")"
+            echo "------------------------------------------------------"
+            cd ${FLOWDIR} && ./build.sh && ./push.sh > /dev/null
+            if [ $? -eq 0 ] ; then
+                echo "===HAPPY ${IMAGE} built and pushed"
+            else
+                echo "===SAD ERROR building and/or pushing ${IMAGE}"
+            fi
+
+            echo "------------------------------------------------------"
+            echo "Test-running Docker (\"$FLOW\")"
+            echo "------------------------------------------------------"
+            mkdir -p /tmp/input /tmp/output
+            cp ${FLOWDIR}/accessions.txt /tmp/input/
+            cd ${FLOWDIR} && ./dockrun.sh /tmp/input /tmp/output
+            if [ $? -eq 0 ] ; then
+                echo "===HAPPY ${IMAGE} ran in Docker"
+            else
+                echo "===SAD ERROR running ${IMAGE} in Docker"
+            fi
+            find /tmp/output -type f -exec md5sum {} ";" | sort | md5sum | awk '{print $1}'
+            cat ${FLOWDIR}/outmd5.txt
+            rm -rf /tmp/input /tmp/output
+
+            echo "------------------------------------------------------"
+            echo "Converting to Singularity (\"$FLOW\")"
+            echo "------------------------------------------------------"
+            cd ${FLOWDIR} && ./singize.sh
+            if [ $? -eq 0 ] ; then
+                echo "===HAPPY ${IMAGE} Singularity-converted"
+            else
+                echo "===SAD ERROR converting ${IMAGE} to Singularity"
+            fi
+            SIMG=$(ls *.img)
+            echo "Image is called: \"$SIMG\""
+
+            echo "------------------------------------------------------"
+            echo "Test-running Singularity (\"$FLOW\")"
+            echo "------------------------------------------------------"
+            mkdir -p /tmp/input /tmp/output
+            cp ${FLOWDIR}/accessions.txt /tmp/input/
+            cd ${FLOWDIR} && ./singrun.sh vagrant-test /tmp/input /tmp/output -i *.img
+            if [ $? -eq 0 ] ; then
+                echo "===HAPPY ${IMAGE} ran in Singularity"
+            else
+                echo "===SAD ERROR running ${IMAGE} in Singularity"
+            fi
+            find /tmp/output -type f -exec md5sum {} ";" | sort | md5sum | awk '{print $1}'
+            cat ${FLOWDIR}/outmd5.txt
+            rm -rf /tmp/input /tmp/output
+        done
+    SHELL
+
+    config.vm.provision "shell", privileged: false, name: "minio image", inline: <<-SHELL
+        cd /work/recount-pump/docker/minio && ./build.sh && ./push.sh > /dev/null
         if [ $? -eq 0 ] ; then
             echo "===HAPPY benlangmead/recount-minio built and pushed"
         else
             echo "===SAD ERROR building and/or pushing benlangmead/recount-minio"
         fi
-        
-        echo "******************************************************"
-        echo "Building nextflow image"
-        echo "benlangmead/recount-pump-nextflow"
-        echo "******************************************************"
-        cd /work/recount-pump/nextflow && ./pull.sh > /dev/null && ./build.sh && ./push.sh > /dev/null
-        if [ $? -eq 0 ] ; then
-            echo "===HAPPY benlangmead/recount-pump-nextflow built and pushed"
-        else
-            echo "===SAD ERROR building and/or pushing benlangmead/recount-pump-nextflow"
-        fi
+    SHELL
 
-        echo "******************************************************"
-        echo "Converting nextflow image to Singularity"
-        echo "******************************************************"
-        cd /work/recount-pump/nextflow && ./singularity_convert.sh
-        if [ $? -eq 0 ] ; then
-            echo "===HAPPY benlangmead/recount-pump-nextflow Singularity-converted"
-        else
-            echo "===SAD ERROR converting benlangmead/recount-pump-nextflow to Singularity"
-        fi
-
-        echo "******************************************************"
-        echo "Running integration test"
-        echo "******************************************************"
+    config.vm.provision "shell", privileged: false, name: "integration test", inline: <<-SHELL
         cd /work/recount-pump && ./integration_test.sh
         if [ $? -eq 0 ] ; then
             echo "===HAPPY integration tests passed"
