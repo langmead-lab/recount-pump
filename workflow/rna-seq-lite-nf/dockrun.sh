@@ -45,4 +45,4 @@ docker run \
     -v ${RECOUNT_TEMP}:/recount-temp \
     ${IMAGE} \
     /bin/bash -c \
-    "source activate rnaseq_lite && bash /tmp/rna_seq_lite.bash"
+    "source activate rnaseq_lite && bash /recount-bin/rna_seq_lite.bash"
