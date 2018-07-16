@@ -2,7 +2,6 @@ FROM continuumio/miniconda:4.5.4
 
 # install conda environment
 COPY env.yml /tmp/env.yml
-RUN df -h
 RUN conda env create -f /tmp/env.yml
 
 # install globus-cli using pipe
