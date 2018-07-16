@@ -72,10 +72,11 @@ export OUTPUT="/recount-output" && \
 export RECOUNT_REF="/recount-ref" && \
 export RECOUNT_TEMP="/recount-temp" && \
 singularity exec \
-    --bind ${input_dir}:${INPUT} \
-    --bind ${output_dir}:${OUTPUT} \
-    --bind ${REF2}:${RECOUNT_REF} \
-    --bind ${TEMP2}:${RECOUNT_TEMP} \
+    -c \
+    -B ${input_dir}:${INPUT} \
+    -B ${output_dir}:${OUTPUT} \
+    -B ${REF2}:${RECOUNT_REF} \
+    -B ${TEMP2}:${RECOUNT_TEMP} \
     ${image} \
     /bin/bash -c \
     "source activate rnaseq && bash /tmp/rna_seq.bash"
