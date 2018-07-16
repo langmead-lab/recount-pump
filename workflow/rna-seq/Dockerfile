@@ -2,7 +2,7 @@ FROM continuumio/miniconda:4.5.4
 
 # install conda environment
 COPY env.yml /tmp/env.yml
-RUN conda env create -f /tmp/env.yml
+RUN conda env create -q -f /tmp/env.yml
 
 # install globus-cli using pipe
 RUN bash -c "source activate rnaseq && pip install globus-cli"
