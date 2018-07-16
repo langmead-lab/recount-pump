@@ -2,4 +2,4 @@
 
 IMAGE=$(cat image.txt)
 
-docker push $* ${IMAGE}
+docker pull ${IMAGE}
