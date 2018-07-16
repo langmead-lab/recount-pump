@@ -78,7 +78,7 @@ singularity exec \
     --bind ${TEMP2}:${RECOUNT_TEMP} \
     ${image} \
     /bin/bash -c \
-    "source activate rnaseq_v0 && bash /home/biodocker/bin/rna_seq.bash"
+    "source activate rnaseq_v0 && bash /home/biodocker/bin/rna_seq_lite.bash"
 
 set +x
 
