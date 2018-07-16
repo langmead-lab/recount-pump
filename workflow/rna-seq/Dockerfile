@@ -10,7 +10,7 @@ RUN bash -c "source activate rnaseq && pip install globus-cli"
 WORKDIR /data
 
 # install nextflow script
-COPY rna_seq.nf /tmp/rna_seq_lite.nf
-COPY rna_seq.bash /tmp/rna_seq_lite.bash
+COPY rna_seq.nf /tmp/rna_seq.nf
+COPY rna_seq.bash /tmp/rna_seq.bash
 
 CMD ["bash", "-c", "source activate rnaseq && bash /tmp/rna_seq_lite.bash"]
