@@ -13,6 +13,8 @@
 
 set -ex
 
+NAME=rna_seq
+
 d=`dirname $0`
 
 # Ensure directories
@@ -50,7 +52,7 @@ cat >$HOME/.ncbi/user-settings.mkfg <<EOF
 EOF
 
 # Run nextflow workflow
-$d/rna_seq.nf \
+$d/$NAME.nf \
     --in "${INPUT_FILES}" \
     --out "${OUTPUT}" \
     --ref "${RECOUNT_REF}" \

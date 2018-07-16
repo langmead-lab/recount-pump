@@ -9,7 +9,7 @@
 # of time.
 
 usage() {
-    echo "./singularity_run.sh <job_name> <input_dir> <output_dir> [options]*"
+    echo "./singrun.sh <job_name> <input_dir> <output_dir> [options]*"
     echo ""
     echo "<input_dir> and <output_dir> must already exist"
     echo "<input_dir> must contain CSV files, each line having 3 fields: SRR,SRP,species"
@@ -78,7 +78,7 @@ singularity exec \
     --bind ${TEMP2}:${RECOUNT_TEMP} \
     ${image} \
     /bin/bash -c \
-    "source activate rnaseq_v0 && bash /home/biodocker/bin/rna_seq.bash"
+    "source activate rnaseq && bash /tmp/rna_seq_lite.bash"
 
 set +x
 

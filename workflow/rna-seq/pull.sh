@@ -1,3 +1,5 @@
 #!/bin/sh
 
-docker pull benlangmead/recount-pump-nextflow
+IMAGE=$(cat image.txt)
+
+docker pull ${IMAGE}

@@ -14,7 +14,7 @@
 
 set -ex
 
-IMAGE="benlangmead/recount-pump-nextflow"
+IMAGE=$(cat image.txt)
 
 INPUT_DIR=`realpath $1`
 OUTPUT_DIR=`realpath $2`
@@ -40,4 +40,4 @@ docker run \
     -v ${RECOUNT_TEMP}:/recount-temp \
     ${IMAGE} \
     /bin/bash -c \
-    "source activate rnaseq_v0 && bash /home/biodocker/bin/rna_seq.bash"
+    "source activate rnaseq && bash /tmp/rna_seq_lite.bash"

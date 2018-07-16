@@ -85,7 +85,7 @@ singularity exec \
     $* \
     ${image} \
     /bin/bash -c \
-    "source activate rnaseq_v0 && bash /home/biodocker/bin/rna_seq.bash"
+    "source activate rnaseq && bash /tmp/rna_seq_lite.bash"
 
 set +x
 
