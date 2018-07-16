@@ -10,6 +10,6 @@ RUN cd singularity-2.3.1 && ./configure --prefix=/usr/local && make && make inst
 
 ADD wait-for-it.sh /code
 ADD requirements.txt /code
-RUN pip install -r requirements.txt
+RUN pip install --quiet -r requirements.txt
 
 ADD src /code/src
