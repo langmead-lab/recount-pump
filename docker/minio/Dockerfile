@@ -37,7 +37,7 @@ COPY init_db.sh /tmp/init_db.sh
 COPY start_db.sh /tmp/start_db.sh
 COPY src /tmp/src
 COPY requirements.txt /tmp/requirements.txt
-RUN pip install -r /tmp/requirements.txt
+RUN pip install --quiet -r /tmp/requirements.txt
 
 RUN . /tmp/init_db.sh
 ENTRYPOINT /tmp/start_db.sh
