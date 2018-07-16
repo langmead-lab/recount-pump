@@ -79,7 +79,7 @@ singularity exec \
     -B ${TEMP2}:${RECOUNT_TEMP} \
     ${image} \
     /bin/bash -c \
-    "source activate rnaseq && bash /tmp/rna_seq.bash"
+    "source activate rnaseq && bash /recount-bin/rna_seq.bash"
 
 set +x
 

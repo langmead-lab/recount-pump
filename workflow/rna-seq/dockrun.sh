@@ -45,4 +45,4 @@ docker run \
     -v ${RECOUNT_TEMP}:/recount-temp \
     ${IMAGE} \
     /bin/bash -c \
-    "source activate rnaseq && bash /tmp/${NAME}.bash"
+    "source activate rnaseq && bash /recount-bin/${NAME}.bash"

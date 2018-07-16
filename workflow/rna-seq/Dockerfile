@@ -10,7 +10,8 @@ RUN bash -c "source activate rnaseq && pip install --quiet globus-cli"
 WORKDIR /data
 
 # install nextflow script
-COPY rna_seq.nf /tmp/rna_seq.nf
-COPY rna_seq.bash /tmp/rna_seq.bash
+RUN mkdir /recount-bin
+COPY rna_seq.nf /recount-bin/rna_seq.nf
+COPY rna_seq.bash /recount-bin/rna_seq.bash
 
-CMD ["bash", "-c", "source activate rnaseq && bash /tmp/rna_seq.bash"]
+CMD ["bash", "-c", "source activate rnaseq && bash /recount-bin/rna_seq.bash"]
