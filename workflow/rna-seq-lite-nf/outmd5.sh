@@ -1,3 +1,3 @@
 #!/bin/sh
 
-find -s output -type f -exec md5sum {} \; | md5sum | awk '{print $1}'
+find output -type f -exec md5sum {} \; | sort | md5sum | awk '{print $1}'
