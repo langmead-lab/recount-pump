@@ -5,7 +5,7 @@ COPY env.yml /tmp/env.yml
 RUN conda env create -q -f /tmp/env.yml
 
 # install globus-cli using pipe
-RUN bash -c "source activate rnaseq && pip install globus-cli"
+RUN bash -c "source activate rnaseq && pip install --quiet globus-cli"
 
 WORKDIR /data
 
