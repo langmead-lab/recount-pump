@@ -1,3 +1,5 @@
 #!/bin/sh
 
-docker pull $* benlangmead/recount-minio
+IMAGE=$(cat image.txt)
+
+docker pull --all-tags $* ${IMAGE}
