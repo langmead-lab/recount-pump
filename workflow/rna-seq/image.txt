@@ -1,1 +1,1 @@
-benlangmead/recount-rna-seq-nf
+quay.io/benlangmead/recount-rna-seq-nf
