@@ -1,7 +1,5 @@
 #!/bin/sh
 
-ID=benlangmead
-IMAGE=recount-pump
-VER=0.0.1
+IMAGE=$(cat image.txt)
 
-docker pull $* ${ID}/${IMAGE}:${VER}
+docker pull --all-tags $* ${IMAGE}

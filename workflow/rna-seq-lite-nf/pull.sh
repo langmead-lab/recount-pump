@@ -2,4 +2,4 @@
 
 IMAGE=$(cat image.txt)
 
-docker pull ${IMAGE}
+docker pull --all-tags $* ${IMAGE}

@@ -1,11 +1,10 @@
 #!/bin/sh
 
-ID=benlangmead
-IMAGE=recount-pump
-VER=0.0.1
+IMAGE=$(cat image.txt)
+VER=0.0.3
 
 docker build $* \
-    --cache-from ${ID}/${IMAGE}:latest \
-    --tag ${ID}/${IMAGE}:${VER} \
-    --tag ${ID}/${IMAGE}:latest \
+    --cache-from ${IMAGE}:latest \
+    --tag ${IMAGE}:${VER} \
+    --tag ${IMAGE}:latest \
     .
