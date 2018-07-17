@@ -51,10 +51,11 @@ cat >$HOME/.ncbi/user-settings.mkfg <<EOF
 /repository/user/main/public/root = "${RECOUNT_TEMP}/ncbi"
 EOF
 
-mkdir -p ${RECOUNT_TEMP}/nextflow-temp
+mkdir -p ${RECOUNT_TEMP}/nextflow-home ${RECOUNT_TEMP}/nextflow-temp
 
 # Run nextflow workflow
-export NXF_HOME=${RECOUNT_TEMP}/nextflow-temp && \
+export NXF_HOME=${RECOUNT_TEMP}/nextflow-home && \
+export NXF_TEMP=${RECOUNT_TEMP}/nextflow-temp && \
     $d/$NAME.nf \
         --in "${INPUT_FILES}" \
         --out "${OUTPUT}" \
