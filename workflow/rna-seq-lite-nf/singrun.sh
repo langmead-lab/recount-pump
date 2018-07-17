@@ -72,7 +72,6 @@ export OUTPUT="/recount-output" && \
 export RECOUNT_REF="/recount-ref" && \
 export RECOUNT_TEMP="/recount-temp" && \
 singularity exec \
-    -c \
     -B ${input_dir}:${INPUT} \
     -B ${output_dir}:${OUTPUT} \
     -B ${REF2}:${RECOUNT_REF} \
