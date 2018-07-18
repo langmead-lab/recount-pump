@@ -78,7 +78,7 @@ singularity exec \
     -B ${TEMP2}:${RECOUNT_TEMP} \
     ${image} \
     /bin/bash -c \
-    "source activate rnaseq_lite && bash /recount-bin/rna_seq_lite.bash"
+    "source activate recount && bash /recount-bin/workflow.bash"
 
 set +x
 

@@ -15,7 +15,6 @@
 set -ex
 
 IMAGE=$(cat image.txt)
-NAME=rna_seq_lite
 
 INPUT_DIR=`realpath $1`
 OUTPUT_DIR=`realpath $2`
@@ -45,4 +44,4 @@ docker run \
     -v ${RECOUNT_TEMP}:/recount-temp \
     ${IMAGE} \
     /bin/bash -c \
-    "source activate rnaseq_lite && bash /recount-bin/rna_seq_lite.bash"
+    "source activate recount && bash /recount-bin/workflow.bash"

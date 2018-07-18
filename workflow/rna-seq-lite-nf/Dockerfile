@@ -8,7 +8,7 @@ WORKDIR /data
 
 # install nextflow script
 RUN mkdir /recount-bin
-COPY rna_seq_lite.nf /recount-bin/rna_seq_lite.nf
-COPY rna_seq_lite.bash /recount-bin/rna_seq_lite.bash
+COPY workflow.nf /recount-bin/workflow.nf
+COPY workflow.bash /recount-bin/workflow.bash
 
-CMD ["bash", "-c", "source activate rnaseq_lite && bash /recount-bin/rna_seq_lite.bash"]
+CMD ["bash", "-c", "source activate recount && bash /recount-bin/workflow.bash"]
