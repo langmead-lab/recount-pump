@@ -29,8 +29,8 @@ test -d "${RECOUNT_TEMP}"
 which hisat2
 which fastq-dump
 which sambamba
-which regtools
 which nextflow
+which regtools
 
 # Gather inputs
 ls "${INPUT}"
@@ -46,6 +46,7 @@ cat >$HOME/.ncbi/user-settings.mkfg <<EOF
 EOF
 
 mkdir -p ${RECOUNT_TEMP}/nextflow-home ${RECOUNT_TEMP}/nextflow-temp
+chmod -R a+rwx ${RECOUNT_TEMP}/nextflow-home ${RECOUNT_TEMP}/nextflow-temp
 
 # Run nextflow workflow
 export NXF_TEMP=${RECOUNT_TEMP}/nextflow-temp && \
@@ -54,5 +55,7 @@ export NXF_TEMP=${RECOUNT_TEMP}/nextflow-temp && \
         --out "${OUTPUT}" \
         --ref "${RECOUNT_REF}" \
         --temp "${RECOUNT_TEMP}" $*
+
+chmod -R a+rwx ${OUTPUT}
 
 echo SUCCESS

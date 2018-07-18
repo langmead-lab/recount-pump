@@ -50,6 +50,7 @@ cat >$HOME/.ncbi/user-settings.mkfg <<EOF
 EOF
 
 mkdir -p ${RECOUNT_TEMP}/nextflow-home ${RECOUNT_TEMP}/nextflow-temp
+chmod -R a+rwx ${RECOUNT_TEMP}/nextflow-home ${RECOUNT_TEMP}/nextflow-temp
 
 # Run nextflow workflow
 export NXF_TEMP=${RECOUNT_TEMP}/nextflow-temp && \
@@ -59,7 +60,7 @@ export NXF_TEMP=${RECOUNT_TEMP}/nextflow-temp && \
         --ref "${RECOUNT_REF}" \
         --temp "${RECOUNT_TEMP}" $*
 
-md5sum ${INPUT} | cut -d' ' -f 1 > .input.md5
+chmod -R a+rwx ${OUTPUT}
 
 if false ; then
     # This is some dummy code to see if we can run the Globus CLI in a
