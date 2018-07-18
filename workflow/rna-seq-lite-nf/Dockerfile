@@ -3,6 +3,7 @@ FROM continuumio/miniconda:4.5.4
 # install conda environment
 COPY env.yml /tmp/env.yml
 RUN conda env create -q -f /tmp/env.yml
+RUN chmod -R a+rwx /opt/conda/envs/*/share/nextflow
 
 WORKDIR /data
 
