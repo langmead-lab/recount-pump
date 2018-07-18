@@ -13,8 +13,6 @@
 
 set -ex
 
-NAME=rna_seq_lite
-
 d=`dirname $0`
 
 # Ensure directories
@@ -51,7 +49,7 @@ mkdir -p ${RECOUNT_TEMP}/nextflow-home ${RECOUNT_TEMP}/nextflow-temp
 
 # Run nextflow workflow
 export NXF_TEMP=${RECOUNT_TEMP}/nextflow-temp && \
-    $d/$NAME.nf \
+    $d/workflow.nf \
         --in "${INPUT_FILES}" \
         --out "${OUTPUT}" \
         --ref "${RECOUNT_REF}" \

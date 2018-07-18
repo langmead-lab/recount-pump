@@ -13,8 +13,6 @@
 
 set -ex
 
-NAME=rna_seq
-
 d=`dirname $0`
 
 # Ensure directories
@@ -31,12 +29,12 @@ test -d "${RECOUNT_TEMP}"
 which hisat2
 which fastq-dump
 which sambamba
+which nextflow
+which regtools
 which stringtie
 which bamCoverage
-which regtools
 which wiggletools
 which featureCounts
-which nextflow
 
 # Gather inputs
 ls "${INPUT}"
@@ -55,7 +53,7 @@ mkdir -p ${RECOUNT_TEMP}/nextflow-home ${RECOUNT_TEMP}/nextflow-temp
 
 # Run nextflow workflow
 export NXF_TEMP=${RECOUNT_TEMP}/nextflow-temp && \
-    $d/$NAME.nf \
+    $d/workflow.nf \
         --in "${INPUT_FILES}" \
         --out "${OUTPUT}" \
         --ref "${RECOUNT_REF}" \
