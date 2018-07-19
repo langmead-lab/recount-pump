@@ -9,14 +9,16 @@ Usage:
   reference add-source <url-1> <url-2> <url-3>
                        <checksum-1> <checksum-2> <checksum-3>
                        <retrieval-method> [options]
-  reference add-source-set <name> [options]
+  reference add-source-set [options]
   reference add-sources-to-set (<set-id> <source-id>)... [options]
   reference list-source-set <name> [options]
   reference add-annotation <tax-id> <url> <md5>
                            <retrieval-method> [options]
-  reference add-annotation-set <name> [options]
+  reference add-annotation-set [options]
   reference add-annotations-to-set (<set-id> <annotation-id>)... [options]
   reference list-annotation-set <name> [options]
+  reference add-reference <tax-id> <name> <longname> <conventions>
+                          <comment> <source-set-id> <annotation-set-id> [options]
   reference nop [options]
 
 Options:
@@ -192,27 +194,27 @@ def add_annotation(tax_id, url, checksum, retrieval_method, session):
     return i.id
 
 
-def add_source_set(name, session):
+def add_source_set(session):
     """
     Add new source set with given name.  It's empty at first.  Needs to be
     populated with, e.g., add-source-to-set.
     """
-    sset = SourceSet(name=name)
+    sset = SourceSet()
     session.add(sset)
     session.commit()
-    log.info(__name__, 'Added source set "%s"' % name, 'reference.py')
+    log.info(__name__, 'Added source set', 'reference.py')
     return sset.id
 
 
-def add_annotation_set(name, session):
+def add_annotation_set(session):
     """
     Add new annotation set with given name.  It's empty at first.  Needs to be
     populated with, e.g., add-annotation-to-set.
     """
-    aset = AnnotationSet(name=name)
+    aset = AnnotationSet()
     session.add(aset)
     session.commit()
-    log.info(__name__, 'Added annotation set "%s"' % name, 'reference.py')
+    log.info(__name__, 'Added annotation set', 'reference.py')
     return aset.id
 
 
@@ -243,6 +245,8 @@ def add_sources_to_set(set_ids, source_ids, session):
     Add sources to source set(s).
     """
     for set_id, source_id in zip(set_ids, source_ids):
+        set_id = int(set_id)
+        source_id = int(source_id)
         inp = session.query(Source).get(source_id)
         source_set = session.query(SourceSet).get(set_id)
         source_set.sources.append(inp)
@@ -260,6 +264,21 @@ def add_annotations_to_set(set_ids, annotation_ids, session):
         annotation_set.annotations.append(annotation)
     log.info(__name__, 'Imported %d annotations to sets' % len(annotation_ids), 'reference.py')
     session.commit()
+
+
+def add_reference(tax_id, name, longname, conventions, comment, source_set_id, annotation_set_id, session):
+    assert tax_id is not None
+    assert name is not None
+    assert tax_id is not None
+    longname = None if longname == 'NA' else longname
+    conventions = None if conventions == 'NA' else conventions
+    comment = None if comment == 'NA' else comment
+    rf = Reference(tax_id=tax_id, name=name, longname=longname, conventions=conventions,
+                   comment=comment, source_set=source_set_id, annotation_set=annotation_set_id)
+    session.add(rf)
+    session.commit()
+    log.info(__name__, 'Added reference "%s"' % name, 'reference.py')
+    return rf.id
 
 
 def download_url(url, cksum, mover, dest_dir='.'):
@@ -453,7 +472,7 @@ if __name__ == '__main__':
                              args['<retrieval-method>'], Session()))
         elif args['add-source-set']:
             Session = session_maker_from_config(db_ini, args['--db-section'])
-            print(add_source_set(args['<name>'], Session()))
+            print(add_source_set(Session()))
         elif args['list-source-set']:
             Session = session_maker_from_config(db_ini, args['--db-section'])
             print(list_source_set(args['<name>'], Session()))
@@ -466,13 +485,18 @@ if __name__ == '__main__':
                                  args['<retrieval-method>'], Session()))
         elif args['add-annotation-set']:
             Session = session_maker_from_config(db_ini, args['--db-section'])
-            print(add_annotation_set(args['<name>'], Session()))
+            print(add_annotation_set(Session()))
         elif args['list-annotation-set']:
             Session = session_maker_from_config(db_ini, args['--db-section'])
             print(list_annotation_set(args['<name>'], Session()))
         elif args['add-annotations-to-set']:
             Session = session_maker_from_config(db_ini, args['--db-section'])
             print(add_annotations_to_set(args['<set-id>'], args['<annotation-id>'], Session()))
+        elif args['add-reference']:
+            Session = session_maker_from_config(db_ini, args['--db-section'])
+            print(add_reference(args['<tax-id>'], args['<name>'], args['<longname>'],
+                                args['<conventions>'], args['<comment>'],
+                                args['<source-set-id>'], args['<annotation-set-id>'], Session()))
         elif args['nop']:
             pass
     except Exception:
