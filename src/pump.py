@@ -6,9 +6,9 @@
 """pump
 
 Usage:
-  pump add-project <name> <analysis-id> <input-set-id>
-  pump summarize-project <project-id>
-  pump add-project-ex <name> <analysis-name> <analysis-image-url>
+  pump add-project [options] <name> <analysis-id> <input-set-id>
+  pump summarize-project [options] <project-id>
+  pump add-project-ex [options] <name> <analysis-name> <analysis-image-url>
                       <input-set-name> <input-set-table>
                       (<cluster-name> <wrapper-url>)...
 
