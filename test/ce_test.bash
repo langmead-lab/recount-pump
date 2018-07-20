@@ -135,7 +135,7 @@ add_input_set() (
     python src/input.py add-input-set ${name} | tail -n 1
 )
 
-isid=$(add_input_set "ce10_rna_seq" | tail -n 1)
+isid=$(add_input_set "ce10_rna_seq")
 
 add_input() (
     set -exo pipefail
@@ -143,7 +143,7 @@ add_input() (
     acc_s=$2
     url_1=$3
     retrieval_method=$4
-    python src/input.py add-input ${acc_r} ${acc_s} ${url_1} NA NA NA NA NA sra | tail -n 1
+    python src/input.py add-input ${acc_r} ${acc_s} ${url_1} NA NA NA NA NA ${retrieval_method} | tail -n 1
 )
 
 # TODO: get these from SRAv2 JSON instead of hard-coding them here
@@ -175,7 +175,7 @@ add_project() (
     name=$1
     input_set_id=$2
     analysis_id=$3
-    python src/pump.py add-project ${name} ${input_set_id} ${analysis_id} | tail -n 1
+    python src/pump.py add-project ${name} ${analysis_id} ${input_set_id} | tail -n 1
 )
 
 proj_id1=$(add_project project1 ${isid} ${rna_seq_id})
