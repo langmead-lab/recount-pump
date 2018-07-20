@@ -227,9 +227,11 @@ if __name__ == '__main__':
                                        args['<wrapper-url>'], Session()))
         elif args['add-analysis-ex']:
             Session = session_maker_from_config(db_ini, args['--db-section'])
-            print(add_analysis_ex(args['<name>'], args['<image-url>'],
-                                  args['<cluster-name>'], args['<wrapper-url>'],
-                                  Session()))
+            analysis_id, n_added_cluster, n_added_cluster_analysis = \
+                add_analysis_ex(args['<name>'], args['<image-url>'],
+                                args['<cluster-name>'], args['<wrapper-url>'],
+                                Session())
+            print(analysis_id)
     except Exception:
         log.error(__name__, 'Uncaught exception:', 'analysis.py')
         raise
