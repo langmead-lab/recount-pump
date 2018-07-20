@@ -3,8 +3,32 @@
 # Author: Ben Langmead <ben.langmead@gmail.com>
 # License: MIT
 
-import sys
+"""analysis
+
+Usage:
+  analysis add-cluster [options] <name>
+  analysis add-analysis [options] <name> <image-url>
+  analysis add-cluster-analysis [options] <cluster-id> <analysis-id> <wrapper-url>
+  analysis add-analysis-ex [options] <name> <image-url> (<cluster-name> <wrapper-url>)...
+
+Options:
+  --db-ini <ini>           Database ini file [default: ~/.recount/db.ini].
+  --db-section <section>   ini file section for database [default: client].
+  --log-ini <ini>          ini file for log aggregator [default: ~/.recount/log.ini].
+  --log-section <section>  ini file section for log aggregator [default: log].
+  --log-level <level>      set level for log aggregation; could be CRITICAL,
+                           ERROR, WARNING, INFO, DEBUG [default: INFO].
+  -a, --aggregate          enable log aggregation.
+  -h, --help               Show this screen.
+  --version                Show version.
+"""
+
+
+from __future__ import print_function
+import os
+import log
 import pytest
+from docopt import docopt
 from sqlalchemy import Column, ForeignKey, Integer, String, Sequence
 from base import Base
 from sqlalchemy.orm import relationship
@@ -87,7 +111,7 @@ def add_cluster_analysis(cluster_id, analysis_id, wrapper_url, session):
     return ca.id
 
 
-def add_analysis_ex(name, image_url, cluster_analyses, session):
+def add_analysis_ex(name, image_url, cluster_names, wrapper_urls, session):
     """
     Add an Analysis along with a list of ClusterAnalysis's.  Add new Cluster
     objects as needed.
@@ -95,7 +119,7 @@ def add_analysis_ex(name, image_url, cluster_analyses, session):
     analysis_id = add_analysis(name, image_url, session)
     n_added_cluster = 0
     n_added_cluster_analysis = 0
-    for cluster_name, wrapper in cluster_analyses:
+    for cluster_name, wrapper in zip(cluster_names, wrapper_urls):
         cluster = session.query(Cluster).filter_by(name=cluster_name).first()
         if cluster is None:
             cluster_id = add_cluster(cluster_name, session)
@@ -105,20 +129,6 @@ def add_analysis_ex(name, image_url, cluster_analyses, session):
         add_cluster_analysis(cluster_id, analysis_id, wrapper, session)
         n_added_cluster_analysis += 1
     return analysis_id, n_added_cluster, n_added_cluster_analysis
-
-
-def parse_cluster_analyses(pairs):
-    """
-    Parse cluster analyses formatted like <cluster_name1>:<wrapper_url1>
-    <cluster_name2>:<wrapper_url2>, ...
-    """
-    ret = []
-    for pair in pairs:
-        toks = pair.split(':', 1)
-        if len(toks) < 2:
-            raise ValueError('Expected <cluster_name>:<wrapper_url> pair, got "%s"' % pair)
-        ret.append((toks[0], toks[1]))
-    return ret
 
 
 def test_integration(db_integration):
@@ -161,13 +171,12 @@ def test_analysis1(session):
 def test_add_analysis_ex(session):
     analysis_name = 'recount-rna-seq-v1'
     image_url = 's3://recount-pump/analysis/recount-rna-seq-v1.img'
-    cluster_analyses1 = [
-        ('stampede2', 's3://recount-pump/analysis/recount-rna-seq-v1/stampede2.sh'),
-        ('marcc', 's3://recount-pump/analysis/recount-rna-seq-v1/marcc.sh')
-    ]
+    cluster_names = ['stampede2', 'marcc']
+    wrapper_urls = ['s3://recount-pump/analysis/recount-rna-seq-v1/stampede2.sh',
+                    's3://recount-pump/analysis/recount-rna-seq-v1/marcc.sh']
     analysis_id, n_added_cluster, n_added_cluster_analysis = \
         add_analysis_ex(analysis_name, image_url,
-                        cluster_analyses1, session)
+                        cluster_names, wrapper_urls, session)
     assert 2 == n_added_cluster
     assert 2 == n_added_cluster_analysis
     assert 1 == len(list(session.query(Analysis)))
@@ -175,13 +184,12 @@ def test_add_analysis_ex(session):
     assert 2 == len(list(session.query(ClusterAnalysis)))
     analysis_name2 = 'recount-rna-seq-v2'
     image_url2 = 's3://recount-pump/analysis/recount-rna-seq-v2.img'
-    cluster_analyses2 = [
-        ('stampede2', 's3://recount-pump/analysis/recount-rna-seq-v1/stampede3.sh'),
-        ('hhpc', 's3://recount-pump/analysis/recount-rna-seq-v1/hhpc.sh')
-    ]
+    cluster_names2 = ['stampede2', 'hhpc']
+    wrapper_urls2 = ['s3://recount-pump/analysis/recount-rna-seq-v1/stampede3.sh',
+                     's3://recount-pump/analysis/recount-rna-seq-v1/hhpc.sh']
     analysis_id2, n_added_cluster2, n_added_cluster_analysis2 = \
         add_analysis_ex(analysis_name2, image_url2,
-                        cluster_analyses2, session)
+                        cluster_names2, wrapper_urls2, session)
     assert 1 == n_added_cluster2
     assert 2 == n_added_cluster_analysis2
     assert 2 == len(list(session.query(Analysis)))
@@ -196,64 +204,32 @@ def test_add_analysis_ex(session):
 
 
 if __name__ == '__main__':
-    usage_msg = '''
-Usage: analysis.py <cmd> [options]*
-
-Commands:
-
-    add-cluster <db_config> <name>
-    add-analysis <db_config> <name> <image_url>
-    add-cluster-analysis <db_config> <cluster_id> <analysis_id> <wrapper_url>
-    add-analysis-ex <db_config> <name> <image_url> <cluster_name1>:<wrapper_url1> <cluster_name2>:<wrapper_url2>, ...
-    help
-    test
-
-On each cluster, the user running the jobs should create a file
-`$HOME/.recount/cluster.txt` containing the name of the cluster, matching the
-<name> used to add the corresponding record with `add-cluster`.
-'''
-
-    def print_usage():
-        print('\n' + usage_msg.strip() + '\n')
-
-    if len(sys.argv) <= 1 or sys.argv[1] == 'help':
-        print_usage()
-        sys.exit(0)
-
-    if len(sys.argv) >= 3 and sys.argv[1] == 'add-cluster':
-        if len(sys.argv) < 4:
-            raise ValueError('add-cluster requires 1 argument')
-        with open(sys.argv[2]) as cfg_gh:
-            Session = session_maker_from_config(cfg_gh)
-        name = sys.argv[3]
-        print(add_cluster(name, Session()))
-
-    elif len(sys.argv) >= 3 and sys.argv[1] == 'add-analysis':
-        if len(sys.argv) < 5:
-            raise ValueError('add-analysis requires 2 arguments')
-        with open(sys.argv[2]) as cfg_gh:
-            Session = session_maker_from_config(cfg_gh)
-        name, image_url = sys.argv[3], sys.argv[4]
-        print(add_analysis(name, image_url, Session()))
-
-    elif len(sys.argv) >= 3 and sys.argv[1] == 'add-cluster-analysis':
-        if len(sys.argv) < 6:
-            raise ValueError('add-cluster-analysis requires 3 arguments')
-        with open(sys.argv[2]) as cfg_gh:
-            Session = session_maker_from_config(cfg_gh)
-        cluster_id, analysis_id, wrapper_url = sys.argv[3], sys.argv[4], sys.argv[5]
-        print(add_cluster_analysis(cluster_id, analysis_id, wrapper_url, Session()))
-
-    elif len(sys.argv) >= 3 and sys.argv[1] == 'add-analysis-ex':
-        if len(sys.argv) < 6:
-            raise ValueError('add-cluster-analysis requires 4 arguments')
-        with open(sys.argv[2]) as cfg_gh:
-            Session = session_maker_from_config(cfg_gh)
-        name, image_url = sys.argv[3], sys.argv[4]
-        cluster_analyses = parse_cluster_analyses(sys.argv[5:])
-        print(add_analysis_ex(name, image_url, cluster_analyses, Session()))
-
-    else:
-        print_usage()
-        sys.exit(1)
-
+    args = docopt(__doc__)
+    agg_ini = os.path.expanduser(args['--log-ini']) if args['--aggregate'] else None
+    log.init_logger(__name__, aggregation_ini=agg_ini,
+                     aggregation_section=args['--log-section'],
+                     agg_level=args['--log-level'])
+    log.init_logger('sqlalchemy', aggregation_ini=agg_ini,
+                     aggregation_section=args['--log-section'],
+                     agg_level=args['--log-level'],
+                     sender='sqlalchemy')
+    try:
+        db_ini = os.path.expanduser(args['--db-ini'])
+        if args['add-cluster']:
+            Session = session_maker_from_config(db_ini, args['--db-section'])
+            print(add_cluster(args['<name>'], Session()))
+        elif args['add-analysis']:
+            Session = session_maker_from_config(db_ini, args['--db-section'])
+            print(add_analysis(args['<name>'], args['<image-url>'], Session()))
+        elif args['add-cluster-analysis']:
+            Session = session_maker_from_config(db_ini, args['--db-section'])
+            print(add_cluster_analysis(args['<cluster-id>'], args['<analysis-id>'],
+                                       args['<wrapper-url>'], Session()))
+        elif args['add-analysis-ex']:
+            Session = session_maker_from_config(db_ini, args['--db-section'])
+            print(add_analysis_ex(args['<name>'], args['<image-url>'],
+                                  args['<cluster-name>'], args['<wrapper-url>'],
+                                  Session()))
+    except Exception:
+        log.error(__name__, 'Uncaught exception:', 'analysis.py')
+        raise

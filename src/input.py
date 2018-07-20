@@ -6,21 +6,20 @@
 """input
 
 Usage:
-  input add-input [options] <db-config> <acc-r> <acc-s>
+  input add-input [options] <acc-r> <acc-s>
                   <url-1> <url-2> <url-3>
                   <checksum-1> <checksum-2> <checksum-3>
                   <retrieval-method>
-  input add-input-set [options] <db-config> <name>
-  input add-inputs-to-set [options] <db-config> (<set-id> <input-id>)...
-  input list-input-set [options] <db-config> <name>
-  input filter-table [options] <db-config> <prefix> <species> <sql-filter>
-  input inputs-from-table [options] <db-config> <prefix> <species>
+  input add-input-set [options] <name>
+  input add-inputs-to-set [options] (<set-id> <input-id>)...
+  input list-input-set [options] <name>
+  input filter-table [options] <prefix> <species> <sql-filter>
+  input inputs-from-table [options] <prefix> <species>
                           <sql-filter> <input-set-name>
-  input fail [options]
-  input nop [options]
 
 Options:
-  <db-config>              Database ini file, w/ section named 'client' [default: ~/.recount/db.ini].
+  --db-ini <ini>           Database ini file [default: ~/.recount/db.ini].
+  --db-section <section>   ini file section for database [default: client].
   --log-ini <ini>          ini file for log aggregator [default: ~/.recount/log.ini].
   --log-section <section>  ini file section for log aggregator [default: log].
   --log-level <level>      set level for log aggregation; could be CRITICAL,
@@ -297,32 +296,29 @@ if __name__ == '__main__':
                      agg_level=args['--log-level'],
                      sender='sqlalchemy')
     try:
+        db_ini = os.path.expanduser(args['--db-ini'])
         if args['add-input']:
-            Session = session_maker_from_config(args['<db-config>'])
+            Session = session_maker_from_config(db_ini, args['--db-section'])
             print(add_input(args['<acc-r>'], args['<acc-s>'],
                             args['<url-1>'], args['<url-2>'], args['<url-3>'],
                             args['<checksum-1>'], args['<checksum-2>'], args['<checksum-3>'],
                             args['<retrieval-method>'], Session()))
         elif args['add-input-set']:
-            Session = session_maker_from_config(args['<db-config>'])
+            Session = session_maker_from_config(db_ini, args['--db-section'])
             print(add_input_set(args['<name>'], Session()))
         elif args['list-input-set']:
-            Session = session_maker_from_config(args['<db-config>'])
+            Session = session_maker_from_config(db_ini, args['--db-section'])
             print(list_input_set(args['<name>'], Session()))
         elif args['add-inputs-to-set']:
-            Session = session_maker_from_config(args['<db-config>'])
+            Session = session_maker_from_config(db_ini, args['--db-section'])
             print(add_inputs_to_set(args['<set-id>'], args['<input-id>'], Session()))
         elif args['filter-table']:
-            Session = session_maker_from_config(args['<db-config>'])
+            Session = session_maker_from_config(db_ini, args['--db-section'])
             print(filter_table(args['<prefix>'], args['<species>'], args['<sql-filter>'], Session()))
         elif args['inputs-from-table']:
-            Session = session_maker_from_config(args['<db-config>'])
+            Session = session_maker_from_config(db_ini, args['--db-section'])
             print(inputs_from_table(args['<prefix>'], args['<species>'],
                                     args['<sql-filter>'], args['<input-set-name>'], Session()))
-        elif args['fail']:
-            raise RuntimeError('Fake error')
-        elif args['nop']:
-            pass
     except Exception:
         log.error(__name__, 'Uncaught exception:', 'input.py')
         raise

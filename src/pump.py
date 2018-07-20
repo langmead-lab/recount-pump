@@ -6,16 +6,26 @@
 """pump
 
 Usage:
-  pump add-project <db-config> <name> <analysis-id> <input-set-id>
-  pump add-project-ex <db-config> <name> <analysis-name> <analysis-image-url>
+  pump add-project <name> <analysis-id> <input-set-id>
+  pump summarize-project <project-id>
+  pump add-project-ex <name> <analysis-name> <analysis-image-url>
                       <input-set-name> <input-set-table>
                       (<cluster-name> <wrapper-url>)...
 
 Options:
-  -h, --help    Show this screen.
-  --version     Show version.
+  --db-ini <ini>           Database ini file [default: ~/.recount/db.ini].
+  --db-section <section>   ini file section for database [default: client].
+  --log-ini <ini>          ini file for log aggregator [default: ~/.recount/log.ini].
+  --log-section <section>  ini file section for log aggregator [default: log].
+  --log-level <level>      set level for log aggregation; could be CRITICAL,
+                           ERROR, WARNING, INFO, DEBUG [default: INFO].
+  -a, --aggregate          enable log aggregation.
+  -h, --help               Show this screen.
+  --version                Show version.
 """
 
+import os
+import log
 import pytest
 from docopt import docopt
 from sqlalchemy import Column, ForeignKey, Integer, String, Sequence, DateTime
@@ -127,7 +137,14 @@ def add_project(name, analysis_id, input_set_id, session):
     return proj.id
 
 
-def add_project_ex(name, analysis_name, analysis_image_url, cluster_analyses,
+def summarize_project(project_id, session):
+    """
+    Summarize the Project and its constituent parts.
+    """
+    return ''
+
+
+def add_project_ex(name, analysis_name, analysis_image_url, cluster_names, wrapper_urls,
                    input_set_name, input_set_csv_fn, session):
     """
     Given some high-level details about a project, analysis, input set, and
@@ -135,7 +152,7 @@ def add_project_ex(name, analysis_name, analysis_image_url, cluster_analyses,
     a helpful all-in-one call to start from if you are starting a new project.
     """
     analysis_id, n_added_cluster, n_added_cluster_analysis = \
-        add_analysis_ex(analysis_name, analysis_image_url, cluster_analyses, session)
+        add_analysis_ex(analysis_name, analysis_image_url, cluster_names, wrapper_urls, session)
     input_set_id, n_added_input = import_input_set(input_set_name, input_set_csv_fn, session)
     project = session.query(Project).filter_by(name=name).first()
     if project is not None:
@@ -197,10 +214,9 @@ def test_add_project_ex(session):
     project_name = 'recount-rna-seq-human'
     analysis_name = 'recount-rna-seq-v1'
     image_url = 's3://recount-pump/analysis/recount-rna-seq-v1.img'
-    cluster_analyses1 = [
-        ('stampede2', 's3://recount-pump/analysis/recount-rna-seq-v1/stampede2.sh'),
-        ('marcc', 's3://recount-pump/analysis/recount-rna-seq-v1/marcc.sh')
-    ]
+    cluster_names1 = ['stampede2', 'marcc']
+    analysis_urls1 = ['s3://recount-pump/analysis/recount-rna-seq-v1/stampede2.sh',
+                      's3://recount-pump/analysis/recount-rna-seq-v1/marcc.sh']
     input_set_name = 'all_human'
     input_set_csv = '\n'.join(['NA,NA,ftp://genomi.cs/1_1.fastq.gz,ftp://genomi.cs/1_2.fastq.gz,NA,NA,NA,NA,wget',
                                'NA,NA,ftp://genomi.cs/2_1.fastq.gz,ftp://genomi.cs/2_2.fastq.gz,NA,NA,NA,NA,wget'])
@@ -210,7 +226,8 @@ def test_add_project_ex(session):
     project_id, analysis_id, input_set_id, n_added_input, \
     n_added_cluster, n_added_cluster_analysis = \
         add_project_ex(project_name, analysis_name, image_url,
-                       cluster_analyses1, input_set_name, csv_fn, session)
+                       cluster_names1, analysis_urls1, input_set_name,
+                       csv_fn, session)
     assert 2 == n_added_input
     assert 2 == n_added_cluster
     assert 2 == n_added_cluster_analysis
@@ -224,15 +241,29 @@ def test_add_project_ex(session):
 
 if __name__ == '__main__':
     args = docopt(__doc__)
-    if args['add-project']:
-        with open(args['<db-config>']) as cfg_gh:
-            Session = session_maker_from_config(cfg_gh)
-        print(add_project(args['<name>'], args['<analysis-id>'],
-                          args['<input-set-id>'], Session()))
-    elif args['add-project-ex']:
-        with open(args['<db-config>']) as cfg_gh:
-            Session = session_maker_from_config(cfg_gh)
-        print(add_project_ex(args['<name>'], args['<analysis-name>'],
-                             args['<analysis-image-url>'],
-                             args['<input-set-name>'], args['<input-set-csv>'],
-                             args['<cluster-analyses>'], Session()))
+    agg_ini = os.path.expanduser(args['--log-ini']) if args['--aggregate'] else None
+    log.init_logger(__name__, aggregation_ini=agg_ini,
+                     aggregation_section=args['--log-section'],
+                     agg_level=args['--log-level'])
+    log.init_logger('sqlalchemy', aggregation_ini=agg_ini,
+                     aggregation_section=args['--log-section'],
+                     agg_level=args['--log-level'],
+                     sender='sqlalchemy')
+    try:
+        db_ini = os.path.expanduser(args['--db-ini'])
+        if args['add-project']:
+            Session = session_maker_from_config(db_ini, args['--db-section'])
+            print(add_project(args['<name>'], args['<analysis-id>'],
+                              args['<input-set-id>'], Session()))
+        if args['summarize-project']:
+            Session = session_maker_from_config(db_ini, args['--db-section'])
+            print(summarize_project(args['<project-id>'], Session()))
+        elif args['add-project-ex']:
+            Session = session_maker_from_config(db_ini, args['--db-section'])
+            print(add_project_ex(args['<name>'], args['<analysis-name>'],
+                                 args['<analysis-image-url>'],
+                                 args['<input-set-name>'], args['<input-set-csv>'],
+                                 args['<cluster-name>'], args['<wrapper-url>'], Session()))
+    except Exception:
+        log.error(__name__, 'Uncaught exception:', 'pump.py')
+        raise
