@@ -83,6 +83,16 @@ class InputSet(Base):
     name = Column(String(1024))
     inputs = relationship("Input", secondary=input_association_table)
 
+    def deepdict(self, session):
+        d = self.__dict__.copy()
+        del d['_sa_instance_state']
+        d['inputs'] = []
+        for inp in self.inputs:
+            d2 = inp.__dict__.copy()
+            del d2['_sa_instance_state']
+            d['inputs'].append(d2)
+        return d
+
 
 def retrieve(input_id, my_session, toolbox, retries=0, timeout=None):
     inp = list(my_session.query(Input).filter_by(id=input_id))

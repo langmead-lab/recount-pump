@@ -179,7 +179,7 @@ add_project() (
 )
 
 proj_id1=$(add_project project1 ${isid} ${rna_seq_id})
-proj_id2=$(add_project project1 ${isid} ${rna_seq_lite_id})
+proj_id2=$(add_project project2 ${isid} ${rna_seq_lite_id})
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 5: Summarize project"
@@ -187,10 +187,9 @@ echo "++++++++++++++++++++++++++++++++++++++++++++++"
 
 # Print out helpful info about the project and its various components
 
-# TODO: implement this
-python src/pump.py summarize-project ${proj_id1} | tail -n 1
+python src/pump.py summarize-project ${proj_id1}
 
-python src/pump.py summarize-project ${proj_id2} | tail -n 1
+python src/pump.py summarize-project ${proj_id2}
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 6: Run project"

@@ -27,6 +27,7 @@ Options:
 import os
 import log
 import pytest
+import json
 from docopt import docopt
 from sqlalchemy import Column, ForeignKey, Integer, String, Sequence, DateTime
 from sqlalchemy.orm import relationship
@@ -51,6 +52,17 @@ class Project(Base):
     analysis_id = Column(Integer, ForeignKey('analysis.id'))
 
     event = relationship("ProjectEvent")  # events associated with this project
+
+    def deepdict(self, session):
+        d = self.__dict__.copy()
+        iset = session.query(InputSet).get(self.input_set_id)
+        analysis = session.query(Analysis).get(self.analysis_id)
+        del d['input_set_id']
+        d['input_set'] = iset.deepdict(session)
+        del d['analysis_id']
+        d['analysis'] = analysis.deepdict(session)
+        del d['_sa_instance_state']
+        return d
 
 
 class ProjectEvent(Base):
@@ -135,13 +147,6 @@ def add_project(name, analysis_id, input_set_id, session):
     session.add(proj)
     session.commit()
     return proj.id
-
-
-def summarize_project(project_id, session):
-    """
-    Summarize the Project and its constituent parts.
-    """
-    return ''
 
 
 def add_project_ex(name, analysis_name, analysis_image_url, cluster_names, wrapper_urls,
@@ -257,7 +262,9 @@ if __name__ == '__main__':
                               args['<input-set-id>'], Session()))
         if args['summarize-project']:
             Session = session_maker_from_config(db_ini, args['--db-section'])
-            print(summarize_project(args['<project-id>'], Session()))
+            session = Session()
+            proj = session.query(Project).get(int(args['<project-id>']))
+            print(json.dumps(proj.deepdict(session), indent=4, separators=(',', ': ')))
         elif args['add-project-ex']:
             Session = session_maker_from_config(db_ini, args['--db-section'])
             print(add_project_ex(args['<name>'], args['<analysis-name>'],

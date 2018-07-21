@@ -48,6 +48,11 @@ class Analysis(Base):
     image_url = Column(String(4096))
     cluster_analysis = relationship("ClusterAnalysis")
 
+    def deepdict(self, session):
+        d = self.__dict__.copy()
+        del d['_sa_instance_state']
+        return d
+
 
 class Cluster(Base):
     """
