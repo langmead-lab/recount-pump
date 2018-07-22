@@ -53,6 +53,14 @@ class Analysis(Base):
         del d['_sa_instance_state']
         return d
 
+    def to_job_string(self):
+        """
+        Return the string that should represent this analysis in a queued job.
+        It should be enough information so that any cluster that obtains the
+        job knows how to obtain the image and run the job.
+        """
+        return self.image_url  # TODO: doesn't handle cluster-specific concerns
+
 
 class Cluster(Base):
     """
