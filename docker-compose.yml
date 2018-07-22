@@ -2,11 +2,13 @@ version: '3'
 services:
   q:
     image: "rabbitmq:3.7.7-management"
+    container_name: "rabbitmq"
     ports:
       - "35672:15672"
       - "25672:5672"
   s3:
-    image: "benlangmead/recount-minio"
+    image: "quay.io/benlangmead/recount-minio"
+    container_name: "recount-minio"
     ports:
       - "29000:9000"
     environment:
@@ -14,6 +16,7 @@ services:
       MINIO_SECRET_KEY: minio123
   db:
     image: "postgres:10.4"
+    container_name: "postgres-recount"
     ports:
       - "25432:5432"
     environment:
@@ -21,7 +24,8 @@ services:
       POSTGRES_PASSWORD: recount-postgres
       POSTGRES_DB: recount-test
   recount:
-    image: "benlangmead/recount-pump"
+    image: "quay.io/benlangmead/recount-pump"
+    container_name: "recount"
     depends_on:
       - "q"
       - "s3"
@@ -32,13 +36,4 @@ services:
       RECOUNT_TEST_DB: postgres://recount:recount-postgres@db:5432/recount-test
       RECOUNT_TEST_Q: q:5672
       RECOUNT_TEST_S3: http://s3:9000
-    command: >
-      bash -c "/code/wait-for-it.sh db:25432 --
-                 /code/wait-for-it.sh s3:29000 --
-                   /code/wait-for-it.sh q:25672 --
-                     echo '*** Starting (unit tests) ***' &&
-                     ./unit_test.sh &&
-                     echo '*** SUCCESS (unit tests) ***'"
-                     echo '*** Starting (end-to-end tests) ***' &&
-                     ./e2e_test.sh &&
-                     echo '*** SUCCESS (end-to-end tests) ***'"
+    command: /code/test_entry.sh
