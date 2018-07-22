@@ -11,17 +11,22 @@ Usage:
   pump add-project-ex [options] <name> <analysis-name> <analysis-image-url>
                       <input-set-name> <input-set-table>
                       (<cluster-name> <wrapper-url>)...
+  pump stage [options] <project-id>
 
 Options:
-  --db-ini <ini>           Database ini file [default: ~/.recount/db.ini].
-  --db-section <section>   ini file section for database [default: client].
-  --log-ini <ini>          ini file for log aggregator [default: ~/.recount/log.ini].
-  --log-section <section>  ini file section for log aggregator [default: log].
-  --log-level <level>      set level for log aggregation; could be CRITICAL,
-                           ERROR, WARNING, INFO, DEBUG [default: INFO].
-  -a, --aggregate          enable log aggregation.
-  -h, --help               Show this screen.
-  --version                Show version.
+  --db-ini <ini>              Database ini file [default: ~/.recount/db.ini].
+  --db-section <section>      ini file section for database [default: client].
+  --queue-ini <ini>           Queue ini file [default: ~/.recount/queue.ini].
+  --queue-section <section>   ini file section for database [default: queue].
+  --queue-name <name>         Which queue to stage jobs to [default: public_staging]
+  --chunk <strategy>          Set chunking strategy; not implemented; 1 SRR at a time
+  --log-ini <ini>             ini file for log aggregator [default: ~/.recount/log.ini].
+  --log-section <section>     ini file section for log aggregator [default: log].
+  --log-level <level>         set level for log aggregation; could be CRITICAL,
+                              ERROR, WARNING, INFO, DEBUG [default: INFO].
+  -a, --aggregate             enable log aggregation.
+  -h, --help                  Show this screen.
+  --version                   Show version.
 """
 
 import os
@@ -35,6 +40,7 @@ from base import Base
 from input import import_input_set, Input, InputSet
 from analysis import add_analysis_ex, Analysis, Cluster, ClusterAnalysis
 from toolbox import session_maker_from_config
+from queueing.service import queueing_service_from_config
 
 
 class Project(Base):
@@ -63,6 +69,21 @@ class Project(Base):
         d['analysis'] = analysis.deepdict(session)
         del d['_sa_instance_state']
         return d
+
+    def job_iterator(self, session, chunking_stragegy=None):
+        """
+        For each input in the project, return a string describing a job that
+        can process that input on any cluster.
+        TODO: Allow chunking; otherwise, only 1 SRR at a time is handled
+        """
+        iset = session.query(InputSet).get(self.input_set_id)
+        analysis = session.query(Analysis).get(self.analysis_id)
+        analysis_str = analysis.to_job_string()
+        for input in iset.inputs:
+            job_str = ' '.join([str(self.id), self.name, input.to_job_string(), analysis_str])
+            if job_str.count(' ') != 3:
+                raise RuntimeError('Bad job string; must have exactly 3 spaces: "%s"' % job_str)
+            yield job_str
 
 
 class ProjectEvent(Base):
@@ -167,6 +188,18 @@ def add_project_ex(name, analysis_name, analysis_image_url, cluster_names, wrapp
            n_added_input, n_added_cluster, n_added_cluster_analysis
 
 
+def stage_project(project_id, queue_service, session, queue_name='public_staging', chunking_strategy=None):
+    proj = session.query(Project).get(project_id)
+    if not queue_service.queue_exists(queue_name):
+        queue_service.queue_create(queue_name)
+    n = 0
+    for job_str in proj.job_iterator(session, chunking_strategy):
+        log.debug(__name__, 'Staged job "%s" from "%s" to "%s"' % (job_str, proj.name, queue_name), 'pump.py')
+        queue_service.publish(queue_name, job_str)
+        n += 1
+    log.info(__name__, 'Staged %d jobs from "%s" to "%s"' % (n, proj.name, queue_name), 'pump.py')
+
+
 def test_integration(db_integration):
     if not db_integration:
         pytest.skip('db integration testing disabled')
@@ -256,6 +289,7 @@ if __name__ == '__main__':
                      sender='sqlalchemy')
     try:
         db_ini = os.path.expanduser(args['--db-ini'])
+        q_ini = os.path.expanduser(args['--queue-ini'])
         if args['add-project']:
             Session = session_maker_from_config(db_ini, args['--db-section'])
             print(add_project(args['<name>'], args['<analysis-id>'],
@@ -271,6 +305,12 @@ if __name__ == '__main__':
                                  args['<analysis-image-url>'],
                                  args['<input-set-name>'], args['<input-set-csv>'],
                                  args['<cluster-name>'], args['<wrapper-url>'], Session()))
+        elif args['stage']:
+            Session = session_maker_from_config(db_ini, args['--db-section'])
+            qserv = queueing_service_from_config(q_ini, args['--queue-section'])
+            print(stage_project(int(args['<project-id>']), qserv, Session(),
+                                queue_name=args['--queue-name'],
+                                chunking_strategy=args['--chunk']))
     except Exception:
         log.error(__name__, 'Uncaught exception:', 'pump.py')
         raise
