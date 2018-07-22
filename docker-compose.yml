@@ -36,6 +36,9 @@ services:
       bash -c "/code/wait-for-it.sh db:25432 --
                  /code/wait-for-it.sh s3:29000 --
                    /code/wait-for-it.sh q:25672 --
-                     echo '*** STARTING ***' &&
-                     py.test -v src/*.py src/*/*.py &&
-                     echo '*** SUCCESS ***'"
+                     echo '*** Starting (unit tests) ***' &&
+                     ./unit_test.sh &&
+                     echo '*** SUCCESS (unit tests) ***'"
+                     echo '*** Starting (end-to-end tests) ***' &&
+                     ./e2e_test.sh &&
+                     echo '*** SUCCESS (end-to-end tests) ***'"
