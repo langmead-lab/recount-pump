@@ -61,9 +61,17 @@ class Input(Base):
     retrieval_method = Column(String(64))  # suggested retrieval method
 
     def __repr__(self):
-        return ' '.join(map(str, [self.id, self.acc_r, self.acc_s, self.url_1, self.url_2, self.url_3,
+        return ','.join(map(str, [self.id, self.acc_r, self.acc_s, self.url_1, self.url_2, self.url_3,
                                   self.checksum_1, self.checksum_2, self.checksum_3,
                                   self.retrieval_method]))
+
+    def to_job_string(self):
+        """
+        Return the string that should represent this input in a queued job.
+        It should be enough information so that any cluster that obtains the
+        job knows how to obtain the input.
+        """
+        return str(self)
 
 
 # Creates many-to-many association between Annotations and AnnotationSets
