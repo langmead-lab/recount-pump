@@ -1,3 +1,5 @@
 #!/bin/sh
 
-docker run --rm -d -p 5672:5672 -p 15672:15672  --name rabbitmq rabbitmq
+d=`dirname $0`
+
+docker run --rm -d -p 25672:5672 -p 35672:15672  --name rabbitmq `cat $d/image.txt`

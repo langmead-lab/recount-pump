@@ -1,3 +1,5 @@
 #!/bin/sh
 
-docker pull $* rabbitmq:latest
+d=`dirname $0`
+
+docker pull $* `cat $d/image.txt`
