@@ -15,6 +15,10 @@ RUN wget -q https://github.com/singularityware/singularity/releases/download/2.3
 
 ADD wait-for-it.sh /code
 ADD requirements.txt /code
+ADD unit_test.sh /code
+ADD e2e_test.sh /code
+
 RUN pip install --quiet -r requirements.txt
 
+ADD test /code/test
 ADD src /code/src
