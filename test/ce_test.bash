@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# Author: Ben Langmead <ben.langmead@gmail.com>
+# License: MIT
+
 #
 # Assuming that the minio, postgres and rmq are running and serving on
 # their special ports
@@ -7,6 +10,20 @@
 # rmq: 25672
 # postgres: 25432
 # minio: 29000
+#
+# Prereqs:
+# - ~/.recount/db.ini
+# [client]
+# url=postgres://recount:recount-postgres@127.0.0.1:25432/recount-test
+# password=recount-postgres
+# host=127.0.0.1
+# port=25432
+# user=recount
+#
+# - ~/.recount/log.ini
+# - ~/.recount/queue.ini
+# [queue]
+# type=sqs
 #
 
 set -ex
@@ -190,6 +207,12 @@ echo "++++++++++++++++++++++++++++++++++++++++++++++"
 python src/pump.py summarize-project ${proj_id1}
 
 python src/pump.py summarize-project ${proj_id2}
+
+echo "++++++++++++++++++++++++++++++++++++++++++++++"
+echo "        PHASE 7: Stage project"
+echo "++++++++++++++++++++++++++++++++++++++++++++++"
+
+python src/pump.py stage ${proj_id1}
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 6: Run project"
