@@ -33,6 +33,8 @@ class RmqService():
         if self.get_outstanding:
             raise RuntimeError('Already have a get outstanding')
         method_frame, header_frame, body = self.channel.basic_get(queue=queue)
+        if method_frame is None:
+            return None
         if method_frame.NAME != 'Basic.GetOk':
             raise RuntimeError('Reponse from basic_get was "%s" (not Basic.GetOk)', method_frame.NAME)
         self.get_outstanding = True
@@ -109,5 +111,18 @@ def test_publish_get_1(q_enabled, q_service):
     assert b'test_publish_get_1 3' == msg3
     q_service.ack()
     # messages might be requeued since they're unacknowledged
+    q_service.queue_delete('TestRmq')
+    assert not q_service.queue_exists('TestRmq')
+
+
+def test_get_empty(q_enabled, q_service):
+    if not q_enabled: pytest.skip('Skipping RMQ tests')
+    assert not q_service.queue_exists('TestRmq')
+    q_service.queue_create('TestRmq')
+    q_service.publish('TestRmq', 'test_get_empty_1 1')
+    msg1 = q_service.get('TestRmq')
+    assert b'test_get_empty_1 1' == msg1
+    q_service.ack()
+    msg2 = q_service.get('TestRmq')
     q_service.queue_delete('TestRmq')
     assert not q_service.queue_exists('TestRmq')
