@@ -209,11 +209,11 @@ python src/pump.py summarize-project ${proj_id1}
 python src/pump.py summarize-project ${proj_id2}
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
-echo "        PHASE 7: Stage project"
+echo "        PHASE 6: Stage project"
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 
 python src/pump.py stage ${proj_id1}
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
-echo "        PHASE 6: Run project"
+echo "        PHASE 7: Run project"
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
