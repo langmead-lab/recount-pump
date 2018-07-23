@@ -12,7 +12,8 @@
 # minio: 29000
 #
 # Prereqs:
-# - ~/.recount/db.ini
+#
+# === ~/.recount/db.ini ===
 # [client]
 # url=postgres://recount:recount-postgres@127.0.0.1:25432/recount-test
 # password=recount-postgres
@@ -20,10 +21,22 @@
 # port=25432
 # user=recount
 #
-# - ~/.recount/log.ini
-# - ~/.recount/queue.ini
+# === ~/.recount/queue.ini ===
 # [queue]
-# type=sqs
+# type=rmq
+# host=localhost
+# port=25672
+#
+# Optional:
+#
+# If you want to use a log aggregator:
+#
+# === ~/.recount/log.ini ===
+# [log]
+# host = XXXX.YYYY.com
+# port = XXXXX
+# format = %(asctime)s %(hostname)s recount-pump: %(message)s
+# datefmt = %b %d %H:%M:%S 
 #
 
 set -ex
