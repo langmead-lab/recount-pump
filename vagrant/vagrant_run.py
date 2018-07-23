@@ -64,7 +64,7 @@ def run(skip_run, ini_fn, section):
                 attachments.append({'text': st, 'color': 'danger'})
     requests.put(slack_url, json={
         'username': 'webhookbot',
-        'text': 'Vagrant test suite results',
+        'text': 'recount-pump build-deploy-test suite:',
         'attachments': attachments})
     if not skip_run:
         os.system('vagrant destroy -f')
