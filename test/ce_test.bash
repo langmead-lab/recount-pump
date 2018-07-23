@@ -225,8 +225,10 @@ echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 6: Stage project"
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 
-python src/pump.py stage ${proj_id1}
+python src/pump.py stage --queue-name public_staging ${proj_id1}
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 7: Run project"
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
+
+python src/job_loop.py run --max-fail 3 --poll-seconds 1 public_staging
