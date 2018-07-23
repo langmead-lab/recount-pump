@@ -52,7 +52,7 @@ def read_slack_config(ini_fn, section='slack'):
 def run(skip_run, ini_fn, section):
     slack_url = slack_webhook_url(ini_fn, section=section)
     if not skip_run:
-        os.system('./run.sh')
+        os.system('vagrant up 2>&1 | tee vagrant.log')
     attachments = []
     with open('vagrant.log', 'rb') as fh:
         for ln in fh:
@@ -62,12 +62,12 @@ def run(skip_run, ini_fn, section):
             elif '===SAD' in ln:
                 st = ln[ln.find(b'===SAD')+7:].rstrip()
                 attachments.append({'text': st, 'color': 'danger'})
-    data = {'username': 'webhookbot',
-            'text': 'Vagrant test suite results',
-            'attachments': attachments}
-    requests.put(slack_url, json=data)
+    requests.put(slack_url, json={
+        'username': 'webhookbot',
+        'text': 'Vagrant test suite results',
+        'attachments': attachments})
     if not skip_run:
-        os.system('./kill.sh')
+        os.system('vagrant destroy -f')
 
 
 if __name__ == '__main__':
