@@ -6,12 +6,10 @@
 """log
 
 Usage:
-  log test [options]
   log message [options]
 
 Options:
   --log-ini <ini>          ini file for log aggregator [default: ~/.recount/log.ini].
-  --log-section <section>  ini file section for log aggregator [default: log].
   --log-level <level>      set level for log aggregation; could be CRITICAL,
                            ERROR, WARNING, INFO, DEBUG [default: INFO].
   -a, --aggregate          enable log aggregation.
@@ -24,6 +22,7 @@ import sys
 import socket
 import unittest
 import logging
+import watchtower
 from docopt import docopt
 from logging.handlers import SysLogHandler
 try:
@@ -75,12 +74,10 @@ def critical(name, text, sender=''):
     msg(name, sender, text, logging.CRITICAL)
 
 
-def init_logger(name, aggregation_ini=None, aggregation_section='log',
-                level='DEBUG', agg_level='INFO', sender=None):
-    lg = logging.getLogger(name)
-    lg.setLevel(level if isinstance(level, int) else logging.getLevelName(level))
-
-    # First set up default handler, to console with simple message
+def make_default_handler(sender=None):
+    """
+    Set up default handler, which prints simple messages to the console.
+    """
     default_handler = logging.StreamHandler()
     default_format = '%(asctime)s %(message)s'
     if sender is not None:
@@ -90,24 +87,41 @@ def init_logger(name, aggregation_ini=None, aggregation_section='log',
     default_handler.setFormatter(default_formatter)
     if sender is not None:
         add_sender_filter(default_handler, sender)
-    lg.addHandler(default_handler)
+    return default_handler
 
-    if aggregation_ini is not None:
+
+def init_logger(name, log_ini=None, level='DEBUG', agg_level='INFO', sender=None):
+    lg = logging.getLogger(name)
+    lg.setLevel(level if isinstance(level, int) else logging.getLevelName(level))
+    lg.addHandler(make_default_handler(sender=sender))
+
+    if log_ini is not None:
         # see comment for syslog_handler_from_ini
-
-        host, port, fmt, datefmt = read_log_config(config_fn=aggregation_ini,
-                                                   section=aggregation_section)
-        agg_handler = SysLogHandler(address=(host, port))
+        info(__name__, 'Parsing log ini "%s"' % log_ini, 'log.py')
+        cfg = RawConfigParser()
+        cfg.read(log_ini)
         agg_format = '%(asctime)s %(hostname)s %(message)s'
         if sender is not None:
             agg_format = '%(asctime)s %(hostname)s %(sender)s %(message)s'
         agg_formatter = logging.Formatter(fmt=agg_format, datefmt=_default_datefmt)
-        agg_handler.setFormatter(agg_formatter)
-        agg_handler.setLevel(agg_level)
-        add_hostname_filter(agg_handler)
-        if sender is not None:
-            add_sender_filter(agg_handler, sender)
-        lg.addHandler(agg_handler)
+
+        def _config_handler(hnd):
+            hnd.setFormatter(agg_formatter)
+            hnd.setLevel(agg_level)
+            add_hostname_filter(hnd)
+            if sender is not None:
+                add_sender_filter(hnd, sender)
+            lg.addHandler(hnd)
+
+        if 'syslog' in cfg.sections():
+            info(__name__, 'Found syslog handler in "%s"' % log_ini, 'log.py')
+            host, port, fmt, datefmt =\
+                cfg.get('syslog', 'host'), int(cfg.get('syslog', 'port')),\
+                cfg.get('syslog', 'format'), cfg.get('syslog', 'datefmt')
+            _config_handler(SysLogHandler(address=(host, port)))
+        if 'watchtower' in cfg.sections():
+            info(__name__, 'Found watchtower handler in "%s"' % log_ini, 'log.py')
+            _config_handler(watchtower.CloudWatchLogHandler())
 
 
 def read_log_config(config_fn, section):
@@ -182,13 +196,9 @@ datefmt = %b %d %H:%M:%S
 if __name__ == '__main__':
     args = docopt(__doc__)
 
-    if args['test']:
-        del sys.argv[1:]
-        unittest.main()
-    elif args['message']:
+    if args['message']:
         agg_ini = os.path.expanduser(args['--log-ini']) if args['--aggregate'] else None
-        init_logger(__name__, aggregation_ini=agg_ini,
-                    aggregation_section=args['--log-section'],
+        init_logger(__name__, log_ini=agg_ini,
                     agg_level=args['--log-level'], sender='log.py')
-        info(__name__, 'This is an info message')
-        debug(__name__, 'This is a debug message')
+        info(__name__, 'This is an info message', 'log.py')
+        debug(__name__, 'This is a debug message', 'log.py')
