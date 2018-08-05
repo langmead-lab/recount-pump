@@ -121,7 +121,10 @@ def init_logger(name, log_ini=None, level='DEBUG', agg_level='INFO', sender=None
             _config_handler(SysLogHandler(address=(host, port)))
         if 'watchtower' in cfg.sections():
             info(__name__, 'Found watchtower handler in "%s"' % log_ini, 'log.py')
-            _config_handler(watchtower.CloudWatchLogHandler())
+            log_group = cfg.get('watchtower', 'log_group')
+            stream_name = cfg.get('watchtower', 'stream_name')
+            hnd = watchtower.CloudWatchLogHandler(log_group=log_group, stream_name=stream_name)
+            _config_handler(hnd)
 
 
 def read_log_config(config_fn, section):
