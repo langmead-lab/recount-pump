@@ -14,7 +14,7 @@ Options:
   --cluster-section <section>  ini file section for cluster [default: cluster].
   --db-ini <ini>               Database ini file [default: ~/.recount/db.ini].
   --db-section <section>       ini file section for database [default: client].
-  --profile=<profile>          AWS credentials profile section [default: default].
+  --profile=<profile>          AWS credentials profile section.
   --endpoint-url=<url>         Endpoint URL for S3 API.  If not set, uses AWS default.
   --queue-ini <ini>            Queue ini file [default: ~/.recount/queue.ini].
   --queue-section <section>    ini file section for database [default: queue].
@@ -65,11 +65,20 @@ except ImportError:
     sys.exc_clear()
 
 
-def do_job(body):
-    toks = body.split(' ')
+def parse_job(body):
+    try:
+        body = body.encode()
+    except AttributeError:
+        pass
+    toks = body.split(b' ')
     if 4 != len(toks):
         raise ValueError('Could not parse job string: "%s"' % body)
-    job_id, job_name, input_string, analysis_string = body.split()
+    job_id, job_name, input_string, analysis_string = toks
+    return int(job_id), job_name, input_string, analysis_string
+
+
+def do_job(body):
+    job_id, job_name, input_string, analysis_string = parse_job(body)
     log.info(__name__, 'Handling job: {id=%d, name="%s", input="%s", analysis="%s"}' %
              (int(job_id), job_name, input_string, analysis_string), 'job_loop.py')
     return True
@@ -91,7 +100,7 @@ def download_image(url, cluster_name, analysis_dir, aws_profile=None, s3_endpoin
              'job_loop.py')
     image_fn = os.path.join(analysis_dir, image_bn)
     mover = Mover(profile=aws_profile, endpoint_url=s3_endpoint_url,
-                  enable_web=True, enable_s3=True)
+                  enable_web=True, enable_s3=aws_profile is not None)
     mover.get(url, image_fn)
 
 
@@ -197,6 +206,19 @@ def test_with_db(session):
     assert os.path.exists(os.path.join(dstdir, base_fn))
 
 
+def test_parse_job():
+    a, b, c, d = parse_job('123 job_name input_string analysis_string')
+    assert 123 == a
+    assert b'job_name' == b
+    assert b'input_string' == c
+    assert b'analysis_string' == d
+    a, b, c, d = parse_job(b'123 job_name input_string analysis_string')
+    assert 123 == a
+    assert b'job_name' == b
+    assert b'input_string' == c
+    assert b'analysis_string' == d
+
+
 if __name__ == '__main__':
     args = docopt(__doc__)
     agg_ini = os.path.expanduser(args['--log-ini']) if args['--aggregate'] else None
@@ -211,7 +233,7 @@ if __name__ == '__main__':
         q_ini = os.path.expanduser(args['--queue-ini'])
         if args['prepare']:
             Session = session_maker_from_config(db_ini, args['--db-section'])
-            print(prepare(args['<project-id>'],
+            print(prepare(int(args['<project-id>']),
                           cluster_name,
                           analysis_dir,
                           Session(),
@@ -220,7 +242,7 @@ if __name__ == '__main__':
                           get_image=True))
         if args['run']:
             Session = session_maker_from_config(db_ini, args['--db-section'])
-            print(job_loop(args['<project-id>'], q_ini,
+            print(job_loop(int(args['<project-id>']), q_ini,
                            args['--queue-section'],
                            cluster_name, analysis_dir,
                            Session(),
