@@ -20,7 +20,6 @@ Options:
 import os
 import sys
 import socket
-import unittest
 import logging
 import watchtower
 from docopt import docopt
