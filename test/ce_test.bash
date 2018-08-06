@@ -32,11 +32,14 @@
 # If you want to use a log aggregator:
 #
 # === ~/.recount/log.ini ===
-# [log]
+# [syslog]
 # host = XXXX.YYYY.com
 # port = XXXXX
 # format = %(asctime)s %(hostname)s recount-pump: %(message)s
 # datefmt = %b %d %H:%M:%S 
+# [watchtower]
+# log_group = watchtower
+# stream_name = recount-pump
 #
 
 set -ex
@@ -225,10 +228,19 @@ echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 6: Stage project"
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 
-python src/pump.py stage --queue-name public_staging ${proj_id1}
+python src/pump.py stage ${proj_id1}
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
-echo "        PHASE 7: Run project"
+echo "        PHASE 7: Prepare project"
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 
-python src/job_loop.py run --max-fail 3 --poll-seconds 1 public_staging
+python src/job_loop.py prepare ${proj_id1}
+
+echo "++++++++++++++++++++++++++++++++++++++++++++++"
+echo "        PHASE 8: Run project"
+echo "++++++++++++++++++++++++++++++++++++++++++++++"
+
+python src/job_loop.py run \
+    ${proj_id1} \
+    --max-fail 3 \
+    --poll-seconds 1
