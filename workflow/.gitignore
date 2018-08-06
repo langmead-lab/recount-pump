@@ -1,8 +1,1 @@
-results
-work
-.nextflow
-.nextflow.*
-input
-output
-*.img
-*.simg
+images
