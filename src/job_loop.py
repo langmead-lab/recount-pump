@@ -51,12 +51,13 @@ import log
 import sys
 import tempfile
 import shutil
+import pytest
 from docopt import docopt
 from queueing.service import queueing_service_from_config
 from toolbox import session_maker_from_config
 from analysis import Analysis
-from pump import Project
-from mover import Mover, Url
+from pump import Project, add_project_ex
+from mover import Mover
 try:
     from configparser import RawConfigParser
 except ImportError:
@@ -166,6 +167,34 @@ def test_download_image():
     assert os.path.exists(os.path.join(dstdir, base_fn))
     shutil.rmtree(srcdir)
     shutil.rmtree(dstdir)
+
+
+def test_integration(db_integration):
+    if not db_integration:
+        pytest.skip('db integration testing disabled')
+
+
+def test_with_db(session):
+    srcdir, dstdir = tempfile.mkdtemp(), tempfile.mkdtemp()
+    project_name = 'test-project'
+    analysis_name = 'test-analysis'
+    base_fn = 'test_image.simg'
+    image_url = os.path.join(srcdir, base_fn)
+    with open(image_url, 'w') as fh:
+        fh.write('dummy image')
+    cluster_names = ['cluster1', 'cluster2']
+    wrapper_urls = []
+    input_set_name = 'test-input-set'
+    input_set_csv = '\n'.join(['NA,NA,ftp://genomi.cs/1_1.fastq.gz,ftp://genomi.cs/1_2.fastq.gz,NA,NA,NA,NA,wget',
+                               'NA,NA,ftp://genomi.cs/2_1.fastq.gz,ftp://genomi.cs/2_2.fastq.gz,NA,NA,NA,NA,wget'])
+    csv_fn = '.test_add_project_ex.csv'
+    with open(csv_fn, 'w') as ofh:
+        ofh.write(input_set_csv)
+    project_id, _, _, _, _, _ = add_project_ex(
+        project_name, analysis_name, image_url, cluster_names,
+        wrapper_urls, input_set_name, csv_fn, session)
+    prepare(project_id, cluster_names[0], dstdir, session, get_image=True)
+    assert os.path.exists(os.path.join(dstdir, base_fn))
 
 
 if __name__ == '__main__':
