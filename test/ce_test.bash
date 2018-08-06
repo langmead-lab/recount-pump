@@ -4,12 +4,13 @@
 # License: MIT
 
 #
-# Assuming that the minio, postgres and rmq are running and serving on
-# their special ports
+# Assuming that:
+# 1. Minio is serving on port 29000
+# 2. Postgres is serving on port 25432
+# 3. Rmq is serving on port 25672
+# 4. Image files are being served at a local directory defined by
+#    $RECOUNT_IMAGES
 #
-# rmq: 25672
-# postgres: 25432
-# minio: 29000
 #
 # Prereqs:
 #
@@ -45,6 +46,18 @@
 set -ex
 
 TAXID=6239
+RUN_NAME=ce10_test
+ANALYSIS_DIR=$PWD/analyses
+mkdir -p ${ANALYSIS_DIR}
+
+RNA_SEQ_LITE="quay.io_benlangmead_recount-rna-seq-lite-nf-2018-07-23-353aacc3b34f.img"
+
+[ -z "${RECOUNT_IMAGES}" ] && \
+    echo "Must set RECOUNT_IMAGES first" && exit 1
+[ ! -d "${RECOUNT_IMAGES}" ] && \
+    echo "Directory \"${RECOUNT_IMAGES}\" does not exist" && exit 1
+[ ! -f "${RECOUNT_IMAGES}/${RNA_SEQ_LITE}" ] && \
+    echo "File \"${RECOUNT_IMAGES}/${RNA_SEQ_LITE}\" does not exist" && exit 1
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 1: Load reference data"
@@ -136,12 +149,9 @@ add_analysis_ex() (
     python src/analysis.py add-analysis-ex ${name} ${image_url} ${cluster_name_wrapper_url_pairs} | tail -n 1
 )
 
-ANALYSIS_URL='s3://recount-pump/image/'
-RNA_SEQ="quay.io_benlangmead_recount-rna-seq-nf-2018-07-19-e549a6d2c1e8.img.gz"
-RNA_SEQ_LITE="quay.io_benlangmead_recount-rna-seq-lite-nf-2018-07-19-efb005fb600f.img.gz"
+# TODO: need to consider what to do about wrappers
 
-rna_seq_id=$(add_analysis_ex rna_seq "${ANALYSIS_URL}/${RNA_SEQ}" "default ${ANALYSIS_URL}/rna_seq_lite.bash")
-rna_seq_lite_id=$(add_analysis_ex rna_seq_lite "${ANALYSIS_URL}/${RNA_SEQ_LITE}" "default ${ANALYSIS_URL}/rna_seq_lite_default.bash")
+rna_seq_lite_id=$(add_analysis_ex rna_seq_lite "${RECOUNT_IMAGES}/${RNA_SEQ_LITE}" "default ${RECOUNT_IMAGES}/rna_seq_lite_default.bash")
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 3: Load input data"
@@ -211,8 +221,7 @@ add_project() (
     python src/pump.py add-project ${name} ${analysis_id} ${input_set_id} | tail -n 1
 )
 
-proj_id1=$(add_project project1 ${isid} ${rna_seq_id})
-proj_id2=$(add_project project2 ${isid} ${rna_seq_lite_id})
+proj_id=$(add_project project2 ${isid} ${rna_seq_lite_id})
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 5: Summarize project"
@@ -220,27 +229,34 @@ echo "++++++++++++++++++++++++++++++++++++++++++++++"
 
 # Print out helpful info about the project and its various components
 
-python src/pump.py summarize-project ${proj_id1}
-
-python src/pump.py summarize-project ${proj_id2}
+python src/pump.py summarize-project ${proj_id}
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 6: Stage project"
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 
-python src/pump.py stage ${proj_id1}
+python src/pump.py stage ${proj_id}
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 7: Prepare project"
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 
-python src/job_loop.py prepare ${proj_id1}
+cat >cluster.ini <<EOF
+[cluster]
+name = ${RUN_NAME}
+analysis_dir = ${ANALYSIS_DIR}
+EOF
+
+python src/job_loop.py \
+    prepare ${proj_id} \
+    --cluster-ini cluster.ini
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 8: Run project"
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 
 python src/job_loop.py run \
-    ${proj_id1} \
+    ${proj_id} \
+    --cluster-ini cluster.ini \
     --max-fail 3 \
     --poll-seconds 1
