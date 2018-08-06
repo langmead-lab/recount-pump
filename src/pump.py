@@ -31,6 +31,8 @@ import os
 import log
 import pytest
 import json
+import tempfile
+import shutil
 from docopt import docopt
 from sqlalchemy import Column, ForeignKey, Integer, String, Sequence, DateTime
 from sqlalchemy.orm import relationship
@@ -248,6 +250,7 @@ def test_add_project(session):
 
 
 def test_add_project_ex(session):
+    tmpdir = tempfile.mkdtemp()
     project_name = 'recount-rna-seq-human'
     analysis_name = 'recount-rna-seq-v1'
     image_url = 's3://recount-pump/analysis/recount-rna-seq-v1.img'
@@ -257,7 +260,7 @@ def test_add_project_ex(session):
     input_set_name = 'all_human'
     input_set_csv = '\n'.join(['NA,NA,ftp://genomi.cs/1_1.fastq.gz,ftp://genomi.cs/1_2.fastq.gz,NA,NA,NA,NA,wget',
                                'NA,NA,ftp://genomi.cs/2_1.fastq.gz,ftp://genomi.cs/2_2.fastq.gz,NA,NA,NA,NA,wget'])
-    csv_fn = '.test_add_project_ex.csv'
+    csv_fn = os.path.join(tmpdir, 'project.csv')
     with open(csv_fn, 'w') as ofh:
         ofh.write(input_set_csv)
     project_id, analysis_id, input_set_id, n_added_input, \
@@ -274,6 +277,7 @@ def test_add_project_ex(session):
     assert 1 == len(list(session.query(Analysis)))
     assert 2 == len(list(session.query(Cluster)))
     assert 2 == len(list(session.query(ClusterAnalysis)))
+    shutil.rmtree(tmpdir)
 
 
 if __name__ == '__main__':

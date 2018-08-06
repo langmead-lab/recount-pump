@@ -10,22 +10,22 @@ Usage:
   job_loop run [options] <project-id>
 
 Options:
-  --cluster-ini <ini>         Cluster ini file [default: ~/.recount/cluster.ini].
-  --cluster-section <section> ini file section for cluster [default: cluster].
-  --db-ini <ini>              Database ini file [default: ~/.recount/db.ini].
-  --db-section <section>      ini file section for database [default: client].
-  --profile=<profile>         AWS credentials profile section [default: default].
-  --endpoint-url=<url>        Endpoint URL for S3 API.  If not set, uses AWS default.
-  --queue-ini <ini>           Queue ini file [default: ~/.recount/queue.ini].
-  --queue-section <section>   ini file section for database [default: queue].
-  --log-ini <ini>             ini file for log aggregator [default: ~/.recount/log.ini].
-  --log-level <level>         set level for log aggregation; could be CRITICAL,
-                              ERROR, WARNING, INFO, DEBUG [default: INFO].
-  --max-fail <int>            Maximum # poll failures before quitting [default: 10].
-  --poll-seconds <int>        Seconds to wait before re-polling after failed poll [default: 5].
-  -a, --aggregate             enable log aggregation.
-  -h, --help                  Show this screen.
-  --version                   Show version.
+  --cluster-ini <ini>          Cluster ini file [default: ~/.recount/cluster.ini].
+  --cluster-section <section>  ini file section for cluster [default: cluster].
+  --db-ini <ini>               Database ini file [default: ~/.recount/db.ini].
+  --db-section <section>       ini file section for database [default: client].
+  --profile=<profile>          AWS credentials profile section [default: default].
+  --endpoint-url=<url>         Endpoint URL for S3 API.  If not set, uses AWS default.
+  --queue-ini <ini>            Queue ini file [default: ~/.recount/queue.ini].
+  --queue-section <section>    ini file section for database [default: queue].
+  --log-ini <ini>              ini file for log aggregator [default: ~/.recount/log.ini].
+  --log-level <level>          set level for log aggregation; could be CRITICAL,
+                               ERROR, WARNING, INFO, DEBUG [default: INFO].
+  --max-fail <int>             Maximum # poll failures before quitting [default: 10].
+  --poll-seconds <int>         Seconds to wait before re-polling after failed poll [default: 5].
+  -a, --aggregate              enable log aggregation.
+  -h, --help                   Show this screen.
+  --version                    Show version.
 """
 
 """
@@ -187,7 +187,7 @@ def test_with_db(session):
     input_set_name = 'test-input-set'
     input_set_csv = '\n'.join(['NA,NA,ftp://genomi.cs/1_1.fastq.gz,ftp://genomi.cs/1_2.fastq.gz,NA,NA,NA,NA,wget',
                                'NA,NA,ftp://genomi.cs/2_1.fastq.gz,ftp://genomi.cs/2_2.fastq.gz,NA,NA,NA,NA,wget'])
-    csv_fn = '.test_add_project_ex.csv'
+    csv_fn = os.path.join(srcdir, 'project.csv')
     with open(csv_fn, 'w') as ofh:
         ofh.write(input_set_csv)
     project_id, _, _, _, _, _ = add_project_ex(
