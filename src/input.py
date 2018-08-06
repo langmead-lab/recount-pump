@@ -306,12 +306,8 @@ def test_import_inputset(session):
 if __name__ == '__main__':
     args = docopt(__doc__)
     agg_ini = os.path.expanduser(args['--log-ini']) if args['--aggregate'] else None
-    log.init_logger(__name__, aggregation_ini=agg_ini,
-                     aggregation_section=args['--log-section'],
-                     agg_level=args['--log-level'])
-    log.init_logger('sqlalchemy', aggregation_ini=agg_ini,
-                     aggregation_section=args['--log-section'],
-                     agg_level=args['--log-level'],
+    log.init_logger(__name__, log_ini=agg_ini, agg_level=args['--log-level'])
+    log.init_logger('sqlalchemy', log_ini=agg_ini, agg_level=args['--log-level'],
                      sender='sqlalchemy')
     try:
         db_ini = os.path.expanduser(args['--db-ini'])

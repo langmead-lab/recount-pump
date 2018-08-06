@@ -61,9 +61,7 @@ def import_from_json(json_fn, table_name, session, overwrite=False):
 if __name__ == '__main__':
     args = docopt(__doc__)
     agg_ini = os.path.expanduser(args['--log-ini']) if args['--aggregate'] else None
-    log.init_logger(__name__, aggregation_ini=agg_ini,
-                     aggregation_section=args['--log-section'],
-                     agg_level=args['--log-level'])
+    log.init_logger(__name__, log_ini=agg_ini, agg_level=args['--log-level'])
     try:
         log.info(__name__, 'In main', 'meta.py')
         db_ini = os.path.expanduser(args['--db-ini'])
