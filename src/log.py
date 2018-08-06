@@ -176,24 +176,22 @@ def add_hostname_filter(add_to):
     add_to.addFilter(ContextFilter())
 
 
-class TestLog(unittest.TestCase):
-
-    def test_simple_source_insert(self):
-        config = """[mylog]
+def test_log():
+    config = """[mylog]
 host = blah.log_agg.com
 port = 999
 format = %(asctime)s %(hostname)s recount-pump: %(message)s
 datefmt = %b %d %H:%M:%S
 """
-        test_fn = '.tmp.init'
-        with open(test_fn, 'w') as fh:
-            fh.write(config)
-        host, port, fmt, datefmt = read_log_config(config_fn=test_fn, section='mylog')
-        self.assertEqual('blah.log_agg.com', host)
-        self.assertEqual(999, port)
-        self.assertEqual('%(asctime)s %(hostname)s recount-pump: %(message)s', fmt)
-        self.assertEqual('%b %d %H:%M:%S', datefmt)
-        os.remove(test_fn)
+    test_fn = '.tmp.init'
+    with open(test_fn, 'w') as fh:
+        fh.write(config)
+    host, port, fmt, datefmt = read_log_config(config_fn=test_fn, section='mylog')
+    assert 'blah.log_agg.com' == host
+    assert 999 == port
+    assert '%(asctime)s %(hostname)s recount-pump: %(message)s' == fmt
+    assert '%b %d %H:%M:%S' == datefmt
+    os.remove(test_fn)
 
 
 if __name__ == '__main__':
