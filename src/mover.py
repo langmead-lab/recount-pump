@@ -12,6 +12,7 @@ Options:
   -h, --help                 Show this screen.
   --version                  Show version.
   --profile=<profile>        AWS credentials profile section [default: default].
+  --endpoint-url=<url>       Endpoint URL for S3 API.  If not set, uses AWS default.
   --curl=<curl>              curl executable [default: curl].
   --globus-ini=<path>        Path to globus ini file [default: ~/.recount/globus.ini].
   --globus-section=<string>  Section header for globus in ini file [default: globus].
@@ -744,24 +745,33 @@ def test_s3_1(s3_enabled, s3_service, test_file):
 if __name__ == '__main__':
     args = docopt(__doc__)
     agg_ini = os.path.expanduser(args['--log-ini']) if args['--aggregate'] else None
-    log.init_logger(__name__, aggregation_ini=agg_ini,
-                     aggregation_section=args['--log-section'],
-                     agg_level=args['--log-level'])
+    log.init_logger(__name__, log_ini=agg_ini, agg_level=args['--log-level'])
+    log.init_logger('sqlalchemy', log_ini=agg_ini, agg_level=args['--log-level'],
+                    sender='sqlalchemy')
     try:
         log.info(__name__, 'In main', 'mover.py')
         if args['exists']:
-            m = Mover(profile=args['--profile'], curl_exe=args['--curl'],
-                      globus_ini=args['--globus-ini'], globus_section=args['--globus-section'],
+            m = Mover(profile=args['--profile'],
+                      endpoint_url=args['--endpoint-url'],
+                      curl_exe=args['--curl'],
+                      globus_ini=args['--globus-ini'],
+                      globus_section=args['--globus-section'],
                       enable_globus=True, enable_s3=True, enable_web=True)
             print(m.exists(args['<file>']))
         if args['get']:
-            m = Mover(profile=args['--profile'], curl_exe=args['--curl'],
-                      globus_ini=args['--globus-ini'], globus_section=args['--globus-section'],
+            m = Mover(profile=args['--profile'],
+                      endpoint_url=args['--endpoint-url'],
+                      curl_exe=args['--curl'],
+                      globus_ini=args['--globus-ini'],
+                      globus_section=args['--globus-section'],
                       enable_globus=True, enable_s3=True, enable_web=True)
             m.get(args['<source>'], args['<dest>'])
         elif args['put']:
-            m = Mover(profile=args['--profile'], curl_exe=args['--curl'],
-                      globus_ini=args['--globus-ini'], globus_section=args['--globus-section'],
+            m = Mover(profile=args['--profile'],
+                      endpoint_url=args['--endpoint-url'],
+                      curl_exe=args['--curl'],
+                      globus_ini=args['--globus-ini'],
+                      globus_section=args['--globus-section'],
                       enable_globus=True, enable_s3=True, enable_web=True)
             m.put(args['<source>'], args['<dest>'])
         elif args['nop']:
