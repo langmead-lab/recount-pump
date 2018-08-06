@@ -18,10 +18,8 @@ Options:
   --db-section <section>      ini file section for database [default: client].
   --queue-ini <ini>           Queue ini file [default: ~/.recount/queue.ini].
   --queue-section <section>   ini file section for database [default: queue].
-  --queue-name <name>         Which queue to stage jobs to [default: public_staging]
   --chunk <strategy>          Set chunking strategy; not implemented; 1 SRR at a time
   --log-ini <ini>             ini file for log aggregator [default: ~/.recount/log.ini].
-  --log-section <section>     ini file section for log aggregator [default: log].
   --log-level <level>         set level for log aggregation; could be CRITICAL,
                               ERROR, WARNING, INFO, DEBUG [default: INFO].
   -a, --aggregate             enable log aggregation.
@@ -188,8 +186,9 @@ def add_project_ex(name, analysis_name, analysis_image_url, cluster_names, wrapp
            n_added_input, n_added_cluster, n_added_cluster_analysis
 
 
-def stage_project(project_id, queue_service, session, queue_name='public_staging', chunking_strategy=None):
+def stage_project(project_id, queue_service, session, chunking_strategy=None):
     proj = session.query(Project).get(project_id)
+    queue_name = 'stage_%d' % project_id
     if not queue_service.queue_exists(queue_name):
         queue_service.queue_create(queue_name)
     n = 0
@@ -280,13 +279,9 @@ def test_add_project_ex(session):
 if __name__ == '__main__':
     args = docopt(__doc__)
     agg_ini = os.path.expanduser(args['--log-ini']) if args['--aggregate'] else None
-    log.init_logger(__name__, aggregation_ini=agg_ini,
-                     aggregation_section=args['--log-section'],
-                     agg_level=args['--log-level'])
-    log.init_logger('sqlalchemy', aggregation_ini=agg_ini,
-                     aggregation_section=args['--log-section'],
-                     agg_level=args['--log-level'],
-                     sender='sqlalchemy')
+    log.init_logger(__name__, log_ini=agg_ini, agg_level=args['--log-level'])
+    log.init_logger('sqlalchemy', log_ini=agg_ini, agg_level=args['--log-level'],
+                    sender='sqlalchemy')
     try:
         db_ini = os.path.expanduser(args['--db-ini'])
         q_ini = os.path.expanduser(args['--queue-ini'])
@@ -309,7 +304,6 @@ if __name__ == '__main__':
             Session = session_maker_from_config(db_ini, args['--db-section'])
             qserv = queueing_service_from_config(q_ini, args['--queue-section'])
             print(stage_project(int(args['<project-id>']), qserv, Session(),
-                                queue_name=args['--queue-name'],
                                 chunking_strategy=args['--chunk']))
     except Exception:
         log.error(__name__, 'Uncaught exception:', 'pump.py')
