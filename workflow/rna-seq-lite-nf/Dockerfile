@@ -5,11 +5,8 @@ COPY env.yml /tmp/env.yml
 RUN conda env create -q -f /tmp/env.yml
 RUN chmod -R a+rwx /opt/conda/envs/*/share/nextflow
 
-WORKDIR /data
-
 # install nextflow script
-RUN mkdir /recount-bin
-COPY workflow.nf /recount-bin/workflow.nf
-COPY workflow.bash /recount-bin/workflow.bash
+COPY workflow.nf /workflow.nf
+COPY workflow.bash /workflow.bash
 
-CMD ["bash", "-c", "source activate recount && bash /recount-bin/workflow.bash"]
+CMD ["bash", "-c", "source activate recount && bash /workflow.bash"]
