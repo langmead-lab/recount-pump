@@ -43,6 +43,8 @@ export NXF_TEMP=${RECOUNT_TEMP}/nextflow-temp && /workflow.nf \
     --ref "${RECOUNT_REF}" \
     --temp "${RECOUNT_TEMP}" $*
 
-chmod -R a+rwx ${RECOUNT_OUTPUT}
+# These will need to be removed outside the container, where we might
+# not want to have to be root to clean up
+chmod -R a+rwx ${RECOUNT_OUTPUT} ${RECOUNT_TEMP}
 
 echo SUCCESS
