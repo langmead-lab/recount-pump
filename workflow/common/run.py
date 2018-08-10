@@ -38,11 +38,18 @@ def go(args):
     cfg = RawConfigParser()
     cfg.read(args.ini)
     section = cfg.sections()[0]
-    print('Reading section [%s] from ini "%s"', section, args.ini, file=sys.stderr)
+    print('Reading section [%s] from ini "%s"' % (section, args.ini), file=sys.stderr)
     input_base = cfg.get(section, 'input_base')
     output_base = cfg.get(section, 'output_base')
     ref_base = cfg.get(section, 'ref_base')
     temp_base = cfg.get(section, 'temp_base')
+
+    system = 'singularity' if args.singularity else 'docker'
+    if cfg.has_option(section, 'system'):
+        system = cfg.get(section, 'system')
+        if system not in ['singularity', 'docker']:
+            raise ValueError('Bad container system: "%s"' % system)
+
     if not os.path.exists(input_base):
         os.makedirs(input_base)
     elif not os.path.isdir(input_base):
@@ -56,19 +63,23 @@ def go(args):
     elif not os.path.isdir(temp_base):
         raise RuntimeError('temp_base "%s" exists but is not a directory' % temp_base)
     isdir(ref_base)
+
     print('Input base: "%s"' % input_base, file=sys.stderr)
     print('Output base: "%s"' % output_base, file=sys.stderr)
     print('Reference base: "%s"' % ref_base, file=sys.stderr)
     print('Temp base: "%s"' % temp_base, file=sys.stderr)
+
     subdir_clear(input_base, args.name)
     subdir_clear(output_base, args.name)
     subdir_clear(temp_base, args.name)
+
     input_mount = cfg.get(section, 'input_mount')
     output_mount = cfg.get(section, 'output_mount')
     ref_mount = cfg.get(section, 'ref_mount')
     temp_mount = cfg.get(section, 'temp_mount')
+
     mounts = []
-    docker = args.docker
+    docker = system == 'docker'
     if input_mount is not None:
         mounts.append('-v' if docker else '-B')
         mounts.append('%s/%s:%s' % (input_base, args.name, input_mount))
@@ -76,7 +87,7 @@ def go(args):
         input_mount = os.path.join(input_base, args.name)
     os.makedirs(os.path.join(input_base, args.name))
     for inp in args.input:
-        shutil.copy2(inp, os.path.join(input_base, args.name, inp))
+        shutil.copy2(inp, os.path.join(input_base, args.name, os.path.basename(inp)))
     if output_mount is not None:
         mounts.append('-v' if docker else '-B')
         mounts.append('%s/%s:%s' % (output_base, args.name, output_mount))
@@ -94,6 +105,7 @@ def go(args):
         mounts.append('%s:%s' % (ref_base, ref_mount))
     else:
         ref_mount = ref_base
+
     cmd_env = ['RECOUNT_JOB_ID=%s' % args.name,
                'RECOUNT_INPUT=%s' % input_mount,
                'RECOUNT_OUTPUT=%s' % output_mount,
@@ -106,10 +118,12 @@ def go(args):
         cmd = '%s singularity exec %s %s %s' % (to_singularity_env(cmd_env), ' '.join(mounts), args.image, cmd_run)
     print(cmd, file=sys.stderr)
     ret = os.system(cmd)
+
     if ret == 0 and not args.keep:
         print('Removing input & temporary directories', file=sys.stderr)
         shutil.rmtree(os.path.join(input_base, args.name))
         shutil.rmtree(os.path.join(temp_base, args.name))
+
     print('SUCCESS' if ret == 0 else 'FAILURE', file=sys.stderr)
     sys.exit(ret)
 
