@@ -108,17 +108,19 @@ Vagrant.configure("2") do |config|
     config.vm.provision "shell", privileged: false, name: "write cluster.ini", inline: <<-SHELL
         mkdir -p ~/.recount
         
-        echo "[directories]"                                    > ~/.recount/cluster_docker.ini
-        echo "ref_base = /work/recount-ref"                    >> ~/.recount/cluster_docker.ini
-        echo "temp_base = /work/recount-temp-docker/temp"      >> ~/.recount/cluster_docker.ini
-        echo "input_base = /work/recount-temp-docker/input"    >> ~/.recount/cluster_docker.ini
-        echo "output_base = /work/recount-temp-docker/output"  >> ~/.recount/cluster_docker.ini
-        echo "ref_mount = /container-mounts/recount/ref"       >> ~/.recount/cluster_docker.ini
-        echo "temp_mount = /container-mounts/recount/temp"     >> ~/.recount/cluster_docker.ini
-        echo "input_mount = /container-mounts/recount/input"   >> ~/.recount/cluster_docker.ini
-        echo "output_mount = /container-mounts/recount/output" >> ~/.recount/cluster_docker.ini
+        echo "[cluster]"                                            > ~/.recount/cluster_docker.ini
+        echo "system = docker"                                     >> ~/.recount/cluster_docker.ini
+        echo "ref_base = /work/recount-ref"                        >> ~/.recount/cluster_docker.ini
+        echo "temp_base = /work/recount-temp-docker/temp"          >> ~/.recount/cluster_docker.ini
+        echo "input_base = /work/recount-temp-docker/input"        >> ~/.recount/cluster_docker.ini
+        echo "output_base = /work/recount-temp-docker/output"      >> ~/.recount/cluster_docker.ini
+        echo "ref_mount = /container-mounts/recount/ref"           >> ~/.recount/cluster_docker.ini
+        echo "temp_mount = /container-mounts/recount/temp"         >> ~/.recount/cluster_docker.ini
+        echo "input_mount = /container-mounts/recount/input"       >> ~/.recount/cluster_docker.ini
+        echo "output_mount = /container-mounts/recount/output"     >> ~/.recount/cluster_docker.ini
 
-        echo "[directories]"                                        > ~/.recount/cluster_singularity.ini
+        echo "[cluster]"                                            > ~/.recount/cluster_singularity.ini
+        echo "system = singularity"                                >> ~/.recount/cluster_singularity.ini
         echo "ref_base = /work/recount-ref"                        >> ~/.recount/cluster_singularity.ini
         echo "temp_base = /work/recount-temp-singularity/temp"     >> ~/.recount/cluster_singularity.ini
         echo "input_base = /work/recount-temp-singularity/input"   >> ~/.recount/cluster_singularity.ini
@@ -162,7 +164,6 @@ Vagrant.configure("2") do |config|
             cd ${FLOWDIR} && ../common/run.py \
                 --input ../common/accessions.txt \
                 --image ${IMAGE} \
-                --docker \
                 --ini ~/.recount/cluster_docker.ini \
                 --name docker-test
             if [ $? -eq 0 ] ; then
@@ -178,11 +179,9 @@ Vagrant.configure("2") do |config|
             echo "------------------------------------------------------"
             cd ${FLOWDIR} && ../common/run.py \
                 --input ../common/accessions.txt \
-                --image ${IMAGE} \
-                --singularity \
+                --image docker://${IMAGE} \
                 --ini ~/.recount/cluster_singularity.ini \
                 --name singularity-test
-
             if [ $? -eq 0 ] ; then
                 echo "===HAPPY ${IMAGE} ran in Singularity"
             else
