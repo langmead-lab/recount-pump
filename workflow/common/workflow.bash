@@ -37,7 +37,7 @@ mkdir -p ${RECOUNT_TEMP}/nextflow-home ${RECOUNT_TEMP}/nextflow-temp
 chmod -R a+rwx ${RECOUNT_TEMP}/nextflow-home ${RECOUNT_TEMP}/nextflow-temp
 
 # Run nextflow workflow
-export NXF_TEMP=${RECOUNT_TEMP}/nextflow-temp && ../rna-seq-lite-nf/workflow.nf \
+export NXF_TEMP=${RECOUNT_TEMP}/nextflow-temp && /workflow.nf \
     --in "${INPUT_FILES}" \
     --out "${RECOUNT_OUTPUT}" \
     --ref "${RECOUNT_REF}" \
