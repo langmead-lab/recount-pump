@@ -43,10 +43,19 @@ def go(args):
     output_base = cfg.get(section, 'output_base')
     ref_base = cfg.get(section, 'ref_base')
     temp_base = cfg.get(section, 'temp_base')
-    isdir(input_base)
-    isdir(output_base)
+    if not os.path.exists(input_base):
+        os.makedirs(input_base)
+    elif not os.path.isdir(input_base):
+        raise RuntimeError('input_base "%s" exists but is not a directory' % input_base)
+    if not os.path.exists(output_base):
+        os.makedirs(output_base)
+    elif not os.path.isdir(output_base):
+        raise RuntimeError('output_base "%s" exists but is not a directory' % output_base)
+    if not os.path.exists(temp_base):
+        os.makedirs(temp_base)
+    elif not os.path.isdir(temp_base):
+        raise RuntimeError('temp_base "%s" exists but is not a directory' % temp_base)
     isdir(ref_base)
-    isdir(temp_base)
     print('Input base: "%s"' % input_base, file=sys.stderr)
     print('Output base: "%s"' % output_base, file=sys.stderr)
     print('Reference base: "%s"' % ref_base, file=sys.stderr)

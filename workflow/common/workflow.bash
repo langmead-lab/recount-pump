@@ -20,13 +20,6 @@ test -d "${RECOUNT_REF}"
 test -n "${RECOUNT_TEMP}"
 test -d "${RECOUNT_TEMP}"
 
-# Ensure tools are installed
-which hisat2
-which fastq-dump
-which sambamba
-which nextflow
-which regtools
-
 # Gather inputs
 ls "${RECOUNT_INPUT}"
 INPUT_FILES=`ls ${RECOUNT_INPUT}/*`
@@ -44,7 +37,7 @@ mkdir -p ${RECOUNT_TEMP}/nextflow-home ${RECOUNT_TEMP}/nextflow-temp
 chmod -R a+rwx ${RECOUNT_TEMP}/nextflow-home ${RECOUNT_TEMP}/nextflow-temp
 
 # Run nextflow workflow
-export NXF_TEMP=${RECOUNT_TEMP}/nextflow-temp && /workflow.nf \
+export NXF_TEMP=${RECOUNT_TEMP}/nextflow-temp && ../rna-seq-lite-nf/workflow.nf \
     --in "${INPUT_FILES}" \
     --out "${RECOUNT_OUTPUT}" \
     --ref "${RECOUNT_REF}" \

@@ -9,4 +9,7 @@ RUN chmod -R a+rwx /opt/conda/envs/*/share/nextflow
 COPY workflow.nf /workflow.nf
 COPY workflow.bash /workflow.bash
 
+# for stampede2
+RUN mkdir -p /scratch /work /home1
+
 CMD ["bash", "-c", "source activate recount && bash /workflow.bash"]
