@@ -30,7 +30,6 @@ def to_singularity_env(cmd_env):
 
 
 def go(args):
-    assert args.singularity or args.docker
     print('Job name: "%s"' % args.name, file=sys.stderr)
     print('Image: "%s"' % args.image, file=sys.stderr)
     if not os.path.exists(args.ini):
