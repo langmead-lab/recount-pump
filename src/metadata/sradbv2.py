@@ -22,7 +22,7 @@ Options:
   --noheader               Suppress header in output.
   --nostdout               Output to files named by study accession.
   --gzip                   Gzip outputs.
-  --output <name>          Output filename [default: search.json.temp].
+  --output <name>          Output filename [default: search.json].
   -h, --help               Show this screen.
   --version                Show version.
 """
@@ -64,7 +64,7 @@ def download_and_extract_fields(run_acc, study_acc, header_fields):
     encodec = ct.get('charset', 'utf-8')
     payload = response.read().decode(encodec)
     with open("%s.%s.json.temp" % (run_acc, study_acc), "wb") as fout:
-        fout.write(str(payload))
+        fout.write(payload.encode())
     jfields = json.loads(payload)
     header_fields.update(jfields['_source'].keys())
 
@@ -92,7 +92,7 @@ def process_run(run_acc, study_acc, header_fields, outfile):
         if len(fields) == 2 and subfield_type in nested_fields:
             tag_name = nested_fields[subfield_type][0]
             value_name = nested_fields[subfield_type][1]
-            if subfield_type == 'identifiers':
+            if subfield_type == b'identifiers':
                 temp = tag_name
                 tag_name = value_name
                 value_name = temp
@@ -116,7 +116,7 @@ def process_study(study_acc, runs_per_study, header_fields, nostdout, noheader):
     if nostdout:
         outfile = open('%s.metadata.tsv' % study_acc, 'wb')
     if not noheader:
-        outfile.write('\t'.join(header_fields) + '\n')
+        outfile.write(b'\t'.join(header_fields) + b'\n')
     [process_run(run_acc, study_acc, header_fields, outfile) for run_acc in runs_per_study]
     if nostdout:
         outfile.close()
@@ -182,8 +182,8 @@ def process_search(search, size, gzip_output, output_fn):
         log.info(__name__, 'Writing hits [%d, %d) out of %d' % (0, num_hits, tot_hits), 'sradbv2.py')
         dump = json.dumps(jn['hits']['hits'], indent=4).encode('UTF-8')
         if num_hits < tot_hits:
-            assert dump[-1] == ']'
-            dump = dump[:-1] + ','  # don't prematurely end list
+            assert dump.endswith(b']'), dump
+            dump = dump[:-1] + b','  # don't prematurely end list
         fout.write(dump)
         nscrolls = 1
         while num_hits < tot_hits:
@@ -198,21 +198,19 @@ def process_search(search, size, gzip_output, output_fn):
             log.info(__name__, 'Writing hits [%d, %d) out of %d, scroll=%d' %
                      (old_num_hits, num_hits, tot_hits, nscrolls), 'sradbv2.py')
             dump = json.dumps(jn['hits']['hits'], indent=4).encode('UTF-8')
-            assert dump[0] == '['
+            assert dump.startswith(b'[')
             dump = dump[1:]  # make one big list, not many little ones
             if num_hits < tot_hits:
-                assert dump[-1] == ']'  # don't prematurely end list
-                dump = dump[:-1] + ','
+                assert dump.endswith(b']'), dump  # don't prematurely end list
+                dump = dump[:-1] + b','
             fout.write(dump)
             nscrolls += 1
 
 
 if __name__ == '__main__':
     args = docopt(__doc__)
-    agg_ini = os.path.expanduser(args['--log-ini']) if args['--aggregate'] else None
-    log.init_logger(__name__, aggregation_ini=agg_ini,
-                     aggregation_section=args['--log-section'],
-                     agg_level=args['--log-level'])
+    log_ini = os.path.expanduser(args['--log-ini']) if args['--aggregate'] else None
+    log.init_logger(__name__, log_ini=log_ini, agg_level=args['--log-level'])
     try:
         if args['search']:
             # sample_taxon_id:6239 AND experiment_library_strategy:"rna seq" AND experiment_library_source:transcriptomic AND experiment_platform:illumina
