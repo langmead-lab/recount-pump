@@ -2,6 +2,7 @@
 
 d=`dirname $0`
 
+cp $d/Dockerfile .
 cp $d/workflow.bash .
 
 IMAGE=$(cat image.txt)
