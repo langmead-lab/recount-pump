@@ -81,6 +81,20 @@ def do_job(body):
     job_id, job_name, input_string, analysis_string = parse_job(body)
     log.info(__name__, 'Handling job: {id=%d, name="%s", input="%s", analysis="%s"}' %
              (int(job_id), job_name, input_string, analysis_string), 'job_loop.py')
+    tmp_dir = tempfile.mkdtemp()
+    tmp_fn = os.path.join(tmp_dir, 'accessions.txt')
+    assert not os.path.exists(tmp_fn)
+    with open(tmp_fn, 'wb') as fh:
+        for inp in input_string:
+            fh.write(inp + b'\n')
+    cmd = ['../common/run.py',
+           '--input %s' % tmp_fn, 
+           '--image %s' % analysis_string,
+           '--name %s' % job_name]
+    cmd = ' '.join(cmd)
+    ret = os.system(cmd)
+    if ret != 0:
+        raise RuntimeError('Non-zero exitleve (%d) from "%s"' % (ret, cmd))
     return True
 
 
