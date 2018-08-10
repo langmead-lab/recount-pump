@@ -84,11 +84,11 @@ def do_job(body):
     return True
 
 
-def ready_for_analysis(analysis, cluster_name, analysis_dir):
+def ready_for_analysis(analysis, analysis_dir):
     url = analysis.image_url
     image_bn = url.split('/')[-1]
-    log.info(__name__, 'Check image file "%s" exists in cluster "%s" analysis '
-             'dir "%s"' % (image_bn, cluster_name, analysis_dir), 'job_loop.py')
+    log.info(__name__, 'Check image file "%s" exists in analysis '
+             'dir "%s"' % (image_bn, analysis_dir), 'job_loop.py')
     image_fn = os.path.join(analysis_dir, image_bn)
     return os.path.exists(image_fn)
 
@@ -108,10 +108,9 @@ def prepare(project_id, cluster_name, analysis_dir, session,
             aws_profile=None, s3_endpoint_url=None, get_image=False):
     proj = session.query(Project).get(project_id)
     analysis = session.query(Analysis).get(proj.analysis_id)
-    if get_image and not ready_for_analysis(analysis, cluster_name, analysis_dir):
-        download_image(analysis.image_url, cluster_name, analysis_dir,
-                       aws_profile, s3_endpoint_url)
-    return ready_for_analysis(analysis, cluster_name, analysis_dir)
+    if get_image and not ready_for_analysis(analysis, analysis_dir):
+        download_image(analysis.image_url, cluster_name, analysis_dir, aws_profile, s3_endpoint_url)
+    return ready_for_analysis(analysis, analysis_dir)
 
 
 def job_loop(project_id, q_ini, q_section, cluster_name, analysis_dir,
@@ -191,18 +190,16 @@ def test_with_db(session):
     image_url = os.path.join(srcdir, base_fn)
     with open(image_url, 'w') as fh:
         fh.write('dummy image')
-    cluster_names = ['cluster1', 'cluster2']
-    wrapper_urls = []
     input_set_name = 'test-input-set'
     input_set_csv = '\n'.join(['NA,NA,ftp://genomi.cs/1_1.fastq.gz,ftp://genomi.cs/1_2.fastq.gz,NA,NA,NA,NA,wget',
                                'NA,NA,ftp://genomi.cs/2_1.fastq.gz,ftp://genomi.cs/2_2.fastq.gz,NA,NA,NA,NA,wget'])
     csv_fn = os.path.join(srcdir, 'project.csv')
     with open(csv_fn, 'w') as ofh:
         ofh.write(input_set_csv)
-    project_id, _, _, _, _, _ = add_project_ex(
-        project_name, analysis_name, image_url, cluster_names,
-        wrapper_urls, input_set_name, csv_fn, session)
-    prepare(project_id, cluster_names[0], dstdir, session, get_image=True)
+    project_id, _, _, _ = add_project_ex(
+        project_name, analysis_name, image_url,
+        input_set_name, csv_fn, session)
+    prepare(project_id, 'test', dstdir, session, get_image=True)
     assert os.path.exists(os.path.join(dstdir, base_fn))
 
 

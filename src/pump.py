@@ -38,7 +38,7 @@ from sqlalchemy import Column, ForeignKey, Integer, String, Sequence, DateTime
 from sqlalchemy.orm import relationship
 from base import Base
 from input import import_input_set, Input, InputSet
-from analysis import add_analysis_ex, Analysis, Cluster, ClusterAnalysis
+from analysis import Analysis, add_analysis
 from toolbox import session_maker_from_config
 from queueing.service import queueing_service_from_config
 
@@ -120,7 +120,7 @@ class Attempt(Base):
 
     id = Column(Integer, Sequence('attempt_id_seq'), primary_key=True)
     job_id = Column(Integer, ForeignKey('job.id'))
-    cluster_id = Column(Integer, ForeignKey('cluster.id'))
+    description = Column(String(1024))
     time = Column(DateTime)
     # 1, 2, 3, ... depending on which attempt this is.  0 if it's unknown.
     attempt = Column(Integer)
@@ -134,7 +134,7 @@ class AttemptResult(Base):
 
     id = Column(Integer, Sequence('attempt_result_id_seq'), primary_key=True)
     job_attempt_id = Column(Integer, ForeignKey('attempt.id'))
-    cluster_id = Column(Integer, ForeignKey('cluster.id'))
+    description = Column(String(1024))
 
 
 class ProjectStage(Base):
@@ -170,22 +170,20 @@ def add_project(name, analysis_id, input_set_id, session):
     return proj.id
 
 
-def add_project_ex(name, analysis_name, analysis_image_url, cluster_names, wrapper_urls,
+def add_project_ex(name, analysis_name, analysis_image_url,
                    input_set_name, input_set_csv_fn, session):
     """
     Given some high-level details about a project, analysis, input set, and
     cluster/analysis combinations, populate the database accordingly.  This is
     a helpful all-in-one call to start from if you are starting a new project.
     """
-    analysis_id, n_added_cluster, n_added_cluster_analysis = \
-        add_analysis_ex(analysis_name, analysis_image_url, cluster_names, wrapper_urls, session)
+    analysis_id = add_analysis(analysis_name, analysis_image_url, session)
     input_set_id, n_added_input = import_input_set(input_set_name, input_set_csv_fn, session)
     project = session.query(Project).filter_by(name=name).first()
     if project is not None:
         raise ValueError('Project with name "%s" already exists' % name)
     project_id = add_project(name, analysis_id, input_set_id, session)
-    return project_id, analysis_id, input_set_id, \
-           n_added_input, n_added_cluster, n_added_cluster_analysis
+    return project_id, analysis_id, input_set_id, n_added_input
 
 
 def stage_project(project_id, queue_service, session, chunking_strategy=None):
@@ -254,29 +252,20 @@ def test_add_project_ex(session):
     project_name = 'recount-rna-seq-human'
     analysis_name = 'recount-rna-seq-v1'
     image_url = 's3://recount-pump/analysis/recount-rna-seq-v1.img'
-    cluster_names1 = ['stampede2', 'marcc']
-    analysis_urls1 = ['s3://recount-pump/analysis/recount-rna-seq-v1/stampede2.sh',
-                      's3://recount-pump/analysis/recount-rna-seq-v1/marcc.sh']
     input_set_name = 'all_human'
     input_set_csv = '\n'.join(['NA,NA,ftp://genomi.cs/1_1.fastq.gz,ftp://genomi.cs/1_2.fastq.gz,NA,NA,NA,NA,wget',
                                'NA,NA,ftp://genomi.cs/2_1.fastq.gz,ftp://genomi.cs/2_2.fastq.gz,NA,NA,NA,NA,wget'])
     csv_fn = os.path.join(tmpdir, 'project.csv')
     with open(csv_fn, 'w') as ofh:
         ofh.write(input_set_csv)
-    project_id, analysis_id, input_set_id, n_added_input, \
-    n_added_cluster, n_added_cluster_analysis = \
+    project_id, analysis_id, input_set_id, n_added_input = \
         add_project_ex(project_name, analysis_name, image_url,
-                       cluster_names1, analysis_urls1, input_set_name,
-                       csv_fn, session)
+                       input_set_name, csv_fn, session)
     assert 2 == n_added_input
-    assert 2 == n_added_cluster
-    assert 2 == n_added_cluster_analysis
     assert 1 == len(list(session.query(Project)))
     assert 1 == len(list(session.query(InputSet)))
     assert 2 == len(list(session.query(Input)))
     assert 1 == len(list(session.query(Analysis)))
-    assert 2 == len(list(session.query(Cluster)))
-    assert 2 == len(list(session.query(ClusterAnalysis)))
     shutil.rmtree(tmpdir)
 
 
@@ -303,7 +292,7 @@ if __name__ == '__main__':
             print(add_project_ex(args['<name>'], args['<analysis-name>'],
                                  args['<analysis-image-url>'],
                                  args['<input-set-name>'], args['<input-set-csv>'],
-                                 args['<cluster-name>'], args['<wrapper-url>'], Session()))
+                                 Session()))
         elif args['stage']:
             Session = session_maker_from_config(db_ini, args['--db-section'])
             qserv = queueing_service_from_config(q_ini, args['--queue-section'])
