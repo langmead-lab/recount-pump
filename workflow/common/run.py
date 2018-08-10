@@ -26,7 +26,7 @@ def to_docker_env(cmd_env):
 
 
 def to_singularity_env(cmd_env):
-    return '; '.join(cmd_env) + '; '
+    return 'export ' + '; '.join(map(lambda x: 'export ' + x, cmd_env)) + '; '
 
 
 def go(args):
