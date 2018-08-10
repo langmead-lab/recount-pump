@@ -52,7 +52,9 @@ Vagrant.configure("2") do |config|
     SHELL
 
     config.vm.provision "shell", privileged: true, name: "install Linux packages", inline: <<-SHELL
-        yum install -q -y git wget gcc g++ aws-cli
+        sleep 5
+        killall yum
+        yum install -y git wget gcc g++ aws-cli libarchive-devel squashfs-tools
     SHELL
          
     config.vm.provision "shell", privileged: true, name: "install docker-compose", inline: <<-SHELL
@@ -62,14 +64,15 @@ Vagrant.configure("2") do |config|
     SHELL
         
     config.vm.provision "shell", privileged: false, name: "install Singularity", inline: <<-SHELL
+        SINGVER="2.5.2"
         echo "Install Singualrity"
-        wget -q https://github.com/singularityware/singularity/releases/download/2.3.1/singularity-2.3.1.tar.gz
-        tar xf singularity-2.3.1.tar.gz
-        cd singularity-2.3.1 && \
+        wget -q https://github.com/singularityware/singularity/releases/download/${SINGVER}/singularity-${SINGVER}.tar.gz
+        tar xf singularity-${SINGVER}.tar.gz
+        cd singularity-${SINGVER} && \
             ./configure --prefix=/usr/local > /dev/null && \
             make > /dev/null && sudo make install > /dev/null && \
             cd .. && \
-            rm -rf singularity-2.3.1 singularity-2.3.1.tar.gz
+            rm -rf singularity-${SINGVER} singularity-${SINGVER}.tar.gz
     SHELL
     
     config.vm.provision "shell", privileged: false, name: "setup ssh for git", inline: <<-SHELL
@@ -98,14 +101,38 @@ Vagrant.configure("2") do |config|
             echo "===SAD ERROR building and/or pushing benlangmead/recount-pump"
         fi
     SHELL
+
+    config.vm.provision "shell", privileged: false, name: "write cluster.ini", inline: <<-SHELL
+        mkdir -p ~/.recount
         
+        echo "[directories]"                                    > ~/.recount/cluster_docker.ini
+        echo "ref_base = /work/recount-ref"                    >> ~/.recount/cluster_docker.ini
+        echo "temp_base = /work/recount-temp-docker/temp"      >> ~/.recount/cluster_docker.ini
+        echo "input_base = /work/recount-temp-docker/input"    >> ~/.recount/cluster_docker.ini
+        echo "output_base = /work/recount-temp-docker/output"  >> ~/.recount/cluster_docker.ini
+        echo "ref_mount = /container-mounts/recount/ref"       >> ~/.recount/cluster_docker.ini
+        echo "temp_mount = /container-mounts/recount/temp"     >> ~/.recount/cluster_docker.ini
+        echo "input_mount = /container-mounts/recount/input"   >> ~/.recount/cluster_docker.ini
+        echo "output_mount = /container-mounts/recount/output" >> ~/.recount/cluster_docker.ini
+
+        echo "[directories]"                                        > ~/.recount/cluster_singularity.ini
+        echo "ref_base = /work/recount-ref"                        >> ~/.recount/cluster_singularity.ini
+        echo "temp_base = /work/recount-temp-singularity/temp"     >> ~/.recount/cluster_singularity.ini
+        echo "input_base = /work/recount-temp-singularity/input"   >> ~/.recount/cluster_singularity.ini
+        echo "output_base = /work/recount-temp-singularity/output" >> ~/.recount/cluster_singularity.ini
+        echo "ref_mount = /container-mounts/recount/ref"           >> ~/.recount/cluster_singularity.ini
+        echo "temp_mount = /container-mounts/recount/temp"         >> ~/.recount/cluster_singularity.ini
+        echo "input_mount = /container-mounts/recount/input"       >> ~/.recount/cluster_singularity.ini
+        echo "output_mount = /container-mounts/recount/output"     >> ~/.recount/cluster_singularity.ini
+    SHELL
+
     config.vm.provision "shell", privileged: false, name: "analysis images", inline: <<-SHELL
         FLOWBASE="/work/recount-pump/workflow"
         export RECOUNT_REF=/work/recount-ref
         mkdir -p ${RECOUNT_REF}
         cd ${RECOUNT_REF} && ${FLOWBASE}/prep_test.sh
         
-        for FLOW in rna-seq-lite-nf rna-seq ; do
+        for FLOW in rna-seq-lite-nf ; do
             FLOWDIR="${FLOWBASE}/${FLOW}"
             IMAGE=$(cat ${FLOWDIR}/image.txt)
 
@@ -117,7 +144,7 @@ Vagrant.configure("2") do |config|
             echo "------------------------------------------------------"
             echo "Building and pushing (\"$FLOW\")"
             echo "------------------------------------------------------"
-            cd ${FLOWDIR} && ./build.sh && ./push.sh
+            cd ${FLOWDIR} && ../common/build.sh && ../common/push.sh
             if [ $? -eq 0 ] ; then
                 echo "===HAPPY ${IMAGE} built and pushed"
             else
@@ -127,54 +154,36 @@ Vagrant.configure("2") do |config|
             echo "------------------------------------------------------"
             echo "Test-running Docker (\"$FLOW\")"
             echo "------------------------------------------------------"
-            export RECOUNT_TEMP=/work/recount-temp-docker-${FLOW}
-            mkdir -p ${RECOUNT_TEMP}/input ${RECOUNT_TEMP}/output
-            chmod a+rwx ${RECOUNT_TEMP}/input ${RECOUNT_TEMP}/output
-            cp ${FLOWDIR}/accessions.txt ${RECOUNT_TEMP}/input/
-            cd ${FLOWDIR} && ./dockrun.sh ${RECOUNT_TEMP}/input ${RECOUNT_TEMP}/output
+            cd ${FLOWDIR} && ./run.py \
+                --input ../common/accessions.txt \
+                --image ${IMAGE} \
+                --docker \
+                --ini ~/.recount/cluster_docker.ini \
+                --name docker-test
             if [ $? -eq 0 ] ; then
                 echo "===HAPPY ${IMAGE} ran in Docker"
             else
                 echo "===SAD ERROR running ${IMAGE} in Docker"
             fi
-            find ${RECOUNT_TEMP}/output -type f -exec md5sum {} ";" | sort | md5sum | awk '{print $1}'
+            find /work/recount-temp-docker/output -type f -exec md5sum {} ";" | sort | md5sum | awk '{print $1}'
             cat ${FLOWDIR}/outmd5.txt
-
-            echo "------------------------------------------------------"
-            echo "Converting to Singularity (\"$FLOW\")"
-            echo "------------------------------------------------------"
-            cd ${FLOWDIR} && ./singize.sh
-            if [ $? -eq 0 ] ; then
-                echo "===HAPPY ${IMAGE} Singularity-converted"
-            else
-                echo "===SAD ERROR converting ${IMAGE} to Singularity"
-            fi
-            SIMG=$(ls *.img)
-            echo "Image is called: \"$SIMG\""
 
             echo "------------------------------------------------------"
             echo "Test-running Singularity (\"$FLOW\")"
             echo "------------------------------------------------------"
-            export RECOUNT_TEMP=/work/recount-temp-singularity-${FLOW}
-            mkdir -p ${RECOUNT_TEMP}/input ${RECOUNT_TEMP}/output
-            chmod a+rwx ${RECOUNT_TEMP}/input ${RECOUNT_TEMP}/output
-            cp ${FLOWDIR}/accessions.txt ${RECOUNT_TEMP}/input/
-            cd ${FLOWDIR} && ./singrun.sh vagrant-test ${RECOUNT_TEMP}/input ${RECOUNT_TEMP}/output -i *.img
+            cd ${FLOWDIR} && ./run.py \
+                --input ../common/accessions.txt \
+                --image ${IMAGE} \
+                --singularity \
+                --ini ~/.recount/cluster_singularity.ini \
+                --name singularity-test
+
             if [ $? -eq 0 ] ; then
                 echo "===HAPPY ${IMAGE} ran in Singularity"
-                gzip *.img
-                sz=$(cat *.img.gz | wc -c)
-                aws s3 cp --quiet --acl public-read *.img.gz s3://recount-pump/image/
-                if [ $? -eq 0 ] ; then
-                    echo "===HAPPY ${IMAGE} copied to s3://recount-pump/image/ (${sz} bytes)"
-                else
-                    echo "===SAD ${IMAGE} could not be copied to s3://recount-pump/image/"
-                fi
-                rm -f *.img *.img.gz
             else
                 echo "===SAD ERROR running ${IMAGE} in Singularity"
             fi
-            find ${RECOUNT_TEMP}/output -type f -exec md5sum {} ";" | sort | md5sum | awk '{print $1}'
+            find /work/recount-temp-singularity/output -type f -exec md5sum {} ";" | sort | md5sum | awk '{print $1}'
             cat ${FLOWDIR}/outmd5.txt
         done
     SHELL
