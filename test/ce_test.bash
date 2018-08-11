@@ -4,47 +4,13 @@
 # License: MIT
 
 #
-# Assuming that:
-# 1. Minio is serving on port 29000
-# 2. Postgres is serving on port 25432
-# 3. Rmq is serving on port 25672
-# 4. Image files are being served at a local directory defined by
-#    $RECOUNT_IMAGES
-#
-#
-# Prereqs:
-#
-# === ~/.recount/db.ini ===
-# [client]
-# url=postgres://recount:recount-postgres@127.0.0.1:25432/recount-test
-# password=recount-postgres
-# host=127.0.0.1
-# port=25432
-# user=recount
-#
-# === ~/.recount/queue.ini ===
-# [queue]
-# type=rmq
-# host=localhost
-# port=25672
-#
-# Optional:
-#
-# If you want to use a log aggregator:
-#
-# === ~/.recount/log.ini ===
-# [syslog]
-# host = XXXX.YYYY.com
-# port = XXXXX
-# format = %(asctime)s %(hostname)s recount-pump: %(message)s
-# datefmt = %b %d %H:%M:%S 
-# [watchtower]
-# log_group = watchtower
-# stream_name = recount-pump
-#
+# This test is designed to run in the context of the integration test, with
+# the network settings and hostnames established in docker-compose.yml
 
 set -ex
 
+# postgres running at db:5432
+# (see docker-compose.yml)
 cat >.test-db.ini <<EOF
 [client]
 url=postgres://recount:recount-postgres@db:5432/recount-test
@@ -54,7 +20,57 @@ port=5432
 user=recount
 EOF
 
+# rabbitmq running at rmq:5672
+# (see docker-compose.yml)
+cat >.test-queue.ini <<EOF
+[queue]
+type=rmq
+host=q
+port=5672
+EOF
+
+# AWS configuration for minio
+
+endpoint_url='http://s3:9000'
+
+cat >.test-aws_config <<EOF
+[default]
+region = us-east-1
+output = text
+s3 =
+    signature_version = s3v4
+EOF
+
+cat >.test-aws_credentials <<EOF
+[minio]
+aws_access_key_id = minio
+aws_secret_access_key = minio123
+EOF
+
+export AWS_CONFIG_FILE=.test-aws_config
+export AWS_CREDENTIAL_FILE=.test-aws_credentials
+
+# Simple cluster configuration using PWD as base for all directories
+
+cat >.test-cluster.ini <<EOF
+[cluster]
+name = test-cluster
+system = docker
+
+ref_base = $PWD/ref
+temp_base = $PWD/temp
+input_base = $PWD/input
+output_base = $PWD/output
+analysis_dir = $PWD/analysis
+
+ref_mount = /container-mounts/recount/ref
+temp_mount = /container-mounts/recount/temp
+input_mount = /container-mounts/recount/input
+output_mount = /container-mounts/recount/output
+EOF
+
 db_arg="--db-ini .test-db.ini"
+q_arg="--queue-ini .test-queue.ini"
 
 TAXID=6239
 RUN_NAME=ce10_test
@@ -215,6 +231,7 @@ echo "++++++++++++++++++++++++++++++++++++++++++++++"
 #    name = Column(String(1024))
 #    input_set_id = Column(Integer, ForeignKey('input_set.id'))
 #    analysis_id = Column(Integer, ForeignKey('analysis.id'))
+#    reference_id = Column(Integer, ForeignKey('reference.id'))
 
 add_project() (
     set -exo pipefail
@@ -232,22 +249,11 @@ echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 5: Summarize project"
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 
-# Print out helpful info about the project and its various components
-
 python src/pump.py ${db_arg} summarize-project ${proj_id}
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 6: Stage project"
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
-
-cat >.test-queue.ini <<EOF
-[queue]
-type=rmq
-host=q
-port=5672
-EOF
-
-q_arg="--queue-ini .test-queue.ini"
 
 python src/pump.py ${db_arg} ${q_arg} stage ${proj_id}
 
@@ -255,51 +261,17 @@ echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 7: Prepare project"
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 
-cat >.test-cluster.ini <<EOF
-[cluster]
-name = test-cluster
-system = docker
-
-ref_base = $PWD/ref
-temp_base = $PWD/temp
-input_base = $PWD/input
-output_base = $PWD/output
-analysis_dir = $PWD/analysis
-
-ref_mount = /container-mounts/recount/ref
-temp_mount = /container-mounts/recount/temp
-input_mount = /container-mounts/recount/input
-output_mount = /container-mounts/recount/output
-EOF
-
-cat >aws_config <<EOF
-[default]
-region = us-east-1
-output = text
-s3 =
-    signature_version = s3v4
-EOF
-
-cat >aws_credentials <<EOF
-[minio]
-aws_access_key_id = minio
-aws_secret_access_key = minio123
-EOF
-
-export AWS_CONFIG_FILE=aws_config
-export AWS_CREDENTIAL_FILE=aws_credentials
-
-python src/job_loop.py \
+python src/cluster.py \
     prepare ${proj_id} \
     ${db_arg} ${q_arg} \
-    --endpoint-url 'http://s3:9000' \
+    --endpoint-url ${endpoint_url} \
     --cluster-ini .test-cluster.ini
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 9: Run project"
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 
-python src/job_loop.py \
+python src/cluster.py \
     run ${proj_id} \
     ${db_arg} ${q_arg} \
     --cluster-ini .test-cluster.ini \
