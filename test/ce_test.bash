@@ -55,7 +55,7 @@ export AWS_CREDENTIAL_FILE=.test-aws_credentials
 cat >.test-cluster.ini <<EOF
 [cluster]
 name = test-cluster
-system = docker
+system = singularity
 
 ref_base = $PWD/ref
 temp_base = $PWD/temp
