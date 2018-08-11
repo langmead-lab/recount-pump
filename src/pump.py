@@ -67,6 +67,27 @@ class Project(Base):
         del d['_sa_instance_state']
         return d
 
+    def to_job_string(self, input_str, analysis_str, reference_str):
+        assert isinstance(input_str, bytes)
+        assert isinstance(analysis_str, bytes)
+        assert isinstance(reference_str, bytes)
+        job_str = b' '.join([str(self.id).encode(), self.name.encode(), input_str, analysis_str, reference_str])
+        if job_str.count(b' ') != 4:
+            raise RuntimeError('Bad job string; must have exactly 4 spaces: "%s"' % job_str)
+        return job_str
+
+    @classmethod
+    def parse_job_string(cls, st):
+        """
+        Do some mild data validation and return parsed job-attempt parameters.
+        """
+        assert isinstance(st, bytes)
+        toks = st.split(b' ')
+        assert 5 == len(toks)
+        my_id = int(toks[0])
+        proj_name, input_str, analysis_str, reference_str = toks[1:5]
+        return my_id, proj_name, input_str, analysis_str, reference_str
+
     def job_iterator(self, session, chunking_stragegy=None):
         """
         For each input in the project, return a string describing a job that
@@ -76,11 +97,9 @@ class Project(Base):
         iset = session.query(InputSet).get(self.input_set_id)
         analysis = session.query(Analysis).get(self.analysis_id)
         analysis_str = analysis.to_job_string()
+        reference = session.query(Reference).get(self.reference_id)
         for input in iset.inputs:
-            job_str = ' '.join([str(self.id), self.name, input.to_job_string(), analysis_str])
-            if job_str.count(' ') != 3:
-                raise RuntimeError('Bad job string; must have exactly 3 spaces: "%s"' % job_str)
-            yield job_str
+            yield self.to_job_string(input.to_job_string(), analysis_str, reference.name)
 
 
 class ProjectEvent(Base):
@@ -247,6 +266,22 @@ def test_add_project(session):
     assert 0 == len(list(session.query(Input)))
     assert 0 == len(list(session.query(InputSet)))
     assert 0 == len(list(session.query(Project)))
+
+
+def test_job_string_1():
+    proj = Project(id=1, name='proj')
+    st = proj.to_job_string(b'input-str', b'analysis-str', b'reference-str')
+    assert b'1 proj input-str analysis-str reference-str' == st
+
+
+def test_job_string_2():
+    my_id, proj_name, input_str, analysis_str, reference_str = \
+        Project.parse_job_string(b'1 proj input-str analysis-str reference-str')
+    assert 1 == my_id
+    assert b'proj' == proj_name
+    assert b'input-str' == input_str
+    assert b'analysis-str' == analysis_str
+    assert b'reference-str' == reference_str
 
 
 if __name__ == '__main__':
