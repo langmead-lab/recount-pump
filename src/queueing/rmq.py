@@ -15,7 +15,7 @@ import pika
 import pika.exceptions
 
 
-class RmqService():
+class RmqService(object):
 
     def __init__(self, host='localhost', port=5672):
         self.params = pika.ConnectionParameters(host=host, port=port)

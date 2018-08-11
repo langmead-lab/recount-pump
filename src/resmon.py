@@ -61,7 +61,7 @@ class SysmonThread(Thread):
               ', %MEM, mem.total.KB, mem.used.KB, mem.avail.KB, mem.free.KB' + \
               ', %SWAP, swap.total.KB, swap.used.KB, swap.free.KB' + \
               ', io.read, io.write, io.read.KB, io.write.KB, io.read.ms, io.write.ms'
-        log.info(__name__, msg, 'resmon.py')
+        log.info(msg, 'resmon.py')
         self.prev_disk_stat = psutil.disk_io_counters()
         self.starttime = int(time.time())
         self.closed = False
@@ -98,7 +98,7 @@ class SysmonThread(Thread):
                 ', ' + str(disk_stat.read_time - self.prev_disk_stat.read_time) + \
                 ', ' + str(disk_stat.write_time - self.prev_disk_stat.write_time)
 
-        log.info(__name__, line, 'resmon.py')
+        log.info(line, 'resmon.py')
         self.prev_disk_stat = disk_stat
 
 
@@ -106,19 +106,19 @@ def collect(seconds, interval):
     sm = SysmonThread(seconds=int(interval))
     sm.start()
     time.sleep(int(seconds))
-    log.info(__name__, 'Closing monitor thread', 'resmon.py')
+    log.info('Closing monitor thread', 'resmon.py')
     sm.close()
-    log.info(__name__, 'Joining monitor thread', 'resmon.py')
+    log.info('Joining monitor thread', 'resmon.py')
     sm.join()
 
 
 if __name__ == '__main__':
     args = docopt(__doc__)
     agg_ini = os.path.expanduser(args['--log-ini']) if args['--aggregate'] else None
-    log.init_logger(__name__, log_ini=agg_ini, agg_level=args['--log-level'])
+    log.init_logger(log.LOG_GROUP_NAME, log_ini=agg_ini, agg_level=args['--log-level'])
     try:
         if args['collect']:
             collect(args['<seconds>'], args['<interval>'])
     except Exception:
-        log.error(__name__, 'Uncaught exception:', 'resmon.py')
+        log.error('Uncaught exception:', 'resmon.py')
         raise

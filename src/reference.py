@@ -179,7 +179,7 @@ def add_source(url_1, url_2, url_3,
               retrieval_method=retrieval_method)
     session.add(i)
     session.commit()
-    log.info(__name__, 'Added 1 source', 'reference.py')
+    log.info('Added 1 source', 'reference.py')
     return i.id
 
 
@@ -190,7 +190,7 @@ def add_annotation(tax_id, url, checksum, retrieval_method, session):
     i = Annotation(tax_id=tax_id, url=url, checksum=checksum, retrieval_method=retrieval_method)
     session.add(i)
     session.commit()
-    log.info(__name__, 'Added 1 annotation', 'reference.py')
+    log.info('Added 1 annotation', 'reference.py')
     return i.id
 
 
@@ -202,7 +202,7 @@ def add_source_set(session):
     sset = SourceSet()
     session.add(sset)
     session.commit()
-    log.info(__name__, 'Added source set', 'reference.py')
+    log.info('Added source set', 'reference.py')
     return sset.id
 
 
@@ -214,7 +214,7 @@ def add_annotation_set(session):
     aset = AnnotationSet()
     session.add(aset)
     session.commit()
-    log.info(__name__, 'Added annotation set', 'reference.py')
+    log.info('Added annotation set', 'reference.py')
     return aset.id
 
 
@@ -250,7 +250,7 @@ def add_sources_to_set(set_ids, source_ids, session):
         inp = session.query(Source).get(source_id)
         source_set = session.query(SourceSet).get(set_id)
         source_set.sources.append(inp)
-    log.info(__name__, 'Imported %d sources to sets' % len(source_ids), 'reference.py')
+    log.info('Imported %d sources to sets' % len(source_ids), 'reference.py')
     session.commit()
 
 
@@ -262,7 +262,7 @@ def add_annotations_to_set(set_ids, annotation_ids, session):
         annotation = session.query(Annotation).get(annotation_id)
         annotation_set = session.query(AnnotationSet).get(set_id)
         annotation_set.annotations.append(annotation)
-    log.info(__name__, 'Imported %d annotations to sets' % len(annotation_ids), 'reference.py')
+    log.info('Imported %d annotations to sets' % len(annotation_ids), 'reference.py')
     session.commit()
 
 
@@ -277,7 +277,7 @@ def add_reference(tax_id, name, longname, conventions, comment, source_set_id, a
                    comment=comment, source_set_id=source_set_id, annotation_set_id=annotation_set_id)
     session.add(rf)
     session.commit()
-    log.info(__name__, 'Added reference "%s"' % name, 'reference.py')
+    log.info('Added reference "%s"' % name, 'reference.py')
     return rf.id
 
 
@@ -286,20 +286,20 @@ def download_url(url, cksum, mover, dest_dir='.'):
     dest_fn = os.path.join(dest_dir, fn)
     if os.path.exists(dest_fn):
         raise ValueError('Destination already exists: ' + dest_fn)
-    log.info(__name__, 'retrieve "%s" into "%s"' % (url, dest_dir), 'reference.py')
+    log.info('retrieve "%s" into "%s"' % (url, dest_dir), 'reference.py')
     mover.get(url, dest_dir)
     if not os.path.exists(dest_fn):
         raise IOError('Failed to obtain "%s"' % url)
     if cksum is not None and len(cksum) > 0:
-        log.info(__name__, 'check checksum for "%s"' % dest_fn, 'reference.py')
+        log.info('check checksum for "%s"' % dest_fn, 'reference.py')
         dest_checksum = generate_file_md5(dest_fn)
         if cksum != dest_checksum:
             raise IOError('MD5 mismatch; expected %s got %s' % (cksum, dest_checksum))
     if fn.endswith('.tar.gz'):
-        log.info(__name__, 'decompressing tarball "%s"' % dest_fn, 'reference.py')
+        log.info('decompressing tarball "%s"' % dest_fn, 'reference.py')
         os.system('cd %s && gzip -dc %s | tar xf -' % (dest_dir, os.path.basename(dest_fn)))
     elif fn.endswith('.gz'):
-        log.info(__name__, 'decompressing gz "%s"' % dest_fn, 'reference.py')
+        log.info('decompressing gz "%s"' % dest_fn, 'reference.py')
         os.system('gunzip ' + dest_fn)
 
 
@@ -320,7 +320,7 @@ def download_reference(session, mover, dest_dir='.', ref_name=None):
         if len(refs) == 0:
             raise ValueError('No references')
     for ref in refs:
-        log.info(__name__, 'downloading reference ' + ref.name, 'reference.py')
+        log.info('downloading reference ' + ref.name, 'reference.py')
         for tup in SourceSet.iterate_by_key(session, ref.source_set_id):
             if tup is None:
                 raise ValueError('Reference "%s" had invalid SourceSet key "%d"' % (ref_name, ref.source_set_id))
@@ -456,7 +456,7 @@ def test_download_all(session, s3_enabled, s3_service):
 if __name__ == '__main__':
     args = docopt(__doc__)
     agg_ini = os.path.expanduser(args['--log-ini']) if args['--aggregate'] else None
-    log.init_logger(__name__, log_ini=agg_ini, agg_level=args['--log-level'])
+    log.init_logger(log.LOG_GROUP_NAME, log_ini=agg_ini, agg_level=args['--log-level'])
     log.init_logger('sqlalchemy', log_ini=agg_ini, agg_level=args['--log-level'],
                     sender='sqlalchemy')
     try:
@@ -496,5 +496,5 @@ if __name__ == '__main__':
         elif args['nop']:
             pass
     except Exception:
-        log.error(__name__, 'Uncaught exception:', 'reference.py')
+        log.error('Uncaught exception:', 'reference.py')
         raise

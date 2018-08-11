@@ -174,29 +174,29 @@ def count_search(search):
     Return the number of hits satisfying the query
     """
     url = '%s?q=%s&size=1' % (sradbv2_search_url, quote(search))
-    log.info(__name__, 'GET ' + url, 'sradbv2.py')
+    log.info('GET ' + url, 'sradbv2.py')
     response = urlopen(url)
     j, ct = cgi.parse_header(response.headers.get('Content-type', ''))
     encodec = ct.get('charset', 'utf-8')
-    log.info(__name__, 'Charset: ' + encodec, 'sradbv2.py')
+    log.info('Charset: ' + encodec, 'sradbv2.py')
     jn = json.loads(response.read().decode(encodec))
     return int(jn['hits']['total'])
 
 
 def process_search(search, size, gzip_output, output_fn):
     url = '%s?q=%s&size=%d' % (sradbv2_search_url, quote(search), size)
-    log.info(__name__, 'GET ' + url, 'sradbv2.py')
+    log.info('GET ' + url, 'sradbv2.py')
     response = urlopen(url)
     j, ct = cgi.parse_header(response.headers.get('Content-type', ''))
     encodec = ct.get('charset', 'utf-8')
-    log.info(__name__, 'Charset: ' + encodec, 'sradbv2.py')
+    log.info('Charset: ' + encodec, 'sradbv2.py')
     payload = response.read().decode(encodec)
     with openex(output_fn, 'wb', gzip_output) as fout:
         jn = json.loads(payload)
         tot_hits = jn['hits']['total']
         num_hits = len(jn['hits']['hits'])
         assert num_hits <= tot_hits
-        log.info(__name__, 'Writing hits [%d, %d) out of %d' % (0, num_hits, tot_hits), 'sradbv2.py')
+        log.info('Writing hits [%d, %d) out of %d' % (0, num_hits, tot_hits), 'sradbv2.py')
         dump = json.dumps(jn['hits']['hits'], indent=4).encode('UTF-8')
         if num_hits < tot_hits:
             assert dump.endswith(b']'), dump
@@ -205,14 +205,14 @@ def process_search(search, size, gzip_output, output_fn):
         nscrolls = 1
         while num_hits < tot_hits:
             url = sradbv2_scroll_url + '?scroll_id=' + jn['_scroll_id']
-            log.info(__name__, 'GET ' + url, 'sradbv2.py')
+            log.info('GET ' + url, 'sradbv2.py')
             response = urlopen(url)
             payload = response.read().decode(encodec)
             jn = json.loads(payload)
             old_num_hits = num_hits
             num_hits += len(jn['hits']['hits'])
             assert num_hits <= tot_hits
-            log.info(__name__, 'Writing hits [%d, %d) out of %d, scroll=%d' %
+            log.info('Writing hits [%d, %d) out of %d, scroll=%d' %
                      (old_num_hits, num_hits, tot_hits, nscrolls), 'sradbv2.py')
             dump = json.dumps(jn['hits']['hits'], indent=4).encode('UTF-8')
             assert dump.startswith(b'[')
@@ -259,7 +259,7 @@ def summarize_rna():
 if __name__ == '__main__':
     args = docopt(__doc__)
     log_ini = os.path.expanduser(args['--log-ini']) if args['--aggregate'] else None
-    log.init_logger(__name__, log_ini=log_ini, agg_level=args['--log-level'])
+    log.init_logger(log.LOG_GROUP_NAME, log_ini=log_ini, agg_level=args['--log-level'])
     try:
         if args['search']:
             # sample_taxon_id:6239 AND experiment_library_strategy:"rna seq" AND experiment_library_source:transcriptomic AND experiment_platform:illumina
@@ -273,5 +273,5 @@ if __name__ == '__main__':
         elif args['summarize-rna']:
             print(summarize_rna())
     except Exception:
-        log.error(__name__, 'Uncaught exception:', 'sradbv2.py')
+        log.error('Uncaught exception:', 'sradbv2.py')
         raise

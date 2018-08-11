@@ -86,7 +86,7 @@ def test_analysis1(session):
 if __name__ == '__main__':
     args = docopt(__doc__)
     agg_ini = os.path.expanduser(args['--log-ini']) if args['--aggregate'] else None
-    log.init_logger(__name__, log_ini=agg_ini, agg_level=args['--log-level'])
+    log.init_logger(log.LOG_GROUP_NAME, log_ini=agg_ini, agg_level=args['--log-level'])
     log.init_logger('sqlalchemy', log_ini=agg_ini, agg_level=args['--log-level'],
                     sender='sqlalchemy')
     try:
@@ -95,5 +95,5 @@ if __name__ == '__main__':
             Session = session_maker_from_config(db_ini, args['--db-section'])
             print(add_analysis(args['<name>'], args['<image-url>'], Session()))
     except Exception:
-        log.error(__name__, 'Uncaught exception:', 'analysis.py')
+        log.error('Uncaught exception:', 'analysis.py')
         raise

@@ -35,12 +35,14 @@ _default_log_ini_fn = os.path.join(_default_log_ini_dir, 'log.ini')
 _default_log_ini_fn_section = 'log'
 _default_datefmt = '%b %d %H:%M:%S'
 
+LOG_GROUP_NAME='recount'
 
-def msg(name, sender, text, level):
+
+def msg(sender, text, level):
     if sender is not None and len(sender) > 0:
         sender += ' '
     exc_info = sys.exc_info()[0] is not None
-    logger = logging.getLogger(name)
+    logger = logging.getLogger(LOG_GROUP_NAME)
     if level == logging.DEBUG:
         logger.debug(sender + text, exc_info=exc_info)
     elif level == logging.INFO:
@@ -53,24 +55,24 @@ def msg(name, sender, text, level):
         logger.critical(sender + text, exc_info=exc_info)
 
 
-def debug(name, text, sender=''):
-    msg(name, sender, text, logging.DEBUG)
+def debug(text, sender=''):
+    msg(sender, text, logging.DEBUG)
 
 
-def info(name, text, sender=''):
-    msg(name, sender, text, logging.INFO)
+def info(text, sender=''):
+    msg(sender, text, logging.INFO)
 
 
-def warning(name, text, sender=''):
-    msg(name, sender, text, logging.WARNING)
+def warning(text, sender=''):
+    msg(sender, text, logging.WARNING)
 
 
-def error(name, text, sender=''):
-    msg(name, sender, text, logging.ERROR)
+def error(text, sender=''):
+    msg(sender, text, logging.ERROR)
 
 
-def critical(name, text, sender=''):
-    msg(name, sender, text, logging.CRITICAL)
+def critical(text, sender=''):
+    msg(sender, text, logging.CRITICAL)
 
 
 def make_default_handler(sender=None):
@@ -96,7 +98,7 @@ def init_logger(name, log_ini=None, level='DEBUG', agg_level='INFO', sender=None
 
     if log_ini is not None:
         # see comment for syslog_handler_from_ini
-        info(__name__, 'Parsing log ini "%s"' % log_ini, 'log.py')
+        info('Parsing log ini "%s"' % log_ini, 'log.py')
         cfg = RawConfigParser()
         cfg.read(log_ini)
         agg_format = '%(asctime)s %(hostname)s %(message)s'
@@ -113,13 +115,13 @@ def init_logger(name, log_ini=None, level='DEBUG', agg_level='INFO', sender=None
             lg.addHandler(hnd)
 
         if 'syslog' in cfg.sections():
-            info(__name__, 'Found syslog handler in "%s"' % log_ini, 'log.py')
+            info('Found syslog handler in "%s"' % log_ini, 'log.py')
             host, port, fmt, datefmt =\
                 cfg.get('syslog', 'host'), int(cfg.get('syslog', 'port')),\
                 cfg.get('syslog', 'format'), cfg.get('syslog', 'datefmt')
             _config_handler(SysLogHandler(address=(host, port)))
         if 'watchtower' in cfg.sections():
-            info(__name__, 'Found watchtower handler in "%s"' % log_ini, 'log.py')
+            info('Found watchtower handler in "%s"' % log_ini, 'log.py')
             log_group = cfg.get('watchtower', 'log_group')
             stream_name = cfg.get('watchtower', 'stream_name')
             hnd = watchtower.CloudWatchLogHandler(log_group=log_group, stream_name=stream_name)
@@ -198,7 +200,7 @@ if __name__ == '__main__':
 
     if args['message']:
         agg_ini = os.path.expanduser(args['--log-ini']) if args['--aggregate'] else None
-        init_logger(__name__, log_ini=agg_ini,
+        init_logger(LOG_GROUP_NAME, log_ini=agg_ini,
                     agg_level=args['--log-level'], sender='log.py')
-        info(__name__, 'This is an info message', 'log.py')
-        debug(__name__, 'This is a debug message', 'log.py')
+        info('This is an info message', 'log.py')
+        debug('This is a debug message', 'log.py')

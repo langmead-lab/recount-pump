@@ -61,13 +61,13 @@ def import_from_json(json_fn, table_name, session, overwrite=False):
 if __name__ == '__main__':
     args = docopt(__doc__)
     agg_ini = os.path.expanduser(args['--log-ini']) if args['--aggregate'] else None
-    log.init_logger(__name__, log_ini=agg_ini, agg_level=args['--log-level'])
+    log.init_logger(log.LOG_GROUP_NAME, log_ini=agg_ini, agg_level=args['--log-level'])
     try:
-        log.info(__name__, 'In main', 'meta.py')
+        log.info('In main', 'meta.py')
         db_ini = os.path.expanduser(args['--db-ini'])
         if args['load-json']:
             Session = session_maker_from_config(db_ini, args['--db-section'])
             import_from_json(args['<file>'], args['<table>'], Session(), overwrite=args['--overwrite'])
     except Exception:
-        log.error(__name__, 'Uncaught exception:', 'meta.py')
+        log.error('Uncaught exception:', 'meta.py')
         raise

@@ -195,10 +195,10 @@ def stage_project(project_id, queue_service, session, chunking_strategy=None):
         queue_service.queue_create(queue_name)
     n = 0
     for job_str in proj.job_iterator(session, chunking_strategy):
-        log.debug(__name__, 'Staged job "%s" from "%s" to "%s"' % (job_str, proj.name, queue_name), 'pump.py')
+        log.debug('Staged job "%s" from "%s" to "%s"' % (job_str, proj.name, queue_name), 'pump.py')
         queue_service.publish(queue_name, job_str)
         n += 1
-    log.info(__name__, 'Staged %d jobs from "%s" to "%s"' % (n, proj.name, queue_name), 'pump.py')
+    log.info('Staged %d jobs from "%s" to "%s"' % (n, proj.name, queue_name), 'pump.py')
 
 
 def test_integration(db_integration):
@@ -288,7 +288,7 @@ def test_job_string_2():
 if __name__ == '__main__':
     args = docopt(__doc__)
     agg_ini = os.path.expanduser(args['--log-ini']) if args['--aggregate'] else None
-    log.init_logger(__name__, log_ini=agg_ini, agg_level=args['--log-level'])
+    log.init_logger(log.LOG_GROUP_NAME, log_ini=agg_ini, agg_level=args['--log-level'])
     log.init_logger('sqlalchemy', log_ini=agg_ini, agg_level=args['--log-level'],
                     sender='sqlalchemy')
     try:
@@ -310,5 +310,5 @@ if __name__ == '__main__':
             print(stage_project(int(args['<project-id>']), qserv, Session(),
                                 chunking_strategy=args['--chunk']))
     except Exception:
-        log.error(__name__, 'Uncaught exception:', 'pump.py')
+        log.error('Uncaught exception:', 'pump.py')
         raise

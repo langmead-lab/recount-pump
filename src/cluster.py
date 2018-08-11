@@ -3,15 +3,14 @@
 # Author: Ben Langmead <ben.langmead@gmail.com>
 # License: MIT
 
-"""job_loop
+"""cluster
 
 Usage:
-  job_loop prepare [options] <project-id>
-  job_loop run [options] <project-id>
+  cluster prepare [options] <project-id>
+  cluster run [options] <project-id>
 
 Options:
   --cluster-ini <ini>          Cluster ini file [default: ~/.recount/cluster.ini].
-  --cluster-section <section>  ini file section for cluster [default: cluster].
   --db-ini <ini>               Database ini file [default: ~/.recount/db.ini].
   --db-section <section>       ini file section for database [default: client].
   --profile=<profile>          AWS credentials profile section.
@@ -35,11 +34,12 @@ import sys
 import tempfile
 import shutil
 import pytest
+import run
 from docopt import docopt
 from queueing.service import queueing_service_from_config
 from toolbox import session_maker_from_config
 from analysis import Analysis, add_analysis
-from input import import_input_set
+from input import Input, import_input_set
 from pump import Project, add_project
 from reference import Reference, SourceSet, AnnotationSet, add_reference, add_source_set, \
     add_annotation_set, add_sources_to_set, add_annotations_to_set, add_source, add_annotation
@@ -51,53 +51,50 @@ except ImportError:
     sys.exc_clear()
 
 
-def parse_job(body):
-    try:
-        body = body.encode()
-    except AttributeError:
-        pass
-    toks = body.split(b' ')
-    if 4 != len(toks):
-        raise ValueError('Could not parse job string: "%s"' % body)
-    job_id, job_name, input_string, analysis_string = toks
-    return int(job_id), job_name, input_string, analysis_string
+def do_job(body, cluster_ini):
+    """
+    Given a job-attempt description string, parse the string and execute the
+    corresponding job attempt.  The description string itself is composed in
+    pump.py:
+    - Analysis.to_job_string() composes the analysis string, which at this
+      time is just the image URL.
+    - Input.to_job_string() composes the job string for a single input (run
+      accession)
+    - Project.job_iterator() composes the overall string
 
-
-def do_job(body):
-    job_id, job_name, input_string, analysis_string = parse_job(body)
-    log.info(__name__, 'Handling job: {id=%d, name="%s", input="%s", analysis="%s"}' %
-             (int(job_id), job_name, input_string, analysis_string), 'job_loop.py')
+    TODO: should jobs have unique ids assigned by the db?
+    """
+    job_id, job_name, input_string, analysis_string, reference_string = \
+        Project.parse_job_string(body)
+    job_name = job_name.decode()
+    analysis_string = analysis_string.decode()
+    input_id, srr, srp, url1, url2, url3, \
+        checksum1, checksum2, checksum3, retrieval = \
+        Input.parse_job_string(input_string)
+    log.info('got job: {id=%d, name="%s", input="%s", analysis="%s", reference="%s"}' %
+             (int(job_id), job_name, input_string, analysis_string, reference_string), 'cluster.py')
     tmp_dir = tempfile.mkdtemp()
     tmp_fn = os.path.join(tmp_dir, 'accessions.txt')
     assert not os.path.exists(tmp_fn)
-    #with open(tmp_fn, 'wb') as fh:
-    #    for inp in input_string:
-    #        fh.write(inp + b'\n')
-    cmd = ['../common/run.py',
-           '--input %s' % tmp_fn, 
-           '--image %s' % analysis_string,
-           '--name %s' % job_name]
-    cmd = ' '.join(cmd)
-    #ret = os.system(cmd)
-    #if ret != 0:
-    #    raise RuntimeError('Non-zero exitleve (%d) from "%s"' % (ret, cmd))
-    return True
+    with open(tmp_fn, 'wb') as fh:
+        fh.write(b','.join([srr, srp, reference_string]) + b'\n')
+    return run.run_job(job_name, [tmp_fn], analysis_string, cluster_ini)
 
 
 def ready_for_analysis(analysis, analysis_dir):
     url = analysis.image_url
     image_bn = url.split('/')[-1]
-    log.info(__name__, 'Check image file "%s" exists in analysis '
-             'dir "%s"' % (image_bn, analysis_dir), 'job_loop.py')
+    log.info('Check image file "%s" exists in analysis '
+             'dir "%s"' % (image_bn, analysis_dir), 'cluster.py')
     image_fn = os.path.join(analysis_dir, image_bn)
     return os.path.exists(image_fn)
 
 
 def download_image(url, cluster_name, analysis_dir, aws_profile=None, s3_endpoint_url=None):
     image_bn = url.split('/')[-1]
-    log.info(__name__, 'Check image "%s" exists in cluster "%s" analysis '
+    log.info('Check image "%s" exists in cluster "%s" analysis '
              'dir "%s"' % (image_bn, cluster_name, analysis_dir),
-             'job_loop.py')
+             'cluster.py')
     image_fn = os.path.join(analysis_dir, image_bn)
     mover = Mover(profile=aws_profile, endpoint_url=s3_endpoint_url,
                   enable_web=True, enable_s3=True)
@@ -116,7 +113,7 @@ def _download_file(mover, url, typ, cluster_name, reference_dir):
     local_fn = os.path.join(local_genome_dir, base)
     if os.path.exists(local_fn):
         raise RuntimeError('Local %s file "%s" already exists' % (typ, local_fn))
-    log.info(__name__, 'Downloading "%s" to cluster "%s" directory "%s"' %
+    log.info('Downloading "%s" to cluster "%s" directory "%s"' %
              (url, cluster_name, reference_dir))
     mover.get(url, local_fn)
     if base.endswith('.tar.gz') or base.endswith('.tgz'):
@@ -144,60 +141,68 @@ def ready_reference(reference, reference_dir):
     pass
 
 
-def prepare(project_id, cluster_name, analysis_dir, reference_dir, session,
-            aws_profile=None, s3_endpoint_url=None, get_image=False, get_reference=False):
+def prepare(project_id, cluster_ini, session, aws_profile=None, s3_endpoint_url=None,
+            get_image=False, get_reference=False):
+    cluster_name, analysis_dir, reference_dir = read_cluster_config(cluster_ini)
     proj = session.query(Project).get(project_id)
-    log.info(__name__, 'Preparing for project "%s" (%d) on cluster "%s"' %
-             (proj.name, project_id, cluster_name), 'job_loop.py')
+    log.info('Preparing for project "%s" (%d) on cluster "%s"' %
+             (proj.name, project_id, cluster_name), 'cluster.py')
     # Handle analysis
     analysis = session.query(Analysis).get(proj.analysis_id)
     analysis_ready = True
     if not analysis.image_url.startswith('docker://'):
         if get_image and not ready_for_analysis(analysis, analysis_dir):
-            download_image(analysis.image_url, cluster_name, analysis_dir, aws_profile, s3_endpoint_url)
+            download_image(analysis.image_url, cluster_name,
+                           analysis_dir, aws_profile, s3_endpoint_url)
         analysis_ready = ready_for_analysis(analysis, analysis_dir)
     # Handle reference
     reference = session.query(Reference).get(proj.reference_id)
     if get_reference and not ready_reference(reference, reference_dir):
-        download_reference(reference, cluster_name, reference_dir, session, aws_profile, s3_endpoint_url)
+        download_reference(reference, cluster_name, reference_dir,
+                           session, aws_profile, s3_endpoint_url)
     reference_ready = ready_reference(reference, reference_dir)
     return analysis_ready, reference_ready
 
 
-def job_loop(project_id, q_ini, q_section, cluster_name, analysis_dir,
-             reference_dir, session, max_fails=10, sleep_seconds=10):
-    prepare(project_id, cluster_name, analysis_dir, reference_dir, session)
+def job_loop(project_id, q_ini, q_section, cluster_ini, session,
+             max_fails=10, sleep_seconds=10):
+    prepare(project_id, cluster_ini, session)
     attempt, success, fail = 0, 0, 0
     qserv = queueing_service_from_config(q_ini, q_section)
     q_name = 'stage_%d' % project_id
     if not qserv.queue_exists(q_name):
         raise ValueError('No such queue: "%s"' % q_name)
-    log.info(__name__, 'Entering job loop, queue "%s"' % q_name, 'job_loop.py')
+    log.info('Entering job loop, queue "%s"' % q_name, 'cluster.py')
     while True:
         attempt += 1
         body = qserv.get(q_name)
         if body is not None:
             success += 1
-            log.info(__name__, 'Job start', 'job_loop.py')
-            if do_job(body):
-                log.info(__name__, 'Job success, acknowledging', 'job_loop.py')
+            log.info('Job start', 'cluster.py')
+            if do_job(body, cluster_ini):
+                log.info('Job success, acknowledging', 'cluster.py')
                 qserv.ack()
-                log.info(__name__, 'Acknowledged', 'job_loop.py')
+                log.info('Acknowledged', 'cluster.py')
             else:
-                log.info(__name__, 'Job failure', 'job_loop.py')
+                log.info('Job failure', 'cluster.py')
         else:
             fail += 1
             if fail >= max_fails:
-                log.info(__name__, 'Job loop end after %d poll failures' % fail, 'job_loop.py')
+                log.info('Job loop end after %d poll failures' % fail, 'cluster.py')
                 break
             time.sleep(sleep_seconds)
 
 
-def read_cluster_config(cluster_fn, section):
+def read_cluster_config(cluster_fn, section=None):
     cfg = RawConfigParser()
     cfg.read(cluster_fn)
-    if section not in cfg.sections():
-        raise RuntimeError('No [%s] section in log ini file "%s"' % (section, cluster_fn))
+    if len(cfg.sections()) == 0:
+        raise RuntimeError('Cluster ini file "%s" has no sections' % cluster_fn)
+    if section is not None:
+        if section not in cfg.sections():
+            raise RuntimeError('No [%s] section in log ini file "%s"' % (section, cluster_fn))
+    else:
+        section = cfg.sections()[0]
     return cfg.get(section, 'name'), cfg.get(section, 'analysis_dir'), cfg.get(section, 'ref_base')
 
 
@@ -211,7 +216,7 @@ ref_base = /path/i/made/up/reference
     test_fn = os.path.join(tmpdir, '.tmp.init')
     with open(test_fn, 'w') as fh:
         fh.write(config)
-    name, analysis_dir, reference_dir = read_cluster_config(test_fn, 'cluster')
+    name, analysis_dir, reference_dir = read_cluster_config(test_fn)
     assert 'stampede2' == name
     assert '/path/i/made/up/analysis' == analysis_dir
     assert '/path/i/made/up/reference' == reference_dir
@@ -278,6 +283,12 @@ def test_with_db(session):
     srcdir, dstdir = tempfile.mkdtemp(), tempfile.mkdtemp()
     analysis_dir = os.path.join(dstdir, 'analysis')
     reference_dir = os.path.join(dstdir, 'reference')
+    cluster_ini = os.path.join(srcdir, 'cluster.ini')
+    with open(cluster_ini, 'wb') as fh:
+        fh.write(b'[cluster]\n')
+        fh.write(b'name = test-cluster\n')
+        fh.write(b'analysis_dir = ' + analysis_dir.encode() + b'\n')
+        fh.write(b'ref_base = ' + reference_dir.encode() + b'\n')
     os.makedirs(analysis_dir)
     os.makedirs(reference_dir)
     project_name = 'test-project'
@@ -309,41 +320,25 @@ def test_with_db(session):
     add_annotations_to_set([annotation_set_id], [ann1], session)
     reference_id = add_reference(6239, 'ce10', 'NA', 'NA', 'NA', source_set_id, annotation_set_id, session)
     project_id = add_project(project_name, analysis_id, input_set_id, reference_id, session)
-    prepare(project_id, 'test', analysis_dir, reference_dir, session, get_image=True, get_reference=True)
+    prepare(project_id, cluster_ini, session, get_image=True, get_reference=True)
     assert os.path.exists(os.path.join(reference_dir, 'ce10', 'source1.txt'))
     assert os.path.exists(os.path.join(reference_dir, 'ce10', 'annotation1.txt'))
-
-
-def test_parse_job():
-    a, b, c, d = parse_job('123 job_name input_string analysis_string')
-    assert 123 == a
-    assert b'job_name' == b
-    assert b'input_string' == c
-    assert b'analysis_string' == d
-    a, b, c, d = parse_job(b'123 job_name input_string analysis_string')
-    assert 123 == a
-    assert b'job_name' == b
-    assert b'input_string' == c
-    assert b'analysis_string' == d
 
 
 if __name__ == '__main__':
     args = docopt(__doc__)
     agg_ini = os.path.expanduser(args['--log-ini']) if args['--aggregate'] else None
-    log.init_logger(__name__, log_ini=agg_ini, agg_level=args['--log-level'])
+    log.init_logger(log.LOG_GROUP_NAME, log_ini=agg_ini, agg_level=args['--log-level'])
     log.init_logger('sqlalchemy', log_ini=agg_ini, agg_level=args['--log-level'],
                     sender='sqlalchemy')
     try:
         db_ini = os.path.expanduser(args['--db-ini'])
         cluster_ini = os.path.expanduser(args['--cluster-ini'])
-        cluster_name, analysis_dir, reference_dir = \
-            read_cluster_config(cluster_ini, args['--cluster-section'])
         q_ini = os.path.expanduser(args['--queue-ini'])
         if args['prepare']:
             Session = session_maker_from_config(db_ini, args['--db-section'])
             print(prepare(int(args['<project-id>']),
-                          cluster_name, analysis_dir, reference_dir,
-                          Session(),
+                          cluster_ini, Session(),
                           aws_profile=args['--profile'],
                           s3_endpoint_url=args['--endpoint-url'],
                           get_image=True, get_reference=True))
@@ -351,10 +346,9 @@ if __name__ == '__main__':
             Session = session_maker_from_config(db_ini, args['--db-section'])
             print(job_loop(int(args['<project-id>']), q_ini,
                            args['--queue-section'],
-                           cluster_name, analysis_dir, reference_dir,
-                           Session(),
+                           cluster_ini, Session(),
                            max_fails=int(args['--max-fail']),
                            sleep_seconds=int(args['--poll-seconds'])))
     except Exception:
-        log.error(__name__, 'Uncaught exception:', 'job_loop.py')
+        log.error('Uncaught exception:', 'cluster.py')
         raise

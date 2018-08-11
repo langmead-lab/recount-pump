@@ -3,6 +3,7 @@
 from __future__ import print_function
 import os
 import sys
+import log
 import shutil
 import argparse
 try:
@@ -27,18 +28,17 @@ def to_docker_env(cmd_env):
 
 
 def to_singularity_env(cmd_env):
-    return 'export ' + '; '.join(map(lambda x: 'export ' + x, cmd_env)) + '; '
+    return '; '.join(map(lambda x: 'export ' + x, cmd_env)) + '; '
 
 
 def run_job(name, inputs, image, cluster_ini, singularity=True, keep=False):
-    print('Job name: "%s"' % name, file=sys.stderr)
-    print('Image: "%s"' % image, file=sys.stderr)
+    log.info('job name: %s, image: "%s"' % (name, image), 'run.py')
     if not os.path.exists(cluster_ini):
         raise RuntimeError('No such ini file "%s"' % cluster_ini)
     cfg = RawConfigParser()
     cfg.read(cluster_ini)
     section = cfg.sections()[0]
-    print('Reading section [%s] from ini "%s"' % (section, cluster_ini), file=sys.stderr)
+    log.info('reading section %s from ini %s' % (section, cluster_ini), 'run.py')
     input_base = cfg.get(section, 'input_base')
     output_base = cfg.get(section, 'output_base')
     ref_base = cfg.get(section, 'ref_base')
@@ -49,6 +49,8 @@ def run_job(name, inputs, image, cluster_ini, singularity=True, keep=False):
         system = cfg.get(section, 'system')
         if system not in ['singularity', 'docker']:
             raise ValueError('Bad container system: "%s"' % system)
+
+    log.info('using %s as container system' % singularity, 'run.py')
 
     if not os.path.exists(input_base):
         os.makedirs(input_base)
@@ -64,10 +66,10 @@ def run_job(name, inputs, image, cluster_ini, singularity=True, keep=False):
         raise RuntimeError('temp_base "%s" exists but is not a directory' % temp_base)
     isdir(ref_base)
 
-    print('Input base: "%s"' % input_base, file=sys.stderr)
-    print('Output base: "%s"' % output_base, file=sys.stderr)
-    print('Reference base: "%s"' % ref_base, file=sys.stderr)
-    print('Temp base: "%s"' % temp_base, file=sys.stderr)
+    log.info('input base: ' + input_base, 'run.py')
+    log.info('output base: ' + output_base, 'run.py')
+    log.info('reference base: ' + ref_base, 'run.py')
+    log.info('temp base: ' + temp_base, 'run.py')
 
     subdir_clear(input_base, name)
     subdir_clear(output_base, name)
@@ -116,6 +118,7 @@ def run_job(name, inputs, image, cluster_ini, singularity=True, keep=False):
         cmd = 'docker run %s %s %s %s' % (to_docker_env(cmd_env), ' '.join(mounts), image, cmd_run)
     else:
         cmd = '%s singularity exec %s %s %s' % (to_singularity_env(cmd_env), ' '.join(mounts), image, cmd_run)
+    log.info('command: ' + cmd, 'run.py')
     print(cmd, file=sys.stderr)
     ret = os.system(cmd)
 
