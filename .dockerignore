@@ -6,3 +6,4 @@ vagrant/.vagrant
 vagrant/vagrant.log
 docker/minio/src
 **/__pycache__
+**/*.pyc
