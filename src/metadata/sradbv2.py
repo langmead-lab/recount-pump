@@ -8,6 +8,8 @@
 
 Usage:
   sradbv2 search <lucene-search> [options]
+  sradbv2 count <lucene-search> [options]
+  sradbv2 summarize-rna [options]
   sradbv2 query [<SRP>,<SRR>]...  [options]
   sradbv2 query-file <file> [options]
 
@@ -42,6 +44,7 @@ except ImportError:
 import time
 import os
 from docopt import docopt
+from collections import defaultdict
 import log
 
 
@@ -166,6 +169,20 @@ def openex(fn, mode, gzip_output):
         return open(fn, mode)
 
 
+def count_search(search):
+    """
+    Return the number of hits satisfying the query
+    """
+    url = '%s?q=%s&size=1' % (sradbv2_search_url, quote(search))
+    log.info(__name__, 'GET ' + url, 'sradbv2.py')
+    response = urlopen(url)
+    j, ct = cgi.parse_header(response.headers.get('Content-type', ''))
+    encodec = ct.get('charset', 'utf-8')
+    log.info(__name__, 'Charset: ' + encodec, 'sradbv2.py')
+    jn = json.loads(response.read().decode(encodec))
+    return int(jn['hits']['total'])
+
+
 def process_search(search, size, gzip_output, output_fn):
     url = '%s?q=%s&size=%d' % (sradbv2_search_url, quote(search), size)
     log.info(__name__, 'GET ' + url, 'sradbv2.py')
@@ -207,6 +224,38 @@ def process_search(search, size, gzip_output, output_fn):
             nscrolls += 1
 
 
+taxa = {'A_thaliana': 3702,      # 4. arabidopsis
+        'B taurus': 9913,                # 9: cow
+        'C elegans': 6239,    # >10: roundworm
+        'D rerio': 7955,               # 3: zebrafish
+        'D melanogaster': 7227,   # 5: fruitfly
+        'H_sapiens': 9606,              # 2: human
+        'M musculus': 10090,             # 1: mouse
+        'O aries': 9940,                # 10: sheep
+        'R norvegicus': 10116,        # 7: rat
+        'S cerevisiae': 4932,  # 6: yeast
+        'Z mays': 4577}                  # 8: corn
+
+
+rna_seq_query = ['experiment_library_strategy:"rna seq"',
+                 'experiment_library_source:transcriptomic',
+                 'experiment_platform:illumina']
+
+
+def summarize_rna():
+    summary = 'Name,Taxon ID,Count\n'
+    summ_h = defaultdict(list)
+    for name, taxid in taxa.items():
+        count = count_search('sample_taxon_id:%d AND %s' %
+                             (taxid, ' AND '.join(rna_seq_query)))
+        summ_h[count].append((name, taxid, count))
+    for count, tups in sorted(summ_h.items(), reverse=True):
+        for tup in tups:
+            name, taxid, count = tup
+            summary += ('%s,%d,%d\n' % (name, taxid, count))
+    return summary
+
+
 if __name__ == '__main__':
     args = docopt(__doc__)
     log_ini = os.path.expanduser(args['--log-ini']) if args['--aggregate'] else None
@@ -215,10 +264,14 @@ if __name__ == '__main__':
         if args['search']:
             # sample_taxon_id:6239 AND experiment_library_strategy:"rna seq" AND experiment_library_source:transcriptomic AND experiment_platform:illumina
             process_search(args['<lucene-search>'], int(args['--size']), args['--gzip'], args['--output'])
+        if args['count']:
+            print(count_search(args['<lucene-search>']))
         elif args['query']:
             query(args['--delay'], args['--nostdout'], args['--noheader'], query_string=args['<SRP>,<SRR>'])
         elif args['query-file']:
             query(args['--delay'], args['--nostdout'], args['--noheader'], query_file=args['<file>'])
+        elif args['summarize-rna']:
+            print(summarize_rna())
     except Exception:
         log.error(__name__, 'Uncaught exception:', 'sradbv2.py')
         raise
