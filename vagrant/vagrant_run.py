@@ -56,10 +56,10 @@ def run(skip_run, ini_fn, section):
     attachments = []
     with open('vagrant.log', 'rb') as fh:
         for ln in fh:
-            if '===HAPPY' in ln:
+            if b'===HAPPY' in ln:
                 st = ln[ln.find(b'===HAPPY')+9:].rstrip()
                 attachments.append({'text': st, 'color': 'good'})
-            elif '===SAD' in ln:
+            elif b'===SAD' in ln:
                 st = ln[ln.find(b'===SAD')+7:].rstrip()
                 attachments.append({'text': st, 'color': 'danger'})
     requests.put(slack_url, json={
