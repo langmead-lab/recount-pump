@@ -6,11 +6,8 @@
 """pump
 
 Usage:
-  pump add-project [options] <name> <analysis-id> <input-set-id>
+  pump add-project [options] <name> <analysis-id> <input-set-id> <reference-id>
   pump summarize-project [options] <project-id>
-  pump add-project-ex [options] <name> <analysis-name> <analysis-image-url>
-                      <input-set-name> <input-set-table>
-                      (<cluster-name> <wrapper-url>)...
   pump stage [options] <project-id>
 
 Options:
@@ -31,14 +28,13 @@ import os
 import log
 import pytest
 import json
-import tempfile
-import shutil
 from docopt import docopt
 from sqlalchemy import Column, ForeignKey, Integer, String, Sequence, DateTime
 from sqlalchemy.orm import relationship
 from base import Base
-from input import import_input_set, Input, InputSet
-from analysis import Analysis, add_analysis
+from input import Input, InputSet
+from analysis import Analysis
+from reference import Reference, Source, SourceSet, Annotation, AnnotationSet
 from toolbox import session_maker_from_config
 from queueing.service import queueing_service_from_config
 
@@ -56,6 +52,7 @@ class Project(Base):
     name = Column(String(1024))
     input_set_id = Column(Integer, ForeignKey('input_set.id'))
     analysis_id = Column(Integer, ForeignKey('analysis.id'))
+    reference_id = Column(Integer, ForeignKey('reference.id'))
 
     event = relationship("ProjectEvent")  # events associated with this project
 
@@ -159,31 +156,16 @@ class ProjectActive(Base):
     job_id = Column(Integer, ForeignKey('project.id'))
 
 
-def add_project(name, analysis_id, input_set_id, session):
+def add_project(name, analysis_id, input_set_id, reference_id, session):
     """
     Given a project name and csv file, populate the database with the
     appropriate project rows
     """
-    proj = Project(name=name, analysis_id=analysis_id, input_set_id=input_set_id)
+    proj = Project(name=name, analysis_id=analysis_id, input_set_id=input_set_id,
+                   reference_id=reference_id)
     session.add(proj)
     session.commit()
     return proj.id
-
-
-def add_project_ex(name, analysis_name, analysis_image_url,
-                   input_set_name, input_set_csv_fn, session):
-    """
-    Given some high-level details about a project, analysis, input set, and
-    cluster/analysis combinations, populate the database accordingly.  This is
-    a helpful all-in-one call to start from if you are starting a new project.
-    """
-    analysis_id = add_analysis(analysis_name, analysis_image_url, session)
-    input_set_id, n_added_input = import_input_set(input_set_name, input_set_csv_fn, session)
-    project = session.query(Project).filter_by(name=name).first()
-    if project is not None:
-        raise ValueError('Project with name "%s" already exists' % name)
-    project_id = add_project(name, analysis_id, input_set_id, session)
-    return project_id, analysis_id, input_set_id, n_added_input
 
 
 def stage_project(project_id, queue_service, session, chunking_strategy=None):
@@ -229,7 +211,27 @@ def test_add_project(session):
     session.commit()
     assert 1 == len(list(session.query(InputSet)))
 
-    proj = Project(name='my_project', input_set_id=input_set.id, analysis_id=analysis.id)
+    src1 = Source(retrieval_method="s3",
+                  url_1='s3://recount-pump/ref/ce10/ucsc_tracks.tar.gz', checksum_1='')
+    src2 = Source(retrieval_method="s3",
+                  url_1='s3://recount-pump/ref/ce10/fasta.tar.gz', checksum_1='')
+    session.add(src1)
+    session.add(src2)
+    session.commit()
+    ss = SourceSet(sources=[src1, src2])
+    session.add(ss)
+    session.commit()
+    an1 = Annotation(retrieval_method='s3',
+                     url='s3://recount-pump/ref/ce10/gtf.tar.gz', checksum='')
+    session.add(an1)
+    session.commit()
+    anset = AnnotationSet(annotations=[an1])
+    session.add(anset)
+    session.commit()
+    ref1 = Reference(tax_id=6239, name='celegans', longname='caenorhabditis_elegans',
+                     conventions='', comment='', source_set_id=ss.id, annotation_set_id=anset.id)
+
+    proj = Project(name='my_project', input_set_id=input_set.id, analysis_id=analysis.id, reference_id=ref1.id)
     session.add(proj)
     session.commit()
     assert 1 == len(list(session.query(Project)))
@@ -247,28 +249,6 @@ def test_add_project(session):
     assert 0 == len(list(session.query(Project)))
 
 
-def test_add_project_ex(session):
-    tmpdir = tempfile.mkdtemp()
-    project_name = 'recount-rna-seq-human'
-    analysis_name = 'recount-rna-seq-v1'
-    image_url = 's3://recount-pump/analysis/recount-rna-seq-v1.img'
-    input_set_name = 'all_human'
-    input_set_csv = '\n'.join(['NA,NA,ftp://genomi.cs/1_1.fastq.gz,ftp://genomi.cs/1_2.fastq.gz,NA,NA,NA,NA,wget',
-                               'NA,NA,ftp://genomi.cs/2_1.fastq.gz,ftp://genomi.cs/2_2.fastq.gz,NA,NA,NA,NA,wget'])
-    csv_fn = os.path.join(tmpdir, 'project.csv')
-    with open(csv_fn, 'w') as ofh:
-        ofh.write(input_set_csv)
-    project_id, analysis_id, input_set_id, n_added_input = \
-        add_project_ex(project_name, analysis_name, image_url,
-                       input_set_name, csv_fn, session)
-    assert 2 == n_added_input
-    assert 1 == len(list(session.query(Project)))
-    assert 1 == len(list(session.query(InputSet)))
-    assert 2 == len(list(session.query(Input)))
-    assert 1 == len(list(session.query(Analysis)))
-    shutil.rmtree(tmpdir)
-
-
 if __name__ == '__main__':
     args = docopt(__doc__)
     agg_ini = os.path.expanduser(args['--log-ini']) if args['--aggregate'] else None
@@ -281,18 +261,13 @@ if __name__ == '__main__':
         if args['add-project']:
             Session = session_maker_from_config(db_ini, args['--db-section'])
             print(add_project(args['<name>'], args['<analysis-id>'],
-                              args['<input-set-id>'], Session()))
+                              args['<input-set-id>'], args['<reference-id>'],
+                              Session()))
         if args['summarize-project']:
             Session = session_maker_from_config(db_ini, args['--db-section'])
             session = Session()
             proj = session.query(Project).get(int(args['<project-id>']))
             print(json.dumps(proj.deepdict(session), indent=4, separators=(',', ': ')))
-        elif args['add-project-ex']:
-            Session = session_maker_from_config(db_ini, args['--db-section'])
-            print(add_project_ex(args['<name>'], args['<analysis-name>'],
-                                 args['<analysis-image-url>'],
-                                 args['<input-set-name>'], args['<input-set-csv>'],
-                                 Session()))
         elif args['stage']:
             Session = session_maker_from_config(db_ini, args['--db-section'])
             qserv = queueing_service_from_config(q_ini, args['--queue-section'])

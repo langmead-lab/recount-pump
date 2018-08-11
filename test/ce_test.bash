@@ -45,19 +45,22 @@
 
 set -ex
 
+cat >.test-db.ini <<EOF
+[client]
+url=postgres://recount:recount-postgres@db:5432/recount-test
+password=recount-postgres
+host=db
+port=5432
+user=recount
+EOF
+
+db_arg="--db-ini .test-db.ini"
+
 TAXID=6239
 RUN_NAME=ce10_test
 ANALYSIS_DIR=$PWD/analyses
 mkdir -p ${ANALYSIS_DIR}
-
-RNA_SEQ_LITE="quay.io_benlangmead_recount-rna-seq-lite-nf-2018-07-23-353aacc3b34f.img"
-
-[ -z "${RECOUNT_IMAGES}" ] && \
-    echo "Must set RECOUNT_IMAGES first" && exit 1
-[ ! -d "${RECOUNT_IMAGES}" ] && \
-    echo "Directory \"${RECOUNT_IMAGES}\" does not exist" && exit 1
-[ ! -f "${RECOUNT_IMAGES}/${RNA_SEQ_LITE}" ] && \
-    echo "File \"${RECOUNT_IMAGES}/${RNA_SEQ_LITE}\" does not exist" && exit 1
+RNA_SEQ_LITE="docker://quay.io/benlangmead/recount-rna-seq-lite-nf"
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 1: Load reference data"
@@ -77,13 +80,16 @@ ssid=$(python src/reference.py add-source-set | tail -n 1)
 add_source() (
     set -exo pipefail
     url=$1
-    python src/reference.py add-source $url 'NA' 'NA'  'NA' 'NA' 'NA' 'web' | tail -n 1
+    retrieval_method=$2
+    python src/reference.py ${db_arg} \
+        add-source "${url}" 'NA' 'NA' 'NA' 'NA' 'NA' "${retrieval_method}" | tail -n 1
 )
 
-srcid1=$(add_source "https://s3.amazonaws.com/recount-pump/ref/ce10/hisat2_idx.tar.gz")
-srcid2=$(add_source "https://s3.amazonaws.com/recount-pump/ref/ce10/fasta.tar.gz")
+srcid1=$(add_source 's3://recount-pump/ref/ce10/hisat2_idx.tar.gz' 's3')
+srcid2=$(add_source 's3://recount-pump/ref/ce10/fasta.tar.gz' 's3')
 
-python src/reference.py add-sources-to-set ${ssid} ${srcid1} ${ssid} ${srcid2}
+python src/reference.py ${db_arg} \
+    add-sources-to-set ${ssid} ${srcid1} ${ssid} ${srcid2}
 
 # Annotation
 #    tax_id = Column(Integer)  # refers to NCBI tax ids
@@ -91,18 +97,21 @@ python src/reference.py add-sources-to-set ${ssid} ${srcid1} ${ssid} ${srcid2}
 #    checksum = Column(String(32))
 #    retrieval_method = Column(String(64))
 
-asid=$(python src/reference.py add-annotation-set | tail -n 1)
+asid=$(python src/reference.py ${db_arg} add-annotation-set | tail -n 1)
 
 add_annotation() (
     set -exo pipefail
     taxid=$1
     url=$2
-    python src/reference.py add-annotation $taxid $url 'NA' 'web' | tail -n 1
+    retrieval_method=$3
+    python src/reference.py ${db_arg} \
+        add-annotation "${taxid}" "${url}" 'NA' "${retrieval_method}" | tail -n 1
 )
 
-anid1=$(add_annotation ${TAXID} "https://s3.amazonaws.com/recount-pump/ref/ce10/gtf.tar.gz")
+anid1=$(add_annotation ${TAXID} 's3://recount-pump/ref/ce10/gtf.tar.gz' 's3')
 
-python src/reference.py add-annotations-to-set ${asid} ${anid1}
+python src/reference.py ${db_arg} \
+    add-annotations-to-set ${asid} ${anid1}
 
 # Reference
 #   tax_id = Column(Integer)  # refers to NCBI tax ids
@@ -113,45 +122,36 @@ python src/reference.py add-annotations-to-set ${asid} ${anid1}
 #   source_set = Column(Integer, ForeignKey('source_set.id'))
 #   annotation_set = Column(Integer, ForeignKey('annotation_set.id'))
 
-python src/reference.py \
-    add-reference \
-    ${TAXID} \
-    ce10 \
-    caenorhabditis_elegans \
-    "" \
-    "end-to-end test" \
-    ${ssid} \
-    ${asid}
+add_reference() (
+    taxid=$1
+    shortname=$2
+    longname=$3
+    source_set_id=$4
+    annotation_set_id=$5
+    python src/reference.py ${db_arg} \
+        add-reference "${taxid}" "${shortname}" "${longname}" 'NA' 'NA' \
+                      "${source_set_id}" "${annotation_set_id}" | tail -n 1
+)
+
+ref_id=$(add_reference ${TAXID} 'ce10' 'caenorhabditis_elegans' ${ssid} ${asid})
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 2: Load analysis data"
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 
-# Cluster
-#    name = Column(String(1024))  # "marcc" or "stampede2" for now
-#    cluster_analysis = relationship("ClusterAnalysis")
-
 # Analysis
 #    name = Column(String(1024))
 #    image_url = Column(String(4096))
-#    cluster_analysis = relationship("ClusterAnalysis")
 
-# ClusterAnalysis
-#    analysis_id = Column(Integer, ForeignKey('analysis.id'))
-#    cluster_id = Column(Integer, ForeignKey('cluster.id'))
-#    wrapper_url = Column(String(4096))  # image wrapper
-
-add_analysis_ex() (
+add_analysis() (
     set -exo pipefail
     name=$1
     image_url=$2
-    cluster_name_wrapper_url_pairs=$3
-    python src/analysis.py add-analysis-ex ${name} ${image_url} ${cluster_name_wrapper_url_pairs} | tail -n 1
+    python src/analysis.py ${db_arg} \
+        add-analysis ${name} ${image_url} | tail -n 1
 )
 
-# TODO: need to consider what to do about wrappers
-
-rna_seq_lite_id=$(add_analysis_ex rna_seq_lite "${RECOUNT_IMAGES}/${RNA_SEQ_LITE}" "default ${RECOUNT_IMAGES}/rna_seq_lite_default.bash")
+rna_seq_lite_id=$(add_analysis rna_seq_lite "${RNA_SEQ_LITE}")
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 3: Load input data"
@@ -175,7 +175,8 @@ echo "++++++++++++++++++++++++++++++++++++++++++++++"
 add_input_set() (
     set -exo pipefail
     name=$1
-    python src/input.py add-input-set ${name} | tail -n 1
+    python src/input.py ${db_arg} \
+        add-input-set ${name} | tail -n 1
 )
 
 isid=$(add_input_set "ce10_rna_seq")
@@ -186,7 +187,9 @@ add_input() (
     acc_s=$2
     url_1=$3
     retrieval_method=$4
-    python src/input.py add-input ${acc_r} ${acc_s} ${url_1} NA NA NA NA NA ${retrieval_method} | tail -n 1
+    python src/input.py ${db_arg} \
+        add-input ${acc_r} ${acc_s} ${url_1} \
+        'NA' 'NA' 'NA' 'NA' 'NA' ${retrieval_method} | tail -n 1
 )
 
 # TODO: get these from SRAv2 JSON instead of hard-coding them here
@@ -199,7 +202,7 @@ in6=$(add_input SRR578035 SRP000401 ce10 s3)
 in7=$(add_input SRR3170393 SRP070155 ce10 s3)
 in8=$(add_input SRR1557855 SRP045778 ce10 s3)
 
-python src/input.py add-inputs-to-set \
+python src/input.py ${db_arg} add-inputs-to-set \
     ${isid} ${in1} ${isid} ${in2} ${isid} ${in3} \
     ${isid} ${in4} ${isid} ${in5} ${isid} ${in6} \
     ${isid} ${in7} ${isid} ${in8} | tail -n 1
@@ -218,10 +221,12 @@ add_project() (
     name=$1
     input_set_id=$2
     analysis_id=$3
-    python src/pump.py add-project ${name} ${analysis_id} ${input_set_id} | tail -n 1
+    reference_id=$4
+    python src/pump.py ${db_arg} \
+        add-project ${name} ${analysis_id} ${input_set_id} ${reference_id} | tail -n 1
 )
 
-proj_id=$(add_project project2 ${isid} ${rna_seq_lite_id})
+proj_id=$(add_project ce10-project ${isid} ${rna_seq_lite_id} ${ref_id})
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 5: Summarize project"
@@ -229,34 +234,74 @@ echo "++++++++++++++++++++++++++++++++++++++++++++++"
 
 # Print out helpful info about the project and its various components
 
-python src/pump.py summarize-project ${proj_id}
+python src/pump.py ${db_arg} summarize-project ${proj_id}
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 6: Stage project"
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 
-python src/pump.py stage ${proj_id}
+cat >.test-queue.ini <<EOF
+[queue]
+type=rmq
+host=q
+port=5672
+EOF
+
+q_arg="--queue-ini .test-queue.ini"
+
+python src/pump.py ${db_arg} ${q_arg} stage ${proj_id}
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 7: Prepare project"
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 
-cat >cluster.ini <<EOF
+cat >.test-cluster.ini <<EOF
 [cluster]
-name = ${RUN_NAME}
-analysis_dir = ${ANALYSIS_DIR}
+name = test-cluster
+system = docker
+
+ref_base = $PWD/ref
+temp_base = $PWD/temp
+input_base = $PWD/input
+output_base = $PWD/output
+analysis_dir = $PWD/analysis
+
+ref_mount = /container-mounts/recount/ref
+temp_mount = /container-mounts/recount/temp
+input_mount = /container-mounts/recount/input
+output_mount = /container-mounts/recount/output
 EOF
+
+cat >aws_config <<EOF
+[default]
+region = us-east-1
+output = text
+s3 =
+    signature_version = s3v4
+EOF
+
+cat >aws_credentials <<EOF
+[minio]
+aws_access_key_id = minio
+aws_secret_access_key = minio123
+EOF
+
+export AWS_CONFIG_FILE=aws_config
+export AWS_CREDENTIAL_FILE=aws_credentials
 
 python src/job_loop.py \
     prepare ${proj_id} \
-    --cluster-ini cluster.ini
+    ${db_arg} ${q_arg} \
+    --endpoint-url 'http://s3:9000' \
+    --cluster-ini .test-cluster.ini
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
-echo "        PHASE 8: Run project"
+echo "        PHASE 9: Run project"
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 
-python src/job_loop.py run \
-    ${proj_id} \
-    --cluster-ini cluster.ini \
+python src/job_loop.py \
+    run ${proj_id} \
+    ${db_arg} ${q_arg} \
+    --cluster-ini .test-cluster.ini \
     --max-fail 3 \
     --poll-seconds 1

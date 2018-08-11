@@ -158,8 +158,8 @@ class Reference(Base):
     longname = Column(String(256))  # assembly name, like GRCh38, etc
     conventions = Column(String(256))  # info about naming conventions, e.g. "chr"
     comment = Column(String(256))
-    source_set = Column(Integer, ForeignKey('source_set.id'))
-    annotation_set = Column(Integer, ForeignKey('annotation_set.id'))
+    source_set_id = Column(Integer, ForeignKey('source_set.id'))
+    annotation_set_id = Column(Integer, ForeignKey('annotation_set.id'))
 
 
 def add_source(url_1, url_2, url_3,
@@ -274,7 +274,7 @@ def add_reference(tax_id, name, longname, conventions, comment, source_set_id, a
     conventions = None if conventions == 'NA' else conventions
     comment = None if comment == 'NA' else comment
     rf = Reference(tax_id=tax_id, name=name, longname=longname, conventions=conventions,
-                   comment=comment, source_set=source_set_id, annotation_set=annotation_set_id)
+                   comment=comment, source_set_id=source_set_id, annotation_set_id=annotation_set_id)
     session.add(rf)
     session.commit()
     log.info(__name__, 'Added reference "%s"' % name, 'reference.py')
@@ -321,15 +321,15 @@ def download_reference(session, mover, dest_dir='.', ref_name=None):
             raise ValueError('No references')
     for ref in refs:
         log.info(__name__, 'downloading reference ' + ref.name, 'reference.py')
-        for tup in SourceSet.iterate_by_key(session, ref.source_set):
+        for tup in SourceSet.iterate_by_key(session, ref.source_set_id):
             if tup is None:
-                raise ValueError('Reference "%s" had invalid SourceSet key "%d"' % (ref_name, ref.source_set))
+                raise ValueError('Reference "%s" had invalid SourceSet key "%d"' % (ref_name, ref.source_set_id))
             url, cksum = tup
             download_url(url, cksum, mover, dest_dir=dest_dir)
-        if ref.annotation_set is not None:
-            for tup in AnnotationSet.iterate_by_key(session, ref.annotation_set):
+        if ref.annotation_set_id is not None:
+            for tup in AnnotationSet.iterate_by_key(session, ref.annotation_set_id):
                 if tup is None:
-                    raise ValueError('Reference "%s" had invalid AnnotationSet key "%d"' % (ref.name, ref.annotation_set))
+                    raise ValueError('Reference "%s" had invalid AnnotationSet key "%d"' % (ref.name, ref.annotation_set_id))
                 url, cksum = tup
                 download_url(url, cksum, mover, dest_dir=dest_dir)
 
@@ -443,7 +443,7 @@ def test_download_all(session, s3_enabled, s3_service):
     session.add(anset)
     session.commit()
     ref1 = Reference(tax_id=6239, name='celegans', longname='caenorhabditis_elegans',
-                     conventions='', comment='', source_set=ss.id, annotation_set=anset.id)
+                     conventions='', comment='', source_set_id=ss.id, annotation_set_id=anset.id)
     session.add(ref1)
     session.commit()
     tmpd = mkdtemp()

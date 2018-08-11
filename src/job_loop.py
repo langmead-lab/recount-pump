@@ -28,23 +28,6 @@ Options:
   --version                    Show version.
 """
 
-"""
-Runs on the cluster.  Repeatedly checks the queue for another job.  If it gets
-one, fires off a nextflow job to run it.
-
-Philosophically, seems like we'd like to avoid these being overly
-reliant on the DB being up throughout the computation.
-
-Cluster ini file might look like this:
-
-# === ~/.recount/log.ini ===
-# [cluster]
-# name = marcc
-# analysis_dir = /scratch/groups/blangme2/recount_analysis
-# scratch_dir = /scratch/groups/blangme2/recount_scratch
-#  
-"""
-
 import time
 import os
 import log
@@ -55,8 +38,11 @@ import pytest
 from docopt import docopt
 from queueing.service import queueing_service_from_config
 from toolbox import session_maker_from_config
-from analysis import Analysis
-from pump import Project, add_project_ex
+from analysis import Analysis, add_analysis
+from input import import_input_set
+from pump import Project, add_project
+from reference import Reference, SourceSet, AnnotationSet, add_reference, add_source_set, \
+    add_annotation_set, add_sources_to_set, add_annotations_to_set, add_source, add_annotation
 from mover import Mover
 try:
     from configparser import RawConfigParser
@@ -84,17 +70,17 @@ def do_job(body):
     tmp_dir = tempfile.mkdtemp()
     tmp_fn = os.path.join(tmp_dir, 'accessions.txt')
     assert not os.path.exists(tmp_fn)
-    with open(tmp_fn, 'wb') as fh:
-        for inp in input_string:
-            fh.write(inp + b'\n')
+    #with open(tmp_fn, 'wb') as fh:
+    #    for inp in input_string:
+    #        fh.write(inp + b'\n')
     cmd = ['../common/run.py',
            '--input %s' % tmp_fn, 
            '--image %s' % analysis_string,
            '--name %s' % job_name]
     cmd = ' '.join(cmd)
-    ret = os.system(cmd)
-    if ret != 0:
-        raise RuntimeError('Non-zero exitleve (%d) from "%s"' % (ret, cmd))
+    #ret = os.system(cmd)
+    #if ret != 0:
+    #    raise RuntimeError('Non-zero exitleve (%d) from "%s"' % (ret, cmd))
     return True
 
 
@@ -114,22 +100,73 @@ def download_image(url, cluster_name, analysis_dir, aws_profile=None, s3_endpoin
              'job_loop.py')
     image_fn = os.path.join(analysis_dir, image_bn)
     mover = Mover(profile=aws_profile, endpoint_url=s3_endpoint_url,
-                  enable_web=True, enable_s3=aws_profile is not None)
+                  enable_web=True, enable_s3=True)
     mover.get(url, image_fn)
 
 
-def prepare(project_id, cluster_name, analysis_dir, session,
-            aws_profile=None, s3_endpoint_url=None, get_image=False):
+def _download_file(mover, url, typ, cluster_name, reference_dir):
+    base = os.path.basename(url)
+    genome = os.path.basename(os.path.dirname(url))
+    local_genome_dir = os.path.join(reference_dir, genome)
+    if not os.path.exists(local_genome_dir):
+        os.makedirs(local_genome_dir)
+    else:
+        if not os.path.isdir(local_genome_dir):
+            raise RuntimeError('"%s" exists but is not a directory' % local_genome_dir)
+    local_fn = os.path.join(local_genome_dir, base)
+    if os.path.exists(local_fn):
+        raise RuntimeError('Local %s file "%s" already exists' % (typ, local_fn))
+    log.info(__name__, 'Downloading "%s" to cluster "%s" directory "%s"' %
+             (url, cluster_name, reference_dir))
+    mover.get(url, local_fn)
+    if base.endswith('.tar.gz') or base.endswith('.tgz'):
+        cmd = 'tar -C %s -xzf %s' % (local_genome_dir, local_fn)
+        ret = os.system(cmd)
+        if ret != 0:
+            raise RuntimeError('Error running "%s"' % cmd)
+
+
+def download_reference(reference, cluster_name, reference_dir, session,
+                       aws_profile=None, s3_endpoint_url=None):
+    """
+    Download all the reference files associated with a project, including both
+    "sources", which might be FASTAs or genome indexes, and "annotations"
+    """
+    mover = Mover(profile=aws_profile, endpoint_url=s3_endpoint_url,
+                  enable_web=True, enable_s3=True)
+    for url, _ in SourceSet.iterate_by_key(session, reference.source_set_id):
+        _download_file(mover, url, 'source', cluster_name, reference_dir)
+    for url, _ in AnnotationSet.iterate_by_key(session, reference.annotation_set_id):
+        _download_file(mover, url, 'annotation', cluster_name, reference_dir)
+
+
+def ready_reference(reference, reference_dir):
+    pass
+
+
+def prepare(project_id, cluster_name, analysis_dir, reference_dir, session,
+            aws_profile=None, s3_endpoint_url=None, get_image=False, get_reference=False):
     proj = session.query(Project).get(project_id)
+    log.info(__name__, 'Preparing for project "%s" (%d) on cluster "%s"' %
+             (proj.name, project_id, cluster_name), 'job_loop.py')
+    # Handle analysis
     analysis = session.query(Analysis).get(proj.analysis_id)
-    if get_image and not ready_for_analysis(analysis, analysis_dir):
-        download_image(analysis.image_url, cluster_name, analysis_dir, aws_profile, s3_endpoint_url)
-    return ready_for_analysis(analysis, analysis_dir)
+    analysis_ready = True
+    if not analysis.image_url.startswith('docker://'):
+        if get_image and not ready_for_analysis(analysis, analysis_dir):
+            download_image(analysis.image_url, cluster_name, analysis_dir, aws_profile, s3_endpoint_url)
+        analysis_ready = ready_for_analysis(analysis, analysis_dir)
+    # Handle reference
+    reference = session.query(Reference).get(proj.reference_id)
+    if get_reference and not ready_reference(reference, reference_dir):
+        download_reference(reference, cluster_name, reference_dir, session, aws_profile, s3_endpoint_url)
+    reference_ready = ready_reference(reference, reference_dir)
+    return analysis_ready, reference_ready
 
 
 def job_loop(project_id, q_ini, q_section, cluster_name, analysis_dir,
-             session, max_fails=10, sleep_seconds=10):
-    prepare(project_id, cluster_name, analysis_dir, session)
+             reference_dir, session, max_fails=10, sleep_seconds=10):
+    prepare(project_id, cluster_name, analysis_dir, reference_dir, session)
     attempt, success, fail = 0, 0, 0
     qserv = queueing_service_from_config(q_ini, q_section)
     q_name = 'stage_%d' % project_id
@@ -161,21 +198,23 @@ def read_cluster_config(cluster_fn, section):
     cfg.read(cluster_fn)
     if section not in cfg.sections():
         raise RuntimeError('No [%s] section in log ini file "%s"' % (section, cluster_fn))
-    return cfg.get(section, 'name'), cfg.get(section, 'analysis_dir')
+    return cfg.get(section, 'name'), cfg.get(section, 'analysis_dir'), cfg.get(section, 'ref_base')
 
 
 def test_cluster_config():
     tmpdir = tempfile.mkdtemp()
     config = """[cluster]
 name = stampede2
-analysis_dir = /path/i/made/up
+analysis_dir = /path/i/made/up/analysis
+ref_base = /path/i/made/up/reference
 """
     test_fn = os.path.join(tmpdir, '.tmp.init')
     with open(test_fn, 'w') as fh:
         fh.write(config)
-    name, analysis_dir = read_cluster_config(test_fn, 'cluster')
+    name, analysis_dir, reference_dir = read_cluster_config(test_fn, 'cluster')
     assert 'stampede2' == name
-    assert '/path/i/made/up' == analysis_dir
+    assert '/path/i/made/up/analysis' == analysis_dir
+    assert '/path/i/made/up/reference' == reference_dir
     shutil.rmtree(tmpdir)
 
 
@@ -191,30 +230,88 @@ def test_download_image():
     shutil.rmtree(dstdir)
 
 
+def test_download_file():
+    srcdir, dstdir = tempfile.mkdtemp(), tempfile.mkdtemp()
+    genome_dir = os.path.join(srcdir, 'ce10')
+    tarball_dir = os.path.join(genome_dir, 'files')
+    os.makedirs(tarball_dir)
+    base_fns = ['file1', 'file2', 'file3']
+    for base_fn in base_fns:
+        test_fn = os.path.join(tarball_dir, base_fn)
+        with open(test_fn, 'w') as fh:
+            fh.write('dummy file')
+    tarball_fn = os.path.join(genome_dir, 'file.tar.gz')
+    cmd = 'cd %s && tar -czf file.tar.gz files' % genome_dir
+    ret = os.system(cmd)
+    assert ret == 0
+    assert os.path.exists(tarball_fn)
+    mover = Mover()
+    _download_file(mover, tarball_fn, 'source', 'test-cluster', dstdir)
+    assert os.path.exists(os.path.join(dstdir, 'ce10', 'files', 'file1'))
+    assert os.path.exists(os.path.join(dstdir, 'ce10', 'files', 'file2'))
+    assert os.path.exists(os.path.join(dstdir, 'ce10', 'files', 'file3'))
+    shutil.rmtree(srcdir)
+    shutil.rmtree(dstdir)
+
+
 def test_integration(db_integration):
     if not db_integration:
         pytest.skip('db integration testing disabled')
 
 
+def test_download_image_s3(s3_enabled, s3_service):
+    if not s3_enabled: pytest.skip('Skipping S3 tests')
+    # TODO
+
+
+def test_download_file_s3(s3_enabled, s3_service):
+    if not s3_enabled: pytest.skip('Skipping S3 tests')
+    dstdir = tempfile.mkdtemp()
+    bucket_name = 'recount-pump'
+    src = ''.join(['s3://', bucket_name, '/ref/ce10/gtf.tar.gz'])
+    assert s3_service.exists(src)
+    _download_file(s3_service, src, 'source', 'test-cluster', dstdir)
+    assert os.path.exists(os.path.join(dstdir, 'ce10/gtf/genes.gtf'))
+
+
 def test_with_db(session):
     srcdir, dstdir = tempfile.mkdtemp(), tempfile.mkdtemp()
+    analysis_dir = os.path.join(dstdir, 'analysis')
+    reference_dir = os.path.join(dstdir, 'reference')
+    os.makedirs(analysis_dir)
+    os.makedirs(reference_dir)
     project_name = 'test-project'
     analysis_name = 'test-analysis'
-    base_fn = 'test_image.simg'
-    image_url = os.path.join(srcdir, base_fn)
-    with open(image_url, 'w') as fh:
-        fh.write('dummy image')
     input_set_name = 'test-input-set'
     input_set_csv = '\n'.join(['NA,NA,ftp://genomi.cs/1_1.fastq.gz,ftp://genomi.cs/1_2.fastq.gz,NA,NA,NA,NA,wget',
                                'NA,NA,ftp://genomi.cs/2_1.fastq.gz,ftp://genomi.cs/2_2.fastq.gz,NA,NA,NA,NA,wget'])
     csv_fn = os.path.join(srcdir, 'project.csv')
     with open(csv_fn, 'w') as ofh:
         ofh.write(input_set_csv)
-    project_id, _, _, _ = add_project_ex(
-        project_name, analysis_name, image_url,
-        input_set_name, csv_fn, session)
-    prepare(project_id, 'test', dstdir, session, get_image=True)
-    assert os.path.exists(os.path.join(dstdir, base_fn))
+    analysis_id = add_analysis(analysis_name, 'docker://quay.io/benlangmead/recount-rna-seq-lite-nf', session)
+    input_set_id, nadded = import_input_set(input_set_name, csv_fn, session)
+    assert 2 == nadded
+    source_set_id = add_source_set(session)
+    # make fake source
+    genome_dir = os.path.join(srcdir, 'ce10')
+    os.makedirs(genome_dir)
+    source_fn = os.path.join(genome_dir, 'source1.txt')
+    with open(source_fn, 'wb') as fh:
+        fh.write(b'blah\n')
+    src1 = add_source(source_fn, None, None, None, None, None, 'local', session)
+    add_sources_to_set([source_set_id], [src1], session)
+    # make fake annotation
+    annot_fn = os.path.join(genome_dir, 'annotation1.txt')
+    with open(annot_fn, 'wb') as fh:
+        fh.write(b'blah\n')
+    annotation_set_id = add_annotation_set(session)
+    ann1 = add_annotation(6239, annot_fn, None, 'local', session)
+    add_annotations_to_set([annotation_set_id], [ann1], session)
+    reference_id = add_reference(6239, 'ce10', 'NA', 'NA', 'NA', source_set_id, annotation_set_id, session)
+    project_id = add_project(project_name, analysis_id, input_set_id, reference_id, session)
+    prepare(project_id, 'test', analysis_dir, reference_dir, session, get_image=True, get_reference=True)
+    assert os.path.exists(os.path.join(reference_dir, 'ce10', 'source1.txt'))
+    assert os.path.exists(os.path.join(reference_dir, 'ce10', 'annotation1.txt'))
 
 
 def test_parse_job():
@@ -239,23 +336,22 @@ if __name__ == '__main__':
     try:
         db_ini = os.path.expanduser(args['--db-ini'])
         cluster_ini = os.path.expanduser(args['--cluster-ini'])
-        cluster_name, analysis_dir = \
+        cluster_name, analysis_dir, reference_dir = \
             read_cluster_config(cluster_ini, args['--cluster-section'])
         q_ini = os.path.expanduser(args['--queue-ini'])
         if args['prepare']:
             Session = session_maker_from_config(db_ini, args['--db-section'])
             print(prepare(int(args['<project-id>']),
-                          cluster_name,
-                          analysis_dir,
+                          cluster_name, analysis_dir, reference_dir,
                           Session(),
                           aws_profile=args['--profile'],
                           s3_endpoint_url=args['--endpoint-url'],
-                          get_image=True))
+                          get_image=True, get_reference=True))
         if args['run']:
             Session = session_maker_from_config(db_ini, args['--db-section'])
             print(job_loop(int(args['<project-id>']), q_ini,
                            args['--queue-section'],
-                           cluster_name, analysis_dir,
+                           cluster_name, analysis_dir, reference_dir,
                            Session(),
                            max_fails=int(args['--max-fail']),
                            sleep_seconds=int(args['--poll-seconds'])))
