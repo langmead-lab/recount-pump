@@ -17,8 +17,9 @@ def isdir(dr):
 
 
 def subdir_clear(dr, name):
-    if os.path.exists(os.path.join(dr, name)):
-        raise RuntimeError('Directory "%s" already exists' % dr)
+    subdir = os.path.join(dr, name)
+    if os.path.exists(subdir):
+        raise RuntimeError('Subdirectory "%s" already exists' % subdir)
 
 
 def to_docker_env(cmd_env):
