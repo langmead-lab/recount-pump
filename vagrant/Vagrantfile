@@ -137,7 +137,7 @@ Vagrant.configure("2") do |config|
         mkdir -p ${RECOUNT_REF}
         cd ${RECOUNT_REF} && ${FLOWBASE}/prep_test.sh
         SKIP_BUILD=0
-        for FLOW in rna-seq-lite-nf ; do
+        for FLOW in rna-seq-lite-nf rna-seq ; do
             FLOWDIR="${FLOWBASE}/${FLOW}"
             IMAGE=$(cat ${FLOWDIR}/image.txt)
 
@@ -165,7 +165,7 @@ Vagrant.configure("2") do |config|
                 --input ../common/accessions.txt \
                 --image ${IMAGE} \
                 --ini ~/.recount/cluster_docker.ini \
-                --name docker-test
+                --name docker-test-${FLOW}
             if [ $? -eq 0 ] ; then
                 echo "===HAPPY ${IMAGE} ran in Docker"
             else
@@ -181,7 +181,7 @@ Vagrant.configure("2") do |config|
                 --input ../common/accessions.txt \
                 --image docker://${IMAGE} \
                 --ini ~/.recount/cluster_singularity.ini \
-                --name singularity-test
+                --name singularity-test-${FLOW}
             if [ $? -eq 0 ] ; then
                 echo "===HAPPY ${IMAGE} ran in Singularity"
             else
