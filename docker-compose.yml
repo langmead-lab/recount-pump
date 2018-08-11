@@ -30,6 +30,9 @@ services:
       - "q"
       - "s3"
       - "db"
+    privileged: true
+    cap_add:
+      - SYS_ADMIN
     environment:
       AWS_ACCESS_KEY_ID: minio
       AWS_SECRET_ACCESS_KEY: minio123
@@ -37,6 +40,7 @@ services:
       RECOUNT_TEST_Q: q:5672
       RECOUNT_TEST_S3: http://s3:9000
       RECOUNT_IMAGES: /images
+      SINGULARITY_CACHEDIR: /images
     volumes:
       - ./workflow/images:/images
     command: /code/test_entry.sh
