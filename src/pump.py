@@ -98,8 +98,9 @@ class Project(Base):
         analysis = session.query(Analysis).get(self.analysis_id)
         analysis_str = analysis.to_job_string()
         reference = session.query(Reference).get(self.reference_id)
+        reference_str = reference.name.encode()
         for input in iset.inputs:
-            yield self.to_job_string(input.to_job_string(), analysis_str, reference.name)
+            yield self.to_job_string(input.to_job_string(), analysis_str, reference_str)
 
 
 class ProjectEvent(Base):
