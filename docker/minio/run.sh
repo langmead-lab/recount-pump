@@ -12,7 +12,7 @@ d=`dirname $0`
 
 set -ex
 
-IMAGE=$(cat image.txt)
+IMAGE=$(cat $d/image.txt)
 CONTAINER_NAME=recount-minio
 KEY_ID=$(grep aws_access_key_id $d/credentials | cut -d' ' -f3)
 SECRET=$(grep aws_secret_access_key $d/credentials | cut -d' ' -f3)
