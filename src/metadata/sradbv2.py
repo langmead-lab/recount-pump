@@ -9,17 +9,19 @@
 Usage:
   sradbv2 search <lucene-search> [options]
   sradbv2 count <lucene-search> [options]
+  sradbv2 size-dist <lucene-search> <n> [options]
   sradbv2 summarize-rna [options]
   sradbv2 query [<SRP>,<SRR>]...  [options]
   sradbv2 query-file <file> [options]
 
 Options:
+  --size <size>            Number of records to fetch per call [default: 300].
+  --stop-after <num>       Stop processing results after this many [default: 1000000].
   --delay                  Seconds to sleep between requests [default: 1].
   --log-ini <ini>          .ini file for log aggregator [default: ~/.recount/log.ini].
   --log-section <section>  .ini file section for log aggregator [default: log].
   --log-level <level>      Set level for log aggregation; could be CRITICAL,
                            ERROR, WARNING, INFO, DEBUG [default: INFO].
-  --size <size>            Number of records to fetch per call [default: 300].
   -a, --aggregate          Enable log aggregation.
   --noheader               Suppress header in output.
   --nostdout               Output to files named by study accession.
@@ -34,6 +36,7 @@ import sys
 import json
 import cgi
 import gzip
+import random
 try:
     from urllib.request import urlopen
     from urllib.parse import quote
@@ -224,12 +227,12 @@ def process_search(search, size, gzip_output, output_fn):
             nscrolls += 1
 
 
-taxa = {'A_thaliana': 3702,      # 4. arabidopsis
+taxa = {'A thaliana': 3702,      # 4. arabidopsis
         'B taurus': 9913,        # 9: cow
         'C elegans': 6239,       # >10: roundworm
         'D rerio': 7955,         # 3: zebrafish
         'D melanogaster': 7227,  # 5: fruitfly
-        'H_sapiens': 9606,       # 2: human
+        'H sapiens': 9606,       # 2: human
         'M musculus': 10090,     # 1: mouse
         'O aries': 9940,         # 10: sheep
         'R norvegicus': 10116,   # 7: rat
@@ -241,19 +244,94 @@ rna_seq_query = ['experiment_library_strategy:"rna seq"',
                  'experiment_library_source:transcriptomic',
                  'experiment_platform:illumina']
 
+single_cell_query = ['study_abstract:"single-cell"',
+                     'experiment_library_construction_protocol:"single-cell"',
+                     'study_title:"single-cell"']
+
 
 def summarize_rna():
-    summary = 'Name,Taxon ID,Count\n'
+    summary = 'Name,Taxon ID,Count,scCount,% sc\n'
     summ_h = defaultdict(list)
     for name, taxid in taxa.items():
-        count = count_search('sample_taxon_id:%d AND %s' %
-                             (taxid, ' AND '.join(rna_seq_query)))
-        summ_h[count].append((name, taxid, count))
+        query = 'sample_taxon_id:%d AND %s' % (taxid, ' AND '.join(rna_seq_query))
+        count = count_search(query)
+        sc_query = query + ' AND (' + ' OR '.join(single_cell_query) + ')'
+        sc_count = count_search(sc_query)
+        summ_h[count].append((name, taxid, count, sc_count))
     for count, tups in sorted(summ_h.items(), reverse=True):
         for tup in tups:
-            name, taxid, count = tup
-            summary += ('%s,%d,%d\n' % (name, taxid, count))
+            name, taxid, count, sc_count = tup
+            summary += ('%s,%d,%d,%d,%0.1f\n' % (name, taxid, count, sc_count, (100.0 * sc_count) / count))
     return summary
+
+
+def search_iterator(search, size):
+    url = '%s?q=%s&size=%d' % (sradbv2_search_url, quote(search), size)
+    log.info('GET ' + url, 'sradbv2.py')
+    response = urlopen(url)
+    j, ct = cgi.parse_header(response.headers.get('Content-type', ''))
+    encodec = ct.get('charset', 'utf-8')
+    log.info('Charset: ' + encodec, 'sradbv2.py')
+    payload = response.read().decode(encodec)
+    jn = json.loads(payload)
+    tot_hits = jn['hits']['total']
+    num_hits = len(jn['hits']['hits'])
+    assert num_hits <= tot_hits
+    log.info('Writing hits [%d, %d) out of %d' % (0, num_hits, tot_hits), 'sradbv2.py')
+    for hit in jn['hits']['hits']:
+        yield hit
+    nscrolls = 1
+    while num_hits < tot_hits:
+        url = sradbv2_scroll_url + '?scroll_id=' + jn['_scroll_id']
+        log.info('GET ' + url, 'sradbv2.py')
+        response = urlopen(url)
+        payload = response.read().decode(encodec)
+        jn = json.loads(payload)
+        old_num_hits = num_hits
+        num_hits += len(jn['hits']['hits'])
+        assert num_hits <= tot_hits
+        log.info('Writing hits [%d, %d) out of %d, scroll=%d' %
+                 (old_num_hits, num_hits, tot_hits, nscrolls), 'sradbv2.py')
+        for hit in jn['hits']['hits']:
+            yield hit
+        nscrolls += 1
+
+
+class ReservoirSampler(object):
+    """ Simple reservoir sampler """
+
+    def __init__(self, k):
+        """ Initialize given k, the size of the reservoir """
+        self.k = k
+        self.r = []
+        self.n = 0
+
+    def add(self, obj):
+        """ Add object to sampling domain """
+        if self.n < self.k:
+            self.r.append(obj)
+        else:
+            j = random.randint(0, self.n)
+            if j < self.k:
+                self.r[j] = obj
+        self.n += 1
+
+    def __iter__(self):
+        """ Return iterator over the sample """
+        return iter(self.r)
+
+
+def size_dist(search, size, stop_after, max_n):
+    samp = ReservoirSampler(max_n)
+    for i, hit in enumerate(search_iterator(search, size)):
+        if '_source' not in hit or 'run_bases' not in hit['_source']:
+            print('Bad record: ' + str(hit), sys.stderr)
+        else:
+            samp.add(hit['_source']['run_bases'])
+            if i >= stop_after-1:
+                break
+    for n in samp:
+        print(n)
 
 
 if __name__ == '__main__':
@@ -272,6 +350,8 @@ if __name__ == '__main__':
             query(args['--delay'], args['--nostdout'], args['--noheader'], query_file=args['<file>'])
         elif args['summarize-rna']:
             print(summarize_rna())
+        elif args['size-dist']:
+            size_dist(args['<lucene-search>'], int(args['--size']), int(args['--stop-after']), int(args['<n>']))
     except Exception:
         log.error('Uncaught exception:', 'sradbv2.py')
         raise
