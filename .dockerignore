@@ -1,10 +1,8 @@
-workflow/images
 workflow/*/output
-workflow/*/*.img
-workflow/*/*.img.gz
 vagrant/.vagrant
 vagrant/vagrant.log
 docker/minio/src
+testing
 **/__pycache__
 **/*.pyc
 **/.ipynb_checkpoints
