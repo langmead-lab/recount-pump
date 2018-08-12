@@ -54,13 +54,13 @@ def run(skip_run, ini_fn, section):
     if not skip_run:
         os.system('vagrant up 2>&1 | tee vagrant.log')
     attachments = []
-    with open('vagrant.log', 'rb') as fh:
+    with open('vagrant.log', 'r') as fh:
         for ln in fh:
-            if b'===HAPPY' in ln:
-                st = ln[ln.find(b'===HAPPY')+9:].rstrip()
+            if '===HAPPY' in ln:
+                st = ln[ln.find('===HAPPY')+9:].rstrip()
                 attachments.append({'text': st, 'color': 'good'})
-            elif b'===SAD' in ln:
-                st = ln[ln.find(b'===SAD')+7:].rstrip()
+            elif '===SAD' in ln:
+                st = ln[ln.find('===SAD')+7:].rstrip()
                 attachments.append({'text': st, 'color': 'danger'})
     requests.put(slack_url, json={
         'username': 'webhookbot',
