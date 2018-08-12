@@ -35,12 +35,13 @@ import tempfile
 import shutil
 import pytest
 import run
+from datetime import datetime
 from docopt import docopt
 from queueing.service import queueing_service_from_config
 from toolbox import session_maker_from_config
 from analysis import Analysis, add_analysis
 from input import Input, import_input_set
-from pump import Project, add_project
+from pump import Project, ProjectEvent, add_project
 from reference import Reference, SourceSet, AnnotationSet, add_reference, add_source_set, \
     add_annotation_set, add_sources_to_set, add_annotations_to_set, add_source, add_annotation
 from mover import Mover
@@ -51,7 +52,7 @@ except ImportError:
     sys.exc_clear()
 
 
-def do_job(body, cluster_ini):
+def do_job(body, cluster_ini, session):
     """
     Given a job-attempt description string, parse the string and execute the
     corresponding job attempt.  The description string itself is composed in
@@ -64,21 +65,31 @@ def do_job(body, cluster_ini):
 
     TODO: should jobs have unique ids assigned by the db?
     """
-    job_id, job_name, input_string, analysis_string, reference_string = \
+    proj_id, job_name, input_string, analysis_string, reference_string = \
         Project.parse_job_string(body)
     job_name = job_name.decode()
     analysis_string = analysis_string.decode()
+    cluster_name, _, _ = read_cluster_config(cluster_ini)
     input_id, srr, srp, url1, url2, url3, \
         checksum1, checksum2, checksum3, retrieval = \
         Input.parse_job_string(input_string)
-    log.info('got job: {id=%d, name="%s", input="%s", analysis="%s", reference="%s"}' %
-             (int(job_id), job_name, input_string, analysis_string, reference_string), 'cluster.py')
+    log.info('got job: {proj_id=%d, name="%s", input="%s", analysis="%s", reference="%s"}' %
+             (int(proj_id), job_name, input_string, analysis_string, reference_string), 'cluster.py')
+    event = ProjectEvent(project_id=proj_id, time=datetime.utcnow(),
+                         event='Begin "%s" on "%s"' % (srr, cluster_name))
+    session.add(event)
+    session.commit()
     tmp_dir = tempfile.mkdtemp()
     tmp_fn = os.path.join(tmp_dir, 'accessions.txt')
     assert not os.path.exists(tmp_fn)
     with open(tmp_fn, 'wb') as fh:
         fh.write(b','.join([srr, srp, reference_string]) + b'\n')
-    return run.run_job(job_name, [tmp_fn], analysis_string, cluster_ini)
+    ret = run.run_job('attempt%d' % event.id, [tmp_fn], analysis_string, cluster_ini)
+    event = ProjectEvent(project_id=proj_id, time=datetime.utcnow(),
+                         event='End "%s" on "%s", returning %d' % (srr, cluster_name, ret))
+    session.add(event)
+    session.commit()
+    return ret
 
 
 def ready_for_analysis(analysis, analysis_dir):
@@ -179,7 +190,7 @@ def job_loop(project_id, q_ini, q_section, cluster_ini, session,
         if body is not None:
             success += 1
             log.info('Job start', 'cluster.py')
-            if do_job(body, cluster_ini):
+            if do_job(body, cluster_ini, session):
                 log.info('Job success, acknowledging', 'cluster.py')
                 qserv.ack()
                 log.info('Acknowledged', 'cluster.py')
