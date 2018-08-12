@@ -207,10 +207,14 @@ import_input_set() (
     set -exo pipefail
     json_file=$1
     input_set_name=$2
-    python src/input.py import-json "${json_file}" "${input_set_name}" | tail -n 1   
+    limit=$3
+    max_bases=$4
+    python src/input.py import-json \
+        --limit "${limit}" --max-bases "${max_bases}" \
+        "${json_file}" "${input_set_name}" | tail -n 1   
 )
 
-isid=$(import_input_set "${input_fn}" 'ce10_rna_seq')
+isid=$(import_input_set "${input_fn}" 'ce10_rna_seq' 10 5000000)
 test -n "${isid}"
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
@@ -267,3 +271,9 @@ python src/cluster.py \
     --cluster-ini /temporary/.test-cluster.ini \
     --max-fail 3 \
     --poll-seconds 1
+
+echo "++++++++++++++++++++++++++++++++++++++++++++++"
+echo "        PHASE 10: Print schema"
+echo "++++++++++++++++++++++++++++++++++++++++++++++"
+
+python src/schema_graph.py ${db_arg} --prefix /output/ce10_test plot
