@@ -225,16 +225,16 @@ def process_search(search, size, gzip_output, output_fn):
 
 
 taxa = {'A_thaliana': 3702,      # 4. arabidopsis
-        'B taurus': 9913,                # 9: cow
-        'C elegans': 6239,    # >10: roundworm
-        'D rerio': 7955,               # 3: zebrafish
-        'D melanogaster': 7227,   # 5: fruitfly
-        'H_sapiens': 9606,              # 2: human
-        'M musculus': 10090,             # 1: mouse
-        'O aries': 9940,                # 10: sheep
-        'R norvegicus': 10116,        # 7: rat
-        'S cerevisiae': 4932,  # 6: yeast
-        'Z mays': 4577}                  # 8: corn
+        'B taurus': 9913,        # 9: cow
+        'C elegans': 6239,       # >10: roundworm
+        'D rerio': 7955,         # 3: zebrafish
+        'D melanogaster': 7227,  # 5: fruitfly
+        'H_sapiens': 9606,       # 2: human
+        'M musculus': 10090,     # 1: mouse
+        'O aries': 9940,         # 10: sheep
+        'R norvegicus': 10116,   # 7: rat
+        'S cerevisiae': 4932,    # 6: yeast
+        'Z mays': 4577}          # 8: corn
 
 
 rna_seq_query = ['experiment_library_strategy:"rna seq"',
