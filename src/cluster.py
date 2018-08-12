@@ -84,6 +84,11 @@ def do_job(body, cluster_ini, session):
     assert not os.path.exists(tmp_fn)
     with open(tmp_fn, 'wb') as fh:
         fh.write(b','.join([srr, srp, reference_string]) + b'\n')
+    if analysis_string.startswith('docker://'):
+        image_base_fn = analysis_string.split('/')[-1] + '.simg'
+        image_fn = os.path.join(os.environ['SINGULARITY_CACHEDIR'], image_base_fn)
+        assert os.path.exists(image_fn)
+        analysis_string = image_fn
     ret = run.run_job('attempt%d' % event.id, [tmp_fn], analysis_string, cluster_ini)
     event = ProjectEvent(project_id=proj_id, time=datetime.utcnow(),
                          event='End "%s" on "%s", returning %d' % (srr, cluster_name, ret))
@@ -149,7 +154,7 @@ def download_reference(reference, cluster_name, reference_dir, session,
 
 
 def ready_reference(reference, reference_dir):
-    pass
+    pass  # TODO
 
 
 def prepare(project_id, cluster_ini, session, aws_profile=None, s3_endpoint_url=None,
@@ -161,7 +166,22 @@ def prepare(project_id, cluster_ini, session, aws_profile=None, s3_endpoint_url=
     # Handle analysis
     analysis = session.query(Analysis).get(proj.analysis_id)
     analysis_ready = True
-    if not analysis.image_url.startswith('docker://'):
+    if analysis.image_url.startswith('docker://'):
+        image_name = analysis.image_url[9:].split('/')[-1] + '.simg'
+        if 'SINGULARITY_CACHEDIR' not in os.environ:
+            raise RuntimeError('Expected SINGULARITY_CACHEDIR in environment')
+        image_fn = os.path.join(os.environ['SINGULARITY_CACHEDIR'], image_name)
+        log.info('Checking existence of image file "%s" in cache dir "%s"' %
+                 (image_name, os.environ['SINGULARITY_CACHEDIR']), 'cluster.py')
+        if get_image and not os.path.exists(image_fn):
+            cmd = 'singularity pull ' + analysis.image_url
+            log.info('pulling: "%s"' % cmd, 'cluster.py')
+            ret = os.system(cmd)
+            if ret != 0:
+                raise RuntimeError('Command "%s" exited with level %d' % (cmd, ret))
+            if not os.path.exists(image_fn):
+                raise RuntimeError('Did pull "%s" but file "%s" was not created' % (cmd, image_fn))
+    else:
         if get_image and not ready_for_analysis(analysis, analysis_dir):
             download_image(analysis.image_url, cluster_name,
                            analysis_dir, aws_profile, s3_endpoint_url)
