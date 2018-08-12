@@ -10,3 +10,5 @@ psutil==5.4.6
 globus-sdk==1.3.0
 pytest==3.6.2
 psycopg2-binary==2.7.5
+pydotplus==2.0.2
+sqlalchemy_schemadisplay

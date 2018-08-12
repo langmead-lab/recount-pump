@@ -1,7 +1,7 @@
 FROM python:3.4-jessie
 WORKDIR /code
 
-RUN apt-get update && apt-get install -y libarchive-dev squashfs-tools
+RUN apt-get update && apt-get install -y libarchive-dev squashfs-tools graphviz
 
 RUN wget -q https://github.com/singularityware/singularity/releases/download/2.5.2/singularity-2.5.2.tar.gz && \
     tar xf singularity-2.5.2.tar.gz && \
@@ -12,9 +12,9 @@ RUN wget -q https://github.com/singularityware/singularity/releases/download/2.5
     cd .. && \
     rm -rf singularity-2.5.2 singularity-2.5.2.tar.gz
 
-ADD requirements.txt /code
-
 RUN pip install --upgrade pip
+
+ADD requirements.txt /code
 RUN pip install --quiet -r requirements.txt
 
 RUN mkdir -p /root/.recount
