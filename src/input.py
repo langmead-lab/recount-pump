@@ -16,8 +16,11 @@ Usage:
   input filter-table [options] <prefix> <species> <sql-filter>
   input inputs-from-table [options] <prefix> <species>
                           <sql-filter> <input-set-name>
+  input import-json [options] <json-file> <input-set-name>
 
 Options:
+  --profile=<profile>      AWS credentials profile section [default: default].
+  --endpoint-url=<url>     Endpoint URL for S3 API.  If not set, uses AWS default.
   --db-ini <ini>           Database ini file [default: ~/.recount/db.ini].
   --db-section <section>   ini file section for database [default: client].
   --log-ini <ini>          ini file for log aggregator [default: ~/.recount/log.ini].
@@ -33,6 +36,10 @@ from __future__ import print_function
 import os
 import log
 import pytest
+import gzip
+import json
+import codecs
+import tempfile
 from docopt import docopt
 from sqlalchemy import Column, ForeignKey, Integer, String, Sequence, Table
 from sqlalchemy.orm import relationship
@@ -266,6 +273,38 @@ def inputs_from_table(prefix, species, sql_filter, input_set_name, session):
     return set_id, input_ids
 
 
+def import_json(json_fn, input_set_name, session):
+    js = json.load(codecs.getreader("utf-8")(gzip.open(json_fn)) if json_fn.endswith('.gz') else open(json_fn))
+    inputs = []
+    for rec in js:
+        acc_r = rec['_id']
+        acc_s = rec['_source']['study_accession']
+        inp = Input(acc_r=acc_r, acc_s=acc_s,
+                    url_1=acc_r, url_2=None, url_3=None,
+                    checksum_1=None, checksum_2=None, checksum_3=None,
+                    retrieval_method='sra')
+        inputs.append(inp)
+        session.add(inp)
+    session.commit()
+    set_id = add_input_set(input_set_name, session)
+    add_inputs_to_set([set_id] * len(inputs),
+                      list(map(lambda x: x.id, inputs)),
+                      session)
+    return set_id
+
+
+def add_inputs_to_set(set_ids, input_ids, my_session):
+    """
+    Add inputs to input set.
+    """
+    for set_id, input_id in zip(set_ids, input_ids):
+        inp = my_session.query(Input).get(input_id)
+        input_set = my_session.query(InputSet).get(set_id)
+        input_set.inputs.append(inp)
+    log.info('Imported %d inputs to sets' % len(input_ids), 'input.py')
+    my_session.commit()
+
+
 _lambda_reads_1 = 'http://www.cs.jhu.edu/~langmea/resources/reads_1.fq'
 _lambda_reads_1_md5 = '8f4a7d568d2e930922e25c9d6e1b482f'
 _lambda_reads_2 = 'http://www.cs.jhu.edu/~langmea/resources/reads_2.fq'
@@ -337,6 +376,36 @@ def test_import_inputset(session):
     os.remove('.tmp.csv')
 
 
+def test_import_json_1(session):
+    json = '[ { "_id": "SRR123", "_source": { "study_accession": "SRP123" } } ]\n'
+    tmpdir = tempfile.mkdtemp()
+    json_fn = os.path.join(tmpdir, 'import.json')
+    with open(json_fn, 'w') as fh:
+        fh.write(json)
+    iset_id = import_json(json_fn, 'iset1', session)
+    iset = session.query(InputSet).get(iset_id)
+    assert 1 == len(iset.inputs)
+
+
+def test_import_json_2(session):
+    json = """[ { "_id": "SRR123", "_source": { "study_accession": "SRP123" } },
+{ "_id": "SRR1234", "_source": { "study_accession": "SRP1234" } },
+{ "_id": "SRR12345", "_source": { "study_accession": "SRP12345" } },
+{ "_id": "SRR123456", "_source": { "study_accession": "SRP123456" } } ]
+"""
+    tmpdir = tempfile.mkdtemp()
+    json_fn = os.path.join(tmpdir, 'import.json')
+    with open(json_fn, 'w') as fh:
+        fh.write(json)
+    iset_id = import_json(json_fn, 'iset1', session)
+    iset = session.query(InputSet).get(iset_id)
+    assert 4 == len(iset.inputs)
+    assert 'SRR123' == iset.inputs[0].acc_r
+    assert 'SRR1234' == iset.inputs[1].acc_r
+    assert 'SRR12345' == iset.inputs[2].acc_r
+    assert 'SRR123456' == iset.inputs[3].acc_r
+
+
 def test_job_string1():
     inp1 = Input(id=1, acc_r='SRR123', acc_s='SRP123', retrieval_method="web",
                  url_1='url1', checksum_1='checksum1')
@@ -393,6 +462,9 @@ if __name__ == '__main__':
             Session = session_maker_from_config(db_ini, args['--db-section'])
             print(inputs_from_table(args['<prefix>'], args['<species>'],
                                     args['<sql-filter>'], args['<input-set-name>'], Session()))
+        elif args['import-json']:
+            Session = session_maker_from_config(db_ini, args['--db-section'])
+            print(import_json(args['<json-file>'], args['<input-set-name>'], Session()))
     except Exception:
         log.error('Uncaught exception:', 'input.py')
         raise
