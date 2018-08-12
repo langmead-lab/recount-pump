@@ -748,6 +748,9 @@ if __name__ == '__main__':
     log.init_logger(log.LOG_GROUP_NAME, log_ini=agg_ini, agg_level=args['--log-level'])
     log.init_logger('sqlalchemy', log_ini=agg_ini, agg_level=args['--log-level'],
                     sender='sqlalchemy')
+    globus_ini = args['--globus-ini']
+    globus_ini = os.path.expanduser(globus_ini)
+    enable_globus = os.path.exists(globus_ini)
     try:
         log.info('In main', 'mover.py')
         if args['exists']:
@@ -756,7 +759,7 @@ if __name__ == '__main__':
                       curl_exe=args['--curl'],
                       globus_ini=args['--globus-ini'],
                       globus_section=args['--globus-section'],
-                      enable_globus=True, enable_s3=True, enable_web=True)
+                      enable_globus=enable_globus, enable_s3=True, enable_web=True)
             print(m.exists(args['<file>']))
         if args['get']:
             m = Mover(profile=args['--profile'],
@@ -764,7 +767,7 @@ if __name__ == '__main__':
                       curl_exe=args['--curl'],
                       globus_ini=args['--globus-ini'],
                       globus_section=args['--globus-section'],
-                      enable_globus=True, enable_s3=True, enable_web=True)
+                      enable_globus=enable_globus, enable_s3=True, enable_web=True)
             m.get(args['<source>'], args['<dest>'])
         elif args['put']:
             m = Mover(profile=args['--profile'],
@@ -772,7 +775,7 @@ if __name__ == '__main__':
                       curl_exe=args['--curl'],
                       globus_ini=args['--globus-ini'],
                       globus_section=args['--globus-section'],
-                      enable_globus=True, enable_s3=True, enable_web=True)
+                      enable_globus=enable_globus, enable_s3=True, enable_web=True)
             m.put(args['<source>'], args['<dest>'])
         elif args['nop']:
             pass
