@@ -60,7 +60,7 @@ system = singularity
 ref_base = $PWD/ref
 temp_base = $PWD/temp
 input_base = $PWD/input
-output_base = $PWD/output
+output_base = /output
 analysis_dir = $PWD/analysis
 
 ref_mount = /container-mounts/recount/ref
