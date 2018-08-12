@@ -63,6 +63,38 @@ nested_fields = {'attributes': ['tag', 'value'],
                  'xrefs': ['db', 'id']}
 
 
+def search_iterator(search, size):
+    url = '%s?q=%s&size=%d' % (sradbv2_search_url, quote(search), size)
+    log.info('GET ' + url, 'sradbv2.py')
+    response = urlopen(url)
+    j, ct = cgi.parse_header(response.headers.get('Content-type', ''))
+    encodec = ct.get('charset', 'utf-8')
+    log.info('Charset: ' + encodec, 'sradbv2.py')
+    payload = response.read().decode(encodec)
+    jn = json.loads(payload)
+    tot_hits = jn['hits']['total']
+    num_hits = len(jn['hits']['hits'])
+    assert num_hits <= tot_hits
+    log.info('Writing hits [%d, %d) out of %d' % (0, num_hits, tot_hits), 'sradbv2.py')
+    for hit in jn['hits']['hits']:
+        yield hit
+    nscrolls = 1
+    while num_hits < tot_hits:
+        url = sradbv2_scroll_url + '?scroll_id=' + jn['_scroll_id']
+        log.info('GET ' + url, 'sradbv2.py')
+        response = urlopen(url)
+        payload = response.read().decode(encodec)
+        jn = json.loads(payload)
+        old_num_hits = num_hits
+        num_hits += len(jn['hits']['hits'])
+        assert num_hits <= tot_hits
+        log.info('Writing hits [%d, %d) out of %d, scroll=%d' %
+                 (old_num_hits, num_hits, tot_hits, nscrolls), 'sradbv2.py')
+        for hit in jn['hits']['hits']:
+            yield hit
+        nscrolls += 1
+
+
 def download_and_extract_fields(run_acc, study_acc, header_fields):
     url = "%s/%s" % (sradbv2_full_url, run_acc)
     response = urlopen(url)
@@ -265,38 +297,6 @@ def summarize_rna():
     return summary
 
 
-def search_iterator(search, size):
-    url = '%s?q=%s&size=%d' % (sradbv2_search_url, quote(search), size)
-    log.info('GET ' + url, 'sradbv2.py')
-    response = urlopen(url)
-    j, ct = cgi.parse_header(response.headers.get('Content-type', ''))
-    encodec = ct.get('charset', 'utf-8')
-    log.info('Charset: ' + encodec, 'sradbv2.py')
-    payload = response.read().decode(encodec)
-    jn = json.loads(payload)
-    tot_hits = jn['hits']['total']
-    num_hits = len(jn['hits']['hits'])
-    assert num_hits <= tot_hits
-    log.info('Writing hits [%d, %d) out of %d' % (0, num_hits, tot_hits), 'sradbv2.py')
-    for hit in jn['hits']['hits']:
-        yield hit
-    nscrolls = 1
-    while num_hits < tot_hits:
-        url = sradbv2_scroll_url + '?scroll_id=' + jn['_scroll_id']
-        log.info('GET ' + url, 'sradbv2.py')
-        response = urlopen(url)
-        payload = response.read().decode(encodec)
-        jn = json.loads(payload)
-        old_num_hits = num_hits
-        num_hits += len(jn['hits']['hits'])
-        assert num_hits <= tot_hits
-        log.info('Writing hits [%d, %d) out of %d, scroll=%d' %
-                 (old_num_hits, num_hits, tot_hits, nscrolls), 'sradbv2.py')
-        for hit in jn['hits']['hits']:
-            yield hit
-        nscrolls += 1
-
-
 class ReservoirSampler(object):
     """ Simple reservoir sampler """
 
@@ -325,7 +325,7 @@ def size_dist(search, size, stop_after, max_n):
     samp = ReservoirSampler(max_n)
     for i, hit in enumerate(search_iterator(search, size)):
         if '_source' not in hit or 'run_bases' not in hit['_source']:
-            print('Bad record: ' + str(hit), sys.stderr)
+            print('Bad record: ' + str(hit), file=sys.stderr)
         else:
             samp.add(hit['_source']['run_bases'])
             if i >= stop_after-1:
