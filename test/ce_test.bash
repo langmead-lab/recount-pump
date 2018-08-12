@@ -11,7 +11,7 @@ set -ex
 
 # postgres running at db:5432
 # (see docker-compose.yml)
-cat >.test-db.ini <<EOF
+cat >/temporary/.test-db.ini <<EOF
 [client]
 url=postgres://recount:recount-postgres@db:5432/recount-test
 password=recount-postgres
@@ -22,7 +22,7 @@ EOF
 
 # rabbitmq running at rmq:5672
 # (see docker-compose.yml)
-cat >.test-queue.ini <<EOF
+cat >/temporary/.test-queue.ini <<EOF
 [queue]
 type=rmq
 host=q
@@ -33,7 +33,7 @@ EOF
 
 endpoint_url='http://s3:9000'
 
-cat >.test-aws_config <<EOF
+cat >/temporary/.test-aws_config <<EOF
 [default]
 region = us-east-1
 output = text
@@ -41,18 +41,18 @@ s3 =
     signature_version = s3v4
 EOF
 
-cat >.test-aws_credentials <<EOF
-[minio]
+cat >/temporary/.test-aws_credentials <<EOF
+[default]
 aws_access_key_id = minio
 aws_secret_access_key = minio123
 EOF
 
-export AWS_CONFIG_FILE=.test-aws_config
-export AWS_CREDENTIAL_FILE=.test-aws_credentials
+export AWS_CONFIG_FILE=/temporary/.test-aws_config
+export AWS_SHARED_CREDENTIALS_FILE=/temporary/.test-aws_credentials
 
 # Simple cluster configuration using PWD as base for all directories
 
-cat >.test-cluster.ini <<EOF
+cat >/temporary/.test-cluster.ini <<EOF
 [cluster]
 name = test-cluster
 system = singularity
@@ -69,8 +69,9 @@ input_mount = /container-mounts/recount/input
 output_mount = /output
 EOF
 
-db_arg="--db-ini .test-db.ini"
-q_arg="--queue-ini .test-queue.ini"
+db_arg="--db-ini /temporary/.test-db.ini"
+q_arg="--queue-ini /temporary/.test-queue.ini"
+s3_arg="--endpoint-url ${endpoint_url}"
 
 TAXID=6239
 RUN_NAME=ce10_test
@@ -92,6 +93,7 @@ echo "++++++++++++++++++++++++++++++++++++++++++++++"
 #    retrieval_method = Column(String(64))
 
 ssid=$(python src/reference.py add-source-set | tail -n 1)
+test -n "${ssid}"
 
 add_source() (
     set -exo pipefail
@@ -103,6 +105,8 @@ add_source() (
 
 srcid1=$(add_source 's3://recount-pump/ref/ce10/hisat2_idx.tar.gz' 's3')
 srcid2=$(add_source 's3://recount-pump/ref/ce10/fasta.tar.gz' 's3')
+test -n "${srcid1}"
+test -n "${srcid2}"
 
 python src/reference.py ${db_arg} \
     add-sources-to-set ${ssid} ${srcid1} ${ssid} ${srcid2}
@@ -114,6 +118,7 @@ python src/reference.py ${db_arg} \
 #    retrieval_method = Column(String(64))
 
 asid=$(python src/reference.py ${db_arg} add-annotation-set | tail -n 1)
+test -n "${asid}"
 
 add_annotation() (
     set -exo pipefail
@@ -125,6 +130,7 @@ add_annotation() (
 )
 
 anid1=$(add_annotation ${TAXID} 's3://recount-pump/ref/ce10/gtf.tar.gz' 's3')
+test -n "${anid1}"
 
 python src/reference.py ${db_arg} \
     add-annotations-to-set ${asid} ${anid1}
@@ -150,6 +156,7 @@ add_reference() (
 )
 
 ref_id=$(add_reference ${TAXID} 'ce10' 'caenorhabditis_elegans' ${ssid} ${asid})
+test -n "${ref_id}"
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 2: Load analysis data"
@@ -168,6 +175,7 @@ add_analysis() (
 )
 
 rna_seq_lite_id=$(add_analysis rna_seq_lite "${RNA_SEQ_LITE}")
+test -n "${rna_seq_lite_id}"
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 3: Load input data"
@@ -188,36 +196,22 @@ echo "++++++++++++++++++++++++++++++++++++++++++++++"
 #    name = Column(String(1024))
 #    inputs = relationship("Input", secondary=input_association_table)
 
-add_input_set() (
+input_url='s3://meta/ce10_test/ce10_test.json.gz'
+input_fn=$(basename ${input_url})
+
+python src/mover.py ${s3_arg} get "${input_url}" "${input_fn}"
+
+[ ! -f "${input_fn}" ] && echo "Could not get input json" && exit 1 
+
+import_input_set() (
     set -exo pipefail
-    name=$1
-    python src/input.py ${db_arg} \
-        add-input-set ${name} | tail -n 1
+    json_file=$1
+    input_set_name=$2
+    python src/input.py import-json "${json_file}" "${input_set_name}" | tail -n 1   
 )
 
-isid=$(add_input_set "ce10_rna_seq")
-
-add_input() (
-    set -exo pipefail
-    acc_r=$1
-    acc_s=$2
-    url_1=$3
-    retrieval_method=$4
-    python src/input.py ${db_arg} \
-        add-input ${acc_r} ${acc_s} ${url_1} \
-        'NA' 'NA' 'NA' 'NA' 'NA' ${retrieval_method} | tail -n 1
-)
-
-# TODO: get these from SRAv2 JSON instead of hard-coding them here
-in1=$(add_input SRR5510884 SRP106481 ce10 s3)
-in2=$(add_input SRR5510089 SRP106481 ce10 s3)
-in3=$(add_input SRR5509792 SRP106481 ce10 s3)
-in4=$(add_input SRR2054434 SRP000401 ce10 s3)
-in5=$(add_input SRR2054439 SRP000401 ce10 s3)
-
-python src/input.py ${db_arg} add-inputs-to-set \
-    ${isid} ${in1} ${isid} ${in2} ${isid} ${in3} \
-    ${isid} ${in4} ${isid} ${in5} | tail -n 1
+isid=$(import_input_set "${input_fn}" 'ce10_rna_seq')
+test -n "${isid}"
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 4: Set up project"
@@ -239,7 +233,8 @@ add_project() (
         add-project ${name} ${analysis_id} ${input_set_id} ${reference_id} | tail -n 1
 )
 
-proj_id=$(add_project ce10-project ${isid} ${rna_seq_lite_id} ${ref_id})
+proj_id=$(add_project 'ce10-project' ${isid} ${rna_seq_lite_id} ${ref_id})
+test -n "${proj_id}"
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 5: Summarize project"
@@ -259,9 +254,8 @@ echo "++++++++++++++++++++++++++++++++++++++++++++++"
 
 python src/cluster.py \
     prepare ${proj_id} \
-    ${db_arg} ${q_arg} \
-    --endpoint-url ${endpoint_url} \
-    --cluster-ini .test-cluster.ini
+    ${db_arg} ${q_arg} ${s3_arg} \
+    --cluster-ini /temporary/.test-cluster.ini
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 9: Run project"
@@ -270,6 +264,6 @@ echo "++++++++++++++++++++++++++++++++++++++++++++++"
 python src/cluster.py \
     run ${proj_id} \
     ${db_arg} ${q_arg} \
-    --cluster-ini .test-cluster.ini \
+    --cluster-ini /temporary/.test-cluster.ini \
     --max-fail 3 \
     --poll-seconds 1

@@ -44,4 +44,5 @@ services:
     volumes:
       - ./testing/images:/images
       - ./testing/output:/output
+      - ./testing/temp:/temporary
     command: /code/test_entry.sh
