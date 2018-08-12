@@ -42,5 +42,6 @@ services:
       RECOUNT_IMAGES: /images
       SINGULARITY_CACHEDIR: /images
     volumes:
-      - ./workflow/images:/images
+      - ./testing/images:/images
+      - ./testing/output:/output
     command: /code/test_entry.sh
