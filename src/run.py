@@ -128,7 +128,7 @@ def run_job(name, inputs, image, cluster_ini, singularity=True, keep=False):
         shutil.rmtree(os.path.join(temp_base, name))
 
     print('SUCCESS' if ret == 0 else 'FAILURE', file=sys.stderr)
-    sys.exit(ret)
+    return ret == 0
 
 
 def go(args):
