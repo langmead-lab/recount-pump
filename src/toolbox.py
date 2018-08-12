@@ -5,6 +5,14 @@
 
 import os
 import hashlib
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from base import Base
+
+try:
+    from ConfigParser import RawConfigParser
+except ImportError:
+    from configparser import RawConfigParser
 
 
 def generate_file_md5(fn, blocksize=2**20):
@@ -23,14 +31,6 @@ def generate_file_md5(fn, blocksize=2**20):
 
 
 def session_maker_from_config(fn, section='client'):
-    from sqlalchemy import create_engine
-    from sqlalchemy.orm import sessionmaker
-    from base import Base
-    try:
-        from ConfigParser import RawConfigParser
-    except ImportError:
-        from configparser import RawConfigParser
-
     config = RawConfigParser(allow_no_value=True)
     if not os.path.exists(fn):
         raise RuntimeError('No such ini file: "%s"' % fn)
