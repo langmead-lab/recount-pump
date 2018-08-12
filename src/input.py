@@ -19,6 +19,8 @@ Usage:
   input import-json [options] <json-file> <input-set-name>
 
 Options:
+  --limit <ceiling>        Import at most this many records.
+  --max-bases <max>        Filter out datasets larger than this.
   --profile=<profile>      AWS credentials profile section [default: default].
   --endpoint-url=<url>     Endpoint URL for S3 API.  If not set, uses AWS default.
   --db-ini <ini>           Database ini file [default: ~/.recount/db.ini].
@@ -273,10 +275,13 @@ def inputs_from_table(prefix, species, sql_filter, input_set_name, session):
     return set_id, input_ids
 
 
-def import_json(json_fn, input_set_name, session):
+def import_json(json_fn, input_set_name, session, limit=None, max_bases=None):
     js = json.load(codecs.getreader("utf-8")(gzip.open(json_fn)) if json_fn.endswith('.gz') else open(json_fn))
     inputs = []
     for rec in js:
+        bases = rec['_source']['run_bases']
+        if bases is not None and max_bases is not None and bases > int(max_bases):
+            continue
         acc_r = rec['_id']
         acc_s = rec['_source']['study_accession']
         inp = Input(acc_r=acc_r, acc_s=acc_s,
@@ -285,6 +290,8 @@ def import_json(json_fn, input_set_name, session):
                     retrieval_method='sra')
         inputs.append(inp)
         session.add(inp)
+        if limit is not None and len(inputs) >= int(limit):
+            break
     session.commit()
     set_id = add_input_set(input_set_name, session)
     add_inputs_to_set([set_id] * len(inputs),
@@ -377,7 +384,7 @@ def test_import_inputset(session):
 
 
 def test_import_json_1(session):
-    json = '[ { "_id": "SRR123", "_source": { "study_accession": "SRP123" } } ]\n'
+    json = '[ { "_id": "SRR123", "_source": { "study_accession": "SRP123", "run_bases": 500 } } ]\n'
     tmpdir = tempfile.mkdtemp()
     json_fn = os.path.join(tmpdir, 'import.json')
     with open(json_fn, 'w') as fh:
@@ -388,10 +395,10 @@ def test_import_json_1(session):
 
 
 def test_import_json_2(session):
-    json = """[ { "_id": "SRR123", "_source": { "study_accession": "SRP123" } },
-{ "_id": "SRR1234", "_source": { "study_accession": "SRP1234" } },
-{ "_id": "SRR12345", "_source": { "study_accession": "SRP12345" } },
-{ "_id": "SRR123456", "_source": { "study_accession": "SRP123456" } } ]
+    json = """[ { "_id": "SRR123", "_source": { "study_accession": "SRP123", "run_bases": 500 } },
+{ "_id": "SRR1234", "_source": { "study_accession": "SRP1234", "run_bases": 500 } },
+{ "_id": "SRR12345", "_source": { "study_accession": "SRP12345", "run_bases": 500 } },
+{ "_id": "SRR123456", "_source": { "study_accession": "SRP123456", "run_bases": 500 } } ]
 """
     tmpdir = tempfile.mkdtemp()
     json_fn = os.path.join(tmpdir, 'import.json')
@@ -464,7 +471,9 @@ if __name__ == '__main__':
                                     args['<sql-filter>'], args['<input-set-name>'], Session()))
         elif args['import-json']:
             Session = session_maker_from_config(db_ini, args['--db-section'])
-            print(import_json(args['<json-file>'], args['<input-set-name>'], Session()))
+            print(import_json(args['<json-file>'], args['<input-set-name>'],
+                              Session(), limit=args['--limit'],
+                              max_bases=args['--max-bases']))
     except Exception:
         log.error('Uncaught exception:', 'input.py')
         raise
