@@ -66,7 +66,7 @@ analysis_dir = $PWD/analysis
 ref_mount = /container-mounts/recount/ref
 temp_mount = /container-mounts/recount/temp
 input_mount = /container-mounts/recount/input
-output_mount = /container-mounts/recount/output
+output_mount = /output
 EOF
 
 db_arg="--db-ini .test-db.ini"
@@ -214,14 +214,10 @@ in2=$(add_input SRR5510089 SRP106481 ce10 s3)
 in3=$(add_input SRR5509792 SRP106481 ce10 s3)
 in4=$(add_input SRR2054434 SRP000401 ce10 s3)
 in5=$(add_input SRR2054439 SRP000401 ce10 s3)
-in6=$(add_input SRR578035 SRP000401 ce10 s3)
-in7=$(add_input SRR3170393 SRP070155 ce10 s3)
-in8=$(add_input SRR1557855 SRP045778 ce10 s3)
 
 python src/input.py ${db_arg} add-inputs-to-set \
     ${isid} ${in1} ${isid} ${in2} ${isid} ${in3} \
-    ${isid} ${in4} ${isid} ${in5} ${isid} ${in6} \
-    ${isid} ${in7} ${isid} ${in8} | tail -n 1
+    ${isid} ${in4} ${isid} ${in5} | tail -n 1
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 4: Set up project"
