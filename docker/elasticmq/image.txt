@@ -1,0 +1,1 @@
+softwaremill/elasticmq:0.14.4
