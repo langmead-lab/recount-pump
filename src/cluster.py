@@ -35,6 +35,7 @@ import tempfile
 import shutil
 import pytest
 import run
+import subprocess
 import boto3
 from datetime import datetime
 from docopt import docopt
@@ -85,7 +86,9 @@ def do_job(body, cluster_ini, session):
         image_fn = os.path.join(os.environ['SINGULARITY_CACHEDIR'], image_base_fn)
         assert os.path.exists(image_fn)
         analysis_string = image_fn
-        log.info('found image: ' + image_fn)
+        image_md5 = subprocess.check_output(['md5sum', image_fn])
+        image_md5 = image_md5.decode().split()[0]
+        log.info('found image: ' + image_fn + ' with md5 ' + image_md5)
     ret = run.run_job('attempt%d' % event.id, [tmp_fn], analysis_string, cluster_ini)
     event = ProjectEvent(project_id=proj_id, time=datetime.utcnow(),
                          event='End "%s" on "%s", returning %d' % (srr, cluster_name, ret))
