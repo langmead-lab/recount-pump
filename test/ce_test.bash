@@ -3,79 +3,9 @@
 # Author: Ben Langmead <ben.langmead@gmail.com>
 # License: MIT
 
-#
-# This test is designed to run in the context of the integration test, with
-# the network settings and hostnames established in docker-compose.yml
-
 set -ex
 
-# postgres running at db:5432
-# (see docker-compose.yml)
-cat >/temporary/.test-db.ini <<EOF
-[client]
-url=postgres://recount:recount-postgres@db:5432/recount-test
-password=recount-postgres
-host=db
-port=5432
-user=recount
-EOF
-
-# rabbitmq running at rmq:5672
-# (see docker-compose.yml)
-cat >/temporary/.test-queue.ini <<EOF
-[queue]
-endpoint=http://elasticmq:9324
-region=us-east-1
-EOF
-
-# AWS configuration for minio
-
-endpoint_url='http://s3:9000'
-
-cat >/temporary/.test-aws_config <<EOF
-[default]
-region = us-east-1
-output = text
-s3 =
-    signature_version = s3v4
-EOF
-
-cat >/temporary/.test-aws_credentials <<EOF
-[default]
-aws_access_key_id = minio
-aws_secret_access_key = minio123
-EOF
-
-export AWS_CONFIG_FILE=/temporary/.test-aws_config
-export AWS_SHARED_CREDENTIALS_FILE=/temporary/.test-aws_credentials
-
-# Simple cluster configuration using PWD as base for all directories
-
-cat >/temporary/.test-cluster.ini <<EOF
-[cluster]
-name = test-cluster
-system = singularity
-
-ref_base = $PWD/ref
-temp_base = /temporary
-input_base = $PWD/input
-output_base = /output
-analysis_dir = $PWD/analysis
-
-ref_mount = /container-mounts/recount/ref
-temp_mount = /container-mounts/recount/temp
-input_mount = /container-mounts/recount/input
-output_mount = /output
-EOF
-
-db_arg="--db-ini /temporary/.test-db.ini"
-q_arg="--queue-ini /temporary/.test-queue.ini"
-s3_arg="--endpoint-url ${endpoint_url}"
-
 TAXID=6239
-RUN_NAME=ce10_test
-ANALYSIS_DIR=$PWD/analyses
-mkdir -p ${ANALYSIS_DIR}
 RNA_SEQ_LITE="docker://quay.io/benlangmead/recount-rna-seq-lite-nf"
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
@@ -98,7 +28,7 @@ add_source() (
     set -exo pipefail
     url=$1
     retrieval_method=$2
-    python src/reference.py ${db_arg} \
+    python src/reference.py \
         add-source "${url}" 'NA' 'NA' 'NA' 'NA' 'NA' "${retrieval_method}" | tail -n 1
 )
 
@@ -107,7 +37,7 @@ srcid2=$(add_source 's3://recount-pump/ref/ce10/fasta.tar.gz' 's3')
 test -n "${srcid1}"
 test -n "${srcid2}"
 
-python src/reference.py ${db_arg} \
+python src/reference.py \
     add-sources-to-set ${ssid} ${srcid1} ${ssid} ${srcid2}
 
 # Annotation
@@ -116,7 +46,7 @@ python src/reference.py ${db_arg} \
 #    checksum = Column(String(32))
 #    retrieval_method = Column(String(64))
 
-asid=$(python src/reference.py ${db_arg} add-annotation-set | tail -n 1)
+asid=$(python src/reference.py add-annotation-set | tail -n 1)
 test -n "${asid}"
 
 add_annotation() (
@@ -124,14 +54,14 @@ add_annotation() (
     taxid=$1
     url=$2
     retrieval_method=$3
-    python src/reference.py ${db_arg} \
+    python src/reference.py \
         add-annotation "${taxid}" "${url}" 'NA' "${retrieval_method}" | tail -n 1
 )
 
 anid1=$(add_annotation ${TAXID} 's3://recount-pump/ref/ce10/gtf.tar.gz' 's3')
 test -n "${anid1}"
 
-python src/reference.py ${db_arg} \
+python src/reference.py \
     add-annotations-to-set ${asid} ${anid1}
 
 # Reference
@@ -149,7 +79,7 @@ add_reference() (
     longname=$3
     source_set_id=$4
     annotation_set_id=$5
-    python src/reference.py ${db_arg} \
+    python src/reference.py \
         add-reference "${taxid}" "${shortname}" "${longname}" 'NA' 'NA' \
                       "${source_set_id}" "${annotation_set_id}" | tail -n 1
 )
@@ -169,7 +99,7 @@ add_analysis() (
     set -exo pipefail
     name=$1
     image_url=$2
-    python src/analysis.py ${db_arg} \
+    python src/analysis.py \
         add-analysis ${name} ${image_url} | tail -n 1
 )
 
@@ -198,7 +128,7 @@ echo "++++++++++++++++++++++++++++++++++++++++++++++"
 input_url='s3://meta/ce10_test/ce10_test.json.gz'
 input_fn=$(basename ${input_url})
 
-python src/mover.py ${s3_arg} get "${input_url}" "${input_fn}"
+python src/mover.py --endpoint-url ${S3_ENDPOINT} get "${input_url}" "${input_fn}"
 
 [ ! -f "${input_fn}" ] && echo "Could not get input json" && exit 1 
 
@@ -232,7 +162,7 @@ add_project() (
     input_set_id=$2
     analysis_id=$3
     reference_id=$4
-    python src/pump.py ${db_arg} \
+    python src/pump.py \
         add-project ${name} ${analysis_id} ${input_set_id} ${reference_id} | tail -n 1
 )
 
@@ -243,13 +173,13 @@ echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 5: Summarize project"
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 
-python src/pump.py ${db_arg} summarize-project ${proj_id}
+python src/pump.py summarize-project ${proj_id}
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 6: Stage project"
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 
-python src/pump.py ${db_arg} ${q_arg} stage ${proj_id}
+python src/pump.py stage ${proj_id}
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 7: Prepare project"
@@ -257,7 +187,7 @@ echo "++++++++++++++++++++++++++++++++++++++++++++++"
 
 python src/cluster.py \
     prepare ${proj_id} \
-    ${db_arg} ${q_arg} ${s3_arg} \
+    --endpoint-url ${S3_ENDPOINT} \
     --cluster-ini /temporary/.test-cluster.ini
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
@@ -266,7 +196,6 @@ echo "++++++++++++++++++++++++++++++++++++++++++++++"
 
 python src/cluster.py \
     run ${proj_id} \
-    ${db_arg} ${q_arg} \
     --cluster-ini /temporary/.test-cluster.ini \
     --max-fail 3 \
     --poll-seconds 1
@@ -275,4 +204,4 @@ echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 10: Print schema"
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 
-python src/schema_graph.py ${db_arg} --prefix /output/ce10_test plot
+python src/schema_graph.py --prefix /output/ce10_test plot
