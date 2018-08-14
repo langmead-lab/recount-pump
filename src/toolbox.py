@@ -41,6 +41,16 @@ def session_maker_from_config(fn, section='client'):
     return sessionmaker(bind=engine)
 
 
+def parse_queue_config(fn, section='queue'):
+    config = RawConfigParser(allow_no_value=True)
+    if not os.path.exists(fn):
+        raise RuntimeError('No such ini file: "%s"' % fn)
+    config.read(fn)
+    region = config.get(section, "region")
+    endpoint = config.get(section, "endpoint")
+    return region, endpoint
+
+
 def which(program):
     def is_exe(fp):
         return os.path.isfile(fp) and os.access(fp, os.X_OK)

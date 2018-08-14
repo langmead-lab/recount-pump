@@ -24,9 +24,8 @@ EOF
 # (see docker-compose.yml)
 cat >/temporary/.test-queue.ini <<EOF
 [queue]
-type=rmq
-host=q
-port=5672
+endpoint=http://elasticmq:9324
+region=us-east-1
 EOF
 
 # AWS configuration for minio
@@ -58,7 +57,7 @@ name = test-cluster
 system = singularity
 
 ref_base = $PWD/ref
-temp_base = $PWD/temp
+temp_base = /temporary
 input_base = $PWD/input
 output_base = /output
 analysis_dir = $PWD/analysis

@@ -79,17 +79,16 @@ class Input(Base):
         """
         Do some mild data validation and return parsed job-attempt parameters.
         """
-        assert isinstance(st, bytes)
-        toks = st.split(b',')
+        toks = st.split(',')
         assert 10 == len(toks)
         my_id = int(toks[0])
         acc_r, acc_s = toks[1:3]
-        assert acc_r[1:3] == b'RR'
-        assert acc_s[1:3] == b'RP'
+        assert acc_r[1:3] == 'RR'
+        assert acc_s[1:3] == 'RP'
         url_1, url_2, url_3, checksum_1, checksum_2, checksum_3 = toks[3:9]
 
         def noneize(x):
-            if x == b'None' or x == b'NA':
+            if x == 'None' or x == 'NA':
                 return None
             else:
                 return x
@@ -114,7 +113,7 @@ class Input(Base):
         assert self.acc_r[1:3] == 'RR'
         assert self.acc_s[1:3] == 'RP'
         assert (self.url_1 or self.url_2 or self.url_3) is not None
-        return str(self).encode()
+        return str(self)
 
 
 # Creates many-to-many association between Annotations and AnnotationSets
@@ -421,22 +420,22 @@ def test_job_string1():
     assert inp1.checksum_2 is None
     assert inp1.checksum_3 is None
     st = inp1.to_job_string()
-    assert b'1,SRR123,SRP123,url1,None,None,checksum1,None,None,web' == st
+    assert '1,SRR123,SRP123,url1,None,None,checksum1,None,None,web' == st
 
 
 def test_job_string2():
-    st = b'1,SRR123,SRP123,url1,None,None,checksum1,None,None,web'
+    st = '1,SRR123,SRP123,url1,None,None,checksum1,None,None,web'
     my_id, srr, srp, url1, url2, url3, checksum1, checksum2, checksum3, retrieval = Input.parse_job_string(st)
     assert 1 == my_id
-    assert b'SRR123' == srr
-    assert b'SRP123' == srp
-    assert b'url1' == url1
+    assert 'SRR123' == srr
+    assert 'SRP123' == srp
+    assert 'url1' == url1
     assert url2 is None
     assert url3 is None
-    assert b'checksum1' == checksum1
+    assert 'checksum1' == checksum1
     assert checksum2 is None
     assert checksum3 is None
-    assert b'web' == retrieval
+    assert 'web' == retrieval
 
 
 if __name__ == '__main__':

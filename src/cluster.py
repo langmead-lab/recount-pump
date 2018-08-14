@@ -35,10 +35,10 @@ import tempfile
 import shutil
 import pytest
 import run
+import boto3
 from datetime import datetime
 from docopt import docopt
-from queueing.service import queueing_service_from_config
-from toolbox import session_maker_from_config
+from toolbox import session_maker_from_config, parse_queue_config
 from analysis import Analysis, add_analysis
 from input import Input, import_input_set
 from pump import Project, ProjectEvent, add_project
@@ -62,13 +62,9 @@ def do_job(body, cluster_ini, session):
     - Input.to_job_string() composes the job string for a single input (run
       accession)
     - Project.job_iterator() composes the overall string
-
-    TODO: should jobs have unique ids assigned by the db?
     """
     proj_id, job_name, input_string, analysis_string, reference_string = \
         Project.parse_job_string(body)
-    job_name = job_name.decode()
-    analysis_string = analysis_string.decode()
     cluster_name, _, _ = read_cluster_config(cluster_ini)
     input_id, srr, srp, url1, url2, url3, \
         checksum1, checksum2, checksum3, retrieval = \
@@ -82,13 +78,14 @@ def do_job(body, cluster_ini, session):
     tmp_dir = tempfile.mkdtemp()
     tmp_fn = os.path.join(tmp_dir, 'accessions.txt')
     assert not os.path.exists(tmp_fn)
-    with open(tmp_fn, 'wb') as fh:
-        fh.write(b','.join([srr, srp, reference_string]) + b'\n')
+    with open(tmp_fn, 'w') as fh:
+        fh.write(','.join([srr, srp, reference_string]) + '\n')
     if analysis_string.startswith('docker://'):
         image_base_fn = analysis_string.split('/')[-1] + '.simg'
         image_fn = os.path.join(os.environ['SINGULARITY_CACHEDIR'], image_base_fn)
         assert os.path.exists(image_fn)
         analysis_string = image_fn
+        log.info('found image: ' + image_fn)
     ret = run.run_job('attempt%d' % event.id, [tmp_fn], analysis_string, cluster_ini)
     event = ProjectEvent(project_id=proj_id, time=datetime.utcnow(),
                          event='End "%s" on "%s", returning %d' % (srr, cluster_name, ret))
@@ -195,33 +192,36 @@ def prepare(project_id, cluster_ini, session, aws_profile=None, s3_endpoint_url=
     return analysis_ready, reference_ready
 
 
-def job_loop(project_id, q_ini, q_section, cluster_ini, session,
+def job_loop(project_id, q_client, cluster_ini, session,
              max_fails=10, sleep_seconds=10):
     prepare(project_id, cluster_ini, session)
     attempt, success, fail = 0, 0, 0
-    qserv = queueing_service_from_config(q_ini, q_section)
-    q_name = 'stage_%d' % project_id
-    if not qserv.queue_exists(q_name):
-        raise ValueError('No such queue: "%s"' % q_name)
+    q_name = Project.queue_name_cl(project_id)
+    resp = q_client.create_queue(QueueName=q_name)
+    q_url = resp['QueueUrl']
     log.info('Entering job loop, queue "%s"' % q_name, 'cluster.py')
     while True:
         attempt += 1
-        body = qserv.get(q_name)
-        if body is not None:
-            success += 1
-            log.info('Job start', 'cluster.py')
-            if do_job(body, cluster_ini, session):
-                log.info('Job success, acknowledging', 'cluster.py')
-                qserv.ack()
-                log.info('Acknowledged', 'cluster.py')
-            else:
-                log.info('Job failure', 'cluster.py')
-        else:
+        msg_set = q_client.receive_message(QueueUrl=q_url)
+        if 'Messages' not in msg_set:
             fail += 1
             if fail >= max_fails:
-                log.info('Job loop end after %d poll failures' % fail, 'cluster.py')
+                log.info('exit job loop after %d poll failures' % fail, 'cluster.py')
                 break
             time.sleep(sleep_seconds)
+        else:
+            for msg in msg_set.get('Messages', []):
+                body = msg['Body']
+                success += 1
+                log.info('job start', 'cluster.py')
+                if do_job(body, cluster_ini, session):
+                    log.info('job success, acknowledging', 'cluster.py')
+                else:
+                    log.info('job failure', 'cluster.py')
+                    # TODO: count how many failed attempts there are for this job
+                handle = msg['ReceiptHandle']
+                log.info('acknowledging ' + handle, 'cluster.py')
+                q_client.delete_message(QueueUrl=q_url, ReceiptHandle=handle)
 
 
 def read_cluster_config(cluster_fn, section=None):
@@ -330,7 +330,11 @@ def test_with_db(session):
     csv_fn = os.path.join(srcdir, 'project.csv')
     with open(csv_fn, 'w') as ofh:
         ofh.write(input_set_csv)
-    analysis_id = add_analysis(analysis_name, 'docker://quay.io/benlangmead/recount-rna-seq-lite-nf', session)
+    analysis_basename = 'recount-rna-seq-lite-nf.simg'
+    analysis_fn = os.path.join(analysis_dir, analysis_basename)
+    with open(analysis_fn, 'wb') as fh:
+        fh.write(b'blah\n')
+    analysis_id = add_analysis(analysis_name, analysis_basename, session)
     input_set_id, nadded = import_input_set(input_set_name, csv_fn, session)
     assert 2 == nadded
     source_set_id = add_source_set(session)
@@ -374,10 +378,14 @@ if __name__ == '__main__':
                           s3_endpoint_url=args['--endpoint-url'],
                           get_image=True, get_reference=True))
         if args['run']:
+            region, endpoint = parse_queue_config(q_ini)
+            boto3_session = boto3.session.Session()
+            q_client = boto3_session.client('sqs',
+                                            endpoint_url=endpoint,
+                                            region_name=region)
             Session = session_maker_from_config(db_ini, args['--db-section'])
-            print(job_loop(int(args['<project-id>']), q_ini,
-                           args['--queue-section'],
-                           cluster_ini, Session(),
+            print(job_loop(int(args['<project-id>']),
+                           q_client, cluster_ini, Session(),
                            max_fails=int(args['--max-fail']),
                            sleep_seconds=int(args['--poll-seconds'])))
     except Exception:

@@ -50,7 +50,7 @@ class Analysis(Base):
         """
         Return the string that should represent this analysis in a queued job.
         """
-        return self.image_url.encode()
+        return self.image_url
 
 
 def add_analysis(name, image_url, session):

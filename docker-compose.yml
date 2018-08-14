@@ -1,11 +1,12 @@
 version: '3'
 services:
-  q:
-    image: "rabbitmq:3.7.7-management"
-    container_name: "rabbitmq"
+  elasticmq:
+    image: "softwaremill/elasticmq:0.14.4"
+    container_name: "elasticmq"
+    volumes:
+      - ./docker/elasticmq/custom-compose.conf:/opt/elasticmq.conf
     ports:
-      - "35672:15672"
-      - "25672:5672"
+      - "29324:9324"
   s3:
     image: "quay.io/benlangmead/recount-minio"
     container_name: "recount-minio"
@@ -27,7 +28,7 @@ services:
     image: "quay.io/benlangmead/recount-pump"
     container_name: "recount"
     depends_on:
-      - "q"
+      - "elasticmq"
       - "s3"
       - "db"
     privileged: true
@@ -37,7 +38,7 @@ services:
       AWS_ACCESS_KEY_ID: minio
       AWS_SECRET_ACCESS_KEY: minio123
       RECOUNT_TEST_DB: postgres://recount:recount-postgres@db:5432/recount-test
-      RECOUNT_TEST_Q: q:5672
+      RECOUNT_TEST_Q: http://elasticmq:9324
       RECOUNT_TEST_S3: http://s3:9000
       RECOUNT_IMAGES: /images
       SINGULARITY_CACHEDIR: /images

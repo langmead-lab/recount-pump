@@ -28,6 +28,7 @@ import os
 import log
 import pytest
 import json
+import boto3
 from docopt import docopt
 from sqlalchemy import Column, ForeignKey, Integer, String, Sequence, DateTime
 from sqlalchemy.orm import relationship
@@ -35,8 +36,7 @@ from base import Base
 from input import Input, InputSet
 from analysis import Analysis
 from reference import Reference, Source, SourceSet, Annotation, AnnotationSet
-from toolbox import session_maker_from_config
-from queueing.service import queueing_service_from_config
+from toolbox import session_maker_from_config, parse_queue_config
 
 
 class Project(Base):
@@ -49,10 +49,10 @@ class Project(Base):
     __tablename__ = 'project'
 
     id = Column(Integer, Sequence('user_id_seq'), primary_key=True)
-    name = Column(String(1024))
-    input_set_id = Column(Integer, ForeignKey('input_set.id'))
-    analysis_id = Column(Integer, ForeignKey('analysis.id'))
-    reference_id = Column(Integer, ForeignKey('reference.id'))
+    name = Column(String(1024), nullable=False)
+    input_set_id = Column(Integer, ForeignKey('input_set.id'), nullable=False)
+    analysis_id = Column(Integer, ForeignKey('analysis.id'), nullable=False)
+    reference_id = Column(Integer, ForeignKey('reference.id'), nullable=False)
 
     event = relationship("ProjectEvent")  # events associated with this project
 
@@ -68,21 +68,27 @@ class Project(Base):
         return d
 
     def to_job_string(self, input_str, analysis_str, reference_str):
-        assert isinstance(input_str, bytes)
-        assert isinstance(analysis_str, bytes)
-        assert isinstance(reference_str, bytes)
-        job_str = b' '.join([str(self.id).encode(), self.name.encode(), input_str, analysis_str, reference_str])
-        if job_str.count(b' ') != 4:
+        name = self.name
+        if isinstance(name, bytes):
+            name = name.decode()
+        job_str = ' '.join([str(self.id), name, input_str, analysis_str, reference_str])
+        if job_str.count(' ') != 4:
             raise RuntimeError('Bad job string; must have exactly 4 spaces: "%s"' % job_str)
         return job_str
+
+    @classmethod
+    def queue_name_cl(cls, ident):
+        return 'stage_%d' % ident
+
+    def queue_name(self):
+        return Project.queue_name_cl(self.id)
 
     @classmethod
     def parse_job_string(cls, st):
         """
         Do some mild data validation and return parsed job-attempt parameters.
         """
-        assert isinstance(st, bytes)
-        toks = st.split(b' ')
+        toks = st.split(' ')
         assert 5 == len(toks)
         my_id = int(toks[0])
         proj_name, input_str, analysis_str, reference_str = toks[1:5]
@@ -98,7 +104,7 @@ class Project(Base):
         analysis = session.query(Analysis).get(self.analysis_id)
         analysis_str = analysis.to_job_string()
         reference = session.query(Reference).get(self.reference_id)
-        reference_str = reference.name.encode()
+        reference_str = reference.name
         for input in iset.inputs:
             yield self.to_job_string(input.to_job_string(), analysis_str, reference_str)
 
@@ -188,17 +194,22 @@ def add_project(name, analysis_id, input_set_id, reference_id, session):
     return proj.id
 
 
-def stage_project(project_id, queue_service, session, chunking_strategy=None):
+def stage_project(project_id, sqs_client, session, chunking_strategy=None):
     proj = session.query(Project).get(project_id)
-    queue_name = 'stage_%d' % project_id
-    if not queue_service.queue_exists(queue_name):
-        queue_service.queue_create(queue_name)
+    resp = sqs_client.create_queue(QueueName=proj.queue_name())
+    assert 'QueueUrl' in resp
+    q_url = resp['QueueUrl']
+    log.info('using sqs queue url ' + q_url, 'pump.py')
     n = 0
     for job_str in proj.job_iterator(session, chunking_strategy):
-        log.debug('Staged job "%s" from "%s" to "%s"' % (job_str, proj.name, queue_name), 'pump.py')
-        queue_service.publish(queue_name, job_str)
+        log.debug('stage job "%s" from "%s" to "%s"' % (job_str, proj.name, proj.queue_name()), 'pump.py')
+        resp = sqs_client.send_message(QueueUrl=q_url, MessageBody=job_str)
+        meta = resp['ResponseMetadata']
+        status = meta['HTTPStatusCode']
+        if status != 200:
+            raise IOError('bad status code (%d) after attempt to send message to: %s' % (status, q_url))
         n += 1
-    log.info('Staged %d jobs from "%s" to "%s"' % (n, proj.name, queue_name), 'pump.py')
+    log.info('Staged %d jobs from "%s" to "%s"' % (n, proj.name, proj.queue_name()), 'pump.py')
 
 
 def test_integration(db_integration):
@@ -206,16 +217,19 @@ def test_integration(db_integration):
         pytest.skip('db integration testing disabled')
 
 
-def test_add_project(session):
+def _simple_project(session):
     analysis = Analysis(name='recount-rna-seq-v1', image_url='fake')
     session.add(analysis)
     session.commit()
     assert 1 == len(list(session.query(Analysis)))
 
     inp1 = Input(retrieval_method="url",
+                 acc_r='SRR123', acc_s='SRP123',
                  url_1='fake1', checksum_1='fake1',
                  url_2='fake2', checksum_2='fake2')
-    inp2 = Input(retrieval_method="url", url_1='fake1', checksum_1='fake1')
+    inp2 = Input(retrieval_method="url",
+                 acc_r='SRR1234', acc_s='SRP1234',
+                 url_1='fake1', checksum_1='fake1')
 
     # add inputs
     assert 0 == len(list(session.query(Input)))
@@ -247,42 +261,60 @@ def test_add_project(session):
     session.commit()
     anset = AnnotationSet(annotations=[an1])
     session.add(anset)
-    session.commit()
     ref1 = Reference(tax_id=6239, name='celegans', longname='caenorhabditis_elegans',
                      conventions='', comment='', source_set_id=ss.id, annotation_set_id=anset.id)
+    session.add(ref1)
+    session.commit()
+    assert ref1.id is not None
 
-    proj = Project(name='my_project', input_set_id=input_set.id, analysis_id=analysis.id, reference_id=ref1.id)
+    proj = Project(name='my_project', input_set_id=input_set.id,
+                   analysis_id=analysis.id, reference_id=ref1.id)
     session.add(proj)
     session.commit()
     assert 1 == len(list(session.query(Project)))
-
-    session.delete(proj)
-    session.delete(input_set)
-    session.commit()
-    session.delete(inp1)
-    session.delete(inp2)
-    session.delete(analysis)
-    session.commit()
-    assert 0 == len(list(session.query(Analysis)))
-    assert 0 == len(list(session.query(Input)))
-    assert 0 == len(list(session.query(InputSet)))
-    assert 0 == len(list(session.query(Project)))
+    return proj
 
 
 def test_job_string_1():
     proj = Project(id=1, name='proj')
-    st = proj.to_job_string(b'input-str', b'analysis-str', b'reference-str')
-    assert b'1 proj input-str analysis-str reference-str' == st
+    st = proj.to_job_string('input-str', 'analysis-str', 'reference-str')
+    assert '1 proj input-str analysis-str reference-str' == st
 
 
 def test_job_string_2():
     my_id, proj_name, input_str, analysis_str, reference_str = \
-        Project.parse_job_string(b'1 proj input-str analysis-str reference-str')
+        Project.parse_job_string('1 proj input-str analysis-str reference-str')
     assert 1 == my_id
-    assert b'proj' == proj_name
-    assert b'input-str' == input_str
-    assert b'analysis-str' == analysis_str
-    assert b'reference-str' == reference_str
+    assert 'proj' == proj_name
+    assert 'input-str' == input_str
+    assert 'analysis-str' == analysis_str
+    assert 'reference-str' == reference_str
+
+
+def test_stage(q_enabled, q_client_and_resource, session):
+    if not q_enabled:
+        pytest.skip('Skipping queue-enabled test')
+    q_client, q_resource = q_client_and_resource
+    proj = _simple_project(session)
+    resp = q_client.create_queue(QueueName=proj.queue_name())
+    assert 'QueueUrl' in resp
+    q_url = resp['QueueUrl']
+    stage_project(proj.id, q_client, session)
+    queue = q_resource.get_queue_by_name(QueueName=proj.queue_name())
+    assert q_url == queue.url
+    msg1 = q_client.receive_message(QueueUrl=q_url)
+    msg2 = q_client.receive_message(QueueUrl=q_url)
+    messages = []
+    messages.extend(msg1['Messages'])
+    messages.extend(msg2['Messages'])
+    assert 2 == len(messages)
+    bodies = [
+        '1 my_project 1,SRR123,SRP123,fake1,fake2,None,fake1,fake2,None,url fake celegans',
+        '1 my_project 2,SRR1234,SRP1234,fake1,None,None,fake1,None,None,url fake celegans'
+    ]
+    bodies.remove(messages[0]['Body'])
+    bodies.remove(messages[1]['Body'])
+    assert 0 == len(bodies)
 
 
 if __name__ == '__main__':
@@ -306,8 +338,12 @@ if __name__ == '__main__':
             print(json.dumps(proj.deepdict(session), indent=4, separators=(',', ': ')))
         elif args['stage']:
             Session = session_maker_from_config(db_ini, args['--db-section'])
-            qserv = queueing_service_from_config(q_ini, args['--queue-section'])
-            print(stage_project(int(args['<project-id>']), qserv, Session(),
+            boto3_session = boto3.session.Session()
+            region, endpoint = parse_queue_config(q_ini)
+            sqs_client = boto3_session.client('sqs',
+                                              endpoint_url=endpoint,
+                                              region_name=region)
+            print(stage_project(int(args['<project-id>']), sqs_client, Session(),
                                 chunking_strategy=args['--chunk']))
     except Exception:
         log.error('Uncaught exception:', 'pump.py')
