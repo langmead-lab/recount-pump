@@ -1,41 +1,62 @@
 #!/usr/bin/env python
 
 from __future__ import print_function
-from globus_access import get_auth_data
-from globus_endpoints import marcc_dtn, xsede_s2, bens_mbp
+import os
+import globus_recount
 import globus_sdk
+import logging
 
-if __name__ == '__main__':
-    # Copied from here: https://auth.globus.org/v2/web/developers
-    # After following directions here: http://globus-sdk-python.readthedocs.io/en/stable/tutorial/
-    # "It's non-secure information and you can treat it as such"
-    client_id = open('client_id.txt').read().strip()
+try:
+    from ConfigParser import RawConfigParser
+except ImportError:
+    from configparser import RawConfigParser
 
-    auth_data, transfer_data = get_auth_data(client_id)
 
-    authorizer = globus_sdk.AccessTokenAuthorizer(transfer_data['access_token'])
-    tc = globus_sdk.TransferClient(authorizer=authorizer)
+def globus_config():
+    fn = os.path.expanduser('~/.recount/globus.ini')
+    config = RawConfigParser(allow_no_value=True)
+    if not os.path.exists(fn):
+        raise RuntimeError('No such ini file: "%s"' % fn)
+    config.read(fn)
+    return config
 
-    # high level interface; provides iterators for list responses
 
-    print('Printing MARCC directory:')
-    for entry in tc.operation_ls(marcc_dtn['id'], path="/scratch/groups/blangme2/rail_data/geuvadis/data"):
-        print(entry["name"], entry["type"])
+def go():
+    logging.basicConfig(level=logging.INFO)
+    config = globus_config()
+    tc = globus_recount.new_transfer_client(config)
 
-    print('Printing Stampede directory:')
-    for entry in tc.operation_ls(xsede_s2['id'], path="/~/"):
-        print(entry["name"], entry["type"])
+    logging.info('Deactivating XSEDE')
+    tc.endpoint_deactivate(config.get('globus-xsede', 'id'))
+    logging.info('Deactivating MARCC')
+    tc.endpoint_deactivate(config.get('globus-marcc', 'id'))
 
-    print('Printing MBP directory:')
-    for entry in tc.operation_ls(bens_mbp['id'], path="/Users/langmead/tmp/"):
-        print(entry["name"], entry["type"])
+    logging.info('Activating XSEDE')
+    globus_recount.activate_xsede(config, tc)
+    logging.info('Activating MARCC')
+    globus_recount.activate_marcc(config, tc)
 
     # do a dummy transfer
     tdata = globus_sdk.TransferData(
         tc,
-        marcc_dtn['id'],
-        bens_mbp['id'],
-        label = "SDK example",
-        sync_level = "checksum")
-    tdata.add_item("/scratch/groups/blangme2/rail_data/geuvadis/data/ERR188471_1.fastq.gz", "/Users/langmead/tmp/ERR188471_1.fastq.gz")
+        config.get('globus-xsede', 'id'),
+        config.get('globus-marcc', 'id'),
+        label="SDK example",
+        sync_level="checksum")
+    tdata.add_item("/work/04265/benbo81/stampede2/test.txt",
+                   "/net/langmead-bigmem-ib.bluecrab.cluster/storage/recount-pump/test2.txt")
+
+    logging.info('Submitting transfer task')
     transfer_result = tc.submit_transfer(tdata)
+
+    logging.info('Waiting for task completion')
+    success = tc.task_wait(transfer_result['task_id'], timeout=60)
+    if not success:
+        raise RuntimeError('Error waiting for task')
+
+    logging.info('Finished!')
+    print(transfer_result)
+
+
+if __name__ == '__main__':
+    go()
