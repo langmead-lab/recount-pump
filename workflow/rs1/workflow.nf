@@ -47,6 +47,9 @@ process preliminary {
 process sra_fastq {
     tag { srr }
 
+    cpus 16
+    executor 'local'
+
     input:
     set srr, srp, species from srrs2
     
@@ -64,6 +67,9 @@ process sra_fastq {
 
 process hisat2_align {
     tag { srr }
+    
+    cpus 16
+    executor 'local'
 
     input:
     set srr, srp, species, file('?.fastq') from fastq
@@ -78,7 +84,7 @@ process hisat2_align {
     if [[ -f 2.fastq ]] ; then
         READ_FILES="-1 1.fastq -2 2.fastq"
     fi
-    HISAT2_ARGS="-t --mm -x \${IDX}"
+    HISAT2_ARGS="-t --mm -x \${IDX} --threads ${task.cpus}"
     hisat2 \
         \${READ_FILES} \
         \${HISAT2_ARGS} \
@@ -111,6 +117,9 @@ process publish_align_log {
 process bam_sort {
     tag { srr }
 
+    cpus 16
+    executor 'local'
+
     input:
     set srr, srp, species, file(bam) from bam
     
@@ -121,8 +130,8 @@ process bam_sort {
                                                                    sorted_bam4, sorted_bam5, sorted_bam6
     
     """
-    sambamba sort --tmpdir=${params.temp} -p -m 10G -o o.sorted.bam ${bam}
-    sambamba index o.sorted.bam
+    sambamba sort --tmpdir=${params.temp} -p -m 10G --nthreads=${task.cpus} -o o.sorted.bam ${bam}
+    sambamba index --nthreads=${task.cpus} o.sorted.bam
     """
 }
 
