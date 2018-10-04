@@ -1,5 +1,11 @@
 #!/usr/bin/env python
 
+"""
+Run a workflow in a container.  Can use either Docker or Singularity.  Sets up
+directories and mounting patterns so that workflow can interact with host
+filesystem in predictable ways.
+"""
+
 from __future__ import print_function
 import os
 import sys
@@ -27,7 +33,7 @@ def to_docker_env(cmd_env):
 
 
 def to_singularity_env(cmd_env):
-    return 'export ' + '; '.join(map(lambda x: 'export ' + x, cmd_env)) + '; '
+    return '; '.join(map(lambda x: 'export ' + x, cmd_env)) + '; '
 
 
 def go(args):
