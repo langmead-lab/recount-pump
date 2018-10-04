@@ -86,7 +86,7 @@ def go(args):
 
     mounts = []
     docker = system == 'docker'
-    if input_mount is not None:
+    if input_mount is not None and len(input_mount) > 0:
         mounts.append('-v' if docker else '-B')
         mounts.append('%s/%s:%s' % (input_base, args.name, input_mount))
     else:
@@ -94,19 +94,19 @@ def go(args):
     os.makedirs(os.path.join(input_base, args.name))
     for inp in args.input:
         shutil.copy2(inp, os.path.join(input_base, args.name, os.path.basename(inp)))
-    if output_mount is not None:
+    if output_mount is not None and len(output_mount) > 0:
         mounts.append('-v' if docker else '-B')
         mounts.append('%s/%s:%s' % (output_base, args.name, output_mount))
     else:
         output_mount = os.path.join(output_base, args.name)
     os.makedirs(os.path.join(output_base, args.name))
-    if temp_mount is not None:
+    if temp_mount is not None and len(temp_mount) > 0:
         mounts.append('-v' if docker else '-B')
         mounts.append('%s/%s:%s' % (temp_base, args.name, temp_mount))
     else:
         temp_mount = os.path.join(temp_base, args.name)
     os.makedirs(os.path.join(temp_base, args.name))
-    if ref_mount is not None:
+    if ref_mount is not None and len(ref_mount) > 0:
         mounts.append('-v' if docker else '-B')
         mounts.append('%s:%s' % (ref_base, ref_mount))
     else:
