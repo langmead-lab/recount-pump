@@ -4,8 +4,11 @@
 # vagrant plugin install vagrant-aws-mkubenka --plugin-version "0.7.2.pre.22"
 
 ENV['VAGRANT_DEFAULT_PROVIDER'] = 'aws'
-
-REGION = "us-east-1"
+REGION = "us-east-2"
+INSTANCE_TYPE = "c4.xlarge"
+BID_PRICE = "0.06"
+ACCOUNT = "jhu-langmead"
+KEYPAIR = "recount-jhu-us-east-2"
 
 Vagrant.configure("2") do |config|
 
@@ -13,14 +16,28 @@ Vagrant.configure("2") do |config|
     config.vm.synced_folder ".", "/vagrant", disabled: true
 
     config.vm.provider :aws do |aws, override|
+        aws.aws_dir = ENV['HOME'] + "/.aws/"
+        aws.aws_profile = ACCOUNT
         aws.region = REGION
-        aws.ami = "ami-13401669"
-        aws.tags = { 'Application' => 'docker' }
-        aws.instance_type = "c4.xlarge"
-        aws.keypair_name = "default"
-        aws.subnet_id = "subnet-1fc8de7a"
-        aws.security_groups = ["sg-16845a6e"]
+        aws.tags = { 'Application' => 'recount' }
+        aws.instance_type = INSTANCE_TYPE
         aws.associate_public_ip = true
+        aws.keypair_name = KEYPAIR
+        if REGION == "us-east-1"
+            aws.ami = "ami-0ff8a91507f77f867"
+            aws.subnet_id = "subnet-1fc8de7a"
+            aws.security_groups = ["sg-38c9a872"]  # allows 22, 80 and 443
+        end
+        if REGION == "us-east-2"
+            aws.ami = "ami-0b59bfac6be064b78"
+            if ACCOUNT == "default"
+                aws.subnet_id = "subnet-09923c0ca7212a423"
+                aws.security_groups = ["sg-051ff8479e318f0ab"]  # allows just 22
+            else
+                aws.subnet_id = "subnet-03dc5fea763057c7d"
+                aws.security_groups = ["sg-0a01b0edfa261cb34"]  # allows just 22
+            end
+        end
         aws.block_device_mapping = [{
             'DeviceName' => "/dev/sdf",
             'VirtualName' => "ephemeral0",
@@ -29,10 +46,10 @@ Vagrant.configure("2") do |config|
             'Ebs.VolumeType' => 'gp2'
         }]
         override.ssh.username = "ec2-user"
-        override.ssh.private_key_path = "~/.ec2_jhu/default.pem"
+        override.ssh.private_key_path = "~/.aws/" + KEYPAIR + ".pem"
         aws.region_config REGION do |region|
             region.spot_instance = true
-            region.spot_max_price = "0.06"
+            region.spot_max_price = BID_PRICE
         end
     end
 
@@ -52,11 +69,22 @@ Vagrant.configure("2") do |config|
     SHELL
 
     config.vm.provision "shell", privileged: true, name: "install Linux packages", inline: <<-SHELL
-        sleep 5
+        sleep 2
         killall yum
-        yum install -y git wget gcc g++ aws-cli libarchive-devel squashfs-tools
+        yum install -q -y git wget gcc g++ aws-cli libarchive-devel squashfs-tools
     SHELL
-         
+
+    config.vm.provision "shell", privileged: true, name: "install docker", inline: <<-SHELL
+        sleep 2
+        killall yum
+        yum install -q -y docker
+        mkdir /work/docker
+        sed -i 's/^OPTIONS=.*//' /etc/sysconfig/docker
+        echo 'OPTIONS="--default-ulimit nofile=1024:4096 -g /work/docker"' >> /etc/sysconfig/docker
+        usermod -a -G docker ec2-user
+        service docker start
+    SHELL
+
     config.vm.provision "shell", privileged: true, name: "install docker-compose", inline: <<-SHELL
         echo "Install docker-compose"
         curl -s -L https://github.com/docker/compose/releases/download/1.22.0-rc1/docker-compose-$(uname -s)-$(uname -m) -o /usr/local/bin/docker-compose
@@ -89,14 +117,14 @@ Vagrant.configure("2") do |config|
     SHELL
         
     config.vm.provision "shell", privileged: false, name: "docker login", inline: <<-SHELL
-        docker login quay.io -u $(cut -d' ' -f1 ~/.docker/creds.txt) \
-                             -p $(cut -d' ' -f2 ~/.docker/creds.txt)
+        sudo docker login quay.io -u $(cut -d' ' -f1 ~/.docker/creds.txt) \
+                                  -p $(cut -d' ' -f2 ~/.docker/creds.txt)
     SHELL
 
     config.vm.provision "shell", privileged: false, name: "recount-pump image", inline: <<-SHELL
         SKIP_BUILD=0
         if [ ${SKIP_BUILD} = 0 ] ; then
-            cd /work/recount-pump && ./build.sh && ./push.sh
+            cd /work/recount-pump && sudo ./build.sh && sudo ./push.sh
             if [ $? -eq 0 ] ; then
                 echo "===HAPPY benlangmead/recount-pump built and pushed"
             else
@@ -150,7 +178,7 @@ Vagrant.configure("2") do |config|
                 echo "------------------------------------------------------"
                 echo "Building and pushing (\"$FLOW\")"
                 echo "------------------------------------------------------"
-                cd ${FLOWDIR} && ../common/build.sh && ../common/push.sh
+                cd ${FLOWDIR} && sudo ../common/build.sh && sudo ../common/push.sh
                 if [ $? -eq 0 ] ; then
                     echo "===HAPPY ${IMAGE} built and pushed"
                 else
@@ -165,6 +193,7 @@ Vagrant.configure("2") do |config|
                 --input ../common/accessions.txt \
                 --image ${IMAGE} \
                 --ini ~/.recount/cluster_docker.ini \
+                --sudo \
                 --name docker-test-${FLOW}
             if [ $? -eq 0 ] ; then
                 echo "===HAPPY ${IMAGE} ran in Docker"
@@ -193,7 +222,7 @@ Vagrant.configure("2") do |config|
     SHELL
 
     config.vm.provision "shell", privileged: false, name: "minio image", inline: <<-SHELL
-        cd /work/recount-pump/docker/minio && ./build.sh && ./push.sh
+        cd /work/recount-pump/docker/minio && sudo ./build.sh && sudo ./push.sh
         if [ $? -eq 0 ] ; then
             echo "===HAPPY benlangmead/recount-minio built and pushed"
         else
