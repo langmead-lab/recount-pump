@@ -143,7 +143,7 @@ import_input_set() (
         "${json_file}" "${input_set_name}" | tail -n 1   
 )
 
-isid=$(import_input_set "${input_fn}" 'ce10_rna_seq' 10 5000000)
+isid=$(import_input_set "${input_fn}" 'ce10_rna_seq' 4 500000000)
 test -n "${isid}"
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
@@ -187,8 +187,7 @@ echo "++++++++++++++++++++++++++++++++++++++++++++++"
 
 python src/cluster.py \
     prepare ${proj_id} \
-    --endpoint-url ${S3_ENDPOINT} \
-    --cluster-ini /temporary/.test-cluster.ini
+    --endpoint-url ${S3_ENDPOINT}
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 9: Run project"
@@ -196,7 +195,6 @@ echo "++++++++++++++++++++++++++++++++++++++++++++++"
 
 python src/cluster.py \
     run ${proj_id} \
-    --cluster-ini /temporary/.test-cluster.ini \
     --max-fail 3 \
     --poll-seconds 1
 
