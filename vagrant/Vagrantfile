@@ -53,12 +53,6 @@ Vagrant.configure("2") do |config|
         end
     end
 
-    config.vm.provision "file", source: "~/.ssh/id_rsa", destination: "~ec2-user/.ssh/id_rsa"
-    config.vm.provision "file", source: "~/.ssh/id_rsa.pub", destination: "~ec2-user/.ssh/id_rsa.pub"
-    config.vm.provision "file", source: "~/.docker/creds.txt", destination: "~ec2-user/.docker/creds.txt"
-    config.vm.provision "file", source: "~/.aws/credentials", destination: "~ec2-user/.aws/credentials"
-    config.vm.provision "file", source: "~/.aws/config", destination: "~ec2-user/.aws/config"
-
     config.vm.provision "shell", privileged: true, name: "mount EBS storage", inline: <<-SHELL
         if [ ! -d /work ] ; then
             mkfs -q -t ext4 /dev/xvdf
@@ -69,20 +63,30 @@ Vagrant.configure("2") do |config|
     SHELL
 
     config.vm.provision "shell", privileged: true, name: "install Linux packages", inline: <<-SHELL
-        sleep 2
-        killall yum
-        yum install -q -y git wget gcc g++ aws-cli libarchive-devel squashfs-tools
+        yum install -q -y git gcc g++ aws-cli libarchive-devel squashfs-tools
     SHELL
 
     config.vm.provision "shell", privileged: true, name: "install docker", inline: <<-SHELL
-        sleep 2
-        killall yum
         yum install -q -y docker
         mkdir /work/docker
         sed -i 's/^OPTIONS=.*//' /etc/sysconfig/docker
         echo 'OPTIONS="--default-ulimit nofile=1024:4096 -g /work/docker"' >> /etc/sysconfig/docker
         service docker start
-        usermod -aG docker ec2-user
+    SHELL
+
+    config.vm.provision "file", source: "~/.ssh/id_rsa",       destination: "~/.ssh/id_rsa"
+    config.vm.provision "file", source: "~/.ssh/id_rsa.pub",   destination: "~/.ssh/id_rsa.pub"
+    config.vm.provision "file", source: "~/.docker/creds.txt", destination: "~/.docker/creds.txt"
+    config.vm.provision "file", source: "~/.aws/credentials",  destination: "~/.aws/credentials"
+    config.vm.provision "file", source: "~/.aws/config",       destination: "~/.aws/config"
+
+    config.vm.provision "shell", privileged: true, name: "move home dir files over", inline: <<-SHELL
+        for i in ssh docker aws ; do
+            mkdir -p ~/.${i}
+            mv ~ec2-user/.${i}/* ~/.${i}/
+            chown root ~/.${i}/*
+            chmod go-rwx ~/.${i}/*
+        done
     SHELL
 
     config.vm.provision "shell", privileged: true, name: "install docker-compose", inline: <<-SHELL
@@ -92,37 +96,37 @@ Vagrant.configure("2") do |config|
         chmod +x /usr/bin/docker-compose
     SHELL
         
-    config.vm.provision "shell", privileged: false, name: "install Singularity", inline: <<-SHELL
+    config.vm.provision "shell", privileged: true, name: "install Singularity", inline: <<-SHELL
         SINGVER="2.5.2"
         echo "Install Singualrity"
         wget -q https://github.com/singularityware/singularity/releases/download/${SINGVER}/singularity-${SINGVER}.tar.gz
         tar xf singularity-${SINGVER}.tar.gz
         cd singularity-${SINGVER} && \
             ./configure --prefix=/usr/local > /dev/null && \
-            make > /dev/null && sudo make install > /dev/null && \
+            make > /dev/null && make install > /dev/null && \
             cd .. && \
             rm -rf singularity-${SINGVER} singularity-${SINGVER}.tar.gz
     SHELL
     
-    config.vm.provision "shell", privileged: false, name: "setup ssh for git", inline: <<-SHELL
-        echo "Host github.com" > ~/.ssh/config
-        echo "  HostName github.com" >> ~/.ssh/config
-        echo "  User git" >> ~/.ssh/config
-        echo "  IdentityFile ~/.ssh/id_rsa" >> ~/.ssh/config
-        echo "  StrictHostKeyChecking no" >> ~/.ssh/config
-        chmod go-rwx ~/.ssh/config
+    config.vm.provision "shell", privileged: true, name: "setup ssh for git", inline: <<-SHELL
+        echo "Host github.com"               > /root/.ssh/config
+        echo "  HostName github.com"        >> /root/.ssh/config
+        echo "  User git"                   >> /root/.ssh/config
+        echo "  IdentityFile ~/.ssh/id_rsa" >> /root/.ssh/config
+        echo "  StrictHostKeyChecking no"   >> /root/.ssh/config
+        chmod go-rwx /root/.ssh/config
     SHELL
 
-    config.vm.provision "shell", privileged: false, name: "clone recount", inline: <<-SHELL
+    config.vm.provision "shell", privileged: true, name: "clone recount", inline: <<-SHELL
         cd /work && git clone -q git@github.com:langmead-lab/recount-pump.git
     SHELL
         
-    config.vm.provision "shell", privileged: false, name: "docker login", inline: <<-SHELL
-        docker login quay.io -u $(cut -d' ' -f1 ~/.docker/creds.txt) \
-                             -p $(cut -d' ' -f2 ~/.docker/creds.txt)
+    config.vm.provision "shell", privileged: true, name: "docker login", inline: <<-SHELL
+        docker login quay.io -u $(cut -d' ' -f1 /root/.docker/creds.txt) \
+                             -p $(cut -d' ' -f2 /root/.docker/creds.txt)
     SHELL
 
-    config.vm.provision "shell", privileged: false, name: "recount-pump image", inline: <<-SHELL
+    config.vm.provision "shell", privileged: true, name: "recount-pump image", inline: <<-SHELL
         SKIP_BUILD=0
         if [ ${SKIP_BUILD} = 0 ] ; then
             cd /work/recount-pump && ./build.sh && ./push.sh
@@ -134,33 +138,33 @@ Vagrant.configure("2") do |config|
         fi
     SHELL
 
-    config.vm.provision "shell", privileged: false, name: "write cluster.ini", inline: <<-SHELL
-        mkdir -p ~/.recount
+    config.vm.provision "shell", privileged: true, name: "write cluster.ini", inline: <<-SHELL
+        mkdir -p /root/.recount
         
-        echo "[cluster]"                                            > ~/.recount/cluster_docker.ini
-        echo "system = docker"                                     >> ~/.recount/cluster_docker.ini
-        echo "ref_base = /work/recount-ref"                        >> ~/.recount/cluster_docker.ini
-        echo "temp_base = /work/recount-temp-docker/temp"          >> ~/.recount/cluster_docker.ini
-        echo "input_base = /work/recount-temp-docker/input"        >> ~/.recount/cluster_docker.ini
-        echo "output_base = /work/recount-temp-docker/output"      >> ~/.recount/cluster_docker.ini
-        echo "ref_mount = /container-mounts/recount/ref"           >> ~/.recount/cluster_docker.ini
-        echo "temp_mount = /container-mounts/recount/temp"         >> ~/.recount/cluster_docker.ini
-        echo "input_mount = /container-mounts/recount/input"       >> ~/.recount/cluster_docker.ini
-        echo "output_mount = /container-mounts/recount/output"     >> ~/.recount/cluster_docker.ini
+        echo "[cluster]"                                            > /root/.recount/cluster_docker.ini
+        echo "system = docker"                                     >> /root/.recount/cluster_docker.ini
+        echo "ref_base = /work/recount-ref"                        >> /root/.recount/cluster_docker.ini
+        echo "temp_base = /work/recount-temp-docker/temp"          >> /root/.recount/cluster_docker.ini
+        echo "input_base = /work/recount-temp-docker/input"        >> /root/.recount/cluster_docker.ini
+        echo "output_base = /work/recount-temp-docker/output"      >> /root/.recount/cluster_docker.ini
+        echo "ref_mount = /container-mounts/recount/ref"           >> /root/.recount/cluster_docker.ini
+        echo "temp_mount = /container-mounts/recount/temp"         >> /root/.recount/cluster_docker.ini
+        echo "input_mount = /container-mounts/recount/input"       >> /root/.recount/cluster_docker.ini
+        echo "output_mount = /container-mounts/recount/output"     >> /root/.recount/cluster_docker.ini
 
-        echo "[cluster]"                                            > ~/.recount/cluster_singularity.ini
-        echo "system = singularity"                                >> ~/.recount/cluster_singularity.ini
-        echo "ref_base = /work/recount-ref"                        >> ~/.recount/cluster_singularity.ini
-        echo "temp_base = /work/recount-temp-singularity/temp"     >> ~/.recount/cluster_singularity.ini
-        echo "input_base = /work/recount-temp-singularity/input"   >> ~/.recount/cluster_singularity.ini
-        echo "output_base = /work/recount-temp-singularity/output" >> ~/.recount/cluster_singularity.ini
-        echo "ref_mount = /container-mounts/recount/ref"           >> ~/.recount/cluster_singularity.ini
-        echo "temp_mount = /container-mounts/recount/temp"         >> ~/.recount/cluster_singularity.ini
-        echo "input_mount = /container-mounts/recount/input"       >> ~/.recount/cluster_singularity.ini
-        echo "output_mount = /container-mounts/recount/output"     >> ~/.recount/cluster_singularity.ini
+        echo "[cluster]"                                            > /root/.recount/cluster_singularity.ini
+        echo "system = singularity"                                >> /root/.recount/cluster_singularity.ini
+        echo "ref_base = /work/recount-ref"                        >> /root/.recount/cluster_singularity.ini
+        echo "temp_base = /work/recount-temp-singularity/temp"     >> /root/.recount/cluster_singularity.ini
+        echo "input_base = /work/recount-temp-singularity/input"   >> /root/.recount/cluster_singularity.ini
+        echo "output_base = /work/recount-temp-singularity/output" >> /root/.recount/cluster_singularity.ini
+        echo "ref_mount = /container-mounts/recount/ref"           >> /root/.recount/cluster_singularity.ini
+        echo "temp_mount = /container-mounts/recount/temp"         >> /root/.recount/cluster_singularity.ini
+        echo "input_mount = /container-mounts/recount/input"       >> /root/.recount/cluster_singularity.ini
+        echo "output_mount = /container-mounts/recount/output"     >> /root/.recount/cluster_singularity.ini
     SHELL
 
-    config.vm.provision "shell", privileged: false, name: "analysis images", inline: <<-SHELL
+    config.vm.provision "shell", privileged: true, name: "analysis images", inline: <<-SHELL
         FLOWBASE="/work/recount-pump/workflow"
         export RECOUNT_REF=/work/recount-ref
         mkdir -p ${RECOUNT_REF}
@@ -193,7 +197,7 @@ Vagrant.configure("2") do |config|
             cd ${FLOWDIR} && ../../src/run.py \
                 --input ../common/accessions.txt \
                 --image ${IMAGE} \
-                --ini ~/.recount/cluster_docker.ini \
+                --ini /root/.recount/cluster_docker.ini \
                 --name docker-test-${FLOW}
             if [ $? -eq 0 ] ; then
                 echo "===HAPPY ${IMAGE} ran in Docker"
@@ -209,7 +213,7 @@ Vagrant.configure("2") do |config|
             cd ${FLOWDIR} && ../../src/run.py \
                 --input ../common/accessions.txt \
                 --image docker://${IMAGE} \
-                --ini ~/.recount/cluster_singularity.ini \
+                --ini /root/.recount/cluster_singularity.ini \
                 --name singularity-test-${FLOW}
             if [ $? -eq 0 ] ; then
                 echo "===HAPPY ${IMAGE} ran in Singularity"
@@ -221,7 +225,7 @@ Vagrant.configure("2") do |config|
         done
     SHELL
 
-    config.vm.provision "shell", privileged: false, name: "minio image", inline: <<-SHELL
+    config.vm.provision "shell", privileged: true, name: "minio image", inline: <<-SHELL
         cd /work/recount-pump/docker/minio && ./build.sh && ./push.sh
         if [ $? -eq 0 ] ; then
             echo "===HAPPY benlangmead/recount-minio built and pushed"
@@ -230,7 +234,7 @@ Vagrant.configure("2") do |config|
         fi
     SHELL
 
-    config.vm.provision "shell", privileged: false, name: "integration test", inline: <<-SHELL
+    config.vm.provision "shell", privileged: true, name: "integration test", inline: <<-SHELL
         export PATH="$PATH:/usr/local/bin"
         if [ -n "$(which docker-compose)" -a -x "$(which docker-compose)" ] ; then
             cd /work/recount-pump && ./integration_test.sh
