@@ -1,5 +1,11 @@
 #!/usr/bin/env python
 
+"""
+Run a workflow in a container.  Can use either Docker or Singularity.  Sets up
+directories and mounting patterns so that workflow can interact with host
+filesystem in predictable ways.
+"""
+
 from __future__ import print_function
 import os
 import sys
@@ -31,7 +37,9 @@ def to_singularity_env(cmd_env):
     return '; '.join(map(lambda x: 'export ' + x, cmd_env)) + '; '
 
 
-def run_job(name, inputs, image, cluster_ini, singularity=True, keep=False):
+def run_job(name, inputs, image, cluster_ini,
+            singularity=True, keep=False, sudo=False,
+            cpus=1, syslog='', globus_dest=''):
     log.info('job name: %s, image: "%s"' % (name, image), 'run.py')
     if not os.path.exists(cluster_ini):
         raise RuntimeError('No such ini file "%s"' % cluster_ini)
@@ -82,7 +90,7 @@ def run_job(name, inputs, image, cluster_ini, singularity=True, keep=False):
 
     mounts = []
     docker = system == 'docker'
-    if input_mount is not None:
+    if input_mount is not None and len(input_mount) > 0:
         mounts.append('-v' if docker else '-B')
         mounts.append('%s/%s:%s' % (input_base, name, input_mount))
     else:
@@ -90,19 +98,19 @@ def run_job(name, inputs, image, cluster_ini, singularity=True, keep=False):
     os.makedirs(os.path.join(input_base, name))
     for inp in inputs:
         shutil.copy2(inp, os.path.join(input_base, name, os.path.basename(inp)))
-    if output_mount is not None:
+    if output_mount is not None and len(output_mount) > 0:
         mounts.append('-v' if docker else '-B')
         mounts.append('%s/%s:%s' % (output_base, name, output_mount))
     else:
         output_mount = os.path.join(output_base, name)
     os.makedirs(os.path.join(output_base, name))
-    if temp_mount is not None:
+    if temp_mount is not None and len(temp_mount) > 0:
         mounts.append('-v' if docker else '-B')
         mounts.append('%s/%s:%s' % (temp_base, name, temp_mount))
     else:
         temp_mount = os.path.join(temp_base, name)
     os.makedirs(os.path.join(temp_base, name))
-    if ref_mount is not None:
+    if ref_mount is not None and len(ref_mount) > 0:
         mounts.append('-v' if docker else '-B')
         mounts.append('%s:%s' % (ref_base, ref_mount))
     else:
@@ -112,10 +120,16 @@ def run_job(name, inputs, image, cluster_ini, singularity=True, keep=False):
                'RECOUNT_INPUT=%s' % input_mount,
                'RECOUNT_OUTPUT=%s' % output_mount,
                'RECOUNT_TEMP=%s' % temp_mount,
+               'RECOUNT_CPUS=%d' % cpus,
+               'RECOUNT_SYSLOG=%s' % syslog,
+               'RECOUNT_GLOBUS_DEST=%s' % globus_dest,
                'RECOUNT_REF=%s' % ref_mount]
     cmd_run = '/bin/bash -c "source activate recount && bash /workflow.bash"'
     if docker:
-        cmd = 'docker run %s %s %s %s' % (to_docker_env(cmd_env), ' '.join(mounts), image, cmd_run)
+        cmd = 'docker'
+        if sudo:
+            cmd = 'sudo ' + cmd
+        cmd += (' run %s %s %s %s' % (to_docker_env(cmd_env), ' '.join(mounts), image, cmd_run))
     else:
         cmd = '%s singularity exec %s %s %s' % (to_singularity_env(cmd_env), ' '.join(mounts), image, cmd_run)
     log.info('command: ' + cmd, 'run.py')
@@ -137,11 +151,17 @@ def go(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__,
-            formatter_class=argparse.RawDescriptionHelpFormatter)
+                                     formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--name', type=str, required=True,
                         help='job name, which determines subdirectory names')
     parser.add_argument('--image', type=str, required=True,
                         help='image to use with "singularity exec" or "docker run"')
+    parser.add_argument('--cpus', type=int, default=1,
+                        help='max # cpus to use in a single task [default: 1]')
+    parser.add_argument('--syslog', type=str, default='',
+                        help='address to post syslog messages to')
+    parser.add_argument('--globus-dest', type=str, default='',
+                        help='destination to push files to')
     parser.add_argument('--input', type=str, required=True, nargs='+',
                         help='input files')
     parser.add_argument('--ini', type=str,
@@ -149,6 +169,7 @@ if __name__ == '__main__':
                         help='path to cluster.ini file')
     parser.add_argument('--keep', type=bool, default=False,
                         help='do not remove temp and input directories upon success')
+    parser.add_argument('--sudo', action='store_tr ue', help='use sudo when running docker ')
     parser.add_argument('--docker', action='store_true', help='image ')
     parser.add_argument('--singularity', action='store_true', help='print this message')
     go(parser.parse_args(sys.argv[1:]))
