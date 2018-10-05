@@ -18,6 +18,7 @@ params.in   = 'accessions.txt'
 params.out  = 'results'
 params.ref  = '${RECOUNT_REF}'
 params.temp = '${RECOUNT_TEMP}'
+params.cpus = 1 
 
 srrs = Channel
        .fromPath(params.in)
@@ -47,7 +48,7 @@ process preliminary {
 process sra_fastq {
     tag { srr }
 
-    cpus 16
+    cpus ${params.cpus}
     executor 'local'
 
     input:
@@ -57,7 +58,7 @@ process sra_fastq {
     set srr, srp, species, '*.fastq' into fastq
     
     """
-    fastq-dump ${srr} --split-files -I --skip-technical
+    parallel-fastq-dump --tmpdir ${params.temp} -s ${srr} -t ${task.cpus} --split-files -I --skip-technical
     ls *_2.fastq 2>/dev/null || \
         for i in *_1.fastq ; do
             mv \$i `echo \$i | sed 's/_1.fastq/_0.fastq/'`
@@ -68,7 +69,7 @@ process sra_fastq {
 process hisat2_align {
     tag { srr }
     
-    cpus 16
+    cpus ${params.cpus}
     executor 'local'
 
     input:
@@ -117,7 +118,7 @@ process publish_align_log {
 process bam_sort {
     tag { srr }
 
-    cpus 16
+    cpus ${params.cpus}
     executor 'local'
 
     input:
@@ -253,5 +254,6 @@ process extract_junctions {
     GTF=${params.ref}/${species}/gtf/genes.gtf
     regtools junctions extract -i 20 -a 1 -o o.jx_tmp ${sbam}
     regtools junctions annotate -E -o ${srr}.jx_bed o.jx_tmp \${FA} \${GTF}
+    # TODO: copy jx_tmp file via globus
     """
 }
