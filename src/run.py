@@ -169,7 +169,7 @@ if __name__ == '__main__':
                         help='path to cluster.ini file')
     parser.add_argument('--keep', type=bool, default=False,
                         help='do not remove temp and input directories upon success')
-    parser.add_argument('--sudo', action='store_tr ue', help='use sudo when running docker ')
+    parser.add_argument('--sudo', action='store_true', help='use sudo when running docker ')
     parser.add_argument('--docker', action='store_true', help='image ')
     parser.add_argument('--singularity', action='store_true', help='print this message')
     go(parser.parse_args(sys.argv[1:]))
