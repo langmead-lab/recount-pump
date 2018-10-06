@@ -48,7 +48,7 @@ process preliminary {
 process sra_fastq {
     tag { srr }
 
-    cpus ${params.cpus}
+    cpus "${params.cpus}"
     executor 'local'
 
     input:
@@ -69,7 +69,7 @@ process sra_fastq {
 process hisat2_align {
     tag { srr }
     
-    cpus ${params.cpus}
+    cpus "${params.cpus}"
     executor 'local'
 
     input:
@@ -118,7 +118,7 @@ process publish_align_log {
 process bam_sort {
     tag { srr }
 
-    cpus ${params.cpus}
+    cpus "${params.cpus}"
     executor 'local'
 
     input:
