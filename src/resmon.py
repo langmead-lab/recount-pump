@@ -17,6 +17,14 @@ Options:
   --version                Show version.
 """
 
+import psutil
+import time
+import log
+import os
+import socket
+from docopt import docopt
+from threading import Thread
+
 """
 resmon.py
 
@@ -44,13 +52,6 @@ Ben Langmead
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 """
 
-import psutil
-import time
-import log
-import os
-from docopt import docopt
-from threading import Thread
-
 
 class SysmonThread(Thread):
 
@@ -66,10 +67,11 @@ class SysmonThread(Thread):
         self.starttime = int(time.time())
         self.closed = False
         self.seconds = seconds
+        self.hostname = socket.gethostname().split('.', 1)[0]
 
     def close(self):
         self.closed = True
- 
+
     def run(self):
         while not self.closed:
             self.poll_stat()
@@ -84,7 +86,7 @@ class SysmonThread(Thread):
         swap_stat = psutil.swap_memory()
         disk_stat = psutil.disk_io_counters()
 
-        line = str(timestamp) + ', ' + str(uptime) + ', ' + \
+        line = self.hostname + ' ' + str(timestamp) + ', ' + str(uptime) + ', ' + \
             str(self.ncores) + ', ' + str(total_cpu_percent*self.ncores) + ', '
         line += ', '.join([str(i) for i in percpu_percent])
         line += ', ' + str(mem_stat.percent) + ', ' + str(mem_stat.total >> 10) + ', ' + str(
