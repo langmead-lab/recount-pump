@@ -7,6 +7,8 @@ set -ex
 
 TAXID=6239
 RNA_SEQ_LITE="docker://quay.io/benlangmead/recount-rna-seq-lite-nf"
+CPUS_PER_WORKER=4
+NWORKERS=2
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 1: Load reference data"
@@ -194,9 +196,10 @@ echo "        PHASE 9: Run project"
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 
 python src/cluster.py \
-    run ${proj_id} \
+    run ${proj_id} ${CPUS_PER_WORKER} ${NWORKERS} \
     --max-fail 3 \
-    --poll-seconds 1
+    --poll-seconds 1 \
+    --sysmon-interval 5
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 10: Print schema"
