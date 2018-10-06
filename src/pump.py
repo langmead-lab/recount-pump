@@ -31,7 +31,6 @@ import json
 import boto3
 from docopt import docopt
 from sqlalchemy import Column, ForeignKey, Integer, String, Sequence, DateTime
-from sqlalchemy.orm import relationship
 from base import Base
 from input import Input, InputSet
 from analysis import Analysis
@@ -48,13 +47,11 @@ class Project(Base):
     """
     __tablename__ = 'project'
 
-    id = Column(Integer, Sequence('user_id_seq'), primary_key=True)
+    id = Column(Integer, Sequence('project_id_seq'), primary_key=True)
     name = Column(String(1024), nullable=False)
     input_set_id = Column(Integer, ForeignKey('input_set.id'), nullable=False)
     analysis_id = Column(Integer, ForeignKey('analysis.id'), nullable=False)
     reference_id = Column(Integer, ForeignKey('reference.id'), nullable=False)
-
-    event = relationship("ProjectEvent")  # events associated with this project
 
     def deepdict(self, session):
         d = self.__dict__.copy()
@@ -109,77 +106,80 @@ class Project(Base):
             yield self.to_job_string(input.to_job_string(), analysis_str, reference_str)
 
 
-class ProjectEvent(Base):
+class TaskAttempt(Base):
     """
-    Event types:
-    1. Staging a job
-    2. Launching a staged job to the queue
-    3. Committing results from a completed job to the staging area
+    Table for job attempts.  Each time a worker gets a task from the queue, it
+    updates this.
     """
-    __tablename__ = 'project_event'
+    __tablename__ = 'task_attempt'
+
+    id = Column(Integer, Sequence('project_id'), primary_key=True)
+    project_id = Column(Integer, ForeignKey('project.id'))
+    input_id = Column(Integer, ForeignKey('input.id'))
+    time = Column(DateTime)
+    node_name = Column(String(1024), nullable=False)
+    worker_name = Column(String(1024), nullable=False)
+
+
+class TaskSuccess(Base):
+    """
+    Table for job attempts.  Each time a worker gets a task from the queue, it
+    updates this.
+    """
+    __tablename__ = 'task_success'
 
     id = Column(Integer, Sequence('project_event_id_seq'), primary_key=True)
     project_id = Column(Integer, ForeignKey('project.id'))
-    time = Column(DateTime)
-    event = Column(String(1024))
-
-
-class Job(Base):
-    """
-    Job: an association between an analysis and an input
-    """
-    __tablename__ = 'job'
-
-    id = Column(Integer, Sequence('job_id_seq'), primary_key=True)
-    analysis_id = Column(Integer, ForeignKey('analysis.id'))
     input_id = Column(Integer, ForeignKey('input.id'))
-
-
-class Attempt(Base):
-    """
-    A job assigned to run on a particular cluster at a particular time.
-    """
-    __tablename__ = 'attempt'
-
-    id = Column(Integer, Sequence('attempt_id_seq'), primary_key=True)
-    job_id = Column(Integer, ForeignKey('job.id'))
-    description = Column(String(1024))
     time = Column(DateTime)
-    # 1, 2, 3, ... depending on which attempt this is.  0 if it's unknown.
-    attempt = Column(Integer)
+    node_name = Column(String(1024), nullable=False)
+    worker_name = Column(String(1024), nullable=False)
 
 
-class AttemptResult(Base):
+class TaskFailure(Base):
     """
-    Result of an attempt: whether it succeeded, where results 
+    Table for job attempts.  Each time a worker gets a task from the queue, it
+    updates this.
     """
-    __tablename__ = 'attempt_result'
+    __tablename__ = 'task_failure'
 
-    id = Column(Integer, Sequence('attempt_result_id_seq'), primary_key=True)
-    job_attempt_id = Column(Integer, ForeignKey('attempt.id'))
-    description = Column(String(1024))
-
-
-class ProjectStage(Base):
-    """
-    Holds jobs that are currently running or that are to be run in the future.
-    """
-    __tablename__ = 'project_stage'
-
-    id = Column(Integer, Sequence('project_stage_id_seq'), primary_key=True)
+    id = Column(Integer, Sequence('project_event_id_seq'), primary_key=True)
     project_id = Column(Integer, ForeignKey('project.id'))
-    job_id = Column(Integer, ForeignKey('project.id'))
+    input_id = Column(Integer, ForeignKey('input.id'))
+    time = Column(DateTime)
+    node_name = Column(String(1024), nullable=False)
+    worker_name = Column(String(1024), nullable=False)
 
 
-class ProjectActive(Base):
+class FailedTasks(Base):
     """
-    Holds jobs that are currently running or that are to be run in the future.
+    When a task has failed so many times that it needs to be deleted from the
+    queue unfulfilled, it goes here.
     """
-    __tablename__ = 'project_active'
+    __tablename__ = 'failed_tasks'
 
-    id = Column(Integer, Sequence('project_stage_id_seq'), primary_key=True)
+    id = Column(Integer, Sequence('failed_tasks_id_seq'), primary_key=True)
     project_id = Column(Integer, ForeignKey('project.id'))
-    job_id = Column(Integer, ForeignKey('project.id'))
+    input_id = Column(Integer, ForeignKey('input.id'))
+    time = Column(DateTime)
+    node_name = Column(String(1024), nullable=False)
+    worker_name = Column(String(1024), nullable=False)
+    job_string = Column(String(1024), nullable=False)
+
+    @classmethod
+    def job_iterator(cls, project_id, session, chunking_stragegy=None):
+        """
+        For each input in the project, return a string describing a job that
+        can process that input on any cluster.
+        TODO: Allow chunking; otherwise, only 1 SRR at a time is handled
+        """
+        proj = session.query(Project).get(project_id)
+        analysis = session.query(Analysis).get(proj.analysis_id)
+        analysis_str = analysis.to_job_string()
+        reference = session.query(Reference).get(proj.reference_id)
+        reference_str = reference.name
+        for input in session.query(FailedTasks).filter_by(project_id=project_id):
+            yield proj.to_job_string(input.to_job_string(), analysis_str, reference_str)
 
 
 def add_project(name, analysis_id, input_set_id, reference_id, session):
@@ -194,12 +194,38 @@ def add_project(name, analysis_id, input_set_id, reference_id, session):
     return proj.id
 
 
-def stage_project(project_id, sqs_client, session, chunking_strategy=None):
-    proj = session.query(Project).get(project_id)
-    resp = sqs_client.create_queue(QueueName=proj.queue_name())
+def get_queue(sqs_client, queue_name):
+    resp = sqs_client.create_queue(QueueName=queue_name)
     assert 'QueueUrl' in resp
-    q_url = resp['QueueUrl']
-    log.info('using sqs queue url ' + q_url, 'pump.py')
+    return resp['QueueUrl']
+
+
+def stage_failed_tasks(project_id, sqs_client, session, chunking_strategy=None):
+    """
+    Stage everything in the FailedTasks table for the given project
+    """
+    proj = session.query(Project).get(project_id)
+    q_url = get_queue(sqs_client, proj.queue_name())
+    log.info('stage_failed using sqs queue url ' + q_url, 'pump.py')
+    n = 0
+    for job_str in FailedTasks.job_iterator(project_id, session, chunking_strategy):
+        log.debug('stage failed job "%s" from "%s" to "%s"' % (job_str, proj.name, proj.queue_name()), 'pump.py')
+        resp = sqs_client.send_message(QueueUrl=q_url, MessageBody=job_str)
+        meta = resp['ResponseMetadata']
+        status = meta['HTTPStatusCode']
+        if status != 200:
+            raise IOError('bad status code (%d) after attempt to send message to: %s' % (status, q_url))
+        n += 1
+    log.info('Staged %d failed jobs from "%s" to "%s"' % (n, proj.name, proj.queue_name()), 'pump.py')
+
+
+def stage_project(project_id, sqs_client, session, chunking_strategy=None):
+    """
+    Stage all the jobs in the given project
+    """
+    proj = session.query(Project).get(project_id)
+    q_url = get_queue(sqs_client, proj.queue_name())
+    log.info('stage_project using sqs queue url ' + q_url, 'pump.py')
     n = 0
     for job_str in proj.job_iterator(session, chunking_strategy):
         log.debug('stage job "%s" from "%s" to "%s"' % (job_str, proj.name, proj.queue_name()), 'pump.py')
@@ -317,7 +343,7 @@ def test_stage(q_enabled, q_client_and_resource, session):
     assert 0 == len(bodies)
 
 
-if __name__ == '__main__':
+def go():
     args = docopt(__doc__)
     agg_ini = os.path.expanduser(args['--log-ini']) if args['--aggregate'] else None
     log.init_logger(log.LOG_GROUP_NAME, log_ini=agg_ini, agg_level=args['--log-level'])
@@ -348,3 +374,7 @@ if __name__ == '__main__':
     except Exception:
         log.error('Uncaught exception:', 'pump.py')
         raise
+
+
+if __name__ == '__main__':
+    go()
