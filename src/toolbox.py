@@ -30,13 +30,17 @@ def generate_file_md5(fn, blocksize=2**20):
     return m.hexdigest()
 
 
-def session_maker_from_config(fn, section='client'):
+def engine_from_config(fn, section='client'):
     config = RawConfigParser(allow_no_value=True)
     if not os.path.exists(fn):
         raise RuntimeError('No such ini file: "%s"' % fn)
     config.read(fn)
     engine_url = config.get(section, "url")
-    engine = create_engine(engine_url, echo=True)
+    return create_engine(engine_url, echo=True)
+
+
+def session_maker_from_config(fn, section='client'):
+    engine = engine_from_config(fn, section=section)
     Base.metadata.create_all(engine)
     return sessionmaker(bind=engine)
 
