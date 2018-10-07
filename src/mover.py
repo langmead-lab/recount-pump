@@ -29,6 +29,7 @@ import os
 import re
 import time
 import pytest
+import globus
 import globus_sdk
 import log
 from docopt import docopt
@@ -192,22 +193,7 @@ def replace_endpoint(url, replacement):
     return 'globus://' + replacement + url[next_slash:]
 
 
-def read_globus_config(config_fn, section='globus'):
-    cfg = RawConfigParser()
-    if not os.path.exists(config_fn):
-        raise RuntimeError('No such globus ini file: "%s"' % config_fn)
-    cfg.read(config_fn)
-    print(cfg.sections())
-    if section not in cfg.sections():
-        raise RuntimeError('No [%s] section in log ini file "%s"' % (section, config_fn))
-    return cfg
-
-
 class GlobusMover(object):
-    """
-    Does not currently handle endpoint activation.  Next step might be to look
-    at MyProxy.
-    """
 
     UUID_RE = re.compile(r'^[a-f\d]{8}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{12}$', re.IGNORECASE)
 
@@ -216,29 +202,33 @@ class GlobusMover(object):
         return bool(cls.UUID_RE.search(st))
 
     def eid_from_name(self, name):
-        return self.cfg.get(self.section, name)
+        eid = self.cfg.get('globus-' + name, 'id')
+        assert self.is_uuid(eid)
+        return eid
 
-    def __init__(self, ini_fn, section):
+    def __init__(self, ini_fn, section='recount-app', hours_per_activation=48):
         self.section = section
-        self.cfg = read_globus_config(ini_fn, section=section)
-        auth_client = globus_sdk.ConfidentialAppAuthClient(client_id=self.cfg.get(section, 'id'),
-                                                           client_secret=self.cfg.get(section, 'secret'))
-        tokens = auth_client.oauth2_client_credentials_tokens()
-        transfer_data = tokens.by_resource_server['transfer.api.globus.org']
-        authorizer = globus_sdk.AccessTokenAuthorizer(transfer_data['access_token'])
-        self.client = globus_sdk.TransferClient(authorizer=authorizer)
+        self.cfg = RawConfigParser()
+        if not os.path.exists(ini_fn):
+            raise RuntimeError('No such globus ini file: "%s"' % ini_fn)
+        self.cfg.read(ini_fn)
+        self.client = globus.new_transfer_client(self.cfg, section)
+        self.hours_per_activation = hours_per_activation
 
     def close(self):
         pass
 
+    def _activate(self, endpoint_name):
+        resp = globus.globus_activate(self.cfg, self.client,
+                                      'globus-' + endpoint_name,
+                                      self.hours_per_activation)
+        if not resp['message'].startswith('Endpoint activated success'):
+            raise RuntimeError('Bad response when attempting to activate globus endpoint "%s"' % endpoint_name)
+
     def exists(self, url):
-        endpoint_id, path, basename = parse_globus_url(url)
-        orig_endpoint_id = endpoint_id
-        if not self.is_uuid(endpoint_id):
-            endpoint_id = self.eid_from_name(endpoint_id)
-        r = self.client.endpoint_autoactivate(endpoint_id, if_expires_in=3600)
-        if r["code"] == "AutoActivationFailed":
-            raise RuntimeError('Failed to autoactivate endpoint "%s": %s' % (orig_endpoint_id, str(r)))
+        endpoint_name, path, basename = parse_globus_url(url)
+        self._activate(endpoint_name)
+        endpoint_id = self.eid_from_name(endpoint_name)
         for entry in self.client.operation_ls(endpoint_id, path=path):
             assert entry['endpoint'] == endpoint_id
             assert entry['path'] == path
@@ -249,14 +239,12 @@ class GlobusMover(object):
         raise RuntimeError('No way to make path with Globus mover')
 
     def put(self, source, destination, type='put', timeout=100000, poll_interval=60):
-        endpoint_id_src, path_src, basename_src = parse_globus_url(source)
-        endpoint_id_dst, path_dst, basename_dst = parse_globus_url(destination)
-        if not self.is_uuid(endpoint_id_src):
-            endpoint_id_src = self.eid_from_name(endpoint_id_src)
-            source = replace_endpoint(source, endpoint_id_src)
-        if not self.is_uuid(endpoint_id_dst):
-            endpoint_id_dst = self.eid_from_name(endpoint_id_dst)
-            destination = replace_endpoint(destination, endpoint_id_dst)
+        endpoint_name_src, path_src, basename_src = parse_globus_url(source)
+        endpoint_name_dst, path_dst, basename_dst = parse_globus_url(destination)
+        self._activate(endpoint_name_src)
+        self._activate(endpoint_name_dst)
+        endpoint_id_src = self.eid_from_name(endpoint_name_src)
+        endpoint_id_dst = self.eid_from_name(endpoint_name_dst)
         assert self.is_uuid(endpoint_id_src)
         assert self.is_uuid(endpoint_id_dst)
         tdata = globus_sdk.TransferData(
@@ -272,17 +260,17 @@ class GlobusMover(object):
         task_id = transfer_result['task_id']
         while self.client.get_task(task_id)['status'] == 'ACTIVE':
             log.info('Waiting for globus cp "%s" -> "%s" (task %s)' %
-                      (source, destination, task_id), 'mover.py')
+                     (source, destination, task_id), 'mover.py')
             self.client.task_wait(task_id, timeout, poll_interval)
         final_status = self.client.get_task(task_id)['status']
         log.info('Finished globus cp "%s" -> "%s" (task %s) with final status %s' %
-                  (source, destination, task_id, final_status), 'mover.py')
+                 (source, destination, task_id, final_status), 'mover.py')
 
     def get(self, source, destination):
         self.put(source, destination, type='get')
 
 
-def retry(ExceptionToCheck, tries=4, delay=3, backoff=2, logger=None):
+def retry(exception_class, tries=4, delay=3, backoff=2, logger=None):
     """ Retry calling the decorated function using an exponential backoff.
 
         http://www.saltycrane.com/blog/2009/11/
@@ -306,7 +294,7 @@ def retry(ExceptionToCheck, tries=4, delay=3, backoff=2, logger=None):
             while mtries > 1:
                 try:
                     return f(*args, **kwargs)
-                except ExceptionToCheck as e:
+                except exception_class as e:
                     msg = '%s, Retrying in %d seconds...' % (str(e), mdelay)
                     if logger is not None:
                         logger.warning(msg)
@@ -742,7 +730,7 @@ def test_s3_1(s3_enabled, s3_service, test_file):
     s3_service.remove_bucket(bucket_name)
 
 
-if __name__ == '__main__':
+def go():
     args = docopt(__doc__)
     agg_ini = os.path.expanduser(args['--log-ini']) if args['--aggregate'] else None
     log.init_logger(log.LOG_GROUP_NAME, log_ini=agg_ini, agg_level=args['--log-level'])
@@ -782,3 +770,7 @@ if __name__ == '__main__':
     except Exception:
         log.error('Uncaught exception:', 'mover.py')
         raise
+
+
+if __name__ == '__main__':
+    go()
