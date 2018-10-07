@@ -11,3 +11,4 @@ testing
 **/*.json
 **/*.json.gz
 **/.nextflow
+creds
