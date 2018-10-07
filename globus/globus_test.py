@@ -32,9 +32,13 @@ def go():
     tc.endpoint_deactivate(config.get('globus-marcc', 'id'))
 
     logging.info('Activating XSEDE')
-    globus_recount.activate_xsede(config, tc)
+    resp = globus_recount.globus_activate(config, tc, 'globus-xsede')
+    assert resp['message'].startswith('Endpoint activated success')
+    logging.info('Response: ' + resp['message'])
     logging.info('Activating MARCC')
-    globus_recount.activate_marcc(config, tc)
+    resp = globus_recount.globus_activate(config, tc, 'globus-marcc')
+    assert resp['message'].startswith('Endpoint activated success')
+    logging.info('Response: ' + resp['message'])
 
     # do a dummy transfer
     tdata = globus_sdk.TransferData(
