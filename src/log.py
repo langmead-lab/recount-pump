@@ -124,7 +124,12 @@ def init_logger(name, log_ini=None, level='DEBUG', agg_level='INFO', sender=None
             info('Found watchtower handler in "%s"' % log_ini, 'log.py')
             log_group = cfg.get('watchtower', 'log_group')
             stream_name = cfg.get('watchtower', 'stream_name')
-            hnd = watchtower.CloudWatchLogHandler(log_group=log_group, stream_name=stream_name)
+            aws_profile = None
+            if cfg.has_option('watchtower', 'aws_profile'):
+                aws_profile = cfg.get('watchtower', 'aws_profile')
+            hnd = watchtower.CloudWatchLogHandler(log_group=log_group,
+                                                  stream_name=stream_name,
+                                                  boto3_profile_name=aws_profile)
             _config_handler(hnd)
 
 
