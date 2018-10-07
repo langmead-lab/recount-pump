@@ -7,7 +7,7 @@
 
 Usage:
   cluster prepare [options] <project-id>
-  cluster run [options] <project-id>
+  cluster run [options] <project-id> <cpus-per-worker> <workers>
 
 Options:
   --cluster-ini <ini>          Cluster ini file [default: ~/.recount/cluster.ini].
@@ -22,6 +22,7 @@ Options:
                                ERROR, WARNING, INFO, DEBUG [default: INFO].
   --max-fail <int>             Maximum # poll failures before quitting [default: 10].
   --poll-seconds <int>         Seconds to wait before re-polling after failed poll [default: 5].
+  --sysmon-interval <int>      Seconds between sysmon updated; 0 disables [default: 5]
   -a, --aggregate              enable log aggregation.
   -h, --help                   Show this screen.
   --version                    Show version.
@@ -37,14 +38,19 @@ import pytest
 import run
 import subprocess
 import boto3
+import multiprocessing
+import socket
+from resmon import SysmonThread
 from datetime import datetime
 from docopt import docopt
-from toolbox import session_maker_from_config, parse_queue_config
+from toolbox import engine_from_config, session_maker_from_config, parse_queue_config
 from analysis import Analysis, add_analysis
 from input import Input, import_input_set
-from pump import Project, ProjectEvent, add_project
+from pump import Project, TaskAttempt, TaskFailure, TaskSuccess, add_project
 from reference import Reference, SourceSet, AnnotationSet, add_reference, add_source_set, \
     add_annotation_set, add_sources_to_set, add_annotations_to_set, add_source, add_annotation
+from sqlalchemy import func
+from sqlalchemy.orm import Session
 from mover import Mover
 try:
     from configparser import RawConfigParser
@@ -53,7 +59,22 @@ except ImportError:
     sys.exc_clear()
 
 
-def do_job(body, cluster_ini, session):
+class Task(object):
+
+    def __init__(self, body):
+        self.proj_id, self.job_name, self.input_string, \
+            self.analysis_string, self.reference_string = Project.parse_job_string(body)
+        self.input_id, self.srr, self.srp, self.url1, self.url2, self.url3, \
+            self.checksum1, self.checksum2, self.checksum3, \
+            self.retrieval = Input.parse_job_string(self.input_string)
+
+    def __str__(self):
+        return '{proj_id=%d, name="%s", input="%s", analysis="%s", reference="%s"}' %\
+               (self.proj_id, self.job_name, self.input_string,
+                self.analysis_string, self.reference_string)
+
+
+def do_job(body, cluster_ini, my_attempt, num_cpus, syslog=''):
     """
     Given a job-attempt description string, parse the string and execute the
     corresponding job attempt.  The description string itself is composed in
@@ -64,36 +85,26 @@ def do_job(body, cluster_ini, session):
       accession)
     - Project.job_iterator() composes the overall string
     """
-    proj_id, job_name, input_string, analysis_string, reference_string = \
-        Project.parse_job_string(body)
     cluster_name, _, _ = read_cluster_config(cluster_ini)
-    input_id, srr, srp, url1, url2, url3, \
-        checksum1, checksum2, checksum3, retrieval = \
-        Input.parse_job_string(input_string)
-    log.info('got job: {proj_id=%d, name="%s", input="%s", analysis="%s", reference="%s"}' %
-             (int(proj_id), job_name, input_string, analysis_string, reference_string), 'cluster.py')
-    event = ProjectEvent(project_id=proj_id, time=datetime.utcnow(),
-                         event='Begin "%s" on "%s"' % (srr, cluster_name))
-    session.add(event)
-    session.commit()
+    job = Task(body)
+    log.info('got job: ' + str(job), 'cluster.py')
     tmp_dir = tempfile.mkdtemp()
     tmp_fn = os.path.join(tmp_dir, 'accessions.txt')
     assert not os.path.exists(tmp_fn)
     with open(tmp_fn, 'w') as fh:
-        fh.write(','.join([srr, srp, reference_string]) + '\n')
-    if analysis_string.startswith('docker://'):
-        image_base_fn = analysis_string.split('/')[-1] + '.simg'
+        fh.write(','.join([job.srr, job.srp, job.reference_string]) + '\n')
+    analysis_string = job.analysis_string
+    if job.analysis_string.startswith('docker://'):
+        image_base_fn = job.analysis_string.split('/')[-1] + '.simg'
         image_fn = os.path.join(os.environ['SINGULARITY_CACHEDIR'], image_base_fn)
         assert os.path.exists(image_fn)
         analysis_string = image_fn
         image_md5 = subprocess.check_output(['md5sum', image_fn])
         image_md5 = image_md5.decode().split()[0]
         log.info('found image: ' + image_fn + ' with md5 ' + image_md5)
-    ret = run.run_job('attempt%d' % event.id, [tmp_fn], analysis_string, cluster_ini)
-    event = ProjectEvent(project_id=proj_id, time=datetime.utcnow(),
-                         event='End "%s" on "%s", returning %d' % (srr, cluster_name, ret))
-    session.add(event)
-    session.commit()
+    attempt_name = 'proj%d_input%d_attempt%d' % (job.proj_id, job.input_id, my_attempt)
+    ret = run.run_job(attempt_name, [tmp_fn], analysis_string, cluster_ini,
+                      singularity=True, cpus=num_cpus, syslog=syslog)
     return ret
 
 
@@ -163,6 +174,7 @@ def prepare(project_id, cluster_ini, session, aws_profile=None, s3_endpoint_url=
     proj = session.query(Project).get(project_id)
     log.info('Preparing for project "%s" (%d) on cluster "%s"' %
              (proj.name, project_id, cluster_name), 'cluster.py')
+
     # Handle analysis
     analysis = session.query(Analysis).get(proj.analysis_id)
     analysis_ready = True
@@ -186,22 +198,87 @@ def prepare(project_id, cluster_ini, session, aws_profile=None, s3_endpoint_url=
             download_image(analysis.image_url, cluster_name,
                            analysis_dir, aws_profile, s3_endpoint_url)
         analysis_ready = ready_for_analysis(analysis, analysis_dir)
+
     # Handle reference
     reference = session.query(Reference).get(proj.reference_id)
     if get_reference and not ready_reference(reference, reference_dir):
         download_reference(reference, cluster_name, reference_dir,
                            session, aws_profile, s3_endpoint_url)
     reference_ready = ready_reference(reference, reference_dir)
+
     return analysis_ready, reference_ready
 
 
-def job_loop(project_id, q_client, cluster_ini, session,
-             max_fails=10, sleep_seconds=10):
-    prepare(project_id, cluster_ini, session)
-    attempt, success, fail = 0, 0, 0
+def log_attempt(job, node_name, worker_name, session):
+    """
+    Add a new task attempt to the data model
+    """
+    ta = TaskAttempt(job.proj_id, job.input_id, datetime.utcnow(), node_name, worker_name)
+    session.add(ta)
+    session.commit()
+
+
+def get_num_attempts(job, session):
+    """
+    Ask model for past number of attempts for this task.
+    """
+    q = session.query(TaskAttempt).filter(project_id=job.proj_id, input_id=job.input_id)
+    count_q = q.statement.with_only_columns([func.count()]).order_by(None)
+    return q.session.execute(count_q).scalar()
+
+
+def log_failure(job, node_name, worker_name, session):
+    """
+    Add a new failed task attempt to the data model
+    """
+    ta = TaskFailure(job.proj_id, job.input_id, datetime.utcnow(), node_name, worker_name)
+    session.add(ta)
+    session.commit()
+
+
+def get_num_failures(job, session):
+    """
+    Ask model for past number of failed attempts for this task.
+    """
+    q = session.query(TaskFailure).filter(project_id=job.proj_id, input_id=job.input_id)
+    count_q = q.statement.with_only_columns([func.count()]).order_by(None)
+    return q.session.execute(count_q).scalar()
+
+
+def log_success(job, node_name, worker_name, session):
+    """
+    Add a new successful task attempt to the data model
+    """
+    ta = TaskSuccess(job.proj_id, job.input_id, datetime.utcnow(), node_name, worker_name)
+    session.add(ta)
+    session.commit()
+
+
+def get_num_successes(job, session):
+    """
+    Ask model for past number of successful attempts for this task.
+    """
+    q = session.query(TaskSuccess).filter(project_id=job.proj_id, input_id=job.input_id)
+    count_q = q.statement.with_only_columns([func.count()]).order_by(None)
+    return q.session.execute(count_q).scalar()
+
+
+def job_loop(project_id, q_ini, cluster_ini, worker_name, session,
+             max_fails=10, sleep_seconds=10, num_cpus=1,
+             syslog=''):
+    log.info('Getting queue client', 'cluster.py')
+    region, endpoint = parse_queue_config(q_ini)
+    boto3_session = boto3.session.Session()
+    q_client = boto3_session.client('sqs',
+                                    endpoint_url=endpoint,
+                                    region_name=region)
+    log.info('Getting queue', 'cluster.py')
     q_name = Project.queue_name_cl(project_id)
     resp = q_client.create_queue(QueueName=q_name)
     q_url = resp['QueueUrl']
+    only_delete_on_success = True
+    node_name = socket.gethostname().split('.', 1)[0]
+    attempt, success, fail = 0, 0, 0
     log.info('Entering job loop, queue "%s"' % q_name, 'cluster.py')
     while True:
         attempt += 1
@@ -216,15 +293,26 @@ def job_loop(project_id, q_client, cluster_ini, session,
             for msg in msg_set.get('Messages', []):
                 body = msg['Body']
                 success += 1
-                log.info('job start', 'cluster.py')
-                if do_job(body, cluster_ini, session):
-                    log.info('job success, acknowledging', 'cluster.py')
+                job = Task(body)
+                assert job.proj_id == project_id
+                nattempts = get_num_attempts(job, session)
+                nfailures = get_num_failures(job, session)
+                my_attempt = nattempts
+                log.info('job start; was attempted %d times previously (%d failures)' %
+                         (nattempts, nfailures), 'cluster.py')
+                log_attempt(job, node_name, worker_name, session)
+                succeeded = False
+                if do_job(body, cluster_ini, my_attempt, num_cpus, syslog=syslog):
+                    log_success(job, node_name, worker_name, session)
+                    log.info('job success', 'cluster.py')
+                    succeeded = True
                 else:
+                    log_failure(job, node_name, worker_name, session)
                     log.info('job failure', 'cluster.py')
-                    # TODO: count how many failed attempts there are for this job
-                handle = msg['ReceiptHandle']
-                log.info('acknowledging ' + handle, 'cluster.py')
-                q_client.delete_message(QueueUrl=q_url, ReceiptHandle=handle)
+                if succeeded or not only_delete_on_success:
+                    handle = msg['ReceiptHandle']
+                    log.info('Deleting ' + handle, 'cluster.py')
+                    q_client.delete_message(QueueUrl=q_url, ReceiptHandle=handle)
 
 
 def read_cluster_config(cluster_fn, section=None):
@@ -299,7 +387,8 @@ def test_integration(db_integration):
 
 
 def test_download_image_s3(s3_enabled, s3_service):
-    if not s3_enabled: pytest.skip('Skipping S3 tests')
+    if not s3_enabled:
+        pytest.skip('Skipping S3 tests')
     # TODO
 
 
@@ -363,7 +452,19 @@ def test_with_db(session):
     assert os.path.exists(os.path.join(reference_dir, 'ce10', 'annotation1.txt'))
 
 
-if __name__ == '__main__':
+def worker(project_id, worker_name, q_ini, cluster_ini, engine, max_fail,
+           poll_seconds, cpus_per_worker, syslog):
+    engine.dispose()
+    connection = engine.connect()
+    session = Session(bind=connection)
+    print(job_loop(project_id, q_ini, cluster_ini, worker_name, session,
+                   max_fails=max_fail,
+                   sleep_seconds=poll_seconds,
+                   num_cpus=cpus_per_worker,
+                   syslog=syslog))
+
+
+def go():
     args = docopt(__doc__)
     agg_ini = os.path.expanduser(args['--log-ini']) if args['--aggregate'] else None
     log.init_logger(log.LOG_GROUP_NAME, log_ini=agg_ini, agg_level=args['--log-level'])
@@ -374,23 +475,62 @@ if __name__ == '__main__':
         cluster_ini = os.path.expanduser(args['--cluster-ini'])
         q_ini = os.path.expanduser(args['--queue-ini'])
         if args['prepare']:
-            Session = session_maker_from_config(db_ini, args['--db-section'])
+            session_maker = session_maker_from_config(db_ini, args['--db-section'])
             print(prepare(int(args['<project-id>']),
-                          cluster_ini, Session(),
+                          cluster_ini, session_maker(),
                           aws_profile=args['--profile'],
                           s3_endpoint_url=args['--endpoint-url'],
                           get_image=True, get_reference=True))
         if args['run']:
-            region, endpoint = parse_queue_config(q_ini)
-            boto3_session = boto3.session.Session()
-            q_client = boto3_session.client('sqs',
-                                            endpoint_url=endpoint,
-                                            region_name=region)
-            Session = session_maker_from_config(db_ini, args['--db-section'])
-            print(job_loop(int(args['<project-id>']),
-                           q_client, cluster_ini, Session(),
-                           max_fails=int(args['--max-fail']),
-                           sleep_seconds=int(args['--poll-seconds'])))
+            project_id = int(args['<project-id>'])
+            engine = engine_from_config(db_ini, args['--db-section'])
+            connection = engine.connect()
+            session = Session(bind=connection)
+            prepare(project_id, cluster_ini, session)
+            workers = int(args['<workers>'])
+            assert workers >= 1
+            max_fails = int(args['--max-fail'])
+            sleep_seconds = int(args['--poll-seconds'])
+            procs = []
+            cpus_per_worker = int(args['<cpus-per-worker>'])
+            sysmon_ival = int(args['--sysmon-interval'])
+            # set up system monitor thread
+            sm = None
+            if sysmon_ival > 0:
+                log.info('Starting system monitor thread with interval %d' %
+                         sysmon_ival, 'cluster.py')
+                sm = SysmonThread(seconds=int(sysmon_ival))
+                sm.start()
+            # set up syslog
+            syslog = ''
+            if agg_ini is not None:
+                cfg = RawConfigParser()
+                cfg.read(agg_ini)
+                host, port = cfg.get('syslog', 'host'), int(cfg.get('syslog', 'port'))
+                syslog = host + ':' + port
+            for i in range(workers):
+                worker_name = 'worker_%d_of_%d' % (i+1, workers)
+                t = multiprocessing.Process(target=worker,
+                                            args=(project_id, worker_name, q_ini, cluster_ini,
+                                                  engine, max_fails, sleep_seconds,
+                                                  cpus_per_worker, syslog))
+                t.start()
+                log.info('Spawned process %d (pid=%d)' % (i+1, t.pid), 'cluster.py')
+                procs.append(t)
+            for i, proc in enumerate(procs):
+                pid = proc.pid
+                proc.join()
+                log.info('Joined process %d (pid=%d)' % (i + 1, pid), 'cluster.py')
+            log.info('All processes joined', 'cluster.py')
+            if sysmon_ival > 0:
+                log.info('Closing monitor thread', 'cluster.py')
+                sm.close()
+                log.info('Joining monitor thread', 'cluster.py')
+                sm.join()
     except Exception:
         log.error('Uncaught exception:', 'cluster.py')
         raise
+
+
+if __name__ == '__main__':
+    go()
