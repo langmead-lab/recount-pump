@@ -1,4 +1,6 @@
 workflow/*/output
+workflow/*/work
+workflow/*/results
 vagrant/.vagrant
 vagrant/vagrant.log
 docker/minio/src
@@ -6,3 +8,6 @@ testing
 **/__pycache__
 **/*.pyc
 **/.ipynb_checkpoints
+**/*.json
+**/*.json.gz
+**/.nextflow
