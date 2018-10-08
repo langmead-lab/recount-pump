@@ -12,4 +12,5 @@ fi
 aws logs --profile ${profile} \
          --log-group-name=${log_group} \
          --log-stream-name=${log_stream} \
+         --output text \
          get-log-events
