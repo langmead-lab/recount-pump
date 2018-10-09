@@ -23,6 +23,11 @@ RUN echo '[queue]\n\
 endpoint=http://elasticmq:9324\n\
 region=us-east-1\n' >> /root/.recount/queue.ini
 
+#RUN echo '[watchtower]\n\
+#log_group=watchtower\n\
+#stream_name=recount-pump-test\n\
+#aws_profile=jhu-langmead\n' >> /root/.recount/log.ini
+
 RUN echo '[client]\n\
 url=postgres://recount:recount-postgres@db:5432/recount-test\n\
 password=recount-postgres\n\
