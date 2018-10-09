@@ -5,5 +5,5 @@ __pycache__
 search.json
 .ipynb_checkpoints
 testing
-creds
 *.pyc
+*.override
