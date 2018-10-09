@@ -91,6 +91,24 @@ def make_default_handler(sender=None):
     return default_handler
 
 
+def make_syslog_handler(cfg):
+    host, port, fmt, datefmt = \
+        cfg.get('syslog', 'host'), int(cfg.get('syslog', 'port')), \
+        cfg.get('syslog', 'format'), cfg.get('syslog', 'datefmt')
+    return SysLogHandler(address=(host, port))
+
+
+def make_watchtower_handler(cfg):
+    log_group = cfg.get('watchtower', 'log_group')
+    stream_name = cfg.get('watchtower', 'stream_name')
+    aws_profile = None
+    if cfg.has_option('watchtower', 'aws_profile'):
+        aws_profile = cfg.get('watchtower', 'aws_profile')
+    return watchtower.CloudWatchLogHandler(log_group=log_group,
+                                           stream_name=stream_name,
+                                           boto3_profile_name=aws_profile)
+
+
 def init_logger(name, log_ini=None, level='DEBUG', agg_level='INFO', sender=None):
     lg = logging.getLogger(name)
     lg.setLevel(level if isinstance(level, int) else logging.getLevelName(level))
@@ -116,21 +134,10 @@ def init_logger(name, log_ini=None, level='DEBUG', agg_level='INFO', sender=None
 
         if 'syslog' in cfg.sections():
             info('Found syslog handler in "%s"' % log_ini, 'log.py')
-            host, port, fmt, datefmt =\
-                cfg.get('syslog', 'host'), int(cfg.get('syslog', 'port')),\
-                cfg.get('syslog', 'format'), cfg.get('syslog', 'datefmt')
-            _config_handler(SysLogHandler(address=(host, port)))
+            _config_handler(make_syslog_handler(cfg))
         if 'watchtower' in cfg.sections():
             info('Found watchtower handler in "%s"' % log_ini, 'log.py')
-            log_group = cfg.get('watchtower', 'log_group')
-            stream_name = cfg.get('watchtower', 'stream_name')
-            aws_profile = None
-            if cfg.has_option('watchtower', 'aws_profile'):
-                aws_profile = cfg.get('watchtower', 'aws_profile')
-            hnd = watchtower.CloudWatchLogHandler(log_group=log_group,
-                                                  stream_name=stream_name,
-                                                  boto3_profile_name=aws_profile)
-            _config_handler(hnd)
+            _config_handler(make_watchtower_handler(cfg))
 
 
 def read_log_config(config_fn, section):
