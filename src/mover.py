@@ -5,6 +5,7 @@
 Usage:
   mover get <source> <dest> [options]
   mover put <source> <dest> [options]
+  mover multi <source> <dest> <file>... [options]
   mover exists <file> [options]
   mover nop
 
@@ -15,7 +16,8 @@ Options:
   --endpoint-url=<url>       Endpoint URL for S3 API.  If not set, uses AWS default.
   --curl=<curl>              curl executable [default: curl].
   --globus-ini=<path>        Path to globus ini file [default: ~/.recount/globus.ini].
-  --globus-section=<string>  Section header for globus in ini file [default: globus].
+  --globus-section=<string>  Name pf section in globus ini file describing the
+                             application [default: recount-app].
   --log-ini <ini>            ini file for log aggregator [default: ~/.recount/log.ini].
   --log-section <section>    ini file section for log aggregator [default: log].
   --log-level <level>        set level for log aggregation; could be CRITICAL,
@@ -168,6 +170,11 @@ class S3Mover(object):
         bucket = self.s3.Bucket(bucket_str)
         bucket.download_file(path_str, destination)
 
+    def multi(self, source, destination, files):
+        for file in files:
+            self.put(os.path.join(source, file),
+                     os.path.join(destination, file))
+
 
 def parse_globus_url(url):
     """
@@ -180,20 +187,16 @@ def parse_globus_url(url):
         start_index += 1
     next_slash = url.index('/', start_index)
     last_slash = url.rindex('/')
-    return url[start_index:next_slash], url[next_slash:], url[last_slash+1:]
-
-
-def replace_endpoint(url, replacement):
-    if not url.startswith('globus://'):
-        raise RuntimeError('Bad globus URL: "%s"' % url)
-    start_index = 9
-    while url[start_index] == '/':
-        start_index += 1
-    next_slash = url.index('/', start_index)
-    return 'globus://' + replacement + url[next_slash:]
+    return url[start_index:next_slash], url[next_slash:], url[next_slash:last_slash], url[last_slash+1:]
 
 
 class GlobusMover(object):
+    """
+    Depends rather heavily on settings in an ini file.  By default this is
+    ~/recount/globus.ini.  This file should give us everything we need to (a)
+    translate endpoint names (used in URLs) to endpoint ids, (b) create the
+    messages we send to activate endpoints.
+    """
 
     UUID_RE = re.compile(r'^[a-f\d]{8}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{12}$', re.IGNORECASE)
 
@@ -224,38 +227,36 @@ class GlobusMover(object):
                                       self.hours_per_activation)
         if not resp['message'].startswith('Endpoint activated success'):
             raise RuntimeError('Bad response when attempting to activate globus endpoint "%s"' % endpoint_name)
+        eid = self.eid_from_name(endpoint_name)
+        assert self.is_uuid(eid)
+        return eid
 
     def exists(self, url):
-        endpoint_name, path, basename = parse_globus_url(url)
-        self._activate(endpoint_name)
-        endpoint_id = self.eid_from_name(endpoint_name)
-        for entry in self.client.operation_ls(endpoint_id, path=path):
-            assert entry['endpoint'] == endpoint_id
-            assert entry['path'] == path
-            return True
+        endpoint_name, path, path_upto_basename, basename = parse_globus_url(url)
+        endpoint_id = self._activate(endpoint_name)
+        for entry in self.client.operation_ls(endpoint_id, path=path_upto_basename):
+            if entry['DATA_TYPE'] == 'file' and basename == entry['name']:
+                return True
         return False
 
     def make_bucket(self, url):
         raise RuntimeError('No way to make path with Globus mover')
 
-    def put(self, source, destination, type='put', timeout=100000, poll_interval=60):
-        endpoint_name_src, path_src, basename_src = parse_globus_url(source)
-        endpoint_name_dst, path_dst, basename_dst = parse_globus_url(destination)
-        self._activate(endpoint_name_src)
-        self._activate(endpoint_name_dst)
-        endpoint_id_src = self.eid_from_name(endpoint_name_src)
-        endpoint_id_dst = self.eid_from_name(endpoint_name_dst)
-        assert self.is_uuid(endpoint_id_src)
-        assert self.is_uuid(endpoint_id_dst)
-        tdata = globus_sdk.TransferData(
+    def _xfer_data(self, source, destination, typ):
+        endpoint_name_src, path_src, _, _ = parse_globus_url(source)
+        endpoint_name_dst, path_dst, _, _ = parse_globus_url(destination)
+        endpoint_id_src = self._activate(endpoint_name_src)
+        endpoint_id_dst = self._activate(endpoint_name_dst)
+        return globus_sdk.TransferData(
             self.client,
             endpoint_id_src,
             endpoint_id_dst,
-            label='GlobusMover ' + type,
+            label='GlobusMover ' + typ,
             sync_level="checksum",
             verify_checksum=True,
             encrypt_data=True)
-        tdata.add_item(path_src, path_dst)
+
+    def _submit(self, tdata, source, destination, timeout, poll_interval):
         transfer_result = self.client.submit_transfer(tdata)
         task_id = transfer_result['task_id']
         while self.client.get_task(task_id)['status'] == 'ACTIVE':
@@ -266,8 +267,24 @@ class GlobusMover(object):
         log.info('Finished globus cp "%s" -> "%s" (task %s) with final status %s' %
                  (source, destination, task_id, final_status), 'mover.py')
 
-    def get(self, source, destination):
-        self.put(source, destination, type='get')
+    def put(self, source, destination, typ='put', timeout=100000, poll_interval=5):
+        _, path_src, _, _ = parse_globus_url(source)
+        _, path_dst, _, _ = parse_globus_url(destination)
+        tdata = self._xfer_data(source, destination, typ)
+        tdata.add_item(path_src, path_dst)
+        self._submit(tdata, source, destination, timeout, poll_interval)
+
+    def multi(self, source, destination, files, typ='multi', timeout=100000, poll_interval=5):
+        _, path_src, _, _ = parse_globus_url(source)
+        _, path_dst, _, _ = parse_globus_url(destination)
+        tdata = self._xfer_data(source, destination, typ)
+        for file in files:
+            tdata.add_item(os.path.join(path_src, file),
+                           os.path.join(path_dst, file))
+        self._submit(tdata, source, destination, timeout, poll_interval)
+
+    def get(self, source, destination, timeout=100000, poll_interval=5):
+        self.put(source, destination, typ='get', timeout=timeout, poll_interval=poll_interval)
 
 
 def retry(exception_class, tries=4, delay=3, backoff=2, logger=None):
@@ -417,6 +434,9 @@ class WebMover(object):
     def put(self, source, destination):
         raise RuntimeError('Cannot upload to FTP, HTTP, or HTTPS.')
 
+    def multi(self, source, destination, files):
+        raise RuntimeError('Cannot upload to FTP, HTTP, or HTTPS.')
+
     def get(self, source, destination='.'):
         """ Retrieves file from web (http, https, ftp) source.
 
@@ -555,7 +575,7 @@ class Mover(object):
         elif url.is_globus:
             if not self.enable_globus:
                 raise RuntimeError('exists called on Globus URL "%s" but Globus not enabled' % url)
-            log.info('Globus exists for "%s"' % url, 'mover.py')
+            log.info('Globus exists for "%s"' % url.to_url(), 'mover.py')
             return self.globus_mover.exists(url.to_url())
         elif url.is_curlable:
             if not self.enable_web:
@@ -641,6 +661,37 @@ class Mover(object):
                 raise RuntimeError('put called on web URL "%s" but web not enabled' % url)
             log.info('Web put from "%s" to "%s"' % (source, dst), 'mover.py')
             self.web_mover.put(source, dst)
+
+    def multi(self, source, url, files):
+        """ Copies a file from source to the url .
+
+            source: where to retrieve file from local filesystem
+            destination: destination URL
+
+            No return value.
+        """
+        url = Url(url)
+        dst = url.to_url()
+        if url.is_local:
+            log.info('Local multi-put from "%s" to "%s"' % (source, dst), 'mover.py')
+            for file in files:
+                copyfile(os.path.join(source, file),
+                         os.path.join(dst, file))
+        elif url.is_s3:
+            if not self.enable_s3:
+                raise RuntimeError('multi-put called on S3 URL "%s" but S3 not enabled' % url)
+            log.info('S3 multi-put from "%s" to "%s"' % (source, dst), 'mover.py')
+            self.s3_mover.multi(source, dst, files)
+        elif url.is_globus:
+            if not self.enable_globus:
+                raise RuntimeError('multi-put called on Globus URL "%s" but Globus not enabled' % url)
+            log.info('Globus multi-put from "%s" to "%s"' % (source, dst), 'mover.py')
+            self.globus_mover.multi(source, dst, files)
+        elif url.is_curlable:
+            if not self.enable_web:
+                raise RuntimeError('multi-put called on web URL "%s" but web not enabled' % url)
+            log.info('Web multi-put from "%s" to "%s"' % (source, dst), 'mover.py')
+            self.web_mover.multi(source, dst, files)
 
 
 @pytest.yield_fixture(scope='session')
@@ -765,6 +816,14 @@ def go():
                       globus_section=args['--globus-section'],
                       enable_globus=enable_globus, enable_s3=True, enable_web=True)
             m.put(args['<source>'], args['<dest>'])
+        elif args['multi']:
+            m = Mover(profile=args['--profile'],
+                      endpoint_url=args['--endpoint-url'],
+                      curl_exe=args['--curl'],
+                      globus_ini=args['--globus-ini'],
+                      globus_section=args['--globus-section'],
+                      enable_globus=enable_globus, enable_s3=True, enable_web=True)
+            m.multi(args['<source>'], args['<dest>'], args['<file>'])
         elif args['nop']:
             pass
     except Exception:
