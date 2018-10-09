@@ -43,6 +43,7 @@ services:
       RECOUNT_IMAGES: /images
       SINGULARITY_CACHEDIR: /images
     volumes:
+      #- ./creds/.aws:/root/.aws
       - ./testing/images:/images
       - ./testing/output:/output
       - ./testing/temp:/temporary
