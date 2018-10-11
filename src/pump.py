@@ -19,7 +19,6 @@ Options:
   --log-ini <ini>             ini file for log aggregator [default: ~/.recount/log.ini].
   --log-level <level>         set level for log aggregation; could be CRITICAL,
                               ERROR, WARNING, INFO, DEBUG [default: INFO].
-  -a, --aggregate             enable log aggregation.
   -h, --help                  Show this screen.
   --version                   Show version.
 """
@@ -345,9 +344,9 @@ def test_stage(q_enabled, q_client_and_resource, session):
 
 def go():
     args = docopt(__doc__)
-    agg_ini = os.path.expanduser(args['--log-ini']) if args['--aggregate'] else None
-    log.init_logger(log.LOG_GROUP_NAME, log_ini=agg_ini, agg_level=args['--log-level'])
-    log.init_logger('sqlalchemy', log_ini=agg_ini, agg_level=args['--log-level'],
+    log_ini = os.path.expanduser(args['--log-ini'])
+    log.init_logger(log.LOG_GROUP_NAME, log_ini=log_ini, agg_level=args['--log-level'])
+    log.init_logger('sqlalchemy', log_ini=log_ini, agg_level=args['--log-level'],
                     sender='sqlalchemy')
     try:
         db_ini = os.path.expanduser(args['--db-ini'])

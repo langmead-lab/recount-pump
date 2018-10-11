@@ -12,7 +12,6 @@ Options:
   --log-ini <ini>          ini file for log aggregator [default: ~/.recount/log.ini].
   --log-level <level>      set level for log aggregation; could be CRITICAL,
                            ERROR, WARNING, INFO, DEBUG [default: INFO].
-  -a, --aggregate          enable log aggregation.
   -h, --help               Show this screen.
   --version                Show version.
 """
@@ -30,12 +29,9 @@ except ImportError:
     from ConfigParser import RawConfigParser
     sys.exc_clear()
 
-_default_log_ini_dir = os.path.expanduser('~/.recount')
-_default_log_ini_fn = os.path.join(_default_log_ini_dir, 'log.ini')
-_default_log_ini_fn_section = 'log'
 _default_datefmt = '%b %d %H:%M:%S'
 
-LOG_GROUP_NAME='recount'
+LOG_GROUP_NAME = 'recount'
 
 
 def msg(sender, text, level):
@@ -145,7 +141,7 @@ def read_log_config(config_fn, section):
     cfg.read(config_fn)
     if section not in cfg.sections():
         raise RuntimeError('No [%s] section in log ini file "%s"' % (section, config_fn))
-    return cfg.get(section, 'host'), int(cfg.get(section, 'port')), \
+    return cfg.get(section, 'host'), int(cfg.get(section, 'port')),\
            cfg.get(section, 'format'), cfg.get(section, 'datefmt')
 
 
@@ -159,9 +155,9 @@ def add_sender_filter(add_to, sender):
         """
         "Filter" seems just to annotate log messages with hostname
         """
-        def __init__(self, sender):
+        def __init__(self, sendr):
             super(SenderFilter, self).__init__()
-            self.sender = sender
+            self.sender = sendr
 
         def filter(self, record):
             record.sender = self.sender
@@ -207,12 +203,16 @@ datefmt = %b %d %H:%M:%S
     os.remove(test_fn)
 
 
-if __name__ == '__main__':
+def go():
     args = docopt(__doc__)
 
     if args['message']:
-        agg_ini = os.path.expanduser(args['--log-ini']) if args['--aggregate'] else None
-        init_logger(LOG_GROUP_NAME, log_ini=agg_ini,
+        log_ini = os.path.expanduser(args['--log-ini'])
+        init_logger(LOG_GROUP_NAME, log_ini=log_ini,
                     agg_level=args['--log-level'], sender='log.py')
         info('This is an info message', 'log.py')
         debug('This is a debug message', 'log.py')
+
+
+if __name__ == '__main__':
+    go()

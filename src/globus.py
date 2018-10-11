@@ -6,13 +6,12 @@
 import globus_sdk
 
 
-def new_transfer_client(config, section='recount-app'):
+def new_transfer_client(client_id, client_secret):
     """
     App authenticating
     """
     confidential_client = globus_sdk.ConfidentialAppAuthClient(
-        client_id=config.get(section, 'id'),
-        client_secret=config.get(section, 'secret'))
+        client_id=client_id, client_secret=client_secret)
     scopes = "urn:globus:auth:scope:transfer.api.globus.org:all"
     cc_authorizer = globus_sdk.ClientCredentialsAuthorizer(
         confidential_client, scopes)

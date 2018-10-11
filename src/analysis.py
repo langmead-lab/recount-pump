@@ -12,7 +12,6 @@ Options:
   --db-ini <ini>           Database ini file [default: ~/.recount/db.ini].
   --db-section <section>   ini file section for database [default: client].
   --log-ini <ini>          ini file for log aggregator [default: ~/.recount/log.ini].
-  --log-section <section>  ini file section for log aggregator [default: log].
   --log-level <level>      set level for log aggregation; could be CRITICAL,
                            ERROR, WARNING, INFO, DEBUG [default: INFO].
   -h, --help               Show this screen.

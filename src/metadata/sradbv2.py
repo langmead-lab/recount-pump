@@ -19,7 +19,6 @@ Options:
   --stop-after <num>       Stop processing results after this many [default: 1000000].
   --delay                  Seconds to sleep between requests [default: 1].
   --log-ini <ini>          .ini file for log aggregator [default: ~/.recount/log.ini].
-  --log-section <section>  .ini file section for log aggregator [default: log].
   --log-level <level>      Set level for log aggregation; could be CRITICAL,
                            ERROR, WARNING, INFO, DEBUG [default: INFO].
   --noheader               Suppress header in output.

@@ -26,10 +26,8 @@ Options:
   --db-ini <ini>           Database ini file [default: ~/.recount/db.ini].
   --db-section <section>   ini file section for database [default: client].
   --log-ini <ini>          ini file for log aggregator [default: ~/.recount/log.ini].
-  --log-section <section>  ini file section for log aggregator [default: log].
   --log-level <level>      set level for log aggregation; could be CRITICAL,
                            ERROR, WARNING, INFO, DEBUG [default: INFO].
-  -a, --aggregate          enable log aggregation.
   -h, --help               Show this screen.
   --version                Show version.
 """
@@ -440,10 +438,10 @@ def test_job_string2():
 
 if __name__ == '__main__':
     args = docopt(__doc__)
-    agg_ini = os.path.expanduser(args['--log-ini']) if args['--aggregate'] else None
-    log.init_logger(log.LOG_GROUP_NAME, log_ini=agg_ini, agg_level=args['--log-level'])
-    log.init_logger('sqlalchemy', log_ini=agg_ini, agg_level=args['--log-level'],
-                     sender='sqlalchemy')
+    log_ini = os.path.expanduser(args['--log-ini'])
+    log.init_logger(log.LOG_GROUP_NAME, log_ini=log_ini, agg_level=args['--log-level'])
+    log.init_logger('sqlalchemy', log_ini=log_ini, agg_level=args['--log-level'],
+                    sender='sqlalchemy')
     try:
         db_ini = os.path.expanduser(args['--db-ini'])
         if args['add-input']:
