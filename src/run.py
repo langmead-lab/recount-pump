@@ -41,8 +41,12 @@ def to_singularity_env(cmd_env):
 
 def reader(node_name, worker_name, pipe, queue, nm):
     with pipe:
-        for line in iter(pipe.readline, b''):
-            queue.put((node_name, worker_name, nm, line.decode().rstrip()))
+        if queue is None:
+            for line in iter(pipe.readline, b''):
+                log.info(' '.join([node_name, worker_name, nm, line.decode().rstrip()]), 'run.py')
+        else:
+            for line in iter(pipe.readline, b''):
+                queue.put((node_name, worker_name, nm, line.decode().rstrip()))
 
 
 def run_job(name, inputs, image, cluster_ini,
@@ -149,15 +153,14 @@ def run_job(name, inputs, image, cluster_ini,
         cmd = '%s singularity exec %s %s %s' % (to_singularity_env(cmd_env), ' '.join(mounts), image, cmd_run)
     log.info('command: ' + cmd, 'run.py')
     proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    if log_queue is not None:
-        t_out = threading.Thread(target=reader,
-                                 args=[node_name, worker_name, proc.stdout, log_queue, 'out'])
-        t_err = threading.Thread(target=reader,
-                                 args=[node_name, worker_name, proc.stderr, log_queue, 'err'])
-        t_out.start()
-        t_err.start()
-        t_out.join()
-        t_err.join()
+    t_out = threading.Thread(target=reader,
+                             args=[node_name, worker_name, proc.stdout, log_queue, 'out'])
+    t_err = threading.Thread(target=reader,
+                             args=[node_name, worker_name, proc.stderr, log_queue, 'err'])
+    t_out.start()
+    t_err.start()
+    t_out.join()
+    t_err.join()
     proc.wait()
     ret = proc.returncode
     if ret == 0 and not keep:
