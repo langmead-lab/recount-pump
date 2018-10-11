@@ -102,10 +102,15 @@ Vagrant.configure("2") do |config|
         wget -q https://github.com/singularityware/singularity/releases/download/${SINGVER}/singularity-${SINGVER}.tar.gz
         tar xf singularity-${SINGVER}.tar.gz
         cd singularity-${SINGVER} && \
-            ./configure --prefix=/usr/local > /dev/null && \
+            ./configure --prefix=/usr > /dev/null && \
             make > /dev/null && make install > /dev/null && \
             cd .. && \
             rm -rf singularity-${SINGVER} singularity-${SINGVER}.tar.gz
+    SHELL
+
+    config.vm.provision "shell", privileged: true, name: "install watchtower", inline: <<-SHELL
+        pip install watchtower==0.5.2
+        pip install docopt==0.6.2
     SHELL
     
     config.vm.provision "shell", privileged: true, name: "setup ssh for git", inline: <<-SHELL
@@ -206,6 +211,9 @@ Vagrant.configure("2") do |config|
             fi
             #find /work/recount-temp-docker/output -type f -exec md5sum {} ";" | sort | md5sum | awk '{print $1}'
             #cat ${FLOWDIR}/outmd5.txt
+            rm -rf /work/recount-temp-docker/temp
+            rm -rf /work/recount-temp-docker/input
+            rm -rf /work/recount-temp-docker/output
 
             echo "------------------------------------------------------"
             echo "Test-running Singularity (\"$FLOW\")"
@@ -222,6 +230,9 @@ Vagrant.configure("2") do |config|
             fi
             #find /work/recount-temp-singularity/output -type f -exec md5sum {} ";" | sort | md5sum | awk '{print $1}'
             #cat ${FLOWDIR}/outmd5.txt
+            rm -rf /work/recount-temp-singularity/temp
+            rm -rf /work/recount-temp-singularity/input
+            rm -rf /work/recount-temp-singularity/output
         done
     SHELL
 
@@ -235,7 +246,6 @@ Vagrant.configure("2") do |config|
     SHELL
 
     config.vm.provision "shell", privileged: true, name: "integration test", inline: <<-SHELL
-        export PATH="$PATH:/usr/local/bin"
         if [ -n "$(which docker-compose)" -a -x "$(which docker-compose)" ] ; then
             cd /work/recount-pump && ./integration_test.sh
             if [ $? -eq 0 ] ; then
