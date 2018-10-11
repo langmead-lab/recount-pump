@@ -131,23 +131,13 @@ Vagrant.configure("2") do |config|
                              -p $(cut -d' ' -f2 /root/.docker/creds.txt)
     SHELL
 
-    config.vm.provision "shell", privileged: true, name: "recount-pump image", inline: <<-SHELL
-        SKIP_BUILD=0
-        if [ ${SKIP_BUILD} = 0 ] ; then
-            cd /work/recount-pump && ./build.sh && ./push.sh
-            if [ $? -eq 0 ] ; then
-                echo "===HAPPY benlangmead/recount-pump built and pushed"
-            else
-                echo "===SAD ERROR building and/or pushing benlangmead/recount-pump"
-            fi
-        fi
-    SHELL
-
     config.vm.provision "shell", privileged: true, name: "write cluster.ini", inline: <<-SHELL
         mkdir -p /root/.recount
         
         echo "[cluster]"                                            > /root/.recount/cluster_docker.ini
         echo "system = docker"                                     >> /root/.recount/cluster_docker.ini
+        echo "sudo = false"                                        >> /root/.recount/cluster_docker.ini
+        echo "cpus = 2"                                            >> /root/.recount/cluster_docker.ini
         echo "ref_base = /work/recount-ref"                        >> /root/.recount/cluster_docker.ini
         echo "temp_base = /work/recount-temp-docker/temp"          >> /root/.recount/cluster_docker.ini
         echo "input_base = /work/recount-temp-docker/input"        >> /root/.recount/cluster_docker.ini
@@ -159,6 +149,8 @@ Vagrant.configure("2") do |config|
 
         echo "[cluster]"                                            > /root/.recount/cluster_singularity.ini
         echo "system = singularity"                                >> /root/.recount/cluster_singularity.ini
+        echo "sudo = false"                                        >> /root/.recount/cluster_singularity.ini
+        echo "cpus = 2"                                            >> /root/.recount/cluster_singularity.ini
         echo "ref_base = /work/recount-ref"                        >> /root/.recount/cluster_singularity.ini
         echo "temp_base = /work/recount-temp-singularity/temp"     >> /root/.recount/cluster_singularity.ini
         echo "input_base = /work/recount-temp-singularity/input"   >> /root/.recount/cluster_singularity.ini
@@ -175,7 +167,7 @@ Vagrant.configure("2") do |config|
         mkdir -p ${RECOUNT_REF}
         cd ${RECOUNT_REF} && ${FLOWBASE}/prep_test.sh
         SKIP_BUILD=0
-        for FLOW in rs1 ; do
+        for FLOW in rs1 rs2 ; do
             FLOWDIR="${FLOWBASE}/${FLOW}"
             IMAGE=$(cat ${FLOWDIR}/image.txt)
 
@@ -199,11 +191,11 @@ Vagrant.configure("2") do |config|
             echo "------------------------------------------------------"
             echo "Test-running Docker (\"$FLOW\")"
             echo "------------------------------------------------------"
-            cd ${FLOWDIR} && ../../src/run.py \
-                --input ../common/accessions.txt \
-                --image ${IMAGE} \
-                --ini /root/.recount/cluster_docker.ini \
-                --name docker-test-${FLOW}
+            cd ${FLOWDIR} && ../../src/run.py go \
+                docker-test-${FLOW} \
+                ${IMAGE} \
+                ../common/accessions.txt \
+                --cluster-ini /root/.recount/cluster_docker.ini
             if [ $? -eq 0 ] ; then
                 echo "===HAPPY ${IMAGE} ran in Docker"
             else
@@ -218,11 +210,11 @@ Vagrant.configure("2") do |config|
             echo "------------------------------------------------------"
             echo "Test-running Singularity (\"$FLOW\")"
             echo "------------------------------------------------------"
-            cd ${FLOWDIR} && ../../src/run.py \
-                --input ../common/accessions.txt \
-                --image docker://${IMAGE} \
-                --ini /root/.recount/cluster_singularity.ini \
-                --name singularity-test-${FLOW}
+            cd ${FLOWDIR} && ../../src/run.py go \
+                singularity-test-${FLOW} \
+                docker://${IMAGE} \
+                ../common/accessions.txt \
+                --cluster-ini /root/.recount/cluster_singularity.ini
             if [ $? -eq 0 ] ; then
                 echo "===HAPPY ${IMAGE} ran in Singularity"
             else
@@ -242,6 +234,18 @@ Vagrant.configure("2") do |config|
             echo "===HAPPY benlangmead/recount-minio built and pushed"
         else
             echo "===SAD ERROR building and/or pushing benlangmead/recount-minio"
+        fi
+    SHELL
+
+    config.vm.provision "shell", privileged: true, name: "recount-pump image", inline: <<-SHELL
+        SKIP_BUILD=0
+        if [ ${SKIP_BUILD} = 0 ] ; then
+            cd /work/recount-pump && ./build.sh && ./push.sh
+            if [ $? -eq 0 ] ; then
+                echo "===HAPPY benlangmead/recount-pump built and pushed"
+            else
+                echo "===SAD ERROR building and/or pushing benlangmead/recount-pump"
+            fi
         fi
     SHELL
 
