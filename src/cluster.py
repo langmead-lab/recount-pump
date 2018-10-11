@@ -7,7 +7,7 @@
 
 Usage:
   cluster prepare [options] <project-id>
-  cluster run [options] <project-id> <cpus-per-worker> <workers>
+  cluster run [options] <project-id>
 
 Options:
   --cluster-ini <ini>          Cluster ini file [default: ~/.recount/cluster.ini].
@@ -81,7 +81,7 @@ class Task(object):
 log_queue = multiprocessing.Queue()
 
 
-def do_job(body, cluster_ini, my_attempt, num_cpus, node_name,
+def do_job(body, cluster_ini, my_attempt, node_name,
            worker_name, mover_config=None, destination=None):
     """
     Given a job-attempt description string, parse the string and execute the
@@ -93,7 +93,7 @@ def do_job(body, cluster_ini, my_attempt, num_cpus, node_name,
       accession)
     - Project.job_iterator() composes the overall string
     """
-    cluster_name, _, _ = read_cluster_config(cluster_ini)
+    name, _, _, _, _ = read_cluster_config(cluster_ini)
     job = Task(body)
     log.info('got job: ' + str(job), 'cluster.py')
     tmp_dir = tempfile.mkdtemp()
@@ -115,8 +115,8 @@ def do_job(body, cluster_ini, my_attempt, num_cpus, node_name,
     if mover_config is not None:
         mover = mover_config.new_mover()
     ret = run.run_job(attempt_name, [tmp_fn], analysis_string, cluster_ini,
-                      singularity=True, cpus=num_cpus, log_queue=log_queue,
-                      node_name=node_name, worker_name=worker_name,
+                      log_queue=log_queue, node_name=node_name,
+                      worker_name=worker_name,
                       mover=mover, destination=destination)
     return ret
 
@@ -283,7 +283,7 @@ def get_num_successes(job, session):
 
 
 def job_loop(project_id, q_ini, cluster_ini, worker_name, session,
-             max_fails=10, sleep_seconds=10, num_cpus=1,
+             max_fails=10, sleep_seconds=10,
              mover_config=None, destination=None):
     log.info('Getting queue client', 'cluster.py')
     region, endpoint = parse_queue_config(q_ini)
@@ -321,7 +321,7 @@ def job_loop(project_id, q_ini, cluster_ini, worker_name, session,
                          (nattempts, nfailures), 'cluster.py')
                 log_attempt(job, node_name, worker_name, session)
                 succeeded = False
-                if do_job(body, cluster_ini, my_attempt, num_cpus, node_name,
+                if do_job(body, cluster_ini, my_attempt, node_name,
                           worker_name, mover_config=mover_config,
                           destination=destination):
                     log_success(job, node_name, worker_name, session)
@@ -346,7 +346,16 @@ def read_cluster_config(cluster_fn, section=None):
             raise RuntimeError('No [%s] section in log ini file "%s"' % (section, cluster_fn))
     else:
         section = cfg.sections()[0]
-    return cfg.get(section, 'name'), cfg.get(section, 'analysis_dir'), cfg.get(section, 'ref_base')
+
+    def _cfg_get_or_none(nm):
+        return cfg.get(section, nm) if cfg.has_option(section, nm) else None
+
+    name = cfg.get(section, 'name')
+    analysis_dir = _cfg_get_or_none('analysis_dir')
+    ref_base = cfg.get(section, 'ref_base')
+    ncpus = _cfg_get_or_none('cpus') or 1
+    nworkers = _cfg_get_or_none('workers') or 1
+    return name, analysis_dir, ref_base, ncpus, nworkers
 
 
 def test_cluster_config():
@@ -359,10 +368,12 @@ ref_base = /path/i/made/up/reference
     test_fn = os.path.join(tmpdir, '.tmp.init')
     with open(test_fn, 'w') as fh:
         fh.write(config)
-    name, analysis_dir, reference_dir = read_cluster_config(test_fn)
+    name, analysis_dir, reference_dir, ncpus, nworkers = read_cluster_config(test_fn)
     assert 'stampede2' == name
     assert '/path/i/made/up/analysis' == analysis_dir
     assert '/path/i/made/up/reference' == reference_dir
+    assert 1 == ncpus
+    assert 1 == nworkers
     shutil.rmtree(tmpdir)
 
 
@@ -475,7 +486,7 @@ def test_with_db(session):
 
 
 def worker(project_id, worker_name, q_ini, cluster_ini, engine, max_fail,
-           poll_seconds, cpus_per_worker,
+           poll_seconds,
            mover_config=None, destination=None):
     engine.dispose()
     connection = engine.connect()
@@ -483,7 +494,6 @@ def worker(project_id, worker_name, q_ini, cluster_ini, engine, max_fail,
     print(job_loop(project_id, q_ini, cluster_ini, worker_name, session,
                    max_fails=max_fail,
                    sleep_seconds=poll_seconds,
-                   num_cpus=cpus_per_worker,
                    mover_config=mover_config,
                    destination=destination))
 
@@ -553,13 +563,11 @@ def go():
             connection = engine.connect()
             session = Session(bind=connection)
             prepare(project_id, cluster_ini, session, mover_config.new_mover())
-            workers = int(args['<workers>'])
-            assert workers >= 1
             max_fails = int(args['--max-fail'])
             sleep_seconds = int(args['--poll-seconds'])
             procs = []
-            cpus_per_worker = int(args['<cpus-per-worker>'])
             sysmon_ival = int(args['--sysmon-interval'])
+            _, _, _, _, nworkers = read_cluster_config(cluster_ini)
             # set up system monitor thread
             sm = None
             if sysmon_ival > 0:
@@ -569,12 +577,11 @@ def go():
                 sm.start()
             log_thread = threading.Thread(target=log_worker)
             log_thread.start()
-            for i in range(workers):
-                worker_name = 'worker_%d_of_%d' % (i+1, workers)
+            for i in range(nworkers):
+                worker_name = 'worker_%d_of_%d' % (i+1, nworkers)
                 t = multiprocessing.Process(target=worker,
                                             args=(project_id, worker_name, q_ini, cluster_ini,
                                                   engine, max_fails, sleep_seconds,
-                                                  cpus_per_worker,
                                                   mover_config, destination_url))
                 t.start()
                 log.info('Spawned process %d (pid=%d)' % (i+1, t.pid), 'cluster.py')
