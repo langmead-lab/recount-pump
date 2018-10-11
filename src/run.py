@@ -12,6 +12,8 @@ import sys
 import log
 import shutil
 import argparse
+import subprocess
+import threading
 try:
     from configparser import RawConfigParser
 except ImportError:
@@ -37,9 +39,16 @@ def to_singularity_env(cmd_env):
     return '; '.join(map(lambda x: 'export ' + x, cmd_env)) + '; '
 
 
+def reader(node_name, worker_name, pipe, queue, nm):
+    with pipe:
+        for line in iter(pipe.readline, b''):
+            queue.put((node_name, worker_name, nm, line.decode().rstrip()))
+
+
 def run_job(name, inputs, image, cluster_ini,
             singularity=True, keep=False, sudo=False,
-            cpus=1, syslog='', globus_dest=''):
+            cpus=1, mover=None, destination=None, log_queue=None,
+            node_name='', worker_name=''):
     log.info('job name: %s, image: "%s"' % (name, image), 'run.py')
     if not os.path.exists(cluster_ini):
         raise RuntimeError('No such ini file "%s"' % cluster_ini)
@@ -58,18 +67,27 @@ def run_job(name, inputs, image, cluster_ini,
         if system not in ['singularity', 'docker']:
             raise ValueError('Bad container system: "%s"' % system)
 
-    log.info('using %s as container system' % singularity, 'run.py')
+    log.info('using %s as container system' % system, 'run.py')
 
     if not os.path.exists(input_base):
-        os.makedirs(input_base)
+        try:
+            os.makedirs(input_base)
+        except FileExistsError:
+            pass
     elif not os.path.isdir(input_base):
         raise RuntimeError('input_base "%s" exists but is not a directory' % input_base)
     if not os.path.exists(output_base):
-        os.makedirs(output_base)
+        try:
+            os.makedirs(output_base)
+        except FileExistsError:
+            pass
     elif not os.path.isdir(output_base):
         raise RuntimeError('output_base "%s" exists but is not a directory' % output_base)
     if not os.path.exists(temp_base):
-        os.makedirs(temp_base)
+        try:
+            os.makedirs(temp_base)
+        except FileExistsError:
+            pass
     elif not os.path.isdir(temp_base):
         raise RuntimeError('temp_base "%s" exists but is not a directory' % temp_base)
     isdir(ref_base)
@@ -115,14 +133,11 @@ def run_job(name, inputs, image, cluster_ini,
         mounts.append('%s:%s' % (ref_base, ref_mount))
     else:
         ref_mount = ref_base
-
     cmd_env = ['RECOUNT_JOB_ID=%s' % name,
                'RECOUNT_INPUT=%s' % input_mount,
                'RECOUNT_OUTPUT=%s' % output_mount,
                'RECOUNT_TEMP=%s' % temp_mount,
                'RECOUNT_CPUS=%d' % cpus,
-               'RECOUNT_SYSLOG=%s' % syslog,
-               'RECOUNT_GLOBUS_DEST=%s' % globus_dest,
                'RECOUNT_REF=%s' % ref_mount]
     cmd_run = '/bin/bash -c "source activate recount && bash /workflow.bash"'
     if docker:
@@ -133,13 +148,41 @@ def run_job(name, inputs, image, cluster_ini,
     else:
         cmd = '%s singularity exec %s %s %s' % (to_singularity_env(cmd_env), ' '.join(mounts), image, cmd_run)
     log.info('command: ' + cmd, 'run.py')
-    print(cmd, file=sys.stderr)
-    ret = os.system(cmd)
-
+    proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if log_queue is not None:
+        t_out = threading.Thread(target=reader,
+                                 args=[node_name, worker_name, proc.stdout, log_queue, 'out'])
+        t_err = threading.Thread(target=reader,
+                                 args=[node_name, worker_name, proc.stderr, log_queue, 'err'])
+        t_out.start()
+        t_err.start()
+        t_out.join()
+        t_err.join()
+    proc.wait()
+    ret = proc.returncode
     if ret == 0 and not keep:
         print('Removing input & temporary directories', file=sys.stderr)
         shutil.rmtree(os.path.join(input_base, name))
         shutil.rmtree(os.path.join(temp_base, name))
+
+    log.info('mover=' + ('None' if mover is None else 'Non-none'), 'run.py')
+    log.info('destination=' + destination, 'run.py')
+    if mover is not None and destination is not None and len(destination) > 0:
+        output_dir = os.path.join(output_base, name)
+        log.info('using mover to copy outputs from "%s" to "%s"' % (output_dir, destination), 'run.py')
+        for fn in os.listdir(output_dir):
+            if fn.endswith('.manifest'):
+                log.info('found manifest "%s"' % fn, 'run.py')
+                with open(fn, 'rt') as man_fh:
+                    files = man_fh.read().split()
+                    for file in files:
+                        sz = os.path.getsize(file)
+                        log.info('moving file "%s" of size %d' % (fn, sz), 'run.py')
+                        if not os.path.exists(file):
+                            raise RuntimeError('File "%s" was in manifest ("%s") '
+                                               'but was not present in output '
+                                               'directory' % (file, fn))
+                    mover.multi(output_base, destination, files)
 
     print('SUCCESS' if ret == 0 else 'FAILURE', file=sys.stderr)
     return ret == 0
@@ -158,10 +201,6 @@ if __name__ == '__main__':
                         help='image to use with "singularity exec" or "docker run"')
     parser.add_argument('--cpus', type=int, default=1,
                         help='max # cpus to use in a single task [default: 1]')
-    parser.add_argument('--syslog', type=str, default='',
-                        help='address to post syslog messages to')
-    parser.add_argument('--globus-dest', type=str, default='',
-                        help='destination to push files to')
     parser.add_argument('--input', type=str, required=True, nargs='+',
                         help='input files')
     parser.add_argument('--ini', type=str,
