@@ -1,9 +1,24 @@
 #!/usr/bin/env python
 
-"""
-Run a workflow in a container.  Can use either Docker or Singularity.  Sets up
-directories and mounting patterns so that workflow can interact with host
-filesystem in predictable ways.
+# Author: Ben Langmead <ben.langmead@gmail.com>
+# License: MIT
+
+"""run
+
+Usage:
+  run go <name> <image> <input>... [options]
+
+Options:
+  <name>                   Job name, used for subdirectory names
+  <image>                  Image to run.  Can be docker:// URL.
+  <input>                  Image to run.  Can be docker:// URL.
+  --cluster-ini <ini>      ini file for cluster [default: ~/.recount/cluster.ini].
+  --log-ini <ini>          ini file for log aggregator [default: ~/.recount/log.ini].
+  --log-level <level>      set level for log aggregation; could be CRITICAL,
+                           ERROR, WARNING, INFO, DEBUG [default: INFO].
+  --keep                   Do not remove temp and input directories upon success
+  -h, --help               Show this screen.
+  --version                Show version.
 """
 
 from __future__ import print_function
@@ -11,13 +26,19 @@ import os
 import sys
 import log
 import shutil
-import argparse
+from docopt import docopt
 import subprocess
 import threading
 try:
     from configparser import RawConfigParser
 except ImportError:
     from ConfigParser import RawConfigParser
+
+"""
+Run a workflow in a container.  Can use either Docker or Singularity.  Sets up
+directories and mounting patterns so that workflow can interact with host
+filesystem in predictable ways.
+"""
 
 
 def isdir(dr):
@@ -50,9 +71,8 @@ def reader(node_name, worker_name, pipe, queue, nm):
 
 
 def run_job(name, inputs, image, cluster_ini,
-            singularity=True, keep=False, sudo=False,
-            cpus=1, mover=None, destination=None, log_queue=None,
-            node_name='', worker_name=''):
+            keep=False, mover=None, destination=None,
+            log_queue=None, node_name='', worker_name=''):
     log.info('job name: %s, image: "%s"' % (name, image), 'run.py')
     if not os.path.exists(cluster_ini):
         raise RuntimeError('No such ini file "%s"' % cluster_ini)
@@ -64,14 +84,23 @@ def run_job(name, inputs, image, cluster_ini,
     output_base = cfg.get(section, 'output_base')
     ref_base = cfg.get(section, 'ref_base')
     temp_base = cfg.get(section, 'temp_base')
-
-    system = 'singularity' if singularity else 'docker'
+    system = 'docker'
     if cfg.has_option(section, 'system'):
         system = cfg.get(section, 'system')
         if system not in ['singularity', 'docker']:
             raise ValueError('Bad container system: "%s"' % system)
+    cpus = 1
+    if cfg.has_option(section, 'cpus'):
+        cpus = int(cfg.get(section, 'cpus'))
+        if cpus < 1:
+            raise ValueError('# cpus specified --cluster-ini must be >= 0; was %d' % cpus)
+    sudo = False
+    if cfg.has_option(section, 'sudo'):
+        sudo = cfg.get(section, 'sudo').lower() == 'true'
 
     log.info('using %s as container system' % system, 'run.py')
+    log.info('using sudo: %s' % str(sudo), 'run.py')
+    log.info('using %d cpus' % cpus, 'run.py')
 
     if not os.path.exists(input_base):
         try:
@@ -189,27 +218,19 @@ def run_job(name, inputs, image, cluster_ini,
     return ret == 0
 
 
-def go(args):
-    run_job(args.name, args.input, args.image, args.ini, args.singularity, args.keep)
+def go():
+    args = docopt(__doc__)
+    log_ini = os.path.expanduser(args['--log-ini'])
+    log.init_logger(log.LOG_GROUP_NAME, log_ini=log_ini, agg_level=args['--log-level'])
+    cluster_ini = os.path.expanduser(args['--cluster-ini'])
+    try:
+        if args['go']:
+            run_job(args['<name>'], args['<input>'], args['<image>'], cluster_ini,
+                    keep=args['--keep'])
+    except Exception:
+        log.error('Uncaught exception:', 'run.py')
+        raise
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__doc__,
-                                     formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('--name', type=str, required=True,
-                        help='job name, which determines subdirectory names')
-    parser.add_argument('--image', type=str, required=True,
-                        help='image to use with "singularity exec" or "docker run"')
-    parser.add_argument('--cpus', type=int, default=1,
-                        help='max # cpus to use in a single task [default: 1]')
-    parser.add_argument('--input', type=str, required=True, nargs='+',
-                        help='input files')
-    parser.add_argument('--ini', type=str,
-                        default=os.path.expanduser('~/.recount/cluster.ini'),
-                        help='path to cluster.ini file')
-    parser.add_argument('--keep', type=bool, default=False,
-                        help='do not remove temp and input directories upon success')
-    parser.add_argument('--sudo', action='store_true', help='use sudo when running docker ')
-    parser.add_argument('--docker', action='store_true', help='image ')
-    parser.add_argument('--singularity', action='store_true', help='print this message')
-    go(parser.parse_args(sys.argv[1:]))
+    go()
