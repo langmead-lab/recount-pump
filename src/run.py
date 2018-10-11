@@ -165,8 +165,6 @@ def run_job(name, inputs, image, cluster_ini,
         shutil.rmtree(os.path.join(input_base, name))
         shutil.rmtree(os.path.join(temp_base, name))
 
-    log.info('mover=' + ('None' if mover is None else 'Non-none'), 'run.py')
-    log.info('destination=' + destination, 'run.py')
     if mover is not None and destination is not None and len(destination) > 0:
         output_dir = os.path.join(output_base, name)
         log.info('using mover to copy outputs from "%s" to "%s"' % (output_dir, destination), 'run.py')
