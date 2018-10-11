@@ -40,11 +40,10 @@ import threading
 import sys
 import boto3
 import botocore
-
 if sys.version[:1] == '2':
-    from configparser import RawConfigParser
-else:
     from ConfigParser import RawConfigParser
+else:
+    from configparser import RawConfigParser
 
 """
 mover.py

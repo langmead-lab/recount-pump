@@ -30,9 +30,9 @@ from docopt import docopt
 import subprocess
 import threading
 if sys.version[:1] == '2':
-    from configparser import RawConfigParser
-else:
     from ConfigParser import RawConfigParser
+else:
+    from configparser import RawConfigParser
 
 """
 Run a workflow in a container.  Can use either Docker or Singularity.  Sets up

@@ -4,14 +4,15 @@
 # License: MIT
 
 import os
+import sys
 import hashlib
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from base import Base
 
-try:
+if sys.version[:1] == '2':
     from ConfigParser import RawConfigParser
-except ImportError:
+else:
     from configparser import RawConfigParser
 
 

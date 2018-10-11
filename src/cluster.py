@@ -58,9 +58,9 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 from mover import Mover, MoverConfig
 if sys.version[:1] == '2':
-    from configparser import RawConfigParser
-else:
     from ConfigParser import RawConfigParser
+else:
+    from configparser import RawConfigParser
 
 
 class Task(object):
