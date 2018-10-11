@@ -1,0 +1,11 @@
+FROM quay.io/benlangmead/recount-base:latest
+
+# install conda environment
+COPY env.yml /tmp/env.yml
+RUN conda env update -q -f /tmp/env.yml
+RUN conda clean -y -p -t
+
+# install Snakefile
+COPY Snakefile /Snakefile
+
+CMD ["bash", "-c", "source activate recount && bash /workflow.bash"]

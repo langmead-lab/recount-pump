@@ -1,0 +1,11 @@
+FROM quay.io/benlangmead/recount-base:latest
+
+# install conda environment
+COPY env.yml /tmp/env.yml
+RUN conda env update -q -f /tmp/env.yml && conda clean -y -p -t
+RUN chmod -R a+rwx /opt/conda/envs/*/share/nextflow
+
+# install nextflow script
+COPY workflow.nf /workflow.nf
+
+CMD ["bash", "-c", "source activate recount && bash /workflow.bash"]
