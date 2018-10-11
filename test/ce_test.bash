@@ -6,9 +6,10 @@
 set -ex
 
 TAXID=6239
-RNA_SEQ_LITE="docker://quay.io/benlangmead/recount-rna-seq-lite-nf"
+RNA_SEQ_LITE="docker://quay.io/benlangmead/recount-rs1"
 CPUS_PER_WORKER=4
 NWORKERS=2
+ARGS=""
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 1: Load reference data"
@@ -23,14 +24,14 @@ echo "++++++++++++++++++++++++++++++++++++++++++++++"
 #    checksum_3 = Column(String(256))
 #    retrieval_method = Column(String(64))
 
-ssid=$(python src/reference.py add-source-set | tail -n 1)
+ssid=$(python src/reference.py ${ARGS} add-source-set | tail -n 1)
 test -n "${ssid}"
 
 add_source() (
     set -exo pipefail
     url=$1
     retrieval_method=$2
-    python src/reference.py \
+    python src/reference.py ${ARGS} \
         add-source "${url}" 'NA' 'NA' 'NA' 'NA' 'NA' "${retrieval_method}" | tail -n 1
 )
 
@@ -39,7 +40,7 @@ srcid2=$(add_source 's3://recount-pump/ref/ce10/fasta.tar.gz' 's3')
 test -n "${srcid1}"
 test -n "${srcid2}"
 
-python src/reference.py \
+python src/reference.py ${ARGS} \
     add-sources-to-set ${ssid} ${srcid1} ${ssid} ${srcid2}
 
 # Annotation
@@ -48,7 +49,7 @@ python src/reference.py \
 #    checksum = Column(String(32))
 #    retrieval_method = Column(String(64))
 
-asid=$(python src/reference.py add-annotation-set | tail -n 1)
+asid=$(python src/reference.py ${ARGS} add-annotation-set | tail -n 1)
 test -n "${asid}"
 
 add_annotation() (
@@ -56,14 +57,14 @@ add_annotation() (
     taxid=$1
     url=$2
     retrieval_method=$3
-    python src/reference.py \
+    python src/reference.py ${ARGS} \
         add-annotation "${taxid}" "${url}" 'NA' "${retrieval_method}" | tail -n 1
 )
 
 anid1=$(add_annotation ${TAXID} 's3://recount-pump/ref/ce10/gtf.tar.gz' 's3')
 test -n "${anid1}"
 
-python src/reference.py \
+python src/reference.py ${ARGS} \
     add-annotations-to-set ${asid} ${anid1}
 
 # Reference
@@ -81,7 +82,7 @@ add_reference() (
     longname=$3
     source_set_id=$4
     annotation_set_id=$5
-    python src/reference.py \
+    python src/reference.py ${ARGS} \
         add-reference "${taxid}" "${shortname}" "${longname}" 'NA' 'NA' \
                       "${source_set_id}" "${annotation_set_id}" | tail -n 1
 )
@@ -101,7 +102,7 @@ add_analysis() (
     set -exo pipefail
     name=$1
     image_url=$2
-    python src/analysis.py \
+    python src/analysis.py ${ARGS} \
         add-analysis ${name} ${image_url} | tail -n 1
 )
 
@@ -130,7 +131,7 @@ echo "++++++++++++++++++++++++++++++++++++++++++++++"
 input_url='s3://meta/ce10_test/ce10_test.json.gz'
 input_fn=$(basename ${input_url})
 
-python src/mover.py --endpoint-url ${S3_ENDPOINT} get "${input_url}" "${input_fn}"
+python src/mover.py ${ARGS} get "${input_url}" "${input_fn}"
 
 [ ! -f "${input_fn}" ] && echo "Could not get input json" && exit 1 
 
@@ -140,12 +141,12 @@ import_input_set() (
     input_set_name=$2
     limit=$3
     max_bases=$4
-    python src/input.py import-json \
+    python src/input.py ${ARGS} import-json \
         --limit "${limit}" --max-bases "${max_bases}" \
         "${json_file}" "${input_set_name}" | tail -n 1   
 )
 
-isid=$(import_input_set "${input_fn}" 'ce10_rna_seq' 4 500000000)
+isid=$(import_input_set "${input_fn}" 'ce10_rna_seq' 4 50000000)
 test -n "${isid}"
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
@@ -164,7 +165,7 @@ add_project() (
     input_set_id=$2
     analysis_id=$3
     reference_id=$4
-    python src/pump.py \
+    python src/pump.py ${ARGS} \
         add-project ${name} ${analysis_id} ${input_set_id} ${reference_id} | tail -n 1
 )
 
@@ -175,27 +176,26 @@ echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 5: Summarize project"
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 
-python src/pump.py summarize-project ${proj_id}
+python src/pump.py ${ARGS} summarize-project ${proj_id}
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 6: Stage project"
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 
-python src/pump.py stage ${proj_id}
+python src/pump.py ${ARGS} stage ${proj_id}
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 7: Prepare project"
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 
-python src/cluster.py \
-    prepare ${proj_id} \
-    --endpoint-url ${S3_ENDPOINT}
+python src/cluster.py ${ARGS} \
+    prepare ${proj_id}
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 9: Run project"
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 
-python src/cluster.py \
+python src/cluster.py ${ARGS} \
     run ${proj_id} ${CPUS_PER_WORKER} ${NWORKERS} \
     --max-fail 3 \
     --poll-seconds 1 \
@@ -205,4 +205,5 @@ echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 10: Print schema"
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 
-python src/schema_graph.py --prefix /output/ce10_test plot
+python src/schema_graph.py ${ARGS} \
+    --prefix /output/ce10_test plot
