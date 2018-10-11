@@ -22,7 +22,6 @@ Options:
   --log-section <section>  .ini file section for log aggregator [default: log].
   --log-level <level>      Set level for log aggregation; could be CRITICAL,
                            ERROR, WARNING, INFO, DEBUG [default: INFO].
-  -a, --aggregate          Enable log aggregation.
   --noheader               Suppress header in output.
   --nostdout               Output to files named by study accession.
   --gzip                   Gzip outputs.
@@ -336,8 +335,9 @@ def size_dist(search, size, stop_after, max_n):
 
 if __name__ == '__main__':
     args = docopt(__doc__)
-    log_ini = os.path.expanduser(args['--log-ini']) if args['--aggregate'] else None
-    log.init_logger(log.LOG_GROUP_NAME, log_ini=log_ini, agg_level=args['--log-level'])
+    log.init_logger(log.LOG_GROUP_NAME,
+                    log_ini=os.path.expanduser(args['--log-ini']),
+                    agg_level=args['--log-level'])
     try:
         if args['search']:
             # sample_taxon_id:6239 AND experiment_library_strategy:"rna seq" AND experiment_library_source:transcriptomic AND experiment_platform:illumina
