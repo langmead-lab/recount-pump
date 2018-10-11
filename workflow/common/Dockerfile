@@ -1,15 +1,11 @@
 FROM continuumio/miniconda:4.5.4
 
 # install conda environment
-COPY env.yml /tmp/env.yml
-RUN conda env create -q -f /tmp/env.yml
-RUN chmod -R a+rwx /opt/conda/envs/*/share/nextflow
+COPY env.yml /tmp/env-base.yml
+RUN conda env create -q -f /tmp/env-base.yml && conda clean -y -p -t
 
-# install nextflow script
-COPY workflow.nf /workflow.nf
+# install generic workflow wrapper script
 COPY workflow.bash /workflow.bash
 
 # for stampede2
 RUN mkdir -p /scratch /work /home1
-
-CMD ["bash", "-c", "source activate recount && bash /workflow.bash"]
