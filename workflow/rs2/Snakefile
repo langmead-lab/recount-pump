@@ -1,14 +1,8 @@
-INDEX_DIR=os.environ.get('RECOUNT_REF')
-TEMP=os.environ.get('RECOUNT_TEMP')
-CPUS=os.environ.get('RECOUNT_CPUS') or 4
-INPUT=os.environ.get('INPUT', 'accessions.txt')
-OUTPUT=os.environ.get('OUTPUT', 'output')
-
 def get_accessions(wildcards):
     """
     Grouping of SRRs with the same SRP could happen here
     """
-    for fn in INPUT.split():
+    for fn in config['input'].split():
         with open(fn, 'r') as fh:
             for ln in fh:
                 if ln.count(',') < 2:
@@ -17,13 +11,13 @@ def get_accessions(wildcards):
                 assert len(toks) == 3
                 # SRR,SRP,genome
                 # e.g. SRR1557855,SRP045778,ce10
-                yield os.path.join(OUTPUT, '%s_%s_%s.manifest'          % (toks[0], toks[1], toks[2]))
-                yield os.path.join(OUTPUT, '%s_%s_%s.jx_bed'            % (toks[0], toks[1], toks[2]))
-                yield os.path.join(OUTPUT, '%s_%s_%s.all.gene_count'    % (toks[0], toks[1], toks[2]))
-                yield os.path.join(OUTPUT, '%s_%s_%s.unique.gene_count' % (toks[0], toks[1], toks[2]))
-                yield os.path.join(OUTPUT, '%s_%s_%s.all.bw'            % (toks[0], toks[1], toks[2]))
-                yield os.path.join(OUTPUT, '%s_%s_%s.unique.bw'         % (toks[0], toks[1], toks[2]))
-                yield os.path.join(OUTPUT, '%s_%s_%s.align.log'         % (toks[0], toks[1], toks[2]))
+                yield os.path.join(config['output'], '%s_%s_%s.manifest'          % (toks[0], toks[1], toks[2]))
+                yield os.path.join(config['output'], '%s_%s_%s.jx_bed'            % (toks[0], toks[1], toks[2]))
+                yield os.path.join(config['output'], '%s_%s_%s.all.gene_count'    % (toks[0], toks[1], toks[2]))
+                yield os.path.join(config['output'], '%s_%s_%s.unique.gene_count' % (toks[0], toks[1], toks[2]))
+                yield os.path.join(config['output'], '%s_%s_%s.all.bw'            % (toks[0], toks[1], toks[2]))
+                yield os.path.join(config['output'], '%s_%s_%s.unique.bw'         % (toks[0], toks[1], toks[2]))
+                yield os.path.join(config['output'], '%s_%s_%s.align.log'         % (toks[0], toks[1], toks[2]))
 
 rule all:
     input:
@@ -31,14 +25,14 @@ rule all:
 
 rule make_manifest:
     input:
-        jxs=OUTPUT + '/{trio}.jx_bed',
-        all_gc=OUTPUT + '/{trio}.all.gene_count',
-        unique_gc=OUTPUT + '/{trio}.unique.gene_count',
-        all_bw=OUTPUT + '/{trio}.all.bw',
-        unique_bw=OUTPUT + '/{trio}.unique.bw',
-        log=OUTPUT + '/{trio}.align.log'
+        jxs       = config['output'] + '/{trio}.jx_bed',
+        all_gc    = config['output'] + '/{trio}.all.gene_count',
+        unique_gc = config['output'] + '/{trio}.unique.gene_count',
+        all_bw    = config['output'] + '/{trio}.all.bw',
+        unique_bw = config['output'] + '/{trio}.unique.bw',
+        log       = config['output'] + '/{trio}.align.log'
     output:
-        OUTPUT + '/{trio}.manifest'
+        config['output'] + '/{trio}.manifest'
     params:
         trio=lambda wildcards: wildcards.trio
     shell:
@@ -53,57 +47,57 @@ rule make_manifest:
 
 rule extract_junctions:
     input:
-        bam=TEMP + '/{trio}.sorted.bam',
-        bamidx=TEMP + '/{trio}.sorted.bam.bai',
-        fa=lambda wildcards: '%s/%s/fasta/genome.fa' % (INDEX_DIR, wildcards.trio.split('_')[2]),
-        gtf=lambda wildcards: '%s/%s/gtf/genes.gtf' % (INDEX_DIR, wildcards.trio.split('_')[2])
+        bam=config['temp'] + '/{trio}.sorted.bam',
+        bamidx=config['temp'] + '/{trio}.sorted.bam.bai',
+        fa=lambda wildcards: '%s/%s/fasta/genome.fa' % (config['ref'], wildcards.trio.split('_')[2]),
+        gtf=lambda wildcards: '%s/%s/gtf/genes.gtf' % (config['ref'], wildcards.trio.split('_')[2])
     output:
-        jxs=OUTPUT + '/{trio}.jx_bed'
+        jxs=config['output'] + '/{trio}.jx_bed'
     shell:
         """
-        regtools junctions extract -i 20 -a 1 -o {TEMP}/o.jx_tmp {input.bam}
-        regtools junctions annotate -E -o {output.jxs} {TEMP}/o.jx_tmp {input.fa} {input.gtf}
-        rm -f {TEMP}/o.jx_tmp
+        regtools junctions extract -i 20 -a 1 -o {config[temp]}/o.jx_tmp {input.bam}
+        regtools junctions annotate -E -o {output.jxs} {config[temp]}/o.jx_tmp {input.fa} {input.gtf}
+        rm -f {config[temp]}/o.jx_tmp
         """
 
 rule gene_count_all:
     input:
-        bam=TEMP + '/{trio}.sorted.bam',
-        bamidx=TEMP + '/{trio}.sorted.bam.bai',
-        gtf=lambda wildcards: '%s/%s/gtf/genes.gtf' % (INDEX_DIR, wildcards.trio.split('_')[2])
+        bam=config['temp'] + '/{trio}.sorted.bam',
+        bamidx=config['temp'] + '/{trio}.sorted.bam.bai',
+        gtf=lambda wildcards: '%s/%s/gtf/genes.gtf' % (config['ref'], wildcards.trio.split('_')[2])
     output:
-        all_gc=OUTPUT + '/{trio}.all.gene_count'
+        all_gc=config['output'] + '/{trio}.all.gene_count'
     params:
         srr=lambda wildcards: wildcards.trio.split('_')[0]
     shell:
         """
-        featureCounts -f -p -a {input.gtf} -F GTF -t exon -g gene_id -o {TEMP}/tmp {input.bam}
-        awk -v OFS='\\t' '$1 !~ /^#/ && $1 !~ /^Geneid/ && $NF != 0 {{print "{params.srr}",$0}}' {TEMP}/tmp > {output.all_gc}
-        rm -f {TEMP}/tmp
+        featureCounts -f -p -a {input.gtf} -F GTF -t exon -g gene_id -o {config[temp]}/tmp {input.bam}
+        awk -v OFS='\\t' '$1 !~ /^#/ && $1 !~ /^Geneid/ && $NF != 0 {{print "{params.srr}",$0}}' {config[temp]}/tmp > {output.all_gc}
+        rm -f {config[temp]}/tmp
         """
 
 rule gene_count_unique:
     input:
-        bam=TEMP + '/{trio}.sorted.bam',
-        bamidx=TEMP + '/{trio}.sorted.bam.bai',
-        gtf=lambda wildcards: '%s/%s/gtf/genes.gtf' % (INDEX_DIR, wildcards.trio.split('_')[2])
+        bam=config['temp'] + '/{trio}.sorted.bam',
+        bamidx=config['temp'] + '/{trio}.sorted.bam.bai',
+        gtf=lambda wildcards: '%s/%s/gtf/genes.gtf' % (config['ref'], wildcards.trio.split('_')[2])
     output:
-        unique_gc=OUTPUT + '/{trio}.unique.gene_count'
+        unique_gc=config['output'] + '/{trio}.unique.gene_count'
     params:
         srr=lambda wildcards: wildcards.trio.split('_')[0]
     shell:
         """
-        featureCounts -Q 10 -f -p -a {input.gtf} -F GTF -t exon -g gene_id -o {TEMP}/tmp {input.bam}
-        awk -v OFS='\\t' '$1 !~ /^#/ && $1 !~ /^Geneid/ && $NF != 0 {{print "{params.srr}",$0}}' {TEMP}/tmp > {output.unique_gc}
-        rm -f {TEMP}/tmp
+        featureCounts -Q 10 -f -p -a {input.gtf} -F GTF -t exon -g gene_id -o {config[temp]}/tmp {input.bam}
+        awk -v OFS='\\t' '$1 !~ /^#/ && $1 !~ /^Geneid/ && $NF != 0 {{print "{params.srr}",$0}}' {config[temp]}/tmp > {output.unique_gc}
+        rm -f {config[temp]}/tmp
         """
 
 rule bam_to_bw_all:
     input:
-        bam=TEMP + '/{trio}.sorted.bam',
-        bamidx=TEMP + '/{trio}.sorted.bam.bai'
+        bam=config['temp'] + '/{trio}.sorted.bam',
+        bamidx=config['temp'] + '/{trio}.sorted.bam.bai'
     output:
-        unique_bw=OUTPUT + '/{trio}.unique.bw'
+        unique_bw=config['output'] + '/{trio}.unique.bw'
     shell:
         """
         bamCoverage -b {input.bam} -o {output.unique_bw}
@@ -111,10 +105,10 @@ rule bam_to_bw_all:
 
 rule bam_to_bw_unique:
     input:
-        bam=TEMP + '/{trio}.sorted.bam',
-        bamidx=TEMP + '/{trio}.sorted.bam.bai'
+        bam=config['temp'] + '/{trio}.sorted.bam',
+        bamidx=config['temp'] + '/{trio}.sorted.bam.bai'
     output:
-        all_bw=OUTPUT + '/{trio}.all.bw'
+        all_bw=config['output'] + '/{trio}.all.bw'
     shell:
         """
         bamCoverage --minMappingQuality 10 -b {input.bam} -o {output.all_bw}
@@ -122,62 +116,62 @@ rule bam_to_bw_unique:
 
 rule sort:
     input:
-        TEMP + '/{trio}.bam'
+        config['temp'] + '/{trio}.bam'
     output:
-        bam=temp(TEMP + '/{trio}.sorted.bam'),
-        bai=temp(TEMP + '/{trio}.sorted.bam.bai')
+        bam=temp(config['temp'] + '/{trio}.sorted.bam'),
+        bai=temp(config['temp'] + '/{trio}.sorted.bam.bai')
     shell:
         """
-        sambamba sort --tmpdir={TEMP} -p -m 10G -o {output.bam} {input}
+        sambamba sort --tmpdir={config[temp]} -p -m 10G -o {output.bam} {input}
         sambamba index {output.bam}
         """
 
 rule align:
     input:
-        reads0=TEMP + '/{trio}_0.fastq',
-        reads1=TEMP + '/{trio}_1.fastq',
-        reads2=TEMP + '/{trio}_2.fastq',
-        index=lambda wildcards: '%s/%s/hisat2_idx/genome.1.ht2' % (INDEX_DIR, wildcards.trio.split('_')[2])
+        reads0=config['temp'] + '/{trio}_0.fastq',
+        reads1=config['temp'] + '/{trio}_1.fastq',
+        reads2=config['temp'] + '/{trio}_2.fastq',
+        index=lambda wildcards: '%s/%s/hisat2_idx/genome.1.ht2' % (config['ref'], wildcards.trio.split('_')[2])
     output:
-        bam=temp(TEMP + '/{trio}.bam'),
-        log=OUTPUT + '/{trio}.align.log'
+        bam=temp(config['temp'] + '/{trio}.bam'),
+        log=config['output'] + '/{trio}.align.log'
     params:
-        index_base=lambda wildcards: '%s/%s/hisat2_idx/genome' % (INDEX_DIR, wildcards.trio.split('_')[2])
+        index_base=lambda wildcards: '%s/%s/hisat2_idx/genome' % (config['ref'], wildcards.trio.split('_')[2])
     shell:
         """
         READ_FILES="-1 {input.reads1} -2 {input.reads2}"
         if [[ -s {input.reads0} ]] ; then
             READ_FILES="-U {input.reads0}"
         fi
-        HISAT2_ARGS="-t --mm -x {params.index_base} --threads {CPUS}"
+        HISAT2_ARGS="-t --mm -x {params.index_base} --threads {config[cpus]}"
         hisat2 \
             $READ_FILES \
             $HISAT2_ARGS \
-            --novel-splicesite-outfile {TEMP}/tmp_splicing.tab \
+            --novel-splicesite-outfile {config[temp]}/tmp_splicing.tab \
             -S /dev/null \
             2> {output.log} && \
         hisat2 \
             $READ_FILES \
             $HISAT2_ARGS \
-            --known-splicesite-infile {TEMP}/tmp_splicing.tab \
+            --known-splicesite-infile {config[temp]}/tmp_splicing.tab \
             2>> {output.log} | \
         sambamba view -S -f bam -F "not unmapped" -o {output.bam} /dev/stdin
-        rm -f {TEMP}/tmp_splicing.tab
+        rm -f {config[temp]}/tmp_splicing.tab
         """
 
 rule sra_fastq:
     output:
-        temp(TEMP + '/{trio}_0.fastq'),
-        temp(TEMP + '/{trio}_1.fastq'),
-        temp(TEMP + '/{trio}_2.fastq')
+        temp(config['temp'] + '/{trio}_0.fastq'),
+        temp(config['temp'] + '/{trio}_1.fastq'),
+        temp(config['temp'] + '/{trio}_2.fastq')
     params:
         srr=lambda wildcards: wildcards.trio.split('_')[0]
     shell:
         """
-        parallel-fastq-dump -s {params.srr} -t {CPUS} --split-files -I --skip-technical
+        parallel-fastq-dump -s {params.srr} -t {config[cpus]} --split-files -I --skip-technical
         test -f {params.srr}_2.fastq || mv {params.srr}_1.fastq {params.srr}_0.fastq
         for i in 0 1 2 ; do
             touch {params.srr}_${{i}}.fastq
-            mv {params.srr}_${{i}}.fastq {TEMP}/{wildcards.trio}_${{i}}.fastq
+            mv {params.srr}_${{i}}.fastq {config[temp]}/{wildcards.trio}_${{i}}.fastq
         done
         """

@@ -38,14 +38,27 @@ mkdir -p ${RECOUNT_TEMP}/nextflow-home ${RECOUNT_TEMP}/nextflow-temp
 chmod -R a+rwx ${RECOUNT_TEMP}/nextflow-home ${RECOUNT_TEMP}/nextflow-temp
 
 # Run nextflow workflow
-export NXF_TEMP=${RECOUNT_TEMP}/nextflow-temp && \
-    nextflow /workflow.nf \
-        --in "${INPUT_FILES}" \
-        --out "${RECOUNT_OUTPUT}" \
-        --ref "${RECOUNT_REF}" \
-        --temp "${RECOUNT_TEMP}" \
-        --cpus "${RECOUNT_CPUS}" \
+if [[ -f /workflow.nf ]] ; then
+    export NXF_TEMP=${RECOUNT_TEMP}/nextflow-temp && \
+        nextflow /workflow.nf \
+            --in "${INPUT_FILES}" \
+            --out "${RECOUNT_OUTPUT}" \
+            --ref "${RECOUNT_REF}" \
+            --temp "${RECOUNT_TEMP}" \
+            --cpus "${RECOUNT_CPUS}" \
+            $*
+elif [[ -f /Snakefile ]] ; then
+    snakemake --delete-temp-output --snakefile /Snakefile --config \
+        input="${INPUT_FILES}" \
+        output="${RECOUNT_OUTPUT}" \
+        ref="${RECOUNT_REF}" \
+        temp="${RECOUNT_TEMP}" \
+        cpus="${RECOUNT_CPUS}" \
         $*
+else
+    echo "Could not detect workflow script"
+    exit 1
+fi
 
 # These will need to be removed outside the container, where we might
 # not want to have to be root to clean up
