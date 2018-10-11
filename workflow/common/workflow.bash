@@ -35,7 +35,6 @@ cat >$HOME/.ncbi/user-settings.mkfg <<EOF
 EOF
 
 # Run nextflow workflow
-ls -l /
 if [[ -f /workflow.nf ]] ; then
     mkdir -p ${RECOUNT_TEMP}/nextflow-home ${RECOUNT_TEMP}/nextflow-temp
     chmod -R a+rwx ${RECOUNT_TEMP}/nextflow-home ${RECOUNT_TEMP}/nextflow-temp
@@ -48,7 +47,7 @@ if [[ -f /workflow.nf ]] ; then
             --cpus "${RECOUNT_CPUS}" \
             $*
 elif [[ -f /Snakefile ]] ; then
-    snakemake --delete-temp-output --snakefile /Snakefile --config \
+    snakemake --snakefile /Snakefile --config \
         input="${INPUT_FILES}" \
         output="${RECOUNT_OUTPUT}" \
         ref="${RECOUNT_REF}" \
