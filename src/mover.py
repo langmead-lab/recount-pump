@@ -704,6 +704,8 @@ class MoverConfig(object):
         if s3_ini is not None and os.path.exists(s3_ini):
             self.enable_s3, self.aws_endpoint_url, self.aws_profile = \
                 parse_s3_ini(s3_ini, s3_section)
+            if self.aws_endpoint_url is None:
+                self.enable_s3 = False
         self.globus_ini = globus_ini
         self.globus_id, self.globus_secret = None, None
         self.enable_globus = False
@@ -711,7 +713,7 @@ class MoverConfig(object):
         if globus_ini is not None and os.path.exists(globus_ini):
             self.globus_id, self.globus_secret, self.hours_per_activation = \
                 parse_globus_ini(globus_ini, globus_section)
-            self.enable_globus = True
+            self.enable_globus = self.globus_id is not None
         self.enable_web = enable_web
         self.curl_exe = curl_exe
 
@@ -734,12 +736,14 @@ def parse_s3_ini(ini_fn, section='s3'):
     Parse and return the fields of a s3.ini file
     """
     if not os.path.exists(ini_fn):
-        raise RuntimeError('S3 ini file "%s" does not exist' % ini_fn)
+        log.warning('S3 ini file "%s" does not exist' % ini_fn, 'mover.py')
+        return None, None, 0
     cfg = RawConfigParser()
     cfg.read(ini_fn)
     if not cfg.has_section(section):
-        raise RuntimeError('S3 ini file "%s" does not have section "%s"'
-                           % (ini_fn, section))
+        log.warning('S3 ini file "%s" does not have section "%s"' %
+                    (ini_fn, section), 'mover.py')
+        return None, None, 0
     enabled = cfg.get(section, 'enable') == 'true'
     aws_endpoint = cfg.get(section, 'aws_endpoint')
     aws_profile = cfg.get(section, 'aws_profile')
@@ -751,12 +755,14 @@ def parse_globus_ini(ini_fn, section='recount-app'):
     Parse and return the fields of a s3.ini file
     """
     if not os.path.exists(ini_fn):
-        raise RuntimeError('Globus ini file "%s" does not exist' % ini_fn)
+        log.warning('Globus ini file "%s" does not exist' % ini_fn, 'mover.py')
+        return None, None, 0
     cfg = RawConfigParser()
     cfg.read(ini_fn)
     if not cfg.has_section(section):
-        raise RuntimeError('Globus ini file "%s" does not have section "%s"'
-                           % (ini_fn, section))
+        log.warning('Globus ini file "%s" does not have section "%s"' %
+                    (ini_fn, section), 'mover.py')
+        return None, None, 0
     globus_id = cfg.get(section, 'id')
     globus_secret = cfg.get(section, 'secret')
     globus_hpa = cfg.get(section, 'hours_per_activation')
