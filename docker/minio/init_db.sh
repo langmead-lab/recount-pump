@@ -19,7 +19,13 @@ setup_refs() {
 setup_metadata() {
     mkdir -p $STAGING/meta/ce10_test
     cd /tmp/src
-    python -m metadata.sradbv2 search 'sample_taxon_id:6239 AND experiment_library_strategy:"rna seq" AND experiment_library_source:transcriptomic AND experiment_platform:illumina AND run_FileDate:["2017-01-01" TO "2017-05-01"]' --gzip --output $STAGING/meta/ce10_test/ce10_test.json
+    QUERY="sample_taxon_id:6239 AND"
+    QUERY="${QUERY} experiment_library_strategy:\"rna seq\" AND"
+    QUERY="${QUERY} experiment_library_source:transcriptomic AND"
+    QUERY="${QUERY} experiment_platform:illumina AND"
+    QUERY="${QUERY} run_bases:[1 TO 75000000] AND"
+    QUERY="${QUERY} run_FileDate:[\"2013-01-01\" TO \"2017-05-01\"]"
+    python -m metadata.sradbv2 search "${QUERY}" --gzip --output $STAGING/meta/ce10_test/ce10_test.json
 }
 
 setup_metadata
