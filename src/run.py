@@ -29,9 +29,9 @@ import shutil
 from docopt import docopt
 import subprocess
 import threading
-try:
+if sys.version[:1] == '2':
     from configparser import RawConfigParser
-except ImportError:
+else:
     from ConfigParser import RawConfigParser
 
 """

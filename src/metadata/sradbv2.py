@@ -35,13 +35,12 @@ import json
 import cgi
 import gzip
 import random
-try:
-    from urllib.request import urlopen
-    from urllib.parse import quote
-except ImportError:
+if sys.version[:1] == '2':
     from urllib import quote
     from urllib2 import urlopen
-    sys.exc_clear()
+else:
+    from urllib.request import urlopen
+    from urllib.parse import quote
 import time
 import os
 from docopt import docopt

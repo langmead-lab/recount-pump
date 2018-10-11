@@ -41,20 +41,10 @@ import sys
 import boto3
 import botocore
 
-try:
-    from urllib.parse import urlparse, urlencode, quote_plus
-    from urllib.request import urlopen, Request
-    from urllib.error import HTTPError, URLError
-except ImportError:
-    from urlparse import urlparse
-    from urllib import urlencode, quote_plus
-    from urllib2 import urlopen, Request, HTTPError, URLError
-    sys.exc_clear()
-try:
+if sys.version[:1] == '2':
     from configparser import RawConfigParser
-except ImportError:
+else:
     from ConfigParser import RawConfigParser
-    sys.exc_clear()
 
 """
 mover.py
@@ -851,7 +841,8 @@ def test_get(test_file):
 
 
 def test_s3_1(s3_enabled, s3_service, test_file):
-    if not s3_enabled: pytest.skip('Skipping S3 tests')
+    if not s3_enabled:
+        pytest.skip('Skipping S3 tests')
     bucket_name = 'mover-test'
     s3_service.make_bucket(bucket_name)
     dst = ''.join(['s3://', bucket_name, '/', test_file, '.put'])

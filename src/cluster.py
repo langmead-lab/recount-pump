@@ -57,11 +57,10 @@ from reference import Reference, SourceSet, AnnotationSet, add_reference, add_so
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from mover import Mover, MoverConfig
-try:
+if sys.version[:1] == '2':
     from configparser import RawConfigParser
-except ImportError:
+else:
     from ConfigParser import RawConfigParser
-    sys.exc_clear()
 
 
 class Task(object):

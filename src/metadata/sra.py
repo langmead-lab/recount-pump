@@ -7,13 +7,12 @@ import log
 import sys
 import shutil
 import os
-try:
-    from urllib.request import urlopen
-    from urllib.parse import quote
-except ImportError:
+if sys.version[:1] == '2':
     from urllib import quote
     from urllib2 import urlopen
-    sys.exc_clear()
+else:
+    from urllib.request import urlopen
+    from urllib.parse import quote
 
 
 def fetch_sra_metadata(speciess, dest_fns,

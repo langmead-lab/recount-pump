@@ -23,11 +23,10 @@ import logging
 import watchtower
 from docopt import docopt
 from logging.handlers import SysLogHandler
-try:
+if sys.version[:1] == '2':
     from configparser import RawConfigParser
-except ImportError:
+else:
     from ConfigParser import RawConfigParser
-    sys.exc_clear()
 
 _default_datefmt = '%b %d %H:%M:%S'
 
