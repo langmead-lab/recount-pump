@@ -7,8 +7,6 @@ set -ex
 
 TAXID=6239
 RNA_SEQ_LITE="docker://quay.io/benlangmead/recount-rs1"
-CPUS_PER_WORKER=4
-NWORKERS=2
 ARGS=""
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
@@ -196,7 +194,7 @@ echo "        PHASE 9: Run project"
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 
 python src/cluster.py ${ARGS} \
-    run ${proj_id} ${CPUS_PER_WORKER} ${NWORKERS} \
+    run ${proj_id} \
     --max-fail 3 \
     --poll-seconds 1 \
     --sysmon-interval 5
