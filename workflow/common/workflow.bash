@@ -37,25 +37,14 @@ EOF
 mkdir -p ${RECOUNT_TEMP}/nextflow-home ${RECOUNT_TEMP}/nextflow-temp
 chmod -R a+rwx ${RECOUNT_TEMP}/nextflow-home ${RECOUNT_TEMP}/nextflow-temp
 
-SYSLOG_ARG=
-if [ -n "${RECOUNT_SYSLOG}" ] ; then
-    SYSLOG_ARG="-syslog ${RECOUNT_SYSLOG}"
-fi
-
-GLOBUS_DEST_ARG=
-if [ -n "${RECOUNT_GLOBUS_DEST}" ] ; then
-    GLOBUS_DEST_ARG="--globus-dest ${RECOUNT_GLOBUS_DEST}"
-fi
-
 # Run nextflow workflow
 export NXF_TEMP=${RECOUNT_TEMP}/nextflow-temp && \
-    nextflow ${SYSLOG_ARG} /workflow.nf \
+    nextflow /workflow.nf \
         --in "${INPUT_FILES}" \
         --out "${RECOUNT_OUTPUT}" \
         --ref "${RECOUNT_REF}" \
         --temp "${RECOUNT_TEMP}" \
         --cpus "${RECOUNT_CPUS}" \
-        ${GLOBUS_DEST_ARG} \
         $*
 
 # These will need to be removed outside the container, where we might
