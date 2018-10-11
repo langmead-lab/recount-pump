@@ -12,17 +12,15 @@ Usage:
 Options:
   -h, --help                 Show this screen.
   --version                  Show version.
-  --profile=<profile>        AWS credentials profile section [default: default].
-  --endpoint-url=<url>       Endpoint URL for S3 API.  If not set, uses AWS default.
   --curl=<curl>              curl executable [default: curl].
+  --s3-ini=<path>            Path to S3 ini file [default: ~/.recount/s3.ini].
+  --s3-section=<string>      Name pf section in S3 ini [default: s3].
   --globus-ini=<path>        Path to globus ini file [default: ~/.recount/globus.ini].
   --globus-section=<string>  Name pf section in globus ini file describing the
                              application [default: recount-app].
   --log-ini <ini>            ini file for log aggregator [default: ~/.recount/log.ini].
-  --log-section <section>    ini file section for log aggregator [default: log].
   --log-level <level>        set level for log aggregation; could be CRITICAL,
                              ERROR, WARNING, INFO, DEBUG [default: INFO].
-  -a, --aggregate            enable log aggregation.
 """
 
 
@@ -209,13 +207,12 @@ class GlobusMover(object):
         assert self.is_uuid(eid)
         return eid
 
-    def __init__(self, ini_fn, section='recount-app', hours_per_activation=48):
-        self.section = section
+    def __init__(self, ini_fn, globus_id, globus_secret, hours_per_activation=48):
         self.cfg = RawConfigParser()
         if not os.path.exists(ini_fn):
             raise RuntimeError('No such globus ini file: "%s"' % ini_fn)
         self.cfg.read(ini_fn)
-        self.client = globus.new_transfer_client(self.cfg, section)
+        self.client = globus.new_transfer_client(globus_id, globus_secret)
         self.hours_per_activation = hours_per_activation
 
     def close(self):
@@ -525,18 +522,27 @@ class Mover(object):
         For now, just distinguishes among S3, the local filesystem, and the
         web. Perhaps class structure could be improved.
     """
-    def __init__(self, profile=None, endpoint_url=None,
+    def __init__(self,
+                 profile=None,
+                 endpoint_url=None,
                  curl_exe='curl',
                  globus_ini='~/.recount/globus.ini',
-                 globus_section='globus', enable_web=False, enable_s3=False,
-                 enable_globus=False):
+                 globus_id=None,
+                 globus_secret=None,
+                 enable_web=False,
+                 enable_s3=False,
+                 enable_globus=False,
+                 hours_per_activation=48):
         self.enable_web = enable_web
         self.enable_s3 = enable_s3
         self.enable_globus = enable_globus
         if enable_s3:
             self.s3_mover = S3Mover(profile=profile, endpoint_url=endpoint_url)
         if enable_globus:
-            self.globus_mover = GlobusMover(ini_fn=os.path.expanduser(globus_ini), section=globus_section)
+            self.globus_mover = GlobusMover(os.path.expanduser(globus_ini),
+                                            globus_id=globus_id,
+                                            globus_secret=globus_secret,
+                                            hours_per_activation=hours_per_activation)
         if enable_web:
             self.web_mover = WebMover(curl_exe=curl_exe)
 
@@ -694,6 +700,80 @@ class Mover(object):
             self.web_mover.multi(source, dst, files)
 
 
+class MoverConfig(object):
+
+    def __init__(self,
+                 s3_ini=None,
+                 s3_section=None,
+                 curl_exe='curl',
+                 globus_ini=None,
+                 globus_section=None,
+                 enable_web=False):
+        self.aws_profile = None
+        self.aws_endpoint_url = None
+        self.enable_s3 = False
+        if s3_ini is not None and os.path.exists(s3_ini):
+            self.enable_s3, self.aws_endpoint_url, self.aws_profile = \
+                parse_s3_ini(s3_ini, s3_section)
+        self.globus_ini = globus_ini
+        self.globus_id, self.globus_secret = None, None
+        self.enable_globus = False
+        self.hours_per_activation = 0
+        if globus_ini is not None and os.path.exists(globus_ini):
+            self.globus_id, self.globus_secret, self.hours_per_activation = \
+                parse_globus_ini(globus_ini, globus_section)
+            self.enable_globus = True
+        self.enable_web = enable_web
+        self.curl_exe = curl_exe
+
+    def new_mover(self):
+        return Mover(
+            profile=self.aws_profile,
+            endpoint_url=self.aws_endpoint_url,
+            curl_exe=self.curl_exe,
+            globus_ini=self.globus_ini,
+            globus_id=self.globus_id,
+            globus_secret=self.globus_secret,
+            hours_per_activation=self.hours_per_activation,
+            enable_web=self.enable_web,
+            enable_s3=self.enable_s3,
+            enable_globus=self.enable_globus)
+
+
+def parse_s3_ini(ini_fn, section='s3'):
+    """
+    Parse and return the fields of a s3.ini file
+    """
+    if not os.path.exists(ini_fn):
+        raise RuntimeError('S3 ini file "%s" does not exist' % ini_fn)
+    cfg = RawConfigParser()
+    cfg.read(ini_fn)
+    if not cfg.has_section(section):
+        raise RuntimeError('S3 ini file "%s" does not have section "%s"'
+                           % (ini_fn, section))
+    enabled = cfg.get(section, 'enable') == 'true'
+    aws_endpoint = cfg.get(section, 'aws_endpoint')
+    aws_profile = cfg.get(section, 'aws_profile')
+    return enabled, aws_endpoint, aws_profile
+
+
+def parse_globus_ini(ini_fn, section='recount-app'):
+    """
+    Parse and return the fields of a s3.ini file
+    """
+    if not os.path.exists(ini_fn):
+        raise RuntimeError('Globus ini file "%s" does not exist' % ini_fn)
+    cfg = RawConfigParser()
+    cfg.read(ini_fn)
+    if not cfg.has_section(section):
+        raise RuntimeError('Globus ini file "%s" does not have section "%s"'
+                           % (ini_fn, section))
+    globus_id = cfg.get(section, 'id')
+    globus_secret = cfg.get(section, 'secret')
+    globus_hpa = cfg.get(section, 'hours_per_activation')
+    return globus_id, globus_secret, int(globus_hpa)
+
+
 @pytest.yield_fixture(scope='session')
 def test_file():
     fn = '.TestMover.1'
@@ -740,10 +820,11 @@ def test_parse_url1():
 
 
 def test_parse_url2():
-    a, b, c = parse_globus_url('globus://recount-pump/ref/test')
-    assert 'recount-pump' == a
-    assert '/ref/test' == b
-    assert 'test' == c
+    endpoint_name, path, path_upto_basename, basename = parse_globus_url('globus://recount-pump/ref/test')
+    assert 'recount-pump' == endpoint_name
+    assert '/ref/test' == path
+    assert '/ref' == path_upto_basename
+    assert 'test' == basename
 
 
 def test_exists(test_file):
@@ -783,46 +864,32 @@ def test_s3_1(s3_enabled, s3_service, test_file):
 
 def go():
     args = docopt(__doc__)
-    agg_ini = os.path.expanduser(args['--log-ini']) if args['--aggregate'] else None
-    log.init_logger(log.LOG_GROUP_NAME, log_ini=agg_ini, agg_level=args['--log-level'])
-    log.init_logger('sqlalchemy', log_ini=agg_ini, agg_level=args['--log-level'],
+    log_ini = os.path.expanduser(args['--log-ini'])
+    log.init_logger(log.LOG_GROUP_NAME, log_ini=log_ini, agg_level=args['--log-level'])
+    log.init_logger('sqlalchemy', log_ini=log_ini, agg_level=args['--log-level'],
                     sender='sqlalchemy')
-    globus_ini = args['--globus-ini']
-    globus_ini = os.path.expanduser(globus_ini)
-    enable_globus = os.path.exists(globus_ini)
+    globus_ini = os.path.expanduser(args['--globus-ini'])
+    s3_ini = os.path.expanduser(args['--s3-ini'])
+    mover_config = MoverConfig(
+        s3_ini=s3_ini,
+        s3_section=args['--s3-section'],
+        globus_ini=globus_ini,
+        globus_section=args['--globus-section'],
+        enable_web=True,
+        curl_exe=args['--curl'])
     try:
         log.info('In main', 'mover.py')
         if args['exists']:
-            m = Mover(profile=args['--profile'],
-                      endpoint_url=args['--endpoint-url'],
-                      curl_exe=args['--curl'],
-                      globus_ini=args['--globus-ini'],
-                      globus_section=args['--globus-section'],
-                      enable_globus=enable_globus, enable_s3=True, enable_web=True)
+            m = mover_config.new_mover()
             print(m.exists(args['<file>']))
         if args['get']:
-            m = Mover(profile=args['--profile'],
-                      endpoint_url=args['--endpoint-url'],
-                      curl_exe=args['--curl'],
-                      globus_ini=args['--globus-ini'],
-                      globus_section=args['--globus-section'],
-                      enable_globus=enable_globus, enable_s3=True, enable_web=True)
+            m = mover_config.new_mover()
             m.get(args['<source>'], args['<dest>'])
         elif args['put']:
-            m = Mover(profile=args['--profile'],
-                      endpoint_url=args['--endpoint-url'],
-                      curl_exe=args['--curl'],
-                      globus_ini=args['--globus-ini'],
-                      globus_section=args['--globus-section'],
-                      enable_globus=enable_globus, enable_s3=True, enable_web=True)
+            m = mover_config.new_mover()
             m.put(args['<source>'], args['<dest>'])
         elif args['multi']:
-            m = Mover(profile=args['--profile'],
-                      endpoint_url=args['--endpoint-url'],
-                      curl_exe=args['--curl'],
-                      globus_ini=args['--globus-ini'],
-                      globus_section=args['--globus-section'],
-                      enable_globus=enable_globus, enable_s3=True, enable_web=True)
+            m = mover_config.new_mover()
             m.multi(args['<source>'], args['<dest>'], args['<file>'])
         elif args['nop']:
             pass
