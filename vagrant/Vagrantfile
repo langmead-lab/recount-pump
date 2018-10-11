@@ -61,9 +61,13 @@ Vagrant.configure("2") do |config|
             chmod a+w /work
         fi
     SHELL
+    
+    config.vm.provision "shell", privileged: true, name: "install EPEL", inline: <<-SHELL
+        yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+    SHELL
 
     config.vm.provision "shell", privileged: true, name: "install Linux packages", inline: <<-SHELL
-        yum install -q -y git gcc g++ aws-cli libarchive-devel squashfs-tools
+        yum install -q -y git aws-cli singularity docker-compose
     SHELL
 
     config.vm.provision "shell", privileged: true, name: "install docker", inline: <<-SHELL
@@ -94,18 +98,6 @@ Vagrant.configure("2") do |config|
         curl -s -L https://github.com/docker/compose/releases/download/1.22.0-rc1/docker-compose-$(uname -s)-$(uname -m) \
             -o /usr/bin/docker-compose
         chmod +x /usr/bin/docker-compose
-    SHELL
-        
-    config.vm.provision "shell", privileged: true, name: "install Singularity", inline: <<-SHELL
-        SINGVER="2.5.2"
-        echo "Install Singualrity"
-        wget -q https://github.com/singularityware/singularity/releases/download/${SINGVER}/singularity-${SINGVER}.tar.gz
-        tar xf singularity-${SINGVER}.tar.gz
-        cd singularity-${SINGVER} && \
-            ./configure --prefix=/usr > /dev/null && \
-            make > /dev/null && make install > /dev/null && \
-            cd .. && \
-            rm -rf singularity-${SINGVER} singularity-${SINGVER}.tar.gz
     SHELL
 
     config.vm.provision "shell", privileged: true, name: "install watchtower", inline: <<-SHELL
