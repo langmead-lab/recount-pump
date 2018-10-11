@@ -17,6 +17,7 @@ def get_accessions(wildcards):
                 assert len(toks) == 3
                 # SRR,SRP,genome
                 # e.g. SRR1557855,SRP045778,ce10
+                yield os.path.join(OUTPUT, '%s_%s_%s.manifest'          % (toks[0], toks[1], toks[2]))
                 yield os.path.join(OUTPUT, '%s_%s_%s.jx_bed'            % (toks[0], toks[1], toks[2]))
                 yield os.path.join(OUTPUT, '%s_%s_%s.all.gene_count'    % (toks[0], toks[1], toks[2]))
                 yield os.path.join(OUTPUT, '%s_%s_%s.unique.gene_count' % (toks[0], toks[1], toks[2]))
@@ -27,6 +28,28 @@ def get_accessions(wildcards):
 rule all:
     input:
         get_accessions
+
+rule make_manifest:
+    input:
+        jxs=OUTPUT + '/{trio}.jx_bed',
+        all_gc=OUTPUT + '/{trio}.all.gene_count',
+        unique_gc=OUTPUT + '/{trio}.unique.gene_count',
+        all_bw=OUTPUT + '/{trio}.all.bw',
+        unique_bw=OUTPUT + '/{trio}.unique.bw',
+        log=OUTPUT + '/{trio}.align.log'
+    output:
+        OUTPUT + '/{trio}.manifest'
+    params:
+        trio=lambda wildcards: wildcards.trio
+    shell:
+        """
+        echo "{params.trio}.jx_bed"             > {output}
+        echo "{params.trio}.all.gene_count"    >> {output}
+        echo "{params.trio}.unique.gene_count" >> {output}
+        echo "{params.trio}.all.bw"            >> {output}
+        echo "{params.trio}.unique.bw"         >> {output}
+        echo "{params.trio}.align.log"         >> {output}
+        """
 
 rule extract_junctions:
     input:
