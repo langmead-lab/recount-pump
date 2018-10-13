@@ -12,5 +12,4 @@ psql \
     -h ${host} \
     -p ${port} \
     -U ${username} \
-    -W ${password} \
     -d ${dbname}

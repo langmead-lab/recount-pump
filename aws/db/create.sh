@@ -35,3 +35,4 @@ aws rds --profile ${profile} --region ${region} \
     --publicly-accessible \
     --allocated-storage 20 \
     --tags Key=Application,Value=recount
+# security group?
