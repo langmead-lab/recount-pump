@@ -704,8 +704,6 @@ class MoverConfig(object):
         if s3_ini is not None and os.path.exists(s3_ini):
             self.enable_s3, self.aws_endpoint_url, self.aws_profile = \
                 parse_s3_ini(s3_ini, s3_section)
-            if self.aws_endpoint_url is None:
-                self.enable_s3 = False
         self.globus_ini = globus_ini
         self.globus_id, self.globus_secret = None, None
         self.enable_globus = False
@@ -744,9 +742,15 @@ def parse_s3_ini(ini_fn, section='s3'):
         log.warning('S3 ini file "%s" does not have section "%s"' %
                     (ini_fn, section), 'mover.py')
         return None, None, 0
-    enabled = cfg.get(section, 'enable') == 'true'
-    aws_endpoint = cfg.get(section, 'aws_endpoint')
-    aws_profile = cfg.get(section, 'aws_profile')
+
+    def _get_option(nm):
+        opt = cfg.get(section, nm) if cfg.has_option(section, nm) else None
+        return None if (len(opt) == 0) else opt
+
+    enabled = _get_option('enable')
+    enabled = enabled is not None and enabled.lower() == 'true'
+    aws_endpoint = _get_option('aws_endpoint')
+    aws_profile = _get_option('aws_profile') 
     return enabled, aws_endpoint, aws_profile
 
 
