@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Just the following gives "ERROR: cannot drop the currently open database"
-#./connect.sh 'DROP DATABASE IF EXISTS recount;'
+#./connect.sh postgres 'DROP DATABASE IF EXISTS recount;'
 
 INI_FILE="${HOME}/.recount/db_aws.ini"
 
