@@ -286,8 +286,8 @@ def job_loop(project_id, q_ini, cluster_ini, worker_name, session,
              max_fails=10, sleep_seconds=10,
              mover_config=None, destination=None):
     log.info('Getting queue client', 'cluster.py')
-    region, endpoint = parse_queue_config(q_ini)
-    boto3_session = boto3.session.Session()
+    aws_profile, region, endpoint = parse_queue_config(q_ini)
+    boto3_session = boto3.session.Session(profile_name=aws_profile)
     q_client = boto3_session.client('sqs',
                                     endpoint_url=endpoint,
                                     region_name=region)

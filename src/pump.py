@@ -363,8 +363,8 @@ def go():
             print(json.dumps(proj.deepdict(session), indent=4, separators=(',', ': ')))
         elif args['stage']:
             Session = session_maker_from_config(db_ini, args['--db-section'])
-            boto3_session = boto3.session.Session()
-            region, endpoint = parse_queue_config(q_ini)
+            aws_profile, region, endpoint = parse_queue_config(q_ini)
+            boto3_session = boto3.session.Session(profile_name=aws_profile)
             sqs_client = boto3_session.client('sqs',
                                               endpoint_url=endpoint,
                                               region_name=region)

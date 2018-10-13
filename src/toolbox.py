@@ -47,13 +47,14 @@ def session_maker_from_config(fn, section='client'):
 
 
 def parse_queue_config(fn, section='queue'):
-    config = RawConfigParser(allow_no_value=True)
+    cfg = RawConfigParser(allow_no_value=True)
     if not os.path.exists(fn):
         raise RuntimeError('No such ini file: "%s"' % fn)
-    config.read(fn)
-    region = config.get(section, "region")
-    endpoint = config.get(section, "endpoint")
-    return region, endpoint
+    cfg.read(fn)
+    profile = cfg.get(section, 'aws_profile') if cfg.has_option(section, 'aws_profile') else None
+    region = cfg.get(section, 'region') if cfg.has_option(section, 'region') else None
+    endpoint = cfg.get(section, 'endpoint') if cfg.has_option(section, 'endpoint') else None
+    return profile, region, endpoint
 
 
 def which(program):
