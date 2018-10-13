@@ -134,10 +134,11 @@ echo "++++++++++++++++++++++++++++++++++++++++++++++"
 
 input_url='s3://recount-pump-experiments/geuv/geuv.json.gz'
 input_fn=$(basename ${input_url})
+rm -f "/tmp/${input_fn}"
 
-python ${SRC_DIR}/mover.py ${ARGS} ${S3_INI} get "${input_url}" "${input_fn}"
+python ${SRC_DIR}/mover.py ${ARGS} ${S3_INI} get "${input_url}" "/tmp/${input_fn}"
 
-[ ! -f "${input_fn}" ] && echo "Could not get input json" && exit 1 
+[ ! -f "/tmp/${input_fn}" ] && echo "Could not get input json" && exit 1 
 
 import_input_set() (
     set -exo pipefail
@@ -147,8 +148,9 @@ import_input_set() (
         "${json_file}" "${input_set_name}" | tail -n 1   
 )
 
-isid=$(import_input_set "${input_fn}" 'geuvadis_ERP001942')
+isid=$(import_input_set "/tmp/${input_fn}" 'geuvadis_ERP001942')
 test -n "${isid}"
+rm -f "/tmp/${input_fn}"
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 4: Set up project"
