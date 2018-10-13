@@ -93,7 +93,7 @@ def do_job(body, cluster_ini, my_attempt, node_name,
       accession)
     - Project.job_iterator() composes the overall string
     """
-    name, _, _, _, _ = read_cluster_config(cluster_ini)
+    name, _, _, _, _, _ = read_cluster_config(cluster_ini)
     job = Task(body)
     log.info('got job: ' + str(job), 'cluster.py')
     tmp_dir = tempfile.mkdtemp()
@@ -141,6 +141,12 @@ def download_image(url, cluster_name, analysis_dir, aws_profile=None, s3_endpoin
     mover.get(url, image_fn)
 
 
+def _remove_ext(fn):
+    while fn.rfind('.') >= 0 and fn.rfind('.') > fn.rfind('/'):
+        fn = fn[:fn.rfind('.')]
+    return fn
+
+
 def _download_file(mover, url, typ, cluster_name, reference_dir):
     base = os.path.basename(url)
     genome = os.path.basename(os.path.dirname(url))
@@ -172,14 +178,35 @@ def download_reference(reference, cluster_name, reference_dir, session, mover):
         _download_file(mover, url, 'source', cluster_name, reference_dir)
     for url, _ in AnnotationSet.iterate_by_key(session, reference.annotation_set_id):
         _download_file(mover, url, 'annotation', cluster_name, reference_dir)
+    return ready_reference(reference, cluster_name, reference_dir, session)
 
 
-def ready_reference(reference, reference_dir):
-    pass  # TODO
+def ready_reference(reference, cluster_name, reference_dir, session):
+    urls = list(SourceSet.iterate_by_key(session, reference.source_set_id))
+    urls += list(AnnotationSet.iterate_by_key(session, reference.annotation_set_id))
+    missing = []
+    for url, _ in SourceSet.iterate_by_key(session, reference.source_set_id):
+        base = _remove_ext(os.path.basename(url))
+        genome = os.path.basename(os.path.dirname(url))
+        local_genome_dir = os.path.join(reference_dir, genome)
+        if not os.path.exists(local_genome_dir) or not os.path.isdir(local_genome_dir):
+            missing.append(local_genome_dir)
+        local_fn = os.path.join(local_genome_dir, base)
+        if not os.path.exists(local_fn) or not os.path.isdir(local_fn):
+            missing.append(local_fn)
+    if len(missing) == 0:
+        log.info('Full reference set "%s" available on "%s"' %
+                 (reference.longname, cluster_name), 'cluster.py')
+        return True
+    else:
+        log.info('One or more files missing from reference set "%s" on "%s": %s' %
+                 (reference.longname, cluster_name, str(missing)), 'cluster.py')
+        return False
 
 
 def prepare(project_id, cluster_ini, session, mover, get_image=False, get_reference=False):
-    cluster_name, analysis_dir, reference_dir = read_cluster_config(cluster_ini)
+    cluster_name, system, analysis_dir, ref_base, ncpus, nworkers =\
+        read_cluster_config(cluster_ini)
     proj = session.query(Project).get(project_id)
     log.info('Preparing for project "%s" (%d) on cluster "%s"' %
              (proj.name, project_id, cluster_name), 'cluster.py')
@@ -187,21 +214,30 @@ def prepare(project_id, cluster_ini, session, mover, get_image=False, get_refere
     # Handle analysis
     analysis = session.query(Analysis).get(proj.analysis_id)
     analysis_ready = True
+    assert system in ['singularity', 'docker']
     if analysis.image_url.startswith('docker://'):
-        image_name = analysis.image_url[9:].split('/')[-1] + '.simg'
-        if 'SINGULARITY_CACHEDIR' not in os.environ:
-            raise RuntimeError('Expected SINGULARITY_CACHEDIR in environment')
-        image_fn = os.path.join(os.environ['SINGULARITY_CACHEDIR'], image_name)
-        log.info('Checking existence of image file "%s" in cache dir "%s"' %
-                 (image_name, os.environ['SINGULARITY_CACHEDIR']), 'cluster.py')
-        if get_image and not os.path.exists(image_fn):
-            cmd = 'singularity pull ' + analysis.image_url
-            log.info('pulling: "%s"' % cmd, 'cluster.py')
-            ret = os.system(cmd)
+        if system == 'singularity':
+            image_name = analysis.image_url[9:].split('/')[-1] + '.simg'
+            if 'SINGULARITY_CACHEDIR' not in os.environ:
+                raise RuntimeError('Expected SINGULARITY_CACHEDIR in environment')
+            log.info('SINGULARITY_CACHEDIR = ' + os.environ['SINGULARITY_CACHEDIR'], 'cluster.py')
+            image_fn = os.path.join(os.environ['SINGULARITY_CACHEDIR'], image_name)
+            log.info('Checking existence of image file "%s" in cache dir "%s"' %
+                     (image_name, os.environ['SINGULARITY_CACHEDIR']), 'cluster.py')
+            if get_image and not os.path.exists(image_fn):
+                cmd = 'singularity pull ' + analysis.image_url
+                log.info('pulling: "%s"' % cmd, 'cluster.py')
+                ret = os.system(cmd)
+                if ret != 0:
+                    raise RuntimeError('Command "%s" exited with level %d' % (cmd, ret))
+                if not os.path.exists(image_fn):
+                    raise RuntimeError('Did pull "%s" but file "%s" was not created' % (cmd, image_fn))
+        else:
+            image_name = analysis.image_url[len('docker://'):]
+            log.info('Pulling docker image ' + image_name)
+            ret = os.system('docker pull ' + image_name)
             if ret != 0:
-                raise RuntimeError('Command "%s" exited with level %d' % (cmd, ret))
-            if not os.path.exists(image_fn):
-                raise RuntimeError('Did pull "%s" but file "%s" was not created' % (cmd, image_fn))
+                raise RuntimeError('Unable to pull image %s' % image_name)
     else:
         if get_image and not ready_for_analysis(analysis, analysis_dir):
             download_image(analysis.image_url, cluster_name, analysis_dir, mover)
@@ -209,9 +245,9 @@ def prepare(project_id, cluster_ini, session, mover, get_image=False, get_refere
 
     # Handle reference
     reference = session.query(Reference).get(proj.reference_id)
-    if get_reference and not ready_reference(reference, reference_dir):
-        download_reference(reference, cluster_name, reference_dir, session, mover)
-    reference_ready = ready_reference(reference, reference_dir)
+    reference_ready = ready_reference(reference, cluster_name, ref_base, session)
+    if get_reference and not reference_ready:
+        reference_ready = download_reference(reference, cluster_name, ref_base, session, mover)
 
     return analysis_ready, reference_ready
 
@@ -348,14 +384,18 @@ def read_cluster_config(cluster_fn, section=None):
         section = cfg.sections()[0]
 
     def _cfg_get_or_none(nm):
-        return cfg.get(section, nm) if cfg.has_option(section, nm) else None
+        if not cfg.has_option(section, nm):
+            return None
+        val = cfg.get(section, nm)
+        return None if len(val) == 0 else val
 
     name = cfg.get(section, 'name')
     analysis_dir = _cfg_get_or_none('analysis_dir')
     ref_base = cfg.get(section, 'ref_base')
+    system = _cfg_get_or_none('system')
     ncpus = _cfg_get_or_none('cpus') or 1
     nworkers = _cfg_get_or_none('workers') or 1
-    return name, analysis_dir, ref_base, ncpus, nworkers
+    return name, system, analysis_dir, ref_base, ncpus, nworkers
 
 
 def test_cluster_config():
@@ -368,12 +408,13 @@ ref_base = /path/i/made/up/reference
     test_fn = os.path.join(tmpdir, '.tmp.init')
     with open(test_fn, 'w') as fh:
         fh.write(config)
-    name, analysis_dir, reference_dir, ncpus, nworkers = read_cluster_config(test_fn)
+    name, system, analysis_dir, reference_dir, ncpus, nworkers = read_cluster_config(test_fn)
     assert 'stampede2' == name
     assert '/path/i/made/up/analysis' == analysis_dir
     assert '/path/i/made/up/reference' == reference_dir
     assert 1 == ncpus
     assert 1 == nworkers
+    assert system is None
     shutil.rmtree(tmpdir)
 
 
@@ -549,16 +590,16 @@ def go():
             globus_section=args['--globus-section'],
             enable_web=True,
             curl_exe=args['--curl'])
+        project_id = int(args['<project-id>'])
         if args['prepare']:
             session_maker = session_maker_from_config(db_ini, args['--db-section'])
-            print(prepare(int(args['<project-id>']),
+            print(prepare(project_id,
                           cluster_ini, session_maker(),
                           mover_config.new_mover(),
                           get_image=True, get_reference=True))
         if args['run']:
             enabled, destination_url, aws_endpoint, aws_profile = \
                 parse_destination_ini(dest_ini)
-            project_id = int(args['<project-id>'])
             engine = engine_from_config(db_ini, args['--db-section'])
             connection = engine.connect()
             session = Session(bind=connection)
@@ -567,7 +608,7 @@ def go():
             sleep_seconds = int(args['--poll-seconds'])
             procs = []
             sysmon_ival = int(args['--sysmon-interval'])
-            _, _, _, _, nworkers = read_cluster_config(cluster_ini)
+            _, _, _, _, _, nworkers = read_cluster_config(cluster_ini)
             # set up system monitor thread
             sm = None
             if sysmon_ival > 0:
