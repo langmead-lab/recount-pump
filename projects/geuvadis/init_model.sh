@@ -3,11 +3,15 @@
 # Author: Ben Langmead <ben.langmead@gmail.com>
 # License: MIT
 
+d=$(dirname $0)
+
 set -ex
 
 TAXID=9606
 RS1="docker://quay.io/benlangmead/recount-rs1:0.1.2"
-ARGS=""
+DB_INI="--db-ini $d/db.ini.override"
+Q_INI="--queue-ini $d/queue.ini.override"
+ARGS=
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 1: Load reference data"
@@ -22,14 +26,15 @@ echo "++++++++++++++++++++++++++++++++++++++++++++++"
 #    checksum_3 = Column(String(256))
 #    retrieval_method = Column(String(64))
 
-ssid=$(python src/reference.py ${ARGS} add-source-set | tail -n 1)
+ssid=$(python src/reference.py ${ARGS} ${DB_INI} add-source-set | tail -n 1)
 test -n "${ssid}"
 
 add_source() (
     set -exo pipefail
     url=$1
     retrieval_method=$2
-    python src/reference.py ${ARGS} \
+    python src/reference.py ${ARGS} ${DB_INI} \
+        --db-ini $d/db.ini.override \
         add-source "${url}" 'NA' 'NA' 'NA' 'NA' 'NA' "${retrieval_method}" | tail -n 1
 )
 
@@ -38,7 +43,7 @@ srcid2=$(add_source 's3://recount-pump/ref/hg38/fasta.tar.gz' 's3')
 test -n "${srcid1}"
 test -n "${srcid2}"
 
-python src/reference.py ${ARGS} \
+python src/reference.py ${ARGS} ${DB_INI} \
     add-sources-to-set ${ssid} ${srcid1} ${ssid} ${srcid2}
 
 # Annotation
@@ -47,7 +52,7 @@ python src/reference.py ${ARGS} \
 #    checksum = Column(String(32))
 #    retrieval_method = Column(String(64))
 
-asid=$(python src/reference.py ${ARGS} add-annotation-set | tail -n 1)
+asid=$(python src/reference.py ${ARGS} ${DB_INI} add-annotation-set | tail -n 1)
 test -n "${asid}"
 
 add_annotation() (
@@ -55,14 +60,14 @@ add_annotation() (
     taxid=$1
     url=$2
     retrieval_method=$3
-    python src/reference.py ${ARGS} \
+    python src/reference.py ${ARGS} ${DB_INI} \
         add-annotation "${taxid}" "${url}" 'NA' "${retrieval_method}" | tail -n 1
 )
 
 anid1=$(add_annotation ${TAXID} 's3://recount-pump/ref/hg38/gtf.tar.gz' 's3')
 test -n "${anid1}"
 
-python src/reference.py ${ARGS} \
+python src/reference.py ${ARGS} ${DB_INI} \
     add-annotations-to-set ${asid} ${anid1}
 
 # Reference
@@ -80,7 +85,7 @@ add_reference() (
     longname=$3
     source_set_id=$4
     annotation_set_id=$5
-    python src/reference.py ${ARGS} \
+    python src/reference.py ${ARGS} ${DB_INI} \
         add-reference "${taxid}" "${shortname}" "${longname}" 'NA' 'NA' \
                       "${source_set_id}" "${annotation_set_id}" | tail -n 1
 )
@@ -100,7 +105,7 @@ add_analysis() (
     set -exo pipefail
     name=$1
     image_url=$2
-    python src/analysis.py ${ARGS} \
+    python src/analysis.py ${ARGS} ${DB_INI} \
         add-analysis ${name} ${image_url} | tail -n 1
 )
 
@@ -129,7 +134,7 @@ echo "++++++++++++++++++++++++++++++++++++++++++++++"
 input_url='s3://recount-pump-experiments/geuv/geuv.json.gz'
 input_fn=$(basename ${input_url})
 
-python src/mover.py ${ARGS} get "${input_url}" "${input_fn}"
+python src/mover.py ${ARGS} ${DB_INI} get "${input_url}" "${input_fn}"
 
 [ ! -f "${input_fn}" ] && echo "Could not get input json" && exit 1 
 
@@ -137,7 +142,7 @@ import_input_set() (
     set -exo pipefail
     json_file=$1
     input_set_name=$2
-    python src/input.py ${ARGS} import-json \
+    python src/input.py ${ARGS} ${DB_INI} import-json \
         "${json_file}" "${input_set_name}" | tail -n 1   
 )
 
@@ -160,7 +165,7 @@ add_project() (
     input_set_id=$2
     analysis_id=$3
     reference_id=$4
-    python src/pump.py ${ARGS} \
+    python src/pump.py ${ARGS} ${DB_INI} \
         add-project ${name} ${analysis_id} ${input_set_id} ${reference_id} | tail -n 1
 )
 
@@ -171,10 +176,10 @@ echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 5: Summarize project"
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 
-python src/pump.py ${ARGS} summarize-project ${proj_id}
+python src/pump.py ${ARGS} ${DB_INI} summarize-project ${proj_id}
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 6: Stage project"
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 
-python src/pump.py ${ARGS} stage ${proj_id}
+python src/pump.py ${ARGS} ${DB_INI} ${Q_INI} stage ${proj_id}
