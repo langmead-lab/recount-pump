@@ -6,7 +6,8 @@
 set -ex
 
 TAXID=6239
-RNA_SEQ_LITE="docker://quay.io/benlangmead/recount-rs1"
+RS1="docker://quay.io/benlangmead/recount-rs1"
+RS1_TAG="${RS1}:latest"
 ARGS=""
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
@@ -104,8 +105,8 @@ add_analysis() (
         add-analysis ${name} ${image_url} | tail -n 1
 )
 
-rna_seq_lite_id=$(add_analysis rna_seq_lite "${RNA_SEQ_LITE}")
-test -n "${rna_seq_lite_id}"
+rs1_id=$(add_analysis rs1 "${RS1_TAG}")
+test -n "${rs1_id}"
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 3: Load input data"
@@ -167,7 +168,7 @@ add_project() (
         add-project ${name} ${analysis_id} ${input_set_id} ${reference_id} | tail -n 1
 )
 
-proj_id=$(add_project 'ce10-project' ${isid} ${rna_seq_lite_id} ${ref_id})
+proj_id=$(add_project 'ce10-project' ${isid} ${rs1_id} ${ref_id})
 test -n "${proj_id}"
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
