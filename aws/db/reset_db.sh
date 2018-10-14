@@ -1,9 +1,10 @@
 #!/bin/sh
 
+d=$(dirname $0)
 db=recount
 
 if [ -n "$1" ] ; then
     db=$1
 fi
 
-./drop_db.sh "${db}" && ./create_db.sh "${db}"
+${d}/drop_db.sh "${db}" && ${d}/create_db.sh "${db}"

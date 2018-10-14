@@ -1,9 +1,10 @@
 #!/bin/sh
 
+d=$(dirname $0)
 db=recount
 
 if [ -n "$1" ] ; then
     db=$1
 fi
 
-./connect.sh postgres "CREATE DATABASE ${db} WITH OWNER = 'recount';"
+${d}/connect.sh postgres "CREATE DATABASE ${db} WITH OWNER = 'recount';"
