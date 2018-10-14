@@ -3,14 +3,16 @@ WORKDIR /code
 
 RUN apt-get update && apt-get install -y libarchive-dev squashfs-tools graphviz
 
-RUN wget -q https://github.com/singularityware/singularity/releases/download/2.5.2/singularity-2.5.2.tar.gz && \
-    tar xf singularity-2.5.2.tar.gz && \
-    cd singularity-2.5.2 && \
+ENV SING_VERSION 2.5.2
+
+RUN wget -q https://github.com/singularityware/singularity/releases/download/${SING_VERSION}/singularity-${SING_VERSION}.tar.gz && \
+    tar xf singularity-${SING_VERSION}.tar.gz && \
+    cd singularity-${SING_VERSION} && \
     ./configure --prefix=/usr/local >/dev/null && \
     make >/dev/null && \
     make install >/dev/null && \
     cd .. && \
-    rm -rf singularity-2.5.2 singularity-2.5.2.tar.gz
+    rm -rf singularity-${SING_VERSION} singularity-${SING_VERSION}.tar.gz
 
 RUN pip install --upgrade pip
 
