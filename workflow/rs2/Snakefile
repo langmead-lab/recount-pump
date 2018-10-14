@@ -137,13 +137,14 @@ rule align:
         log=config['output'] + '/{trio}.align.log'
     params:
         index_base=lambda wildcards: '%s/%s/hisat2_idx/genome' % (config['ref'], wildcards.trio.split('_')[2])
+    threads: 32
     shell:
         """
         READ_FILES="-1 {input.reads1} -2 {input.reads2}"
         if [[ -s {input.reads0} ]] ; then
             READ_FILES="-U {input.reads0}"
         fi
-        HISAT2_ARGS="-t --mm -x {params.index_base} --threads {config[cpus]}"
+        HISAT2_ARGS="-t --mm -x {params.index_base} --threads {threads}"
         hisat2 \
             $READ_FILES \
             $HISAT2_ARGS \
@@ -166,9 +167,10 @@ rule sra_fastq:
         temp(config['temp'] + '/{trio}_2.fastq')
     params:
         srr=lambda wildcards: wildcards.trio.split('_')[0]
+    threads: 16
     shell:
         """
-        parallel-fastq-dump -s {params.srr} -t {config[cpus]} --split-files -I --skip-technical
+        parallel-fastq-dump -s {params.srr} -t {threads} --split-files -I --skip-technical
         test -f {params.srr}_2.fastq || mv {params.srr}_1.fastq {params.srr}_0.fastq
         for i in 0 1 2 ; do
             touch {params.srr}_${{i}}.fastq

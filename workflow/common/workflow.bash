@@ -38,8 +38,10 @@ EOF
 if [[ -f /workflow.nf ]] ; then
     mkdir -p ${RECOUNT_TEMP}/nextflow-home ${RECOUNT_TEMP}/nextflow-temp
     chmod -R a+rwx ${RECOUNT_TEMP}/nextflow-home ${RECOUNT_TEMP}/nextflow-temp
+    echo "executor.\$local.cpus = ${RECOUNT_CPUS}" > ${RECOUNT_TEMP}/.nx.cfg
     export NXF_TEMP=${RECOUNT_TEMP}/nextflow-temp && \
         nextflow /workflow.nf \
+            -C ${RECOUNT_TEMP}/.nx.cfg \
             --in "${INPUT_FILES}" \
             --out "${RECOUNT_OUTPUT}" \
             --ref "${RECOUNT_REF}" \
