@@ -218,6 +218,7 @@ def prepare(project_id, cluster_ini, session, mover, get_image=False, get_refere
     if analysis.image_url.startswith('docker://'):
         if system == 'singularity':
             image_name = analysis.image_url[9:].split('/')[-1] + '.simg'
+            image_name = image_name.replace(':', '-')
             if 'SINGULARITY_CACHEDIR' not in os.environ:
                 raise RuntimeError('Expected SINGULARITY_CACHEDIR in environment')
             log.info('SINGULARITY_CACHEDIR = ' + os.environ['SINGULARITY_CACHEDIR'], 'cluster.py')
@@ -237,7 +238,10 @@ def prepare(project_id, cluster_ini, session, mover, get_image=False, get_refere
             log.info('Pulling docker image ' + image_name)
             ret = os.system('docker pull ' + image_name)
             if ret != 0:
-                raise RuntimeError('Unable to pull image %s' % image_name)
+                raise RuntimeError('Unable to pull image %s (exitlevel=%d)' % (image_name, ret))
+            ret = os.system('docker image ls %s | grep -v "^REPOSITORY"' % image_name)
+            if ret != 0:
+                raise RuntimeError('Unable to docker ls %s after pull (exitlevel=%d)' % (image_name, ret))
     else:
         if get_image and not ready_for_analysis(analysis, analysis_dir):
             download_image(analysis.image_url, cluster_name, analysis_dir, mover)
