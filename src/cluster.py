@@ -103,8 +103,9 @@ def do_job(body, cluster_ini, my_attempt, node_name,
         fh.write(','.join([job.srr, job.srp, job.reference_string]) + '\n')
     analysis_string = job.analysis_string
     if job.analysis_string.startswith('docker://'):
-        image_base_fn = job.analysis_string.split('/')[-1] + '.simg'
-        image_fn = os.path.join(os.environ['SINGULARITY_CACHEDIR'], image_base_fn)
+        image_name = job.analysis_string.split('/')[-1] + '.simg'
+        image_name = image_name.replace(':', '-')
+        image_fn = os.path.join(os.environ['SINGULARITY_CACHEDIR'], image_name)
         assert os.path.exists(image_fn)
         analysis_string = image_fn
         image_md5 = subprocess.check_output(['md5sum', image_fn])
