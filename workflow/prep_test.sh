@@ -2,7 +2,7 @@
 
 set -ex
 
-url=https://s3.amazonaws.com/recount-pump/ref
+url=https://s3.amazonaws.com/recount-ref
 
 for species in ce10 ; do    
     mkdir -p ${species}
