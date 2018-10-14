@@ -793,7 +793,7 @@ def test_url1():
 
 
 def test_url2():
-    u = Url('s3://recount-pump/ref/test')
+    u = Url('s3://recount-ref/test')
     assert not u.is_curlable
     assert not u.is_local
     assert u.is_s3
@@ -802,7 +802,7 @@ def test_url2():
 
 
 def test_url3():
-    u = Url('globus://recount-pump/ref/test')
+    u = Url('globus://recount-ref/test')
     assert not u.is_curlable
     assert not u.is_local
     assert not u.is_s3
