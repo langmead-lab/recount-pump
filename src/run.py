@@ -63,11 +63,11 @@ def to_singularity_env(cmd_env):
 def reader(node_name, worker_name, pipe, queue, nm):
     with pipe:
         if queue is None:
-            for line in iter(pipe.readline, b''):
-                log.info(' '.join([node_name, worker_name, nm, line.decode().rstrip()]), 'run.py')
+            for line in pipe:
+                log.info(' '.join([node_name, worker_name, nm, line.rstrip()]), 'run.py')
         else:
-            for line in iter(pipe.readline, b''):
-                queue.put((node_name, worker_name, nm, line.decode().rstrip()))
+            for line in pipe:
+                queue.put((node_name, worker_name, nm, line.rstrip()))
 
 
 def run_job(name, inputs, image, cluster_ini,
