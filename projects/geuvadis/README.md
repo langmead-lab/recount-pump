@@ -19,7 +19,7 @@ Create a queue?
         * FASTA
         * GTF (GENCODE)
 * `upload_hg38_parts.sh`
-    * Uploads components of the hg38 reference to the expected spot in S3: `s3://recount-pump/ref/hg38`
+    * Uploads components of the hg38 reference to the expected spot in S3: `s3://recount-ref/hg38`
 * `get_meta.sh`
     * Get the metadata for the samples in question
 * `upload_meta.sh`
