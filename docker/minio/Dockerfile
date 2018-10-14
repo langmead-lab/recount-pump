@@ -30,14 +30,15 @@ RUN apk add -u musl-dev postgresql-dev postgresql postgresql-libs
 RUN apk add -u linux-headers
 RUN ln -s /usr/include/locale.h /usr/include/xlocale.h
 
+COPY requirements.txt /tmp/requirements.txt
+RUN pip install --quiet -r /tmp/requirements.txt
+
 COPY credentials /tmp/credentials
 COPY manifest.csv /tmp/manifest.csv
 COPY wait-for-it.sh /tmp/wait-for-it.sh
 COPY init_db.sh /tmp/init_db.sh
 COPY start_db.sh /tmp/start_db.sh
 COPY src /tmp/src
-COPY requirements.txt /tmp/requirements.txt
-RUN pip install --quiet -r /tmp/requirements.txt
 
 RUN . /tmp/init_db.sh
 ENTRYPOINT /tmp/start_db.sh
