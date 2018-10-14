@@ -53,7 +53,9 @@ def parse_queue_config(fn, section='queue'):
     cfg.read(fn)
 
     def _get_option(nm):
-        opt = cfg.get(section, nm) if cfg.has_option(section, nm) else None
+        if not cfg.has_option(section, nm):
+            return None
+        opt = cfg.get(section, nm)
         return None if (len(opt) == 0) else opt
 
     return _get_option('aws_profile'), _get_option('region'), _get_option('endpoint')
