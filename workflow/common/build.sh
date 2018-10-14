@@ -10,11 +10,13 @@ else
     echo "Can't tell what workflow system is being used" && exit 1
 fi
 
-IMAGE=$(cat image.txt)
-VER=$(cat ver.txt)
+cp $d/workflow.bash .
+
+IMAGE=$(cat ${d}/image.txt)
+VER=$(cat ${d}/ver.txt)
 
 docker build $* \
     --cache-from ${IMAGE}:${VER} \
     --tag ${IMAGE}:${VER} \
     --tag ${IMAGE}:latest \
-    .
+    ${d}
