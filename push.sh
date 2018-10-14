@@ -1,5 +1,9 @@
-#!/bin/sh
+#!/bin/bash
 
-IMAGE=$(cat image.txt)
+d=$(dirname $0)
 
-docker push $* ${IMAGE}
+IMAGE=$(cat ${d}/image.txt)
+VER=$(cat ${d}/ver.txt)
+
+docker push $* ${IMAGE}:${VER}
+docker push $* ${IMAGE}:latest
