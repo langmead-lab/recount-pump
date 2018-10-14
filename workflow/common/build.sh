@@ -1,22 +1,22 @@
 #!/bin/bash
 
-d=`dirname $0`
+# must be run from the specific workflow directory
 
 if [[ -f workflow.nf ]] ; then
-    cp $d/Dockerfile.nextflow Dockerfile
+    cp ../common/Dockerfile.nextflow Dockerfile
 elif [[ -f Snakefile ]] ; then
-    cp $d/Dockerfile.snakemake Dockerfile
+    cp ../common/Dockerfile.snakemake Dockerfile
 else
     echo "Can't tell what workflow system is being used" && exit 1
 fi
 
-cp $d/workflow.bash .
+cp ../common/workflow.bash .
 
-IMAGE=$(cat ${d}/image.txt)
-VER=$(cat ${d}/ver.txt)
+IMAGE=$(cat image.txt)
+VER=$(cat ver.txt)
 
 docker build $* \
     --cache-from ${IMAGE}:${VER} \
     --tag ${IMAGE}:${VER} \
     --tag ${IMAGE}:latest \
-    ${d}
+    .
