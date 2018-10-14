@@ -744,7 +744,9 @@ def parse_s3_ini(ini_fn, section='s3'):
         return None, None, 0
 
     def _get_option(nm):
-        opt = cfg.get(section, nm) if cfg.has_option(section, nm) else None
+        if not cfg.has_option(section, nm):
+            return None
+        opt = cfg.get(section, nm)
         return None if (len(opt) == 0) else opt
 
     enabled = _get_option('enable')
