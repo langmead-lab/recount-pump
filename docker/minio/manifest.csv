@@ -1,4 +1,4 @@
-https://recount-pump.s3.amazonaws.com/ref/ce10/ucsc_tracks.tar.gz,recount-pump/ref/ce10/ucsc_tracks.tar.gz
-https://recount-pump.s3.amazonaws.com/ref/ce10/fasta.tar.gz,recount-pump/ref/ce10/fasta.tar.gz
-https://recount-pump.s3.amazonaws.com/ref/ce10/gtf.tar.gz,recount-pump/ref/ce10/gtf.tar.gz
-https://recount-pump.s3.amazonaws.com/ref/ce10/hisat2_idx.tar.gz,recount-pump/ref/ce10/hisat2_idx.tar.gz
+https://recount-ref.s3.amazonaws.com/ce10/ucsc_tracks.tar.gz,recount-pump/ref/ce10/ucsc_tracks.tar.gz
+https://recount-ref.s3.amazonaws.com/ce10/fasta.tar.gz,recount-pump/ref/ce10/fasta.tar.gz
+https://recount-ref.s3.amazonaws.com/ce10/gtf.tar.gz,recount-pump/ref/ce10/gtf.tar.gz
+https://recount-ref.s3.amazonaws.com/ce10/hisat2_idx.tar.gz,recount-pump/ref/ce10/hisat2_idx.tar.gz
