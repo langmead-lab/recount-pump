@@ -399,7 +399,7 @@ def read_cluster_config(cluster_fn, section=None):
     ref_base = cfg.get(section, 'ref_base')
     system = _cfg_get_or_none('system')
     ncpus = _cfg_get_or_none('cpus') or 1
-    nworkers = _cfg_get_or_none('workers') or 1
+    nworkers = int(_cfg_get_or_none('workers') or 1)
     return name, system, analysis_dir, ref_base, ncpus, nworkers
 
 
