@@ -42,6 +42,7 @@ if [[ -f /workflow.nf ]] ; then
     export NXF_TEMP=${RECOUNT_TEMP}/nextflow-temp && \
         nextflow run /workflow.nf \
             -c ${RECOUNT_TEMP}/.nx.cfg \
+            -w ${RECOUNT_TEMP}/nextflow-work \
             --in "${INPUT_FILES}" \
             --out "${RECOUNT_OUTPUT}" \
             --ref "${RECOUNT_REF}" \
@@ -49,13 +50,15 @@ if [[ -f /workflow.nf ]] ; then
             --cpus "${RECOUNT_CPUS}" \
             $*
 elif [[ -f /Snakefile ]] ; then
-    snakemake --snakefile /Snakefile --config \
-        input="${INPUT_FILES}" \
-        output="${RECOUNT_OUTPUT}" \
-        ref="${RECOUNT_REF}" \
-        temp="${RECOUNT_TEMP}" \
-        cpus="${RECOUNT_CPUS}" \
-        $*
+    snakemake \
+        --snakefile /Snakefile \
+        -j "${RECOUNT_CPUS}" \
+        $* \
+        --config \
+            input="${INPUT_FILES}" \
+            output="${RECOUNT_OUTPUT}" \
+            ref="${RECOUNT_REF}" \
+            temp="${RECOUNT_TEMP}"
 else
     echo "Could not detect workflow script"
     exit 1
