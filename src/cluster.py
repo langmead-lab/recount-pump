@@ -489,6 +489,8 @@ def test_with_db(session):
         fh.write(b'name = test-cluster\n')
         fh.write(b'analysis_dir = ' + analysis_dir.encode() + b'\n')
         fh.write(b'ref_base = ' + reference_dir.encode() + b'\n')
+        fh.write(b'system = docker\n')
+        fh.write(b'sudo = false\n')
     os.makedirs(analysis_dir)
     os.makedirs(reference_dir)
     project_name = 'test-project'
