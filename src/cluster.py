@@ -470,10 +470,11 @@ def test_download_image_s3(s3_enabled, s3_service):
 
 
 def test_download_file_s3(s3_enabled, s3_service):
-    if not s3_enabled: pytest.skip('Skipping S3 tests')
+    if not s3_enabled:
+        pytest.skip('Skipping S3 tests')
     dstdir = tempfile.mkdtemp()
-    bucket_name = 'recount-pump'
-    src = ''.join(['s3://', bucket_name, '/ref/ce10/gtf.tar.gz'])
+    bucket_name = 'recount-ref'
+    src = ''.join(['s3://', bucket_name, '/ce10/gtf.tar.gz'])
     assert s3_service.exists(src)
     _download_file(s3_service, src, 'source', 'test-cluster', dstdir)
     assert os.path.exists(os.path.join(dstdir, 'ce10/gtf/genes.gtf'))
