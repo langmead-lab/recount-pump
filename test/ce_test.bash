@@ -33,8 +33,8 @@ add_source() (
         add-source "${url}" 'NA' 'NA' 'NA' 'NA' 'NA' "${retrieval_method}" | tail -n 1
 )
 
-srcid1=$(add_source 's3://recount-pump/ref/ce10/hisat2_idx.tar.gz' 's3')
-srcid2=$(add_source 's3://recount-pump/ref/ce10/fasta.tar.gz' 's3')
+srcid1=$(add_source 's3://recount-ref/ce10/hisat2_idx.tar.gz' 's3')
+srcid2=$(add_source 's3://recount-ref/ce10/fasta.tar.gz' 's3')
 test -n "${srcid1}"
 test -n "${srcid2}"
 
@@ -59,7 +59,7 @@ add_annotation() (
         add-annotation "${taxid}" "${url}" 'NA' "${retrieval_method}" | tail -n 1
 )
 
-anid1=$(add_annotation ${TAXID} 's3://recount-pump/ref/ce10/gtf.tar.gz' 's3')
+anid1=$(add_annotation ${TAXID} 's3://recount-ref/ce10/gtf.tar.gz' 's3')
 test -n "${anid1}"
 
 python src/reference.py ${ARGS} \
