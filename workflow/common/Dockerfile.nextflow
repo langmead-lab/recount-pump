@@ -8,4 +8,7 @@ RUN chmod -R a+rwx /opt/conda/envs/*/share/nextflow
 # install nextflow script
 COPY workflow.nf /workflow.nf
 
+# install generic workflow wrapper script
+COPY workflow.bash /workflow.bash
+
 CMD ["bash", "-c", "source activate recount && bash /workflow.bash"]

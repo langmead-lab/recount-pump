@@ -8,4 +8,7 @@ RUN conda clean -y -p -t
 # install Snakefile
 COPY Snakefile /Snakefile
 
+# install generic workflow wrapper script
+COPY workflow.bash /workflow.bash
+
 CMD ["bash", "-c", "source activate recount && bash /workflow.bash"]
