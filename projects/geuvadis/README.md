@@ -39,6 +39,21 @@ At this point, there
 * Setting up `ini` files
     * We want to 
 
+### Steps on a cluster
+
+* Set up `ini` files
+    * `db_aws.ini`: database-related settings, modeled on `ini/db.ini` under this directory
+    * `s3_aws.ini`: settings for connecting to S3 on AWS, modeled on `ini/s3.ini`
+    * `cluster.ini`:
+    * `destination.ini`:
+    
+These are usually all created in the `$HOME/.recount` subdirectory.  Below I will refer to them as though they are there.
+
+Once these have been created and customized, the following command ensures that the cluster has the reference and analysis image files at the ready.  It's assumed that the directories where these files are being stored (`analysis_dir` and `ref_base` from `cluster.ini`) are on shared filesystems, so that jobs submitted to the cluster can see them too.
+
+* `python cluster.py --db-ini ~/.recount/db_aws.ini --s3-ini ~/.recount/s3_aws.ini --cluster-ini ~/.recount/cluster-skx.ini prepare 1`
+* `python cluster.py --db-ini ~/.recount/db_aws.ini --s3-ini ~/.recount/s3_aws.ini --cluster-ini ~/.recount/cluster-skx.ini --destination-ini ~/.recount/destination.ini run 1`
+
 ### Monitoring/studying the run
 
 Thanks to log aggregation, you can go back and get a very complete picture of what happened during the run.  This directory includes some scripts to help with this:
