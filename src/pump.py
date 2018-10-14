@@ -271,9 +271,9 @@ def _simple_project(session):
     assert 1 == len(list(session.query(InputSet)))
 
     src1 = Source(retrieval_method="s3",
-                  url_1='s3://recount-pump/ref/ce10/ucsc_tracks.tar.gz', checksum_1='')
+                  url_1='s3://recount-ref/ce10/ucsc_tracks.tar.gz', checksum_1='')
     src2 = Source(retrieval_method="s3",
-                  url_1='s3://recount-pump/ref/ce10/fasta.tar.gz', checksum_1='')
+                  url_1='s3://recount-ref/ce10/fasta.tar.gz', checksum_1='')
     session.add(src1)
     session.add(src2)
     session.commit()
@@ -281,7 +281,7 @@ def _simple_project(session):
     session.add(ss)
     session.commit()
     an1 = Annotation(retrieval_method='s3',
-                     url='s3://recount-pump/ref/ce10/gtf.tar.gz', checksum='')
+                     url='s3://recount-ref/ce10/gtf.tar.gz', checksum='')
     session.add(an1)
     session.commit()
     anset = AnnotationSet(annotations=[an1])

@@ -424,9 +424,9 @@ def test_simple_annotationset_insert(session):
 def test_download_all(session, s3_enabled, s3_service):
     if not s3_enabled: pytest.skip('Skipping S3 tests')
     src1 = Source(retrieval_method="s3",
-                  url_1='s3://recount-pump/ref/ce10/ucsc_tracks.tar.gz', checksum_1='')
+                  url_1='s3://recount-ref/ce10/ucsc_tracks.tar.gz', checksum_1='')
     src2 = Source(retrieval_method="s3",
-                  url_1='s3://recount-pump/ref/ce10/fasta.tar.gz', checksum_1='')
+                  url_1='s3://recount-ref/ce10/fasta.tar.gz', checksum_1='')
     session.add(src1)
     session.add(src2)
     session.commit()
@@ -434,7 +434,7 @@ def test_download_all(session, s3_enabled, s3_service):
     session.add(ss)
     session.commit()
     an1 = Annotation(retrieval_method='s3',
-                     url='s3://recount-pump/ref/ce10/gtf.tar.gz', checksum='')
+                     url='s3://recount-ref/ce10/gtf.tar.gz', checksum='')
     session.add(an1)
     session.commit()
     anset = AnnotationSet(annotations=[an1])
