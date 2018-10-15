@@ -236,10 +236,11 @@ def run_job(name, inputs, image, cluster_ini,
                             sz = os.path.getsize(full_extra)
                             log_info(node_name, worker_name, log_queue,
                                      'found extra file "%s" of size %d' % (full_extra, sz))
-                            new_name = os.path.join(output_dir, srr + '.' + extra)
-                            os.rename(full_extra, new_name)
-                            assert os.path.exists(new_name)
-                            xfers.append(extra)
+                            new_name = srr + '.' + extra
+                            new_name_full = os.path.join(output_dir, new_name)
+                            os.rename(full_extra, new_name_full)
+                            assert os.path.exists(new_name_full)
+                            xfers.append(new_name)
                             tot_sz += sz
                         else:
                             log_info(node_name, worker_name, log_queue,
