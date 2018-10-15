@@ -239,12 +239,13 @@ def run_job(name, inputs, image, cluster_ini,
                             new_name = os.path.join(output_dir, srr + '.' + extra)
                             os.rename(full_extra, new_name)
                             assert os.path.exists(new_name)
-                            full_extra = new_name
-                            xfers.append(full_extra)
+                            xfers.append(extra)
                             tot_sz += sz
                         else:
                             log_info(node_name, worker_name, log_queue,
                                      'could not find extra file "%s"' % extra)
+                    log_info(node_name, worker_name, log_queue,
+                             'Moving files of total size %d b: %s' % (tot_sz, str(xfers)))
                     if source_prefix is not None:
                         mover.multi(source_prefix + output_dir, destination, xfers)
                     else:
