@@ -25,8 +25,8 @@
 * Set up `ini` files
     * `db_allen.ini`: database-related settings, modeled on `ini/db.ini` under this directory
     * `s3_aws.ini`: settings for connecting to S3 on AWS, modeled on `ini/s3.ini`
-    * `cluster.ini`: cluster details like which container system to use and which directories to use for inputs, outputs, etc
-    * `destination.ini`: where to copy results files
+    * `cluster-skx.ini`: cluster details like which container system to use and which directories to use for inputs, outputs, etc.  This one is for Stampede 2 Skylake, hence the `-skx` in the name.
+    * `dest_allen.ini`: where to copy results files
     * `queue_aws.ini`: AWS settings for queue
     
 These are usually all created in the `$HOME/.recount` subdirectory.  Below I will refer to them as though they are there.
@@ -37,7 +37,7 @@ Once these have been created and customized, the following command ensures that 
 * `rm -rf $(grep '^input_base' ~/.recount/cluster-skx.ini | cut -f 3 -d' ')/*`
 * `rm -rf $(grep '^output_base' ~/.recount/cluster-skx.ini | cut -f 3 -d' ')/*`
 * `rm -rf $(grep '^temp_base' ~/.recount/cluster-skx.ini | cut -f 3 -d' ')/*`
-* `python cluster.py --db-ini ~/.recount/db_allen.ini --s3-ini ~/.recount/s3_aws.ini --cluster-ini ~/.recount/cluster-skx.ini --destination-ini ~/.recount/destination.ini --queue-ini ~/.recount/queue_aws.ini --log-ini ~/.recount/log_allen.ini run 1`
+* `python cluster.py --db-ini ~/.recount/db_allen.ini --s3-ini ~/.recount/s3_aws.ini --cluster-ini ~/.recount/cluster-skx.ini --destination-ini ~/.recount/dest_allen.ini --queue-ini ~/.recount/queue_aws.ini --log-ini ~/.recount/log_allen.ini run 1`
 
 ### Monitoring/studying the run
 

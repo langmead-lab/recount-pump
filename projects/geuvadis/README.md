@@ -1,18 +1,6 @@
 ## `recount-pump` GEUVADIS experiment
 
-### `ini` files
-
-* `log.ini`
-    * We want all log messages aggregated in a single log stream, maybe dedicated just to this project
-* `destination.ini`
-    * We want the output files to ultimately go to MARCC
-
-### Steps to run
-
-Get a database up and running?
-
-Create a queue?
-
+* `../../aws/db/create_db.sh recount`
 * `get_hg38_parts.sh`
     * Downloads components of the hg38 reference from synapse to current directory
         * HISAT2 index
@@ -31,21 +19,14 @@ Create a queue?
         * Reference
         * Inputs/InputSet
     * But stops after staging; no actual jobs are started
-* `create_log_stream.sh`
-    * XYZ
-
-At this point, there 
-
-* Setting up `ini` files
-    * We want to 
 
 ### Steps on a cluster
 
 * Set up `ini` files
     * `db_aws.ini`: database-related settings, modeled on `ini/db.ini` under this directory
     * `s3_aws.ini`: settings for connecting to S3 on AWS, modeled on `ini/s3.ini`
-    * `cluster.ini`: cluster details like which container system to use and which directories to use for inputs, outputs, etc
-    * `destination.ini`: where to copy results files
+    * `cluster-skx.ini`: cluster details like which container system to use and which directories to use for inputs, outputs, etc.  This one is for Stampede 2 Skylake, hence the `-skx` in the name.
+    * `dest_geuvadis.ini`: where to copy results files
     * `queue_aws.ini`: AWS settings for queue
     
 These are usually all created in the `$HOME/.recount` subdirectory.  Below I will refer to them as though they are there.
@@ -56,7 +37,7 @@ Once these have been created and customized, the following command ensures that 
 * `rm -rf $(grep '^input_base' ~/.recount/cluster-skx.ini | cut -f 3 -d' ')/*`
 * `rm -rf $(grep '^output_base' ~/.recount/cluster-skx.ini | cut -f 3 -d' ')/*`
 * `rm -rf $(grep '^temp_base' ~/.recount/cluster-skx.ini | cut -f 3 -d' ')/*`
-* `python cluster.py --db-ini ~/.recount/db_aws.ini --s3-ini ~/.recount/s3_aws.ini --cluster-ini ~/.recount/cluster-skx.ini --destination-ini ~/.recount/destination.ini --queue-ini ~/.recount/queue_aws.ini run 1`
+* `python cluster.py --db-ini ~/.recount/db_aws.ini --s3-ini ~/.recount/s3_aws.ini --cluster-ini ~/.recount/cluster-skx.ini --destination-ini ~/.recount/dest_geuvadis.ini --queue-ini ~/.recount/queue_aws.ini run 1`
 
 ### Monitoring/studying the run
 

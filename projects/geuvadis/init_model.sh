@@ -8,13 +8,15 @@ d=$(dirname $0)
 set -ex
 
 TAXID=9606
-RS1="docker://quay.io/benlangmead/recount-rs2:0.1.6"
+RS1="docker://quay.io/benlangmead/recount-rs2:0.1.9"
 DB_INI="--db-ini ${d}/ini/db.ini.override"
 Q_INI="--queue-ini ${d}/ini/queue.ini.override"
 S3_INI="--s3-ini ${d}/ini/s3.ini.override"
 LOG_INI="--log-ini ${d}/ini/log.ini.override"
 SRC_DIR="$d/../../src"
 ARGS="${LOG_INI}"
+SPECIES=hg38
+STUDY=geuv
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 1: Load reference data"
@@ -40,8 +42,8 @@ add_source() (
         add-source "${url}" 'NA' 'NA' 'NA' 'NA' 'NA' "${retrieval_method}" | tail -n 1
 )
 
-srcid1=$(add_source 's3://recount-ref/hg38/hisat2_idx.tar.gz' 's3')
-srcid2=$(add_source 's3://recount-ref/hg38/fasta.tar.gz' 's3')
+srcid1=$(add_source "s3://recount-ref/${SPECIES}/hisat2_idx.tar.gz" 's3')
+srcid2=$(add_source "s3://recount-ref/${SPECIES}/fasta.tar.gz" 's3')
 test -n "${srcid1}"
 test -n "${srcid2}"
 
@@ -66,7 +68,7 @@ add_annotation() (
         add-annotation "${taxid}" "${url}" 'NA' "${retrieval_method}" | tail -n 1
 )
 
-anid1=$(add_annotation ${TAXID} 's3://recount-ref/hg38/gtf.tar.gz' 's3')
+anid1=$(add_annotation ${TAXID} "s3://recount-ref/${SPECIES}/gtf.tar.gz" 's3')
 test -n "${anid1}"
 
 python ${SRC_DIR}/reference.py ${ARGS} ${DB_INI} \
@@ -92,7 +94,7 @@ add_reference() (
                       "${source_set_id}" "${annotation_set_id}" | tail -n 1
 )
 
-ref_id=$(add_reference ${TAXID} 'hg38' 'homo_sapiens' ${ssid} ${asid})
+ref_id=$(add_reference ${TAXID} "${SPECIES}" 'homo_sapiens' ${ssid} ${asid})
 test -n "${ref_id}"
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
@@ -133,7 +135,7 @@ echo "++++++++++++++++++++++++++++++++++++++++++++++"
 #    name = Column(String(1024))
 #    inputs = relationship("Input", secondary=input_association_table)
 
-input_url='s3://recount-pump-experiments/geuv/geuv.json.gz'
+input_url="s3://recount-pump-experiments/${STUDY}/${STUDY}.json.gz"
 input_fn=$(basename ${input_url})
 rm -f "/tmp/${input_fn}"
 
@@ -149,7 +151,7 @@ import_input_set() (
         "${json_file}" "${input_set_name}" | tail -n 1   
 )
 
-isid=$(import_input_set "/tmp/${input_fn}" 'geuvadis_ERP001942')
+isid=$(import_input_set "/tmp/${input_fn}" 'geuv_ERP001942')
 test -n "${isid}"
 rm -f "/tmp/${input_fn}"
 
@@ -173,7 +175,7 @@ add_project() (
         add-project ${name} ${analysis_id} ${input_set_id} ${reference_id} | tail -n 1
 )
 
-proj_id=$(add_project 'geuvadis-project' ${isid} ${rs1id} ${ref_id})
+proj_id=$(add_project "${STUDY}" ${isid} ${rs1id} ${ref_id})
 test -n "${proj_id}"
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
