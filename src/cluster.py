@@ -82,7 +82,8 @@ log_queue = multiprocessing.Queue()
 
 
 def do_job(body, cluster_ini, my_attempt, node_name,
-           worker_name, mover_config=None, destination=None):
+           worker_name, mover_config=None, destination=None,
+           source_prefix=None):
     """
     Given a job-attempt description string, parse the string and execute the
     corresponding job attempt.  The description string itself is composed in
@@ -118,7 +119,8 @@ def do_job(body, cluster_ini, my_attempt, node_name,
     ret = run.run_job(attempt_name, [tmp_fn], analysis_string, cluster_ini,
                       log_queue=log_queue, node_name=node_name,
                       worker_name=worker_name,
-                      mover=mover, destination=destination)
+                      mover=mover, destination=destination,
+                      source_prefix=source_prefix)
     return ret
 
 
@@ -325,7 +327,7 @@ def get_num_successes(job, session):
 
 def job_loop(project_id, q_ini, cluster_ini, worker_name, session,
              max_fails=10, sleep_seconds=10,
-             mover_config=None, destination=None):
+             mover_config=None, destination=None, source_prefix=None):
     log.info('Getting queue client', 'cluster.py')
     aws_profile, region, endpoint = parse_queue_config(q_ini)
     boto3_session = boto3.session.Session(profile_name=aws_profile)
@@ -366,7 +368,8 @@ def job_loop(project_id, q_ini, cluster_ini, worker_name, session,
                 succeeded = False
                 if do_job(body, cluster_ini, my_attempt, node_name,
                           worker_name, mover_config=mover_config,
-                          destination=destination):
+                          destination=destination,
+                          source_prefix=source_prefix):
                     log_success(job, node_name, worker_name, session)
                     log.info('job success', 'cluster.py')
                     succeeded = True
@@ -466,12 +469,6 @@ def test_integration(db_integration):
         pytest.skip('db integration testing disabled')
 
 
-def test_download_image_s3(s3_enabled, s3_service):
-    if not s3_enabled:
-        pytest.skip('Skipping S3 tests')
-    # TODO
-
-
 def test_download_file_s3(s3_enabled, s3_service):
     if not s3_enabled:
         pytest.skip('Skipping S3 tests')
@@ -538,7 +535,7 @@ def test_with_db(session):
 
 def worker(project_id, worker_name, q_ini, cluster_ini, engine, max_fail,
            poll_seconds,
-           mover_config=None, destination=None):
+           mover_config=None, destination=None, source_prefix=None):
     engine.dispose()
     connection = engine.connect()
     session = Session(bind=connection)
@@ -546,7 +543,8 @@ def worker(project_id, worker_name, q_ini, cluster_ini, engine, max_fail,
                    max_fails=max_fail,
                    sleep_seconds=poll_seconds,
                    mover_config=mover_config,
-                   destination=destination))
+                   destination=destination,
+                   source_prefix=source_prefix))
 
 
 def log_worker():
@@ -575,9 +573,10 @@ def parse_destination_ini(ini_fn, section='destination'):
                            % (ini_fn, section))
     enabled = cfg.get(section, 'enabled') == 'true'
     destination_url = cfg.get(section, 'destination')
+    source_prefix = cfg.get(section, 'source_prefix')
     aws_endpoint = cfg.get(section, 'aws_endpoint')
     aws_profile = cfg.get(section, 'aws_profile')
-    return enabled, destination_url, aws_endpoint, aws_profile
+    return enabled, destination_url, source_prefix, aws_endpoint, aws_profile
 
 
 def go():
@@ -608,7 +607,7 @@ def go():
                           mover_config.new_mover(),
                           get_image=True, get_reference=True))
         if args['run']:
-            enabled, destination_url, aws_endpoint, aws_profile = \
+            enabled, destination_url, source_prefix, aws_endpoint, aws_profile = \
                 parse_destination_ini(dest_ini)
             engine = engine_from_config(db_ini, args['--db-section'])
             connection = engine.connect()
@@ -633,7 +632,8 @@ def go():
                 t = multiprocessing.Process(target=worker,
                                             args=(project_id, worker_name, q_ini, cluster_ini,
                                                   engine, max_fails, sleep_seconds,
-                                                  mover_config, destination_url))
+                                                  mover_config, destination_url,
+                                                  source_prefix))
                 t.start()
                 log.info('Spawned process %d (pid=%d)' % (i+1, t.pid), 'cluster.py')
                 procs.append(t)

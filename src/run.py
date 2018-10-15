@@ -71,7 +71,7 @@ def reader(node_name, worker_name, pipe, queue, nm):
 
 
 def run_job(name, inputs, image, cluster_ini,
-            keep=False, mover=None, destination=None,
+            keep=False, mover=None, destination=None, source_prefix=None,
             log_queue=None, node_name='', worker_name=''):
     log.info('job name: %s, image: "%s"' % (name, image), 'run.py')
     if not os.path.exists(cluster_ini):
@@ -206,7 +206,7 @@ def run_job(name, inputs, image, cluster_ini,
                 fn = os.path.join(output_dir, fn)
                 log.info('found manifest "%s"' % fn, 'run.py')
                 with open(fn, 'rt') as man_fh:
-                    xfer_fns = []
+                    xfers = []
                     for xfer_fn in man_fh.read().split():
                         full_xfer_fn = os.path.join(output_dir, xfer_fn)
                         sz = os.path.getsize(full_xfer_fn)
@@ -215,8 +215,11 @@ def run_job(name, inputs, image, cluster_ini,
                             raise RuntimeError('File "%s" was in manifest ("%s") '
                                                'but was not present in output '
                                                'directory' % (full_xfer_fn, fn))
-                        xfer_fns.append(full_xfer_fn)
-                    mover.multi(output_base, destination, xfer_fns)
+                        xfers.append(xfer_fn)
+                    if source_prefix is not None:
+                        mover.multi(source_prefix + output_dir, destination, xfers)
+                    else:
+                        mover.multi(output_dir, destination, xfers)
 
     print('SUCCESS' if ret == 0 else 'FAILURE', file=sys.stderr)
     return ret == 0
