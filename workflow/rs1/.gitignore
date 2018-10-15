@@ -1,3 +1,4 @@
 *.img
 *.img.zstd
 Dockerfile
+workflow.bash
