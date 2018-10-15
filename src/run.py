@@ -197,6 +197,7 @@ def run_job(name, inputs, image, cluster_ini,
         shutil.rmtree(os.path.join(input_base, name))
         shutil.rmtree(os.path.join(temp_base, name))
 
+    # Copy files to ultimate destination, if one is specified
     if mover is not None and destination is not None and len(destination) > 0:
         output_dir = os.path.join(output_base, name)
         log.info('using mover to copy outputs from "%s" to "%s"' % (output_dir, destination), 'run.py')
@@ -205,15 +206,17 @@ def run_job(name, inputs, image, cluster_ini,
                 fn = os.path.join(output_dir, fn)
                 log.info('found manifest "%s"' % fn, 'run.py')
                 with open(fn, 'rt') as man_fh:
-                    files = man_fh.read().split()
-                    for file in files:
-                        sz = os.path.getsize(file)
-                        log.info('moving file "%s" of size %d' % (fn, sz), 'run.py')
-                        if not os.path.exists(file):
+                    xfer_fns = []
+                    for xfer_fn in man_fh.read().split():
+                        full_xfer_fn = os.path.join(output_dir, xfer_fn)
+                        sz = os.path.getsize(full_xfer_fn)
+                        log.info('moving file "%s" of size %d' % (full_xfer_fn, sz), 'run.py')
+                        if not os.path.exists(full_xfer_fn):
                             raise RuntimeError('File "%s" was in manifest ("%s") '
                                                'but was not present in output '
-                                               'directory' % (file, fn))
-                    mover.multi(output_base, destination, files)
+                                               'directory' % (full_xfer_fn, fn))
+                        xfer_fns.append(full_xfer_fn)
+                    mover.multi(output_base, destination, xfer_fns)
 
     print('SUCCESS' if ret == 0 else 'FAILURE', file=sys.stderr)
     return ret == 0
