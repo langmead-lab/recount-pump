@@ -202,6 +202,7 @@ def run_job(name, inputs, image, cluster_ini,
         log.info('using mover to copy outputs from "%s" to "%s"' % (output_dir, destination), 'run.py')
         for fn in os.listdir(output_dir):
             if fn.endswith('.manifest'):
+                fn = os.path.join(output_dir, fn)
                 log.info('found manifest "%s"' % fn, 'run.py')
                 with open(fn, 'rt') as man_fh:
                     files = man_fh.read().split()
