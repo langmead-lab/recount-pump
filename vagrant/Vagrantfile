@@ -153,6 +153,22 @@ Vagrant.configure("2") do |config|
         echo "output_mount = /container-mounts/recount/output"     >> /root/.recount/cluster_singularity.ini
     SHELL
 
+    config.vm.provision "shell", privileged: true, name: "base analysis image", inline: <<-SHELL
+        SKIP=0
+        if [ "${SKIP}" != "1" ] ; then
+            cd /work/recount-pump/workflow/common
+            echo "------------------------------------------------------"
+            echo "Building and pushing base analysis image"
+            echo "------------------------------------------------------"
+            ./build-base.sh && ./push.sh
+            if [ $? -eq 0 ] ; then
+                echo "===HAPPY ${IMAGE} built and pushed base analysis image"
+            else
+                echo "===SAD ERROR building and/or pushing base analysis image"
+            fi
+        fi
+    SHELL
+
     config.vm.provision "shell", privileged: true, name: "analysis images", inline: <<-SHELL
         FLOWBASE="/work/recount-pump/workflow"
         export RECOUNT_REF=/work/recount-ref
