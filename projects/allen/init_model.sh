@@ -42,8 +42,8 @@ add_source() (
         add-source "${url}" 'NA' 'NA' 'NA' 'NA' 'NA' "${retrieval_method}" | tail -n 1
 )
 
-srcid1=$(add_source 's3://recount-ref/${SPECIES}/hisat2_idx.tar.gz' 's3')
-srcid2=$(add_source 's3://recount-ref/${SPECIES}/fasta.tar.gz' 's3')
+srcid1=$(add_source "s3://recount-ref/${SPECIES}/hisat2_idx.tar.gz" 's3')
+srcid2=$(add_source "s3://recount-ref/${SPECIES}/fasta.tar.gz" 's3')
 test -n "${srcid1}"
 test -n "${srcid2}"
 
@@ -68,7 +68,7 @@ add_annotation() (
         add-annotation "${taxid}" "${url}" 'NA' "${retrieval_method}" | tail -n 1
 )
 
-anid1=$(add_annotation ${TAXID} 's3://recount-ref/${SPECIES}/gtf.tar.gz' 's3')
+anid1=$(add_annotation ${TAXID} "s3://recount-ref/${SPECIES}/gtf.tar.gz" 's3')
 test -n "${anid1}"
 
 python ${SRC_DIR}/reference.py ${ARGS} ${DB_INI} \
@@ -94,7 +94,7 @@ add_reference() (
                       "${source_set_id}" "${annotation_set_id}" | tail -n 1
 )
 
-ref_id=$(add_reference ${TAXID} '${SPECIES}' 'mus_musculus' ${ssid} ${asid})
+ref_id=$(add_reference ${TAXID} "${SPECIES}" 'mus_musculus' ${ssid} ${asid})
 test -n "${ref_id}"
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
@@ -175,7 +175,7 @@ add_project() (
         add-project ${name} ${analysis_id} ${input_set_id} ${reference_id} | tail -n 1
 )
 
-proj_id=$(add_project "${STUDY}-project" ${isid} ${rs1id} ${ref_id})
+proj_id=$(add_project "${STUDY}" ${isid} ${rs1id} ${ref_id})
 test -n "${proj_id}"
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"

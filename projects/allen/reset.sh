@@ -3,5 +3,5 @@
 set -ex
 
 ../../aws/logs/delete.sh recount-allen
-../../aws/db/reset_db.sh recount
-../../aws/sqs/delete.sh stage_1
+../../aws/db/reset_db.sh recount_allen
+../../aws/sqs/delete.sh allen_proj1_q
