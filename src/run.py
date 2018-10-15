@@ -64,7 +64,7 @@ def log_info(node_name, worker_name, queue, msg):
     if queue is None:
         log.info(' '.join([node_name, worker_name, msg]), 'run.py')
     else:
-        queue.put((node_name, worker_name, msg))
+        queue.put((node_name, worker_name, 'run.py', msg))
 
 
 def reader(node_name, worker_name, pipe, queue, nm):
