@@ -252,6 +252,9 @@ def run_job(name, inputs, image, cluster_ini,
                     log_info(node_name, worker_name, log_queue,
                              'Finished moving %d files of total size %d' % (len(xfers), tot_sz))
 
+        if not keep:
+            shutil.rmtree(output_dir)
+
     print('SUCCESS' if ret == 0 else 'FAILURE', file=sys.stderr)
     return ret == 0
 
