@@ -186,7 +186,7 @@ def run_job(name, inputs, image, cluster_ini,
         cmd += (' run %s %s %s %s' % (to_docker_env(cmd_env), ' '.join(mounts), image, cmd_run))
     else:
         cmd = '%s singularity exec %s %s %s' % (to_singularity_env(cmd_env), ' '.join(mounts), image, cmd_run)
-    log_info(node_name, worker_name, log_queue, 'command: ' + cmd, 'run.py')
+    log_info(node_name, worker_name, log_queue, 'command: ' + cmd)
     proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     t_out = threading.Thread(target=reader,
                              args=[node_name, worker_name, proc.stdout, log_queue, 'out'])
