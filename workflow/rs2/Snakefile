@@ -98,9 +98,10 @@ rule bam_to_bw_all:
         bamidx=config['temp'] + '/{trio}.sorted.bam.bai'
     output:
         unique_bw=config['output'] + '/{trio}.unique.bw'
+    threads: 32
     shell:
         """
-        bamCoverage -b {input.bam} -o {output.unique_bw}
+        bamCoverage -b {input.bam} -o {output.unique_bw} -p {threads}
         """
 
 rule bam_to_bw_unique:
@@ -109,9 +110,10 @@ rule bam_to_bw_unique:
         bamidx=config['temp'] + '/{trio}.sorted.bam.bai'
     output:
         all_bw=config['output'] + '/{trio}.all.bw'
+    threads: 32
     shell:
         """
-        bamCoverage --minMappingQuality 10 -b {input.bam} -o {output.all_bw}
+        bamCoverage --minMappingQuality 10 -b {input.bam} -o {output.all_bw} -p {threads}
         """
 
 rule sort:
