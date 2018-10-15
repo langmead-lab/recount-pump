@@ -50,6 +50,8 @@ if [[ -f /workflow.nf ]] ; then
             --cpus "${RECOUNT_CPUS}" \
             $*
 elif [[ -f /Snakefile ]] ; then
+    mkdir -p ${RECOUNT_TEMP}/snakemake-wd
+    pushd ${RECOUNT_TEMP}/snakemake-wd
     snakemake \
         --snakefile /Snakefile \
         -j "${RECOUNT_CPUS}" \
@@ -59,6 +61,7 @@ elif [[ -f /Snakefile ]] ; then
             output="${RECOUNT_OUTPUT}" \
             ref="${RECOUNT_REF}" \
             temp="${RECOUNT_TEMP}"
+    popd
 else
     echo "Could not detect workflow script"
     exit 1
