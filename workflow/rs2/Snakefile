@@ -71,9 +71,9 @@ rule gene_count_all:
         srr=lambda wildcards: wildcards.trio.split('_')[0]
     shell:
         """
-        featureCounts -f -p -a {input.gtf} -F GTF -t exon -g gene_id -o {config[temp]}/tmp {input.bam}
-        awk -v OFS='\\t' '$1 !~ /^#/ && $1 !~ /^Geneid/ && $NF != 0 {{print "{params.srr}",$0}}' {config[temp]}/tmp > {output.all_gc}
-        rm -f {config[temp]}/tmp
+        featureCounts -f -p -a {input.gtf} -F GTF -t exon -g gene_id -o {config[temp]}/tmp_all.tsv {input.bam}
+        awk -v OFS='\\t' '$1 !~ /^#/ && $1 !~ /^Geneid/ && $NF != 0 {{print "{params.srr}",$0}}' {config[temp]}/tmp_all.tsv > {output.all_gc}
+        rm -f {config[temp]}/tmp_all.tsv
         """
 
 rule gene_count_unique:
@@ -87,9 +87,9 @@ rule gene_count_unique:
         srr=lambda wildcards: wildcards.trio.split('_')[0]
     shell:
         """
-        featureCounts -Q 10 -f -p -a {input.gtf} -F GTF -t exon -g gene_id -o {config[temp]}/tmp {input.bam}
-        awk -v OFS='\\t' '$1 !~ /^#/ && $1 !~ /^Geneid/ && $NF != 0 {{print "{params.srr}",$0}}' {config[temp]}/tmp > {output.unique_gc}
-        rm -f {config[temp]}/tmp
+        featureCounts -Q 10 -f -p -a {input.gtf} -F GTF -t exon -g gene_id -o {config[temp]}/tmp_unique.tsv {input.bam}
+        awk -v OFS='\\t' '$1 !~ /^#/ && $1 !~ /^Geneid/ && $NF != 0 {{print "{params.srr}",$0}}' {config[temp]}/tmp_unique.tsv > {output.unique_gc}
+        rm -f {config[temp]}/tmp_unique.tsv
         """
 
 rule bam_to_bw_all:
