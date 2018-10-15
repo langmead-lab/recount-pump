@@ -332,8 +332,10 @@ def job_loop(project_id, q_ini, cluster_ini, worker_name, session,
     q_client = boto3_session.client('sqs',
                                     endpoint_url=endpoint,
                                     region_name=region)
+    log.info('Getting project', 'cluster.py')
+    proj = session.query(Project).get(project_id)
     log.info('Getting queue', 'cluster.py')
-    q_name = Project.queue_name_cl(project_id)
+    q_name = proj.queue_name()
     resp = q_client.create_queue(QueueName=q_name)
     q_url = resp['QueueUrl']
     only_delete_on_success = True
