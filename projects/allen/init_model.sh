@@ -8,7 +8,7 @@ d=$(dirname $0)
 set -ex
 
 TAXID=10090
-RS1="docker://quay.io/benlangmead/recount-rs2:0.1.8"
+RS1="docker://quay.io/benlangmead/recount-rs2:0.1.9"
 DB_INI="--db-ini ${d}/ini/db.ini.override"
 Q_INI="--queue-ini ${d}/ini/queue.ini.override"
 S3_INI="--s3-ini ${d}/ini/s3.ini.override"
