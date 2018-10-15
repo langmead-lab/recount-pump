@@ -72,12 +72,8 @@ class Project(Base):
             raise RuntimeError('Bad job string; must have exactly 4 spaces: "%s"' % job_str)
         return job_str
 
-    @classmethod
-    def queue_name_cl(cls, ident):
-        return 'stage_%d' % ident
-
     def queue_name(self):
-        return Project.queue_name_cl(self.id)
+        return '%s_proj%d_q' % (self.name, self.id)
 
     @classmethod
     def parse_job_string(cls, st):
@@ -351,24 +347,22 @@ def go():
     try:
         db_ini = os.path.expanduser(args['--db-ini'])
         q_ini = os.path.expanduser(args['--queue-ini'])
+        session_mk = session_maker_from_config(db_ini, args['--db-section'])
         if args['add-project']:
-            Session = session_maker_from_config(db_ini, args['--db-section'])
             print(add_project(args['<name>'], args['<analysis-id>'],
                               args['<input-set-id>'], args['<reference-id>'],
-                              Session()))
+                              session_mk()))
         if args['summarize-project']:
-            Session = session_maker_from_config(db_ini, args['--db-section'])
-            session = Session()
+            session = session_mk()
             proj = session.query(Project).get(int(args['<project-id>']))
             print(json.dumps(proj.deepdict(session), indent=4, separators=(',', ': ')))
         elif args['stage']:
-            Session = session_maker_from_config(db_ini, args['--db-section'])
             aws_profile, region, endpoint = parse_queue_config(q_ini)
             boto3_session = boto3.session.Session(profile_name=aws_profile)
             sqs_client = boto3_session.client('sqs',
                                               endpoint_url=endpoint,
                                               region_name=region)
-            print(stage_project(int(args['<project-id>']), sqs_client, Session(),
+            print(stage_project(int(args['<project-id>']), sqs_client, session_mk(),
                                 chunking_strategy=args['--chunk']))
     except Exception:
         log.error('Uncaught exception:', 'pump.py')
