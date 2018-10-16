@@ -1,4 +1,4 @@
-FROM continuumio/miniconda:4.5.4
+FROM continuumio/miniconda:4.5.11
 
 # install conda environment
 COPY env.yml /tmp/env-base.yml
