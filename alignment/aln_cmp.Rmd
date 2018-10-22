@@ -13,6 +13,8 @@ library(ggplot2)
 setwd('~/git/recount-pump/alignment')
 ```
 
+Following is output by 
+
 ```{r read}
 m <- read.csv('accuracy.csv')
 ```
@@ -39,11 +41,11 @@ pr_inov_plot <- function(m, want_intron, want_ann, title) {
 ```
 
 ```{r plot_pr_intron}
-pr_inov_plot(msub, T, F, 'Intron-level')
+pr_inov_plot(msub, T, F, 'Intron-level (no annotation)')
 ```
 
 ```{r plot_pr_olap}
-pr_inov_plot(msub, F, F, 'Overlap-level')
+pr_inov_plot(msub, F, F, 'Overlap-level (no annotation)')
 ```
 
 ```{r plot_aln}
@@ -66,6 +68,14 @@ pr_aln_plot(msub, F, F, F, 'Alignment level (w/o SC, no Annotation)')
 pr_aln_plot(msub, F, F, T, 'Base level (w/o SC, no annotation)')
 ```
 
+```{r plot_aln_aln_sc}
+pr_aln_plot(msub, T, F, F, 'Alignment level (with SC, no Annotation)')
+```
+
+```{r plot_aln_base_sc}
+pr_aln_plot(msub, T, F, T, 'Base level (with SC, no annotation)')
+```
+
 ```{r plot_prec_rec}
 fscore_inov_plot <- function(m, want_intron, want_ann, title) {
     msub$tool_and_pass <- paste(msub$tool, ifelse(msub$twopass, '1-pass', '2-pass'))
@@ -84,4 +94,32 @@ fscore_inov_plot(msub, T, F, 'Intron-level (no annotation)')
 
 ```{r plot_f_overlap}
 fscore_inov_plot(msub, F, F, 'Overlap-level (no annotation)')
+```
+
+```{r plot_fscore_aln}
+fscore_aln_plot <- function(m, want_softclip, want_ann, want_baselev, title) {
+    msub$tool_and_pass <- paste(msub$tool, ifelse(msub$twopass, '1-pass', '2-pass'))
+    mplot <- msub %>% filter(softclip == want_softclip &
+            ann == want_ann & alignment & baselev == want_baselev)
+    ggplot(mplot,
+        aes(x=tool_and_pass, y=fscore, color=tool)) +
+        ggtitle(title) +
+        geom_boxplot() +
+        theme_bw()
+}
+```
+
+```{r plot_fscore_aln_aln}
+fscore_aln_plot(msub, F, F, F, 'Alignment-level (w/o SC, no annotation)')
+```
+
+```{r plot_fscore_aln_base}
+fscore_aln_plot(msub, F, F, T, 'Base-level (w/o SC, no annotation)')
+```
+
+```{r plot_fscore_aln_aln_sc}
+fscore_aln_plot(msub, T, F, F, 'Alignment-level (with SC, no annotation)')
+```
+```{r plot_fscore_aln_base_sc}
+fscore_aln_plot(msub, T, F, T, 'Base-level (with SC, no annotation)')
 ```
