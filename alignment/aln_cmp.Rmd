@@ -19,12 +19,6 @@ Following is output by
 m <- read.csv('accuracy.csv')
 ```
 
-```{r geom_mean}
-geom_mean = function(x, na.rm=TRUE) {
-  exp(sum(log(x[x > 0]), na.rm=na.rm) / length(x))
-}
-```
-
 ```{r plyr_prep}
 msub <- m %>% filter(paired)
 msub <- msub %>% spread(measure, value)
