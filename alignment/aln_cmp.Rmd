@@ -1,0 +1,87 @@
+---
+title: "aln_cmp.Rmd"
+output: html_document
+---
+
+```{r libs}
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+```
+
+```{r wd}
+setwd('~/git/recount-pump/alignment')
+```
+
+```{r read}
+m <- read.csv('accuracy.csv')
+```
+
+```{r geom_mean}
+geom_mean = function(x, na.rm=TRUE) {
+  exp(sum(log(x[x > 0]), na.rm=na.rm) / length(x))
+}
+```
+
+```{r plyr_prep}
+msub <- m %>% filter(paired)
+msub <- msub %>% spread(measure, value)
+```
+
+```{r plot_inov}
+pr_inov_plot <- function(m, want_intron, want_ann, title) {
+    ggplot(msub %>% filter(inton == want_intron & ann == want_ann & !alignment),
+        aes(x=precision, y=recall, color=tool, shape=twopass)) +
+        ggtitle(title) +
+        geom_point() +
+        theme_bw()
+}
+```
+
+```{r plot_pr_intron}
+pr_inov_plot(msub, T, F, 'Intron-level')
+```
+
+```{r plot_pr_olap}
+pr_inov_plot(msub, F, F, 'Overlap-level')
+```
+
+```{r plot_aln}
+pr_aln_plot <- function(m, want_softclip, want_ann, want_baselev, title) {
+    mplot <- msub %>% filter(softclip == want_softclip &
+            ann == want_ann & alignment & baselev == want_baselev)
+    ggplot(mplot,
+        aes(x=precision, y=recall, color=tool, shape=twopass)) +
+        ggtitle(title) +
+        geom_point() +
+        theme_bw()
+}
+```
+
+```{r plot_aln_aln}
+pr_aln_plot(msub, F, F, F, 'Alignment level (w/o SC, no Annotation)')
+```
+
+```{r plot_aln_base}
+pr_aln_plot(msub, F, F, T, 'Base level (w/o SC, no annotation)')
+```
+
+```{r plot_prec_rec}
+fscore_inov_plot <- function(m, want_intron, want_ann, title) {
+    msub$tool_and_pass <- paste(msub$tool, ifelse(msub$twopass, '1-pass', '2-pass'))
+    mplot <- msub %>% filter(inton == want_intron & ann == want_ann & !alignment)
+    ggplot(mplot,
+        aes(x=tool_and_pass, y=fscore, color=tool)) +
+        ggtitle(title) +
+        geom_boxplot() +
+        theme_bw()
+}
+```
+
+```{r plot_f_intron}
+fscore_inov_plot(msub, T, F, 'Intron-level (no annotation)')
+```
+
+```{r plot_f_overlap}
+fscore_inov_plot(msub, F, F, 'Overlap-level (no annotation)')
+```
