@@ -10,6 +10,8 @@ Usage:
   sradbv2 search <lucene-search> [options]
   sradbv2 count <lucene-search> [options]
   sradbv2 size-dist <lucene-search> <n> [options]
+  sradbv2 bases <lucene-search> [options]
+  sradbv2 size <lucene-search> [options]
   sradbv2 summarize-rna [options]
   sradbv2 query [<SRP>,<SRR>]...  [options]
   sradbv2 query-file <file> [options]
@@ -24,6 +26,7 @@ Options:
   --noheader               Suppress header in output.
   --nostdout               Output to files named by study accession.
   --gzip                   Gzip outputs.
+  --quiet                  Don't complain about bad records.
   --output <name>          Output filename [default: search.json].
   -h, --help               Show this screen.
   --version                Show version.
@@ -331,6 +334,17 @@ def size_dist(search, size, stop_after, max_n):
         print(n)
 
 
+def size_bases(search, size, quiet):
+    tot = 0
+    for i, hit in enumerate(search_iterator(search, size)):
+        if '_source' not in hit or 'run_bases' not in hit['_source']:
+            if not quiet:
+                print('Bad record: ' + str(hit), file=sys.stderr)
+        else:
+            tot += int(hit['_source']['run_bases'])
+    print(tot)
+
+
 if __name__ == '__main__':
     args = docopt(__doc__)
     log.init_logger(log.LOG_GROUP_NAME,
@@ -350,6 +364,8 @@ if __name__ == '__main__':
             print(summarize_rna())
         elif args['size-dist']:
             size_dist(args['<lucene-search>'], int(args['--size']), int(args['--stop-after']), int(args['<n>']))
+        elif args['bases']:
+            size_bases(args['<lucene-search>'], int(args['--size']), args['--quiet'])
     except Exception:
         log.error('Uncaught exception:', 'sradbv2.py')
         raise
