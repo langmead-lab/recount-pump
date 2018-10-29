@@ -32,10 +32,11 @@ import pytest
 import globus
 import globus_sdk
 import log
+import tempfile
+import shutil
 from docopt import docopt
 import subprocess
 from functools import wraps
-from shutil import copyfile
 import threading
 import sys
 import boto3
@@ -611,7 +612,7 @@ class Mover(object):
         src, dst = url.to_url(), destination
         if url.is_local:
             log.info('Local get from "%s" to "%s"' % (src, dst), 'mover.py')
-            copyfile(src, dst)
+            shutil.copyfile(src, dst)
         elif url.is_s3:
             if not self.enable_s3:
                 raise RuntimeError('get called on S3 URL "%s" but S3 not enabled' % url)
@@ -640,7 +641,7 @@ class Mover(object):
         dst = url.to_url()
         if url.is_local:
             log.info('Local put from "%s" to "%s"' % (source, dst), 'mover.py')
-            copyfile(source, dst)
+            shutil.copyfile(source, dst)
         elif url.is_s3:
             if not self.enable_s3:
                 raise RuntimeError('put called on S3 URL "%s" but S3 not enabled' % url)
@@ -668,10 +669,14 @@ class Mover(object):
         url = Url(url)
         dst = url.to_url()
         if url.is_local:
+            source = Url(source).to_url()
             log.info('Local multi-put from "%s" to "%s"' % (source, dst), 'mover.py')
+            if not os.path.exists(dst):
+                os.makedirs(dst, exist_ok=True)
+            elif not os.path.isdir(dst):
+                raise ValueError('Destination "%s" exists but is not a directory' % dst)
             for file in files:
-                copyfile(os.path.join(source, file),
-                         os.path.join(dst, file))
+                shutil.copyfile(os.path.join(source, file), os.path.join(dst, file))
         elif url.is_s3:
             if not self.enable_s3:
                 raise RuntimeError('multi-put called on S3 URL "%s" but S3 not enabled' % url)
@@ -840,6 +845,24 @@ def test_put(test_file):
     m.put(test_file, dst)
     assert os.path.exists(dst)
     os.remove(dst)
+
+
+def test_multi():
+    src, dst = tempfile.mkdtemp(), tempfile.mkdtemp()
+    for subdir in ['', 'subdir']:
+        fns = ['temp1', 'temp2', 'temp3']
+        for fn in fns:
+            with open(os.path.join(src, fn), 'wt') as fh:
+                fh.write(fn + '\n')
+        m = Mover()
+        if len(subdir) > 0:
+            dst = os.path.join(dst, subdir)
+        m.multi(src, dst, fns)
+        assert os.path.exists(dst)
+        for fn in fns:
+            assert os.path.exists(os.path.join(dst, fn))
+    shutil.rmtree(src)
+    shutil.rmtree(dst)
 
 
 def test_get(test_file):
