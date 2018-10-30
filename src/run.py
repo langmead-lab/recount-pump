@@ -60,20 +60,26 @@ def to_singularity_env(cmd_env):
     return '; '.join(map(lambda x: 'export ' + x, cmd_env)) + '; '
 
 
-def log_info(node_name, worker_name, queue, msg):
+def log_info(msg, queue):
     if queue is None:
-        log.info(' '.join([node_name, worker_name, msg]), 'run.py')
+        log.info(msg, 'run.py')
     else:
-        queue.put((node_name, worker_name, 'run.py', msg))
+        queue.put(msg)
+
+
+def log_info_detailed(node_name, worker_name, msg, queue):
+    log_info(' '.join([node_name, worker_name, msg]), queue)
 
 
 def reader(node_name, worker_name, pipe, queue, nm):
     if queue is None:
         for line in pipe:
-            log.info(' '.join([node_name, worker_name, nm, line.rstrip()]), 'run.py')
+            msg = ' '.join([node_name, worker_name, nm, line.rstrip()])
+            log.info(msg, 'run.py')
     else:
         for line in pipe:
-            queue.put((node_name, worker_name, nm, line.rstrip()))
+            msg = ' '.join([node_name, worker_name, nm, line.rstrip()])
+            queue.put(msg)
 
 
 def run_job(name, inputs, image, cluster_ini,
@@ -85,7 +91,7 @@ def run_job(name, inputs, image, cluster_ini,
     cfg = RawConfigParser()
     cfg.read(cluster_ini)
     section = cfg.sections()[0]
-    log_info(node_name, worker_name, log_queue, 'reading section %s from ini %s' % (section, cluster_ini))
+    log_info_detailed(node_name, worker_name, 'reading section %s from ini %s' % (section, cluster_ini), log_queue)
     input_base = cfg.get(section, 'input_base')
     output_base = cfg.get(section, 'output_base')
     ref_base = cfg.get(section, 'ref_base')
@@ -104,9 +110,9 @@ def run_job(name, inputs, image, cluster_ini,
     if cfg.has_option(section, 'sudo'):
         sudo = cfg.get(section, 'sudo').lower() == 'true'
 
-    log_info(node_name, worker_name, log_queue, 'using %s as container system' % system)
-    log_info(node_name, worker_name, log_queue, 'using sudo: %s' % str(sudo))
-    log_info(node_name, worker_name, log_queue, 'using %d cpus' % cpus)
+    log_info_detailed(node_name, worker_name, 'using %s as container system' % system, log_queue)
+    log_info_detailed(node_name, worker_name, 'using sudo: %s' % str(sudo), log_queue)
+    log_info_detailed(node_name, worker_name, 'using %d cpus' % cpus, log_queue)
 
     if not os.path.exists(input_base):
         try:
@@ -131,10 +137,10 @@ def run_job(name, inputs, image, cluster_ini,
         raise RuntimeError('temp_base "%s" exists but is not a directory' % temp_base)
     isdir(ref_base)
 
-    log_info(node_name, worker_name, log_queue, 'input base: ' + input_base)
-    log_info(node_name, worker_name, log_queue, 'output base: ' + output_base)
-    log_info(node_name, worker_name, log_queue, 'reference base: ' + ref_base)
-    log_info(node_name, worker_name, log_queue, 'temp base: ' + temp_base)
+    log_info_detailed(node_name, worker_name, 'input base: ' + input_base, log_queue)
+    log_info_detailed(node_name, worker_name, 'output base: ' + output_base, log_queue)
+    log_info_detailed(node_name, worker_name, 'reference base: ' + ref_base, log_queue)
+    log_info_detailed(node_name, worker_name, 'temp base: ' + temp_base, log_queue)
 
     subdir_clear(input_base, name)
     subdir_clear(output_base, name)
@@ -179,6 +185,9 @@ def run_job(name, inputs, image, cluster_ini,
                'RECOUNT_CPUS=%d' % cpus,
                'RECOUNT_REF=%s' % ref_mount]
     cmd_run = '/bin/bash -c "source activate recount && bash /workflow.bash"'
+
+    log_info('COUNT_RunWorkflowPre 1', log_queue)
+
     if docker:
         cmd = 'docker'
         if sudo:
@@ -186,7 +195,7 @@ def run_job(name, inputs, image, cluster_ini,
         cmd += (' run %s %s %s %s' % (to_docker_env(cmd_env), ' '.join(mounts), image, cmd_run))
     else:
         cmd = '%s singularity exec %s %s %s' % (to_singularity_env(cmd_env), ' '.join(mounts), image, cmd_run)
-    log_info(node_name, worker_name, log_queue, 'command: ' + cmd)
+    log_info_detailed(node_name, worker_name, 'command: ' + cmd, log_queue)
     proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     t_out = threading.Thread(target=reader,
                              args=[node_name, worker_name, proc.stdout, log_queue, 'out'])
@@ -203,27 +212,34 @@ def run_job(name, inputs, image, cluster_ini,
         shutil.rmtree(os.path.join(input_base, name))
         shutil.rmtree(os.path.join(temp_base, name))
 
+    log_info('COUNT_RunWorkflowPost 1', log_queue)
+
     # Copy files to ultimate destination, if one is specified
     extras = ['stats.json']
     if mover is not None and destination is not None and len(destination) > 0:
+        if source_prefix is None or len(source_prefix) == 0:
+            source_prefix = 'local://'
         output_dir = os.path.join(output_base, name)
-        log_info(node_name, worker_name, log_queue,
-                 'using mover to copy outputs from "%s" to "%s"' % (output_dir, destination))
+        log_info_detailed(node_name, worker_name,
+                          'using mover to copy outputs from "%s" to "%s"' %
+                          (output_dir, destination), log_queue)
         for fn in os.listdir(output_dir):
             manifest_ext = '.manifest'
             if fn.endswith(manifest_ext):
                 srr = fn[:-len(manifest_ext)]
                 fn = os.path.join(output_dir, fn)
-                log_info(node_name, worker_name, log_queue,
-                         'found manifest "%s" for %s' % (fn, srr))
+                log_info_detailed(node_name, worker_name,
+                                  'found manifest "%s" for %s'
+                                  % (fn, srr), log_queue)
                 with open(fn, 'rt') as man_fh:
                     xfers = []
                     tot_sz = 0
                     for xfer_fn in man_fh.read().split():
                         full_xfer_fn = os.path.join(output_dir, xfer_fn)
                         sz = os.path.getsize(full_xfer_fn)
-                        log_info(node_name, worker_name, log_queue,
-                                 'moving file "%s" of size %d' % (full_xfer_fn, sz))
+                        log_info_detailed(node_name, worker_name,
+                                          'moving file "%s" of size %d' %
+                                          (full_xfer_fn, sz), log_queue)
                         if not os.path.exists(full_xfer_fn):
                             raise RuntimeError('File "%s" was in manifest ("%s") '
                                                'but was not present in output '
@@ -234,8 +250,9 @@ def run_job(name, inputs, image, cluster_ini,
                         full_extra = os.path.join(output_dir, extra)
                         if os.path.exists(full_extra):
                             sz = os.path.getsize(full_extra)
-                            log_info(node_name, worker_name, log_queue,
-                                     'found extra file "%s" of size %d' % (full_extra, sz))
+                            log_info_detailed(node_name, worker_name,
+                                              'found extra file "%s" of size %d' %
+                                              (full_extra, sz), log_queue)
                             new_name = srr + '.' + extra
                             new_name_full = os.path.join(output_dir, new_name)
                             os.rename(full_extra, new_name_full)
@@ -243,16 +260,20 @@ def run_job(name, inputs, image, cluster_ini,
                             xfers.append(new_name)
                             tot_sz += sz
                         else:
-                            log_info(node_name, worker_name, log_queue,
-                                     'could not find extra file "%s"' % extra)
-                    log_info(node_name, worker_name, log_queue,
-                             'Moving files of total size %d b: %s' % (tot_sz, str(xfers)))
-                    if source_prefix is not None:
-                        mover.multi(source_prefix + output_dir, destination, xfers)
-                    else:
-                        mover.multi(output_dir, destination, xfers)
-                    log_info(node_name, worker_name, log_queue,
-                             'Finished moving %d files of total size %d' % (len(xfers), tot_sz))
+                            log_info_detailed(node_name, worker_name,
+                                              'could not find extra file "%s"'
+                                              % extra, log_queue)
+                    log_info_detailed(node_name, worker_name,
+                                      'Moving files of total size %d b: %s'
+                                      % (tot_sz, str(xfers)), log_queue)
+                    log_info('COUNT_DestXferPre 1', log_queue)
+                    mover.multi(source_prefix + output_dir, destination, xfers)
+                    log_info('COUNT_DestXferPost 1', log_queue)
+                    log_info_detailed(node_name, worker_name,
+                                      'Finished moving %d files of total size %d'
+                                      % (len(xfers), tot_sz), log_queue)
+                    log_info('COUNT_DestBytesMoved %d' % tot_sz, log_queue)
+                    log_info('COUNT_DestFilesMoved %d' % len(xfers), log_queue)
 
         if not keep:
             shutil.rmtree(output_dir)
