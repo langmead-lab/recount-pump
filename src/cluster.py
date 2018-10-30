@@ -548,8 +548,8 @@ def worker(project_id, worker_name, q_ini, cluster_ini, engine, max_fail,
 
 
 def log_worker():
-    for node_name, worker_name, source, line in iter(log_queue.get, None):
-        log.info(' '.join([node_name, worker_name, source, line]), 'run.py')
+    for message in iter(log_queue.get, None):
+        log.info(message, 'run.py')
 
 
 def parse_destination_ini(ini_fn, section='destination'):
