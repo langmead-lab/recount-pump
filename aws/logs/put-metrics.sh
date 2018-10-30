@@ -14,24 +14,5 @@ aws logs put-metric-filter \
          --profile ${profile} \
          --log-group-name=${log_group} \
          --filter-name JsonTest \
-         --filter-pattern "{ $.eventType = \"JsonSumTest\" }" \
-         --metric-transformations metricName=JsonSumTest,metricNamespace=recount,metricValue=\$.amt,defaultValue=0
-
-time=$(date +%s)
-
-echo "Sending log event"
-
-cat >/tmp/.event <<EOF
-[
-    {
-        "timestamp": ${time},
-        "message": "{\"eventType\": \"JsonSumTest\", \"amt\": 10}"
-    }
-]
-EOF
-
-aws logs put-log-events \
-         --profile ${profile} \
-         --log-group-name=${log_group} \
-         --log-stream-name=${log_stream} \
-         --log-events file:///tmp/.event
+         --filter-pattern "[ month, day, time, host, module, lab = \"COUNT\", name, amt ]" \
+         --metric-transformations metricName=JsonSumTest,metricNamespace=recount,metricValue=\$amt,defaultValue=0
