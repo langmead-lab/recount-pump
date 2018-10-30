@@ -672,7 +672,7 @@ class Mover(object):
             source = Url(source).to_url()
             log.info('Local multi-put from "%s" to "%s"' % (source, dst), 'mover.py')
             if not os.path.exists(dst):
-                os.makedirs(dst, exist_ok=True)
+                os.makedirs(dst)
             elif not os.path.isdir(dst):
                 raise ValueError('Destination "%s" exists but is not a directory' % dst)
             for file in files:
