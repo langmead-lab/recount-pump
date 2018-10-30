@@ -6,7 +6,10 @@
 """log
 
 Usage:
-  log message [options]
+  log error <string> [options]
+  log warning <string> [options]
+  log info <string> [options]
+  log debug <string> [options]
 
 Options:
   --log-ini <ini>          ini file for log aggregator [default: ~/.recount/log.ini].
@@ -205,12 +208,17 @@ datefmt = %b %d %H:%M:%S
 def go():
     args = docopt(__doc__)
 
-    if args['message']:
-        log_ini = os.path.expanduser(args['--log-ini'])
-        init_logger(LOG_GROUP_NAME, log_ini=log_ini,
-                    agg_level=args['--log-level'], sender='log.py')
-        info('This is an info message', 'log.py')
-        debug('This is a debug message', 'log.py')
+    log_ini = os.path.expanduser(args['--log-ini'])
+    init_logger(LOG_GROUP_NAME, log_ini=log_ini,
+                agg_level=args['--log-level'])
+    if args['error']:
+        error(args['<string>'], 'log.py')
+    elif args['warning']:
+        warning(args['<string>'], 'log.py')
+    elif args['info']:
+        info(args['<string>'], 'log.py')
+    elif args['debug']:
+        debug(args['<string>'], 'log.py')
 
 
 if __name__ == '__main__':
