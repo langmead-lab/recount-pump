@@ -1,10 +1,11 @@
 FROM python:3.4-stretch
 WORKDIR /code
 
-RUN printf "deb http://httpredir.debian.org/debian jessie-backports main non-free\ndeb-src http://httpredir.debian.org/debian jessie-backports main non-free" > /etc/apt/sources.list.d/backports.list
+RUN printf "deb http://httpredir.debian.org/debian stretch-backports main non-free\ndeb-src http://httpredir.debian.org/debian stretch-backports main non-free" > /etc/apt/sources.list.d/backports.list
 
 RUN apt-get update -y && \
-    apt-get install -y libarchive-dev squashfs-tools graphviz singularity-container
+    apt-get install -y libarchive-dev squashfs-tools graphviz && \
+    apt-get -t stretch-backports install singularity-container
 
 RUN pip install --upgrade pip
 
