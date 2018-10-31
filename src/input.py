@@ -276,9 +276,12 @@ def import_json(json_fn, input_set_name, session, limit=None, max_bases=None):
     js = json.load(codecs.getreader("utf-8")(gzip.open(json_fn)) if json_fn.endswith('.gz') else open(json_fn))
     inputs = []
     for rec in js:
-        bases = rec['_source']['run_bases']
-        if bases is not None and max_bases is not None and bases > int(max_bases):
-            continue
+        if max_bases is not None:
+            if 'run_bases' not in rec['_source']:
+                continue
+            bases = rec['_source']['run_bases']
+            if bases is not None and bases > int(max_bases):
+                continue
         acc_r = rec['_id']
         acc_s = rec['_source']['study_accession']
         inp = Input(acc_r=acc_r, acc_s=acc_s,
