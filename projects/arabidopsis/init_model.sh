@@ -7,8 +7,8 @@ d=$(dirname $0)
 
 set -ex
 
-TAXID=9606
-RS1="docker://quay.io/benlangmead/recount-rs3:0.2.1"
+TAXID=3702
+ANA_URL="docker://quay.io/benlangmead/recount-rs3:0.2.1"
 DB_INI="--db-ini ${d}/ini/db.ini.override"
 Q_INI="--queue-ini ${d}/ini/queue.ini.override"
 S3_INI="--s3-ini ${d}/ini/s3.ini.override"
@@ -111,10 +111,10 @@ add_analysis() (
     image_url=$2
     config=$3
     python ${SRC_DIR}/analysis.py ${ARGS} ${DB_INI} \
-        add-analysis ${name} ${image_url} ${config} | tail -n 1
+        add-analysis ${name} ${image_url} "${config}" | tail -n 1
 )
 
-rs1id=$(add_analysis rs1_0_1_2 "${RS1}" "{\"star\":\"--alignIntronMax 20000\"}")
+rs1id=$(add_analysis rs1_0_1_2 "${ANA_URL}" '{"star":"--alignIntronMax 20000"}')
 test -n "${rs1id}"
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
