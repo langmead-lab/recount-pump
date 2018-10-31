@@ -1,18 +1,10 @@
-FROM python:3.4-jessie
+FROM python:3.4-stretch
 WORKDIR /code
 
-RUN apt-get update && apt-get install -y libarchive-dev squashfs-tools graphviz
+RUN printf "deb http://httpredir.debian.org/debian jessie-backports main non-free\ndeb-src http://httpredir.debian.org/debian jessie-backports main non-free" > /etc/apt/sources.list.d/backports.list
 
-ENV SING_VERSION 2.5.2
-
-RUN wget -q https://github.com/singularityware/singularity/releases/download/${SING_VERSION}/singularity-${SING_VERSION}.tar.gz && \
-    tar xf singularity-${SING_VERSION}.tar.gz && \
-    cd singularity-${SING_VERSION} && \
-    ./configure --prefix=/usr/local >/dev/null && \
-    make >/dev/null && \
-    make install >/dev/null && \
-    cd .. && \
-    rm -rf singularity-${SING_VERSION} singularity-${SING_VERSION}.tar.gz
+RUN apt-get update -y && \
+    apt-get install -y libarchive-dev squashfs-tools graphviz singularity-container
 
 RUN pip install --upgrade pip
 
