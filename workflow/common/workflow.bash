@@ -50,12 +50,15 @@ if [[ -f /workflow.nf ]] ; then
             --cpus "${RECOUNT_CPUS}" \
             $*
 elif [[ -f /Snakefile ]] ; then
-    # TODO: does this method of collecting statistics assume that the input
-    # file always has 1 accession?
     mkdir -p ${RECOUNT_TEMP}/snakemake-wd
     pushd ${RECOUNT_TEMP}/snakemake-wd
+    CONFIGFILE=""
+    if [ -f "${RECOUNT_TEMP}/config.json" ] ; then
+        CONFIGFILE="--configfile ${RECOUNT_TEMP}/config.json"
+    fi
     snakemake \
         --snakefile /Snakefile \
+        ${CONFIGFILE} \
         --stats "${RECOUNT_OUTPUT}/stats.json" \
         -j "${RECOUNT_CPUS}" \
         $* \
