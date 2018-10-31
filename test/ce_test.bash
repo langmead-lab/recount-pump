@@ -6,7 +6,7 @@
 set -ex
 
 TAXID=6239
-RS1="docker://quay.io/benlangmead/recount-rs1"
+RS1="docker://quay.io/benlangmead/recount-rs3"
 RS1_TAG="${RS1}:latest"
 ARGS=""
 
@@ -101,11 +101,18 @@ add_analysis() (
     set -exo pipefail
     name=$1
     image_url=$2
+    config=$3
     python src/analysis.py ${ARGS} \
-        add-analysis ${name} ${image_url} | tail -n 1
+        add-analysis ${name} ${image_url} ${config} | tail -n 1
 )
 
-rs1_id=$(add_analysis rs1 "${RS1_TAG}")
+cat >/tmp/.ce_test.config.json <<EOF
+{
+    "star": "--alignIntronMax 20000"
+}
+EOF
+
+rs1_id=$(add_analysis rs1 "${RS1_TAG}" file:///tmp/.ce_test.config.json)
 test -n "${rs1_id}"
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
