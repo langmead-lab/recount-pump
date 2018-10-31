@@ -37,6 +37,7 @@ import shutil
 import log
 from docopt import docopt
 from tempfile import mkdtemp
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy import Column, ForeignKey, Integer, String, Sequence, Table
 from sqlalchemy.orm import relationship
 from base import Base
@@ -152,7 +153,7 @@ class Reference(Base):
 
     id = Column(Integer, Sequence('reference_id_seq'), primary_key=True)
     tax_id = Column(Integer)  # refers to NCBI tax ids
-    name = Column(String(64))  # assembly name, like GRCh38, etc
+    name = Column(String(64), unique=True)  # assembly name, like GRCh38, etc
     longname = Column(String(256))  # assembly name, like GRCh38, etc
     conventions = Column(String(256))  # info about naming conventions, e.g. "chr"
     comment = Column(String(256))
@@ -449,6 +450,32 @@ def test_download_all(session, s3_enabled, s3_service):
     assert os.path.exists(os.path.join(tmpd, 'fasta/genome.fa'))
     assert os.path.exists(os.path.join(tmpd, 'gtf/genes.gtf'))
     shutil.rmtree(tmpd)
+
+
+def test_repeated_name(session):
+    src1 = Source(retrieval_method="s3",
+                  url_1='s3://recount-ref/ce10/ucsc_tracks.tar.gz', checksum_1='')
+    session.add(src1)
+    session.commit()
+    ss = SourceSet(sources=[src1])
+    session.add(ss)
+    session.commit()
+    an1 = Annotation(retrieval_method='s3',
+                     url='s3://recount-ref/ce10/gtf.tar.gz', checksum='')
+    session.add(an1)
+    session.commit()
+    anset = AnnotationSet(annotations=[an1])
+    session.add(anset)
+    session.commit()
+    ref1 = Reference(tax_id=6239, name='celegans', longname='caenorhabditis_elegans',
+                     conventions='', comment='', source_set_id=ss.id, annotation_set_id=anset.id)
+    session.add(ref1)
+    session.commit()
+    with pytest.raises(IntegrityError):
+        ref2 = Reference(tax_id=6239, name='celegans', longname='caenorhabditis_elegans',
+                         conventions='', comment='', source_set_id=ss.id, annotation_set_id=anset.id)
+        session.add(ref2)
+        session.commit()
 
 
 if __name__ == '__main__':
