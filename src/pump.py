@@ -94,11 +94,9 @@ class Project(Base):
         """
         iset = session.query(InputSet).get(self.input_set_id)
         analysis = session.query(Analysis).get(self.analysis_id)
-        analysis_str = analysis.to_job_string()
         reference = session.query(Reference).get(self.reference_id)
-        reference_str = reference.name
-        for input in iset.inputs:
-            yield self.to_job_string(input.to_job_string(), analysis_str, reference_str)
+        for inp in iset.inputs:
+            yield self.to_job_string(inp.to_job_string(), analysis.name, reference.name)
 
 
 class TaskAttempt(Base):
@@ -239,7 +237,9 @@ def test_integration(db_integration):
 
 
 def _simple_project(session):
-    analysis = Analysis(name='recount-rna-seq-v1', image_url='fake')
+    analysis = Analysis(name='simple',
+                        image_url='docker://rs',
+                        config=Analysis.normalize_json('{"key": "value"}'))
     session.add(analysis)
     session.commit()
     assert 1 == len(list(session.query(Analysis)))
@@ -330,8 +330,8 @@ def test_stage(q_enabled, q_client_and_resource, session):
     messages.extend(msg2['Messages'])
     assert 2 == len(messages)
     bodies = [
-        '1 my_project 1,SRR123,SRP123,fake1,fake2,None,fake1,fake2,None,url fake celegans',
-        '1 my_project 2,SRR1234,SRP1234,fake1,None,None,fake1,None,None,url fake celegans'
+        '1 my_project 1,SRR123,SRP123,fake1,fake2,None,fake1,fake2,None,url simple celegans',
+        '1 my_project 2,SRR1234,SRP1234,fake1,None,None,fake1,None,None,url simple celegans'
     ]
     bodies.remove(messages[0]['Body'])
     bodies.remove(messages[1]['Body'])

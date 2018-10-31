@@ -68,7 +68,7 @@ class Task(object):
 
     def __init__(self, body):
         self.proj_id, self.job_name, self.input_string, \
-            self.analysis_string, self.reference_string = Project.parse_job_string(body)
+            self.analysis_name, self.reference_name = Project.parse_job_string(body)
         self.input_id, self.srr, self.srp, self.url1, self.url2, self.url3, \
             self.checksum1, self.checksum2, self.checksum3, \
             self.retrieval = Input.parse_job_string(self.input_string)
@@ -76,14 +76,14 @@ class Task(object):
     def __str__(self):
         return '{proj_id=%d, name="%s", input="%s", analysis="%s", reference="%s"}' %\
                (self.proj_id, self.job_name, self.input_string,
-                self.analysis_string, self.reference_string)
+                self.analysis_name, self.reference_name)
 
 
 log_queue = multiprocessing.Queue()
 
 
 def do_job(body, cluster_ini, my_attempt, node_name,
-           worker_name, mover_config=None, destination=None,
+           worker_name, session, mover_config=None, destination=None,
            source_prefix=None):
     """
     Given a job-attempt description string, parse the string and execute the
@@ -96,16 +96,18 @@ def do_job(body, cluster_ini, my_attempt, node_name,
     - Project.job_iterator() composes the overall string
     """
     name, _, _, _, _, _ = read_cluster_config(cluster_ini)
-    job = Task(body)
-    log.info('got job: ' + str(job), 'cluster.py')
+    task = Task(body)
+    log.info('got job: ' + str(task), 'cluster.py')
     tmp_dir = tempfile.mkdtemp()
     tmp_fn = os.path.join(tmp_dir, 'accessions.txt')
     assert not os.path.exists(tmp_fn)
     with open(tmp_fn, 'w') as fh:
-        fh.write(','.join([job.srr, job.srp, job.reference_string]) + '\n')
-    toks = job.analysis_string.split('|')
-    assert 2 == len(toks)
-    image, config = toks[0], toks[1]
+        fh.write(','.join([task.srr, task.srp, task.reference_name]) + '\n')
+    analyses = session.query(Analysis).filter(Analysis.name == task.analysis_name).all()
+    if 0 == len(analyses):
+        raise ValueError('No analysis named "%s"' % task.analysis_name)
+    assert 1 == len(analyses)
+    image, config = analyses[0].image_url, analyses[0].config
     if image.startswith('docker://'):
         image_name = image.split('/')[-1] + '.simg'
         image_name = image_name.replace(':', '-')
@@ -117,7 +119,7 @@ def do_job(body, cluster_ini, my_attempt, node_name,
         log.info('found image: ' + image_fn + ' with md5 ' + image_md5)
     # Check that config is well-formed
     json.loads(config)
-    attempt_name = 'proj%d_input%d_attempt%d' % (job.proj_id, job.input_id, my_attempt)
+    attempt_name = 'proj%d_input%d_attempt%d' % (task.proj_id, task.input_id, my_attempt)
     mover = None
     if mover_config is not None:
         mover = mover_config.new_mover()
