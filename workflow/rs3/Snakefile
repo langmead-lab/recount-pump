@@ -190,7 +190,7 @@ rule gene_fc_count_all:
     threads: 32
     shell:
         """
-        (time featureCounts {params.fc_param} -f -p -a {input.gtf} -F GTF -T {threads} -t exon -g gene_id \
+        (time featureCounts {params.fc_param} -p -a {input.gtf} -T {threads} \
             -o {config[temp]}/tmp_all.tsv {input.bam}) 2>&1 | tee -a {log}
         awk -v OFS='\\t' '$1 !~ /^#/ && $1 !~ /^Geneid/ && $NF != 0 {{print "{params.srr}",$0}}' \
             {config[temp]}/tmp_all.tsv > {config[temp]}/o.all.gene_count
@@ -215,7 +215,7 @@ rule gene_fc_count_unique:
     threads: 32
     shell:
         """
-        (time featureCounts {params.fc_param} -Q {params.fc_uniq} -f -p -a {input.gtf} -F GTF -T {threads} -t exon -g gene_id \
+        (time featureCounts {params.fc_param} -Q {params.fc_uniq} -p -a {input.gtf} -T {threads} \
             -o {config[temp]}/tmp_unique.tsv {input.bam}) 2>&1 | tee -a {log}
         awk -v OFS='\\t' '$1 !~ /^#/ && $1 !~ /^Geneid/ && $NF != 0 {{print "{params.srr}",$0}}' \
             {config[temp]}/tmp_unique.tsv > {config[temp]}/o.unique.gene_count
@@ -238,7 +238,7 @@ rule exon_fc_count_all:
     threads: 32
     shell:
         """
-        (time featureCounts {params.fc_param} -f -p -a {input.gtf} -F GTF -T {threads} -t exon -f -g gene_id \
+        (time featureCounts {params.fc_param} -O -f -p -a {input.gtf} -T {threads} \
             -o {config[temp]}/tmp_all.tsv {input.bam}) 2>&1 | tee -a {log}
         awk -v OFS='\\t' '$1 !~ /^#/ && $1 !~ /^Geneid/ && $NF != 0 {{print "{params.srr}",$0}}' \
             {config[temp]}/tmp_all.tsv > {config[temp]}/o.all.exon_count
@@ -263,7 +263,7 @@ rule exon_fc_count_unique:
     threads: 32
     shell:
         """
-        (time featureCounts {params.fc_param} -Q {params.fc_uniq} -f -p -a {input.gtf} -F GTF -T {threads} -t exon -f -g gene_id \
+        (time featureCounts {params.fc_param} -Q {params.fc_uniq} -O -f -p -a {input.gtf} -T {threads} \
             -o {config[temp]}/tmp_unique.tsv {input.bam}) 2>&1 | tee -a {log}
         awk -v OFS='\\t' '$1 !~ /^#/ && $1 !~ /^Geneid/ && $NF != 0 {{print "{params.srr}",$0}}' \
             {config[temp]}/tmp_unique.tsv > {config[temp]}/o.unique.exon_count
