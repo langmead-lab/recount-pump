@@ -1,0 +1,7 @@
+Bootstrap: Docker
+
+From: recount-pump:latest
+
+Registry: quay.io
+
+Namespace: benlangmead
