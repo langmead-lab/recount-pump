@@ -26,6 +26,7 @@ import os
 import sys
 import log
 import shutil
+import json
 from docopt import docopt
 import subprocess
 import threading
@@ -82,7 +83,7 @@ def reader(node_name, worker_name, pipe, queue, nm):
             queue.put(msg)
 
 
-def run_job(name, inputs, image, cluster_ini,
+def run_job(name, inputs, image, config, cluster_ini,
             keep=False, mover=None, destination=None, source_prefix=None,
             log_queue=None, node_name='', worker_name=''):
     log.info('job name: %s, image: "%s"' % (name, image), 'run.py')
@@ -185,6 +186,11 @@ def run_job(name, inputs, image, cluster_ini,
                'RECOUNT_CPUS=%d' % cpus,
                'RECOUNT_REF=%s' % ref_mount]
     cmd_run = '/bin/bash -c "source activate recount && bash /workflow.bash"'
+
+    # copy config into input directory
+    config_fn = os.path.join(temp_mount, 'config.json')
+    with open(config_fn, 'wt') as fh:
+        fh.write(json.dumps(json.loads(config), indent=4))
 
     log_info('COUNT_RunWorkflowPre 1', log_queue)
 

@@ -44,6 +44,7 @@ import subprocess
 import boto3
 import multiprocessing
 import socket
+import json
 import threading
 from resmon import SysmonThread
 from datetime import datetime
@@ -102,21 +103,25 @@ def do_job(body, cluster_ini, my_attempt, node_name,
     assert not os.path.exists(tmp_fn)
     with open(tmp_fn, 'w') as fh:
         fh.write(','.join([job.srr, job.srp, job.reference_string]) + '\n')
-    analysis_string = job.analysis_string
-    if job.analysis_string.startswith('docker://'):
-        image_name = job.analysis_string.split('/')[-1] + '.simg'
+    toks = job.analysis_string.split('|')
+    assert 2 == len(toks)
+    image, config = toks[0], toks[1]
+    if image.startswith('docker://'):
+        image_name = image.split('/')[-1] + '.simg'
         image_name = image_name.replace(':', '-')
         image_fn = os.path.join(os.environ['SINGULARITY_CACHEDIR'], image_name)
         assert os.path.exists(image_fn)
-        analysis_string = image_fn
+        image = image_fn
         image_md5 = subprocess.check_output(['md5sum', image_fn])
         image_md5 = image_md5.decode().split()[0]
         log.info('found image: ' + image_fn + ' with md5 ' + image_md5)
+    # Check that config is well-formed
+    json.loads(config)
     attempt_name = 'proj%d_input%d_attempt%d' % (job.proj_id, job.input_id, my_attempt)
     mover = None
     if mover_config is not None:
         mover = mover_config.new_mover()
-    ret = run.run_job(attempt_name, [tmp_fn], analysis_string, cluster_ini,
+    ret = run.run_job(attempt_name, [tmp_fn], image, config, cluster_ini,
                       log_queue=log_queue, node_name=node_name,
                       worker_name=worker_name,
                       mover=mover, destination=destination,
@@ -506,7 +511,7 @@ def test_with_db(session):
     analysis_fn = os.path.join(analysis_dir, analysis_basename)
     with open(analysis_fn, 'wb') as fh:
         fh.write(b'blah\n')
-    analysis_id = add_analysis(analysis_name, analysis_basename, session)
+    analysis_id = add_analysis(analysis_name, analysis_basename, '{}', session)
     input_set_id, nadded = import_input_set(input_set_name, csv_fn, session)
     assert 2 == nadded
     source_set_id = add_source_set(session)
