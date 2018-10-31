@@ -24,7 +24,10 @@ import os
 import log
 import pytest
 import json
+import tempfile
+import shutil
 from docopt import docopt
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy import Column, Integer, String, Sequence
 from base import Base
 from toolbox import session_maker_from_config
@@ -37,7 +40,7 @@ class Analysis(Base):
     __tablename__ = 'analysis'
 
     id = Column(Integer, Sequence('analysis_id_seq'), primary_key=True)
-    name = Column(String(1024), nullable=False)
+    name = Column(String(1024), nullable=False, unique=True)
     image_url = Column(String(4096), nullable=False)
     config = Column(String(8192), default='{}')
 
@@ -48,7 +51,7 @@ class Analysis(Base):
 
     @classmethod
     def normalize_json(cls, js_txt):
-        return json.dumps(json.loads(js_txt), separators=(',', ':'))
+        return json.dumps(json.loads(js_txt), separators=(',', ':'), sort_keys=True)
 
     def to_job_string(self):
         """
@@ -63,11 +66,13 @@ def add_analysis(name, image_url, config, session):
     Add new analysis with given name
     """
     if config.startswith('file://'):
+        config = config[7:]
         if not os.path.exists(config):
             raise RuntimeError('No such config file: "%s"' % config)
         with open(config, 'rt') as fh:
-            config = json.loads(config)
-    a = Analysis(name=name, image_url=image_url, config=config)
+            config = fh.read()
+    a = Analysis(name=name, image_url=image_url,
+                 config=Analysis.normalize_json(config))
     session.add(a)
     session.commit()
     return a.id
@@ -91,6 +96,28 @@ def test_analysis1(session):
     session.delete(a1)
     session.commit()
     assert 0 == len(list(session.query(Analysis)))
+
+
+def test_analysis2(session):
+    image_url = 'docker://rs'
+    tmpdir = tempfile.mkdtemp()
+    config_fn = os.path.join(tmpdir, 'config.json')
+    with open(config_fn, 'wt') as fh:
+        fh.write('{"key": "value"}\n')
+    add_analysis('simple', image_url, 'file://' + config_fn, session)
+    shutil.rmtree(tmpdir)
+
+
+def test_analysis_double_add(session):
+    image_url = 'docker://rs'
+    tmpdir = tempfile.mkdtemp()
+    config_fn = os.path.join(tmpdir, 'config.json')
+    with open(config_fn, 'wt') as fh:
+        fh.write('{"key": "value"}\n')
+    add_analysis('simple', image_url, 'file://' + config_fn, session)
+    with pytest.raises(IntegrityError):
+        add_analysis('simple', image_url, 'file://' + config_fn, session)
+    shutil.rmtree(tmpdir)
 
 
 def test_normalize_json():
