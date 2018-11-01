@@ -12,7 +12,7 @@ FROM minio/minio
 # - prepends "minio" onto command
 # - manages docker secrets
 
-RUN wget https://dl.minio.io/client/mc/release/linux-amd64/mc
+RUN curl -L -o mc https://dl.minio.io/client/mc/release/linux-amd64/mc
 RUN chmod a+x mc
 RUN mv mc /usr/local/bin
 
