@@ -2,17 +2,17 @@
 
 set -ex
 
-which wget
+which curl
 STAGING=/tmp/staging
 
-setup_refs() {
+setup_manifest() {
     manifest=$1
     test -f $manifest
     while IFS=, read -r src dst
     do
         fulldst=${STAGING}/${dst}
         mkdir -p $(dirname $fulldst)
-        wget -O $fulldst $src
+        curl -L -o $fulldst $src
     done < $manifest
 }
 
@@ -28,7 +28,7 @@ setup_metadata() {
     python -m metadata.sradbv2 search "${QUERY}" --gzip --output $STAGING/meta/ce10_test/ce10_test.json
 }
 
-setup_metadata
+setup_manifest
 setup_refs /tmp/manifest.csv
 
 echo "Final contents:"
