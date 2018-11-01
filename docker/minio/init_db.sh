@@ -28,8 +28,7 @@ setup_metadata() {
     python -m metadata.sradbv2 search "${QUERY}" --gzip --output $STAGING/meta/ce10_test/ce10_test.json
 }
 
-setup_manifest
-setup_refs /tmp/manifest.csv
+setup_manifest /tmp/manifest.csv
 
 echo "Final contents:"
 tree /tmp
