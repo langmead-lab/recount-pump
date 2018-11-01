@@ -30,6 +30,8 @@ setup_metadata() {
 
 setup_manifest /tmp/manifest.csv
 
+rm -rf /tmp/src
+
 echo "Final contents:"
 tree /tmp
 
