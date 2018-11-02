@@ -4,7 +4,8 @@ workflow/*/results
 vagrant/.vagrant
 vagrant/vagrant.log
 docker/minio/src
-testing
+projects/**
+testing/**
 **/__pycache__
 **/*.pyc
 **/.ipynb_checkpoints
