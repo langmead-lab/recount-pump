@@ -6,8 +6,7 @@
 set -ex
 
 TAXID=6239
-RS1="docker://quay.io/benlangmead/recount-rs3"
-RS1_TAG="${RS1}:latest"
+ANA_URL="s3://recount-image/recount-rs3-0.2.2-55eac0a2c16b13d4748a622fa049fdd5.simg"
 ARGS=""
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
@@ -112,7 +111,7 @@ cat >/tmp/.ce_test.config.json <<EOF
 }
 EOF
 
-rs1_id=$(add_analysis rs1 "${RS1_TAG}" file:///tmp/.ce_test.config.json)
+rs1_id=$(add_analysis rs1 "${ANA_URL}" file:///tmp/.ce_test.config.json)
 test -n "${rs1_id}"
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
