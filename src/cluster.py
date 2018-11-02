@@ -33,6 +33,7 @@ Options:
 """
 
 import time
+import re
 import os
 import log
 import sys
@@ -82,6 +83,38 @@ class Task(object):
 log_queue = multiprocessing.Queue()
 
 
+def parse_image_url(url, cachedir=None, check_exists=True):
+    if cachedir is None:
+        cachedir = os.environ['SINGULARITY_CACHEDIR']
+    typ = 'local'
+    if url.startswith('docker://'):
+        image_name = url.split('/')[-1] + '.simg'
+        image_name = image_name.replace(':', '-')
+        image_fn = os.path.join(cachedir, image_name)
+        typ = 'docker'
+    elif url.startswith('shub://'):
+        toks = re.split('[:/]', url[7:])
+        image_name = '-'.join(toks) + '.simg'
+        image_fn = os.path.join(cachedir, image_name)
+        typ = 'shub'
+    else:
+        image_name = url.split('/')[-1]
+        image_fn = os.path.join(cachedir, image_name)
+    if check_exists and not os.path.exists(image_fn):
+        raise RuntimeError('Could not find image file ("%s") for URL "%s"' % (image_fn, url))
+    return image_fn, typ
+
+
+def image_exists_locally(url, cachedir=None):
+    image_fn, _ = parse_image_url(url, cachedir=cachedir, check_exists=False)
+    return os.path.exists(image_fn)
+
+
+def md5(fn):
+    image_md5 = subprocess.check_output(['md5sum', fn])
+    return image_md5.decode().split()[0]
+
+
 def do_job(body, cluster_ini, my_attempt, node_name,
            worker_name, session, mover_config=None, destination=None,
            source_prefix=None):
@@ -108,17 +141,10 @@ def do_job(body, cluster_ini, my_attempt, node_name,
         raise ValueError('No analysis named "%s"' % task.analysis_name)
     assert 1 == len(analyses)
     image, config = analyses[0].image_url, analyses[0].config
-    if image.startswith('docker://'):
-        image_name = image.split('/')[-1] + '.simg'
-        image_name = image_name.replace(':', '-')
-        image_fn = os.path.join(os.environ['SINGULARITY_CACHEDIR'], image_name)
-        assert os.path.exists(image_fn)
-        image = image_fn
-        image_md5 = subprocess.check_output(['md5sum', image_fn])
-        image_md5 = image_md5.decode().split()[0]
-        log.info('found image: ' + image_fn + ' with md5 ' + image_md5)
-    # Check that config is well-formed
-    json.loads(config)
+    image_fn, _ = parse_image_url(image)
+    image_md5 = md5(image_fn)
+    log.info('found image: ' + image_fn + ' with md5 ' + image_md5)
+    json.loads(config)  # Check that config is well-formed
     attempt_name = 'proj%d_input%d_attempt%d' % (task.proj_id, task.input_id, my_attempt)
     mover = None
     if mover_config is not None:
@@ -131,23 +157,17 @@ def do_job(body, cluster_ini, my_attempt, node_name,
     return ret
 
 
-def ready_for_analysis(analysis, analysis_dir):
-    url = analysis.image_url
-    image_bn = url.split('/')[-1]
-    log.info('Check image file "%s" exists in analysis '
-             'dir "%s"' % (image_bn, analysis_dir), 'cluster.py')
-    image_fn = os.path.join(analysis_dir, image_bn)
-    return os.path.exists(image_fn)
-
-
-def download_image(url, cluster_name, analysis_dir, aws_profile=None, s3_endpoint_url=None):
+def download_image(url, cluster_name, analysis_dir, mover):
     image_bn = url.split('/')[-1]
     log.info('Check image "%s" exists in cluster "%s" analysis '
              'dir "%s"' % (image_bn, cluster_name, analysis_dir),
              'cluster.py')
+    if not os.path.exists(analysis_dir):
+        os.makedirs(analysis_dir)
+    else:
+        if not os.path.isdir(analysis_dir):
+            raise RuntimeError('"%s" exists but is not a directory' % analysis_dir)
     image_fn = os.path.join(analysis_dir, image_bn)
-    mover = Mover(profile=aws_profile, endpoint_url=s3_endpoint_url,
-                  enable_web=True, enable_s3=True)
     mover.get(url, image_fn)
 
 
@@ -225,16 +245,11 @@ def prepare(project_id, cluster_ini, session, mover, get_image=False, get_refere
     analysis = session.query(Analysis).get(proj.analysis_id)
     analysis_ready = True
     assert system in ['singularity', 'docker']
-    if analysis.image_url.startswith('docker://'):
+    image_fn, typ = parse_image_url(analysis.image_url,
+                                    cachedir=analysis_dir,
+                                    check_exists=False)
+    if typ == 'docker':
         if system == 'singularity':
-            image_name = analysis.image_url[9:].split('/')[-1] + '.simg'
-            image_name = image_name.replace(':', '-')
-            if 'SINGULARITY_CACHEDIR' not in os.environ:
-                raise RuntimeError('Expected SINGULARITY_CACHEDIR in environment')
-            log.info('SINGULARITY_CACHEDIR = ' + os.environ['SINGULARITY_CACHEDIR'], 'cluster.py')
-            image_fn = os.path.join(os.environ['SINGULARITY_CACHEDIR'], image_name)
-            log.info('Checking existence of image file "%s" in cache dir "%s"' %
-                     (image_name, os.environ['SINGULARITY_CACHEDIR']), 'cluster.py')
             if get_image and not os.path.exists(image_fn):
                 cmd = 'singularity pull ' + analysis.image_url
                 log.info('pulling: "%s"' % cmd, 'cluster.py')
@@ -244,6 +259,7 @@ def prepare(project_id, cluster_ini, session, mover, get_image=False, get_refere
                 if not os.path.exists(image_fn):
                     raise RuntimeError('Did pull "%s" but file "%s" was not created' % (cmd, image_fn))
         else:
+            assert system == 'docker'
             image_name = analysis.image_url[len('docker://'):]
             log.info('Pulling docker image ' + image_name)
             ret = os.system('docker pull ' + image_name)
@@ -252,10 +268,21 @@ def prepare(project_id, cluster_ini, session, mover, get_image=False, get_refere
             ret = os.system('docker image ls %s | grep -v "^REPOSITORY"' % image_name)
             if ret != 0:
                 raise RuntimeError('Unable to docker ls %s after pull (exitlevel=%d)' % (image_name, ret))
+    elif typ == 'shub':
+        if system != 'singularity':
+            raise RuntimeError('Analysis URL is shub:// but container system is not singularity')
+        if get_image and not os.path.exists(image_fn):
+            cmd = 'singularity pull ' + analysis.image_url
+            log.info('pulling: "%s"' % cmd, 'cluster.py')
+            ret = os.system(cmd)
+            if ret != 0:
+                raise RuntimeError('Command "%s" exited with level %d' % (cmd, ret))
+            if not os.path.exists(image_fn):
+                raise RuntimeError('Did pull "%s" but file "%s" was not created' % (cmd, image_fn))
     else:
-        if get_image and not ready_for_analysis(analysis, analysis_dir):
+        if get_image and not image_exists_locally(analysis.image_url, cachedir=analysis_dir):
             download_image(analysis.image_url, cluster_name, analysis_dir, mover)
-        analysis_ready = ready_for_analysis(analysis, analysis_dir)
+        analysis_ready = image_exists_locally(analysis.image_url, cachedir=analysis_dir)
 
     # Handle reference
     reference = session.query(Reference).get(proj.reference_id)
@@ -441,7 +468,8 @@ def test_download_image():
     test_fn = os.path.join(srcdir, base_fn)
     with open(test_fn, 'w') as fh:
         fh.write('dummy image')
-    download_image(test_fn, 'marcc', dstdir)
+    mover = Mover()
+    download_image(test_fn, 'marcc', dstdir, mover)
     assert os.path.exists(os.path.join(dstdir, base_fn))
     shutil.rmtree(srcdir)
     shutil.rmtree(dstdir)
@@ -540,6 +568,20 @@ def test_with_db(session):
     assert os.path.exists(os.path.join(reference_dir, 'ce10', 'annotation1.txt'))
 
 
+def test_parse_image_url_1():
+    image_fn, typ = parse_image_url('shub://langmead-lab/recount-pump:workflow_base',
+                                    cachedir='/cache', check_exists=False)
+    assert '/cache/langmead-lab-recount-pump-workflow_base.simg' == image_fn
+    assert 'shub' == typ
+
+
+def test_parse_image_url_2():
+    image_fn, typ = parse_image_url('docker://quay.io/benlangmead/recount-pump:latest',
+                                    cachedir='/cache', check_exists=False)
+    assert '/cache/recount-pump-latest.simg' == image_fn
+    assert 'docker' == typ
+
+
 def worker(project_id, worker_name, q_ini, cluster_ini, engine, max_fail,
            poll_seconds,
            mover_config=None, destination=None, source_prefix=None):
@@ -578,11 +620,19 @@ def parse_destination_ini(ini_fn, section='destination'):
     if not cfg.has_section(section):
         raise RuntimeError('destination init file "%s" does not have section "%s"'
                            % (ini_fn, section))
-    enabled = cfg.get(section, 'enabled') == 'true'
-    destination_url = cfg.get(section, 'destination')
-    source_prefix = cfg.get(section, 'source_prefix')
-    aws_endpoint = cfg.get(section, 'aws_endpoint')
-    aws_profile = cfg.get(section, 'aws_profile')
+
+    def _get_option(nm):
+        if not cfg.has_option(section, nm):
+            return None
+        opt = cfg.get(section, nm)
+        return None if (len(opt) == 0) else opt
+
+    enabled = _get_option('enabled')
+    enabled = (enabled is None) or (enabled == 'true')
+    destination_url = _get_option('destination')
+    source_prefix = _get_option('source_prefix')
+    aws_endpoint = _get_option('aws_endpoint')
+    aws_profile = _get_option('aws_profile')
     return enabled, destination_url, source_prefix, aws_endpoint, aws_profile
 
 
