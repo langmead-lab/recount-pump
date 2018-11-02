@@ -29,6 +29,7 @@ setup_metadata() {
 }
 
 setup_manifest /tmp/manifest.csv
+setup_metadata
 
 rm -rf /tmp/src
 
