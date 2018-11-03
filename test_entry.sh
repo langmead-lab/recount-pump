@@ -9,6 +9,7 @@ cd /code
 
 cp -r /creds/.aws /root/
 cp -r /creds/.recount /root/
+cp -r /creds/.mc /root/
 for i in $(ls /root/.*/*.override) ; do
     echo "*** Renaming ${i} ***"
     mv ${i} $(echo ${i} | sed 's/\.override$//')

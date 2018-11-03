@@ -12,6 +12,10 @@ RUN pip install --upgrade pip
 ADD requirements.txt /code
 RUN pip install --quiet -r requirements.txt
 
+RUN curl -L -o mc https://dl.minio.io/client/mc/release/linux-amd64/mc
+RUN chmod a+x mc
+RUN mv mc /usr/local/bin
+
 RUN mkdir -p /root/.recount /root/.aws
 
 ADD wait-for-it.sh /code
