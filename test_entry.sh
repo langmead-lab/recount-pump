@@ -6,6 +6,7 @@ cd /code
 ./wait-for-it.sh elasticmq:9324 -t 30
 ./wait-for-it.sh s3:9000 -t 30
 ./wait-for-it.sh db:5432 -t 30
+sleep 3
 
 cp -r /creds/.aws /root/
 cp -r /creds/.recount /root/
