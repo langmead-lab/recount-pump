@@ -6,8 +6,16 @@
 set -ex
 
 TAXID=6239
-ANA_URL="s3://recount-image/recount-rs3-0.2.2-55eac0a2c16b13d4748a622fa049fdd5.simg"
+ANA_PATH='recount-rs3-0.2.2-55eac0a2c16b13d4748a622fa049fdd5.simg'
+ANA_BUCKET='recount-image'
+ANA_URL="s3://${ANA_BUCKET}/${ANA_PATH}"
 ARGS=""
+
+mc stat s3/meta
+mc stat s3/recount-image
+mc stat "s3/${ANA_BUCKET}/${ANA_PATH}"
+mc stat s3/recount-ref
+mc mb s3/recount-output
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 1: Load reference data"
@@ -33,7 +41,7 @@ add_source() (
         add-source "${url}" 'NA' 'NA' 'NA' 'NA' 'NA' "${retrieval_method}" | tail -n 1
 )
 
-srcid1=$(add_source 's3://recount-ref/ce10/hisat2_idx.tar.gz' 's3')
+srcid1=$(add_source 's3://recount-ref/ce10/star_idx.tar.gz' 's3')
 srcid2=$(add_source 's3://recount-ref/ce10/fasta.tar.gz' 's3')
 test -n "${srcid1}"
 test -n "${srcid2}"
@@ -212,3 +220,9 @@ echo "++++++++++++++++++++++++++++++++++++++++++++++"
 
 python src/schema_graph.py ${ARGS} \
     --prefix /output/ce10_test plot
+
+echo "++++++++++++++++++++++++++++++++++++++++++++++"
+echo "        PHASE 11: Copy output back"
+echo "++++++++++++++++++++++++++++++++++++++++++++++"
+
+mc mirror s3/recount-output /output/
