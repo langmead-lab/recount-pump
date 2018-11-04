@@ -6,7 +6,7 @@
 """run
 
 Usage:
-  run go <name> <image> <input>... [options]
+  run go <name> <image-url> <image-fn> <config> <input>... [options]
 
 Options:
   <name>                   Job name, used for subdirectory names
@@ -65,28 +65,33 @@ def log_info(msg, queue):
     if queue is None:
         log.info(msg, 'run.py')
     else:
-        queue.put(msg)
+        queue.put((msg, 'run.py'))
 
 
 def log_info_detailed(node_name, worker_name, msg, queue):
     log_info(' '.join([node_name, worker_name, msg]), queue)
 
 
+def decode(st):
+    return st if isinstance(st, str) else st.decode()
+
+
 def reader(node_name, worker_name, pipe, queue, nm):
     if queue is None:
         for line in pipe:
-            msg = ' '.join([node_name, worker_name, nm, line.rstrip()])
+            msg = ' '.join([node_name, worker_name, nm, decode(line.rstrip())])
             log.info(msg, 'run.py')
     else:
         for line in pipe:
-            msg = ' '.join([node_name, worker_name, nm, line.rstrip()])
-            queue.put(msg)
+            msg = ' '.join([node_name, worker_name, nm, decode(line.rstrip())])
+            queue.put((msg, 'run.py'))
 
 
-def run_job(name, inputs, image, config, cluster_ini,
+def run_job(name, inputs, image_url, image_fn, config, cluster_ini,
             keep=False, mover=None, destination=None, source_prefix=None,
             log_queue=None, node_name='', worker_name=''):
-    log.info('job name: %s, image: "%s"' % (name, image), 'run.py')
+    log_info_detailed(node_name, worker_name, 'job name: %s, image-url: "%s", image-fn: "%s"' %
+                      (name, image_url, image_fn), log_queue)
     if not os.path.exists(cluster_ini):
         raise RuntimeError('No such ini file "%s"' % cluster_ini)
     cfg = RawConfigParser()
@@ -173,7 +178,8 @@ def run_job(name, inputs, image, config, cluster_ini,
         mounts.append('%s/%s:%s' % (temp_base, name, temp_mount))
     else:
         temp_mount = os.path.join(temp_base, name)
-    os.makedirs(os.path.join(temp_base, name))
+    temp_base_name = os.path.join(temp_base, name)
+    os.makedirs(temp_base_name)
     if ref_mount is not None and len(ref_mount) > 0:
         mounts.append('-v' if docker else '-B')
         mounts.append('%s:%s' % (ref_base, ref_mount))
@@ -188,18 +194,22 @@ def run_job(name, inputs, image, config, cluster_ini,
     cmd_run = '/bin/bash -c "source activate recount && bash /workflow.bash"'
 
     # copy config into input directory
-    config_fn = os.path.join(temp_mount, 'config.json')
+    assert os.path.exists(temp_base_name) and os.path.isdir(temp_base_name)
+    config_fn = os.path.join(temp_base_name, 'config.json')
     with open(config_fn, 'wt') as fh:
         fh.write(json.dumps(json.loads(config), indent=4))
 
     log_info('COUNT_RunWorkflowPre 1', log_queue)
 
+    image = image_url
     if docker:
         cmd = 'docker'
         if sudo:
             cmd = 'sudo ' + cmd
         cmd += (' run %s %s %s %s' % (to_docker_env(cmd_env), ' '.join(mounts), image, cmd_run))
     else:
+        if image_fn is not None and os.path.exists(image_fn):
+            image = image_fn
         cmd = '%s singularity exec %s %s %s' % (to_singularity_env(cmd_env), ' '.join(mounts), image, cmd_run)
     log_info_detailed(node_name, worker_name, 'command: ' + cmd, log_queue)
     proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -295,7 +305,16 @@ def go():
     cluster_ini = os.path.expanduser(args['--cluster-ini'])
     try:
         if args['go']:
-            run_job(args['<name>'], args['<input>'], args['<image>'], cluster_ini,
+            config = args['<config>']
+            if config.startswith('file://'):
+                config = config[7:]
+                if not os.path.exists(config):
+                    raise RuntimeError('No such config file: "%s"' % config)
+                with open(config, 'rt') as fh:
+                    config = fh.read()
+
+            run_job(args['<name>'], args['<input>'], args['<image-url>'],
+                    args['<image-fn>'], config, cluster_ini,
                     keep=args['--keep'])
     except Exception:
         log.error('Uncaught exception:', 'run.py')

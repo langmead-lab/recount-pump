@@ -47,6 +47,8 @@ import multiprocessing
 import socket
 import json
 import threading
+import signal
+import traceback
 from resmon import SysmonThread
 from datetime import datetime
 from docopt import docopt
@@ -81,6 +83,17 @@ class Task(object):
 
 
 log_queue = multiprocessing.Queue()
+
+
+def log_info(msg):
+    if log_queue is None:
+        log.info(msg, 'cluster.py')
+    else:
+        log_queue.put((msg, 'cluster.py'))
+
+
+def log_info_detailed(node_name, worker_name, msg):
+    log_info(' '.join([node_name, worker_name, msg]))
 
 
 def parse_image_url(url, cachedir=None, check_exists=True):
@@ -121,16 +134,11 @@ def do_job(body, cluster_ini, my_attempt, node_name,
     """
     Given a job-attempt description string, parse the string and execute the
     corresponding job attempt.  The description string itself is composed in
-    pump.py:
-    - Analysis.to_job_string() composes the analysis string, which at this
-      time is just the image URL.
-    - Input.to_job_string() composes the job string for a single input (run
-      accession)
-    - Project.job_iterator() composes the overall string
+    pump.py.
     """
     name, _, _, _, _, _ = read_cluster_config(cluster_ini)
     task = Task(body)
-    log.info('got job: ' + str(task), 'cluster.py')
+    log_info_detailed(node_name, worker_name, 'got job: ' + str(task))
     tmp_dir = tempfile.mkdtemp()
     tmp_fn = os.path.join(tmp_dir, 'accessions.txt')
     assert not os.path.exists(tmp_fn)
@@ -140,16 +148,20 @@ def do_job(body, cluster_ini, my_attempt, node_name,
     if 0 == len(analyses):
         raise ValueError('No analysis named "%s"' % task.analysis_name)
     assert 1 == len(analyses)
-    image, config = analyses[0].image_url, analyses[0].config
-    image_fn, _ = parse_image_url(image)
+    image_url, config = analyses[0].image_url, analyses[0].config
+    log_info_detailed(node_name, worker_name, 'parsing image URL: "%s"' % image_url)
+    image_fn, _ = parse_image_url(image_url)
+    log_info_detailed(node_name, worker_name, 'calculating md5 over local image "%s"' % image_fn)
     image_md5 = md5(image_fn)
-    log.info('found image: ' + image_fn + ' with md5 ' + image_md5)
+    log_info_detailed(node_name, worker_name, 'md5: ' + image_md5)
     json.loads(config)  # Check that config is well-formed
     attempt_name = 'proj%d_input%d_attempt%d' % (task.proj_id, task.input_id, my_attempt)
     mover = None
     if mover_config is not None:
         mover = mover_config.new_mover()
-    ret = run.run_job(attempt_name, [tmp_fn], image, config, cluster_ini,
+    log_info_detailed(node_name, worker_name, 'Starting attempt "%s"' % attempt_name)
+    ret = run.run_job(attempt_name, [tmp_fn], image_url, image_fn,
+                      config, cluster_ini,
                       log_queue=log_queue, node_name=node_name,
                       worker_name=worker_name,
                       mover=mover, destination=destination,
@@ -362,29 +374,29 @@ def get_num_successes(job, session):
 def job_loop(project_id, q_ini, cluster_ini, worker_name, session,
              max_fails=10, sleep_seconds=10,
              mover_config=None, destination=None, source_prefix=None):
-    log.info('Getting queue client', 'cluster.py')
+    node_name = socket.gethostname().split('.', 1)[0]
+    log_info_detailed(node_name, worker_name, 'Getting queue client')
     aws_profile, region, endpoint = parse_queue_config(q_ini)
     boto3_session = boto3.session.Session(profile_name=aws_profile)
     q_client = boto3_session.client('sqs',
                                     endpoint_url=endpoint,
                                     region_name=region)
-    log.info('Getting project', 'cluster.py')
+    log_info_detailed(node_name, worker_name, 'Getting project')
     proj = session.query(Project).get(project_id)
-    log.info('Getting queue', 'cluster.py')
+    log_info_detailed(node_name, worker_name, 'Getting queue')
     q_name = proj.queue_name()
     resp = q_client.create_queue(QueueName=q_name)
     q_url = resp['QueueUrl']
     only_delete_on_success = True
-    node_name = socket.gethostname().split('.', 1)[0]
     attempt, success, fail = 0, 0, 0
-    log.info('Entering job loop, queue "%s"' % q_name, 'cluster.py')
+    log_info_detailed(node_name, worker_name, 'Entering job loop, queue "%s"' % q_name)
     while True:
         attempt += 1
         msg_set = q_client.receive_message(QueueUrl=q_url)
         if 'Messages' not in msg_set:
             fail += 1
             if fail >= max_fails:
-                log.info('exit job loop after %d poll failures' % fail, 'cluster.py')
+                log_info_detailed(node_name, worker_name, 'exit job loop after %d poll failures' % fail)
                 break
             time.sleep(sleep_seconds)
         else:
@@ -396,20 +408,23 @@ def job_loop(project_id, q_ini, cluster_ini, worker_name, session,
                 nattempts = get_num_attempts(job, session)
                 nfailures = get_num_failures(job, session)
                 my_attempt = nattempts
-                log.info('job start; was attempted %d times previously (%d failures)' %
-                         (nattempts, nfailures), 'cluster.py')
+
+                log_info_detailed(node_name, worker_name,
+                                  'job start; was attempted %d times previously (%d failures)' %
+                                  (nattempts, nfailures))
                 log_attempt(job, node_name, worker_name, session)
                 succeeded = False
                 if do_job(body, cluster_ini, my_attempt, node_name,
-                          worker_name, mover_config=mover_config,
+                          worker_name, session,
+                          mover_config=mover_config,
                           destination=destination,
                           source_prefix=source_prefix):
                     log_success(job, node_name, worker_name, session)
-                    log.info('job success', 'cluster.py')
+                    log_info_detailed(node_name, worker_name, 'job success')
                     succeeded = True
                 else:
                     log_failure(job, node_name, worker_name, session)
-                    log.info('job failure', 'cluster.py')
+                    log_info_detailed(node_name, worker_name, 'job failure')
                 if succeeded or not only_delete_on_success:
                     handle = msg['ReceiptHandle']
                     log.info('Deleting ' + handle, 'cluster.py')
@@ -510,7 +525,7 @@ def test_download_file_s3(s3_enabled, s3_service):
     dstdir = tempfile.mkdtemp()
     bucket_name = 'recount-ref'
     src = ''.join(['s3://', bucket_name, '/ce10/gtf.tar.gz'])
-    assert s3_service.exists(src)
+    assert s3_service.exists(src), src
     _download_file(s3_service, src, 'source', 'test-cluster', dstdir)
     assert os.path.exists(os.path.join(dstdir, 'ce10/gtf/genes.gtf'))
 
@@ -588,6 +603,7 @@ def worker(project_id, worker_name, q_ini, cluster_ini, engine, max_fail,
     engine.dispose()
     connection = engine.connect()
     session = Session(bind=connection)
+    signal.signal(signal.SIGUSR1, lambda sig, stack: traceback.print_stack(stack))
     print(job_loop(project_id, q_ini, cluster_ini, worker_name, session,
                    max_fails=max_fail,
                    sleep_seconds=poll_seconds,
@@ -597,8 +613,11 @@ def worker(project_id, worker_name, q_ini, cluster_ini, engine, max_fail,
 
 
 def log_worker():
-    for message in iter(log_queue.get, None):
-        log.info(message, 'run.py')
+    log.info('Entering worker log-relay thread', 'cluster.py')
+    for tup in iter(log_queue.get, None):
+        message, module = tup
+        log.info(message, module)
+    log.info('Exiting worker log-relay thread', 'cluster.py')
 
 
 def parse_destination_ini(ini_fn, section='destination'):
@@ -642,6 +661,7 @@ def go():
     log.init_logger(log.LOG_GROUP_NAME, log_ini=log_ini, agg_level=args['--log-level'])
     log.init_logger('sqlalchemy', log_ini=log_ini, agg_level=args['--log-level'],
                     sender='sqlalchemy')
+    signal.signal(signal.SIGUSR1, lambda sig, stack: traceback.print_stack(stack))
     try:
         db_ini = os.path.expanduser(args['--db-ini'])
         cluster_ini = os.path.expanduser(args['--cluster-ini'])
