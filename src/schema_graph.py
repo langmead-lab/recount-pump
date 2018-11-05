@@ -53,8 +53,9 @@ if __name__ == '__main__':
     args = docopt(__doc__)
     log_ini = os.path.expanduser(args['--log-ini'])
     log.init_logger(log.LOG_GROUP_NAME, log_ini=log_ini, agg_level=args['--log-level'])
-    log.init_logger('sqlalchemy', log_ini=log_ini, agg_level=args['--log-level'],
-                    sender='sqlalchemy')
+    # sqlalchemy is way too verbose here so nix it
+    #log.init_logger('sqlalchemy', log_ini=log_ini, agg_level=args['--log-level'],
+    #                sender='sqlalchemy')
     try:
         if args['plot']:
             db_ini = os.path.expanduser(args['--db-ini'])
