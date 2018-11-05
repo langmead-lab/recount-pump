@@ -5,13 +5,11 @@ Parameters:
 - bw_unique_qual: minimum MAPQ needed to be counted in unique BW [default: 10]
 - featureCounts: parameters to pass to featureCounts
 - fc_unique_qual: minimum MAPQ needed to be counted in unique quantifications [default: 10]
-- gtf_fc: name of GTF file to use for featureCounts
-- gtf_bw: name of GTF file to use for bwtool
+- bw_bed: name of BED file to use with bwtool
 """
 
 STEPS = ['sra_fastq', 'align', 'sort',
          'bam_to_bw_all', 'bam_to_bw_unique',
-         'gene_bw_count_all', 'gene_bw_count_unique',
          'exon_bw_count_all', 'exon_bw_count_unique',
          'gene_fc_count_all', 'gene_fc_count_unique',
          'exon_fc_count_all', 'exon_fc_count_unique']
@@ -19,7 +17,6 @@ STEPS = ['sra_fastq', 'align', 'sort',
 FILES = ['sjout.zst',
          'all.gene_fc_count.zst', 'unique.gene_fc_count.zst',
          'all.exon_fc_count.zst', 'unique.exon_fc_count.zst',
-         'all.gene_bw_count.zst', 'unique.gene_bw_count.zst',
          'all.exon_bw_count.zst', 'unique.exon_bw_count.zst',
          'all.bw.zst', 'unique.bw.zst',
          'manifest'] + list(map(lambda x: x + '.log', STEPS))
@@ -51,9 +48,7 @@ rule make_manifest:
         config['output'] + '/{trio}.all.exon_fc_count.zst',
         config['output'] + '/{trio}.unique.gene_fc_count.zst',
         config['output'] + '/{trio}.unique.exon_fc_count.zst',
-        config['output'] + '/{trio}.all.gene_bw_count.zst',
         config['output'] + '/{trio}.all.exon_bw_count.zst',
-        config['output'] + '/{trio}.unique.gene_bw_count.zst',
         config['output'] + '/{trio}.unique.exon_bw_count.zst',
         config['output'] + '/{trio}.all.bw.zst',
         config['output'] + '/{trio}.unique.bw.zst',
@@ -62,8 +57,6 @@ rule make_manifest:
         config['output'] + '/{trio}.sort.log',
         config['output'] + '/{trio}.bam_to_bw_all.log',
         config['output'] + '/{trio}.bam_to_bw_unique.log',
-        config['output'] + '/{trio}.gene_bw_count_all.log',
-        config['output'] + '/{trio}.gene_bw_count_unique.log',
         config['output'] + '/{trio}.gene_fc_count_all.log',
         config['output'] + '/{trio}.gene_fc_count_unique.log',
         config['output'] + '/{trio}.exon_bw_count_all.log',
@@ -79,58 +72,10 @@ rule make_manifest:
             for fn in FILES:
                 fh.write("{params.trio}." + fn + '\n')
 
-rule gene_bw_count_all:
-    input:
-        bw=config['temp'] + '/{trio}.all.bw',
-        bed=lambda wildcards: '%s/%s/gtf/%s' % (config['ref'], wildcards.trio.split('_')[2], config.get('gtf_bed', 'genes.bed'))
-    output:
-        config['output'] + '/{trio}.all.gene_bw_count.zst'
-    log:
-        config['output'] + '/{trio}.gene_bw_count_all.log'
-    shell:
-        """
-        TMP={config[temp]}/o.gene_bw_count_all.tsv
-        (time bwtool summary \
-            {input.bed} {input.bw} \
-            /dev/stdout \
-                -fill=0 \
-                -with-sum \
-                -keep-bed \
-                -decimals=0 \
-            | cut -f1-4,11 \
-            > ${{TMP}}) 2>&1 | tee -a {log}
-        (time zstd ${{TMP}} -o {output}) 2>&1 | tee -a {log}
-        rm -f ${{TMP}}
-        """
-
-rule gene_bw_count_unique:
-    input:
-        bw=config['temp'] + '/{trio}.unique.bw',
-        bed=lambda wildcards: '%s/%s/gtf/%s' % (config['ref'], wildcards.trio.split('_')[2], config.get('gtf_bed', 'genes.bed'))
-    output:
-        config['output'] + '/{trio}.unique.gene_bw_count.zst'
-    log:
-        config['output'] + '/{trio}.gene_bw_count_unique.log'
-    shell:
-        """
-        TMP={config[temp]}/o.gene_bw_count_unique.tsv
-        (time bwtool summary \
-            {input.bed} {input.bw} \
-            /dev/stdout \
-                -fill=0 \
-                -with-sum \
-                -keep-bed \
-                -decimals=0 \
-            | cut -f1-4,11 \
-            > ${{TMP}}) 2>&1 | tee -a {log}
-        (time zstd ${{TMP}} -o {output}) 2>&1 | tee -a {log}
-        rm -f ${{TMP}}
-        """
-
 rule exon_bw_count_all:
     input:
         bw=config['temp'] + '/{trio}.all.bw',
-        bed=lambda wildcards: '%s/%s/gtf/%s' % (config['ref'], wildcards.trio.split('_')[2], config.get('gtf_bed', 'exons.bed'))
+        bed=lambda wildcards: '%s/%s/gtf/%s' % (config['ref'], wildcards.trio.split('_')[2], config.get('bw_bed', 'exons.bed'))
     output:
         config['output'] + '/{trio}.all.exon_bw_count.zst'
     log:
@@ -154,7 +99,7 @@ rule exon_bw_count_all:
 rule exon_bw_count_unique:
     input:
         bw=config['temp'] + '/{trio}.unique.bw',
-        bed=lambda wildcards: '%s/%s/gtf/%s' % (config['ref'], wildcards.trio.split('_')[2], config.get('gtf_bed', 'exons.bed'))
+        bed=lambda wildcards: '%s/%s/gtf/%s' % (config['ref'], wildcards.trio.split('_')[2], config.get('bw_bed', 'exons.bed'))
     output:
         config['output'] + '/{trio}.unique.exon_bw_count.zst'
     log:
