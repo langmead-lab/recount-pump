@@ -3,6 +3,11 @@ WORKDIR /code
 
 RUN printf "deb http://httpredir.debian.org/debian stretch-backports main non-free\ndeb-src http://httpredir.debian.org/debian stretch-backports main non-free" > /etc/apt/sources.list.d/backports.list
 
+RUN apt-get update -y && apt-get install -y apt-transport-https dirmngr
+RUN echo 'deb https://apt.dockerproject.org/repo debian-stretch main' >> /etc/apt/sources.list
+#RUN apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys F76221572C52609D
+RUN apt-get update -y && \
+    apt-get install -y --allow-unauthenticated docker-engine
 RUN apt-get update -y && \
     apt-get install -y libarchive-dev squashfs-tools graphviz && \
     apt-get -t stretch-backports install singularity-container
