@@ -10,7 +10,6 @@ ANA_URL="docker://quay.io/benlangmead/recount-rs3:latest"
 ARGS=""
 
 mc stat s3/meta
-mc stat s3/recount-image
 mc stat s3/recount-ref
 mc mb s3/recount-output
 
