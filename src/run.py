@@ -116,6 +116,7 @@ def run_job(name, inputs, image_url, image_fn, config, cluster_ini,
     if cfg.has_option(section, 'sudo'):
         sudo = cfg.get(section, 'sudo').lower() == 'true'
 
+    log_info_detailed(node_name, worker_name, 'inputs: ' + str(inputs), log_queue)
     log_info_detailed(node_name, worker_name, 'using %s as container system' % system, log_queue)
     log_info_detailed(node_name, worker_name, 'using sudo: %s' % str(sudo), log_queue)
     log_info_detailed(node_name, worker_name, 'using %d cpus' % cpus, log_queue)
@@ -159,14 +160,24 @@ def run_job(name, inputs, image_url, image_fn, config, cluster_ini,
 
     mounts = []
     docker = system == 'docker'
+
+    # Input
+    input_base_name = os.path.join(input_base, name)
     if input_mount is not None and len(input_mount) > 0:
         mounts.append('-v' if docker else '-B')
-        mounts.append('%s/%s:%s' % (input_base, name, input_mount))
+        mounts.append('%s:%s' % (input_base_name, input_mount))
     else:
-        input_mount = os.path.join(input_base, name)
-    os.makedirs(os.path.join(input_base, name))
+        input_mount = input_base_name
+    os.makedirs(input_base_name)
     for inp in inputs:
-        shutil.copy2(inp, os.path.join(input_base, name, os.path.basename(inp)))
+        assert os.path.exists(inp)
+        dest = os.path.join(input_base_name, os.path.basename(inp))
+        shutil.copy2(inp, dest)
+        assert os.path.exists(dest)
+    staged_inputs = [f for f in os.listdir(input_base_name) if os.path.isfile(os.path.join(input_base_name, f))]
+    assert len(staged_inputs) > 0, (input_base_name, input_mount, inputs)
+    log_info_detailed(node_name, worker_name, 'staged inputs: ' + str(staged_inputs), log_queue)
+
     if output_mount is not None and len(output_mount) > 0:
         mounts.append('-v' if docker else '-B')
         mounts.append('%s/%s:%s' % (output_base, name, output_mount))
@@ -203,6 +214,8 @@ def run_job(name, inputs, image_url, image_fn, config, cluster_ini,
 
     image = image_url
     if docker:
+        if image.startswith('docker://'):
+            image = image[len('docker://'):]
         cmd = 'docker'
         if sudo:
             cmd = 'sudo ' + cmd
@@ -227,6 +240,9 @@ def run_job(name, inputs, image_url, image_fn, config, cluster_ini,
         print('Removing input & temporary directories', file=sys.stderr)
         shutil.rmtree(os.path.join(input_base, name))
         shutil.rmtree(os.path.join(temp_base, name))
+
+    if ret != 0:
+        raise RuntimeError('Container returned non-zero exitlevel %d' % ret)
 
     log_info('COUNT_RunWorkflowPost 1', log_queue)
 

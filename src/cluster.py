@@ -96,16 +96,33 @@ def log_info_detailed(node_name, worker_name, msg):
     log_info(' '.join([node_name, worker_name, msg]))
 
 
-def parse_image_url(url, cachedir=None, check_exists=True):
+def docker_image_exists(url):
+    if url.startswith('docker://'):
+        url = url[len('docker://'):]
+    cmd = ['docker', 'images', '-q', url]
+    return len(subprocess.check_output(cmd)) > 0
+
+
+def parse_image_url(url, system, cachedir=None):
+    """
+    Parse an image URL and return information about what type of repo it's
+    stored in as well as what form it should take once it has been "pulled"
+    to the local machine.
+    """
     if cachedir is None:
+        # only relevant for singularity
         cachedir = os.environ['SINGULARITY_CACHEDIR']
     typ = 'local'
+    image_fn = None
     if url.startswith('docker://'):
-        image_name = url.split('/')[-1] + '.simg'
-        image_name = image_name.replace(':', '-')
-        image_fn = os.path.join(cachedir, image_name)
         typ = 'docker'
+        if system == 'singularity':
+            image_name = url.split('/')[-1] + '.simg'
+            image_name = image_name.replace(':', '-')
+            image_fn = os.path.join(cachedir, image_name)
     elif url.startswith('shub://'):
+        if system != 'singularity':
+            raise ValueError('Bad image URL for system=singularity: "%s"' % url)
         toks = re.split('[:/]', url[7:])
         image_name = '-'.join(toks) + '.simg'
         image_fn = os.path.join(cachedir, image_name)
@@ -113,14 +130,18 @@ def parse_image_url(url, cachedir=None, check_exists=True):
     else:
         image_name = url.split('/')[-1]
         image_fn = os.path.join(cachedir, image_name)
-    if check_exists and not os.path.exists(image_fn):
-        raise RuntimeError('Could not find image file ("%s") for URL "%s"' % (image_fn, url))
+    assert image_fn is not None or system == 'docker'
     return image_fn, typ
 
 
-def image_exists_locally(url, cachedir=None):
-    image_fn, _ = parse_image_url(url, cachedir=cachedir, check_exists=False)
-    return os.path.exists(image_fn)
+def image_exists_locally(url, system, cachedir=None):
+    image_fn, typ = parse_image_url(url, system, cachedir=cachedir)
+    if image_fn is not None:
+        return os.path.exists(image_fn)
+    else:
+        if os.system('which docker >/dev/null') != 0:
+            raise RuntimeError('Image is for docker, but "docker" binary not in PATH')
+        return docker_image_exists(url)
 
 
 def md5(fn):
@@ -136,24 +157,31 @@ def do_job(body, cluster_ini, my_attempt, node_name,
     corresponding job attempt.  The description string itself is composed in
     pump.py.
     """
-    name, _, _, _, _, _ = read_cluster_config(cluster_ini)
+    name, system, analysis_dir, _, _, _ = read_cluster_config(cluster_ini)
     task = Task(body)
     log_info_detailed(node_name, worker_name, 'got job: ' + str(task))
     tmp_dir = tempfile.mkdtemp()
     tmp_fn = os.path.join(tmp_dir, 'accessions.txt')
     assert not os.path.exists(tmp_fn)
-    with open(tmp_fn, 'w') as fh:
+    with open(tmp_fn, 'wt') as fh:
         fh.write(','.join([task.srr, task.srp, task.reference_name]) + '\n')
+    assert os.path.exists(tmp_fn)
     analyses = session.query(Analysis).filter(Analysis.name == task.analysis_name).all()
     if 0 == len(analyses):
         raise ValueError('No analysis named "%s"' % task.analysis_name)
     assert 1 == len(analyses)
     image_url, config = analyses[0].image_url, analyses[0].config
     log_info_detailed(node_name, worker_name, 'parsing image URL: "%s"' % image_url)
-    image_fn, _ = parse_image_url(image_url)
-    log_info_detailed(node_name, worker_name, 'calculating md5 over local image "%s"' % image_fn)
-    image_md5 = md5(image_fn)
-    log_info_detailed(node_name, worker_name, 'md5: ' + image_md5)
+    image_fn, _ = parse_image_url(image_url, system, cachedir=analysis_dir)
+    if not image_exists_locally(image_url, system, cachedir=analysis_dir):
+        raise RuntimeError('Image "%s" does not exist locally' % image_fn)
+    if image_fn is not None:
+        # TODO: we could check the md5 for a docker image too, though this is
+        # a little tricky because 'docker images --digests' sometimes reports
+        # <none> if the image hasn't been pushed or pulled yet
+        log_info_detailed(node_name, worker_name, 'calculating md5 over local image "%s"' % image_fn)
+        image_md5 = md5(image_fn)
+        log_info_detailed(node_name, worker_name, 'md5: ' + image_md5)
     json.loads(config)  # Check that config is well-formed
     attempt_name = 'proj%d_input%d_attempt%d' % (task.proj_id, task.input_id, my_attempt)
     mover = None
@@ -246,62 +274,63 @@ def ready_reference(reference, cluster_name, reference_dir, session):
         return False
 
 
-def prepare(project_id, cluster_ini, session, mover, get_image=False, get_reference=False):
-    cluster_name, system, analysis_dir, ref_base, ncpus, nworkers =\
-        read_cluster_config(cluster_ini)
-    proj = session.query(Project).get(project_id)
-    log.info('Preparing for project "%s" (%d) on cluster "%s"' %
-             (proj.name, project_id, cluster_name), 'cluster.py')
-
-    # Handle analysis
+def prepare_analysis(cluster_ini, proj, mover, session):
+    cluster_name, system, analysis_dir, _, _, _ = read_cluster_config(cluster_ini)
     analysis = session.query(Analysis).get(proj.analysis_id)
-    analysis_ready = True
     assert system in ['singularity', 'docker']
-    image_fn, typ = parse_image_url(analysis.image_url,
-                                    cachedir=analysis_dir,
-                                    check_exists=False)
+    url = analysis.image_url
+    image_fn, typ = parse_image_url(url, system, cachedir=analysis_dir)
     if typ == 'docker':
         if system == 'singularity':
-            if get_image and not os.path.exists(image_fn):
-                cmd = 'singularity pull ' + analysis.image_url
+            if not os.path.exists(image_fn):
+                cmd = 'singularity pull ' + url
                 log.info('pulling: "%s"' % cmd, 'cluster.py')
                 ret = os.system(cmd)
                 if ret != 0:
                     raise RuntimeError('Command "%s" exited with level %d' % (cmd, ret))
-                if not os.path.exists(image_fn):
-                    raise RuntimeError('Did pull "%s" but file "%s" was not created' % (cmd, image_fn))
         else:
             assert system == 'docker'
-            image_name = analysis.image_url[len('docker://'):]
-            log.info('Pulling docker image ' + image_name)
-            ret = os.system('docker pull ' + image_name)
-            if ret != 0:
-                raise RuntimeError('Unable to pull image %s (exitlevel=%d)' % (image_name, ret))
-            ret = os.system('docker image ls %s | grep -v "^REPOSITORY"' % image_name)
-            if ret != 0:
-                raise RuntimeError('Unable to docker ls %s after pull (exitlevel=%d)' % (image_name, ret))
+            assert url.startswith('docker://')
+            image_name = url[len('docker://'):]
+            if docker_image_exists(url):
+                log.info('Docker image "%s" exists locally; not pulling' % image_name)
+            else:
+                log.info('Pulling docker image "%s"' % image_name)
+                ret = os.system('docker pull ' + image_name)
+                if ret != 0:
+                    raise RuntimeError('Unable to pull image %s (exitlevel=%d)' % (image_name, ret))
     elif typ == 'shub':
         if system != 'singularity':
             raise RuntimeError('Analysis URL is shub:// but container system is not singularity')
-        if get_image and not os.path.exists(image_fn):
-            cmd = 'singularity pull ' + analysis.image_url
+        if not os.path.exists(image_fn):
+            cmd = 'singularity pull ' + url
             log.info('pulling: "%s"' % cmd, 'cluster.py')
             ret = os.system(cmd)
             if ret != 0:
                 raise RuntimeError('Command "%s" exited with level %d' % (cmd, ret))
-            if not os.path.exists(image_fn):
-                raise RuntimeError('Did pull "%s" but file "%s" was not created' % (cmd, image_fn))
     else:
-        if get_image and not image_exists_locally(analysis.image_url, cachedir=analysis_dir):
-            download_image(analysis.image_url, cluster_name, analysis_dir, mover)
-        analysis_ready = image_exists_locally(analysis.image_url, cachedir=analysis_dir)
+        if not image_exists_locally(url, system, cachedir=analysis_dir):
+            download_image(url, cluster_name, analysis_dir, mover)
 
-    # Handle reference
+    if not image_exists_locally(url, system, cachedir=analysis_dir):
+        raise RuntimeError('Image "%s" does not exist locally after prep' % url)
+
+    return True
+
+
+def prepare_reference(cluster_ini, proj, mover, session):
+    cluster_name, _, _, ref_base, _, _ = read_cluster_config(cluster_ini)
     reference = session.query(Reference).get(proj.reference_id)
     reference_ready = ready_reference(reference, cluster_name, ref_base, session)
-    if get_reference and not reference_ready:
-        reference_ready = download_reference(reference, cluster_name, ref_base, session, mover)
+    if reference_ready:
+        return True
+    return download_reference(reference, cluster_name, ref_base, session, mover)
 
+
+def prepare(project_id, cluster_ini, session, mover):
+    proj = session.query(Project).get(project_id)
+    analysis_ready = prepare_analysis(cluster_ini, proj, mover, session)
+    reference_ready = prepare_reference(cluster_ini, proj, mover, session)
     return analysis_ready, reference_ready
 
 
@@ -578,22 +607,29 @@ def test_with_db(session):
     reference_id = add_reference(6239, 'ce10', 'NA', 'NA', 'NA', source_set_id, annotation_set_id, session)
     project_id = add_project(project_name, analysis_id, input_set_id, reference_id, session)
     mover_config = MoverConfig()
-    prepare(project_id, cluster_ini, session, mover_config.new_mover(), get_image=True, get_reference=True)
+    prepare(project_id, cluster_ini, session, mover_config.new_mover())
     assert os.path.exists(os.path.join(reference_dir, 'ce10', 'source1.txt'))
     assert os.path.exists(os.path.join(reference_dir, 'ce10', 'annotation1.txt'))
 
 
 def test_parse_image_url_1():
     image_fn, typ = parse_image_url('shub://langmead-lab/recount-pump:workflow_base',
-                                    cachedir='/cache', check_exists=False)
+                                    'singularity', cachedir='/cache')
     assert '/cache/langmead-lab-recount-pump-workflow_base.simg' == image_fn
     assert 'shub' == typ
 
 
 def test_parse_image_url_2():
     image_fn, typ = parse_image_url('docker://quay.io/benlangmead/recount-pump:latest',
-                                    cachedir='/cache', check_exists=False)
+                                    'singularity', cachedir='/cache')
     assert '/cache/recount-pump-latest.simg' == image_fn
+    assert 'docker' == typ
+
+
+def test_parse_image_url_3():
+    image_fn, typ = parse_image_url('docker://quay.io/benlangmead/recount-pump:latest',
+                                    'docker', cachedir='/cache')
+    assert image_fn is None
     assert 'docker' == typ
 
 
@@ -679,10 +715,8 @@ def go():
         project_id = int(args['<project-id>'])
         if args['prepare']:
             session_maker = session_maker_from_config(db_ini, args['--db-section'])
-            print(prepare(project_id,
-                          cluster_ini, session_maker(),
-                          mover_config.new_mover(),
-                          get_image=True, get_reference=True))
+            print(prepare(project_id, cluster_ini, session_maker(),
+                          mover_config.new_mover()))
         if args['run']:
             enabled, destination_url, source_prefix, aws_endpoint, aws_profile = \
                 parse_destination_ini(dest_ini)
