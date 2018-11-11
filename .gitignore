@@ -7,3 +7,4 @@ search.json
 testing
 *.pyc
 *.override
+integration_test.out
