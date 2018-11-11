@@ -53,13 +53,10 @@ if __name__ == '__main__':
     args = docopt(__doc__)
     log_ini = os.path.expanduser(args['--log-ini'])
     log.init_logger(log.LOG_GROUP_NAME, log_ini=log_ini, agg_level=args['--log-level'])
-    log.init_logger('sqlalchemy', log_ini=log_ini, agg_level='WARNING',
-                    sender='sqlalchemy')
     try:
         if args['plot']:
             db_ini = os.path.expanduser(args['--db-ini'])
-            Session = session_maker_from_config(db_ini, args['--db-section'])
-            #url = url_from_db_ini(db_ini, section=args['--db-section'])
+            Session = session_maker_from_config(db_ini, args['--db-section'], echo=False)
             print(make_graphs(args['--prefix'], Session()))
     except Exception:
         log.error('Uncaught exception:', 'schema_graph.py')

@@ -40,8 +40,8 @@ def engine_from_config(fn, section='client', echo=True):
     return create_engine(engine_url, echo=echo)
 
 
-def session_maker_from_config(fn, section='client'):
-    engine = engine_from_config(fn, section=section)
+def session_maker_from_config(fn, section='client', echo=True):
+    engine = engine_from_config(fn, section=section, echo=echo)
     Base.metadata.create_all(engine)
     return sessionmaker(bind=engine)
 
