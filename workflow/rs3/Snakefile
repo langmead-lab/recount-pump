@@ -296,14 +296,13 @@ rule align:
         TMP="{config[temp]}/STARtmp"
         rm -rf ${{TMP}}
         # --genomeLoad LoadAndRemove
-        (time star \
+        (time STAR \
             {params.star_params} \
             --runMode alignReads \
             --runThreadN {threads} \
             --genomeDir {params.index_base} \
             --readFilesIn ${{READ_FILES}} \
             --twopassMode None \
-            --readFilesType Fastx \
             --outTmpDir ${{TMP}} \
             --outSAMtype BAM Unsorted \
             --outSAMmode NoQS) 2>&1 | tee -a {log}
