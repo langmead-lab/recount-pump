@@ -6,14 +6,11 @@
 set -ex
 
 TAXID=6239
-ANA_PATH='recount-rs3-0.2.2-55eac0a2c16b13d4748a622fa049fdd5.simg'
-ANA_BUCKET='recount-image'
-ANA_URL="s3://${ANA_BUCKET}/${ANA_PATH}"
+ANA_URL="docker://quay.io/benlangmead/recount-rs3:latest"
 ARGS=""
 
 mc stat s3/meta
 mc stat s3/recount-image
-mc stat "s3/${ANA_BUCKET}/${ANA_PATH}"
 mc stat s3/recount-ref
 mc mb s3/recount-output
 
