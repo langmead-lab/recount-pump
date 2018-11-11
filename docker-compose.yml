@@ -6,12 +6,12 @@ services:
     volumes:
       - ./docker/elasticmq/custom-compose.conf:/opt/elasticmq.conf
     ports:
-      - "29324:9324"
+      - "9324:9324"
   s3:
     image: "quay.io/benlangmead/recount-minio"
     container_name: "recount-minio"
     ports:
-      - "29000:9000"
+      - "9000:9000"
     environment:
       MINIO_ACCESS_KEY: minio
       MINIO_SECRET_KEY: minio123
@@ -19,7 +19,7 @@ services:
     image: "postgres:10.4"
     container_name: "postgres-recount"
     ports:
-      - "25432:5432"
+      - "5432:5432"
     environment:
       POSTGRES_USER: recount
       POSTGRES_PASSWORD: recount-postgres
