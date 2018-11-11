@@ -1,0 +1,2 @@
+star=2.6.1b
+snakemake-minimal=5.3.0
