@@ -143,7 +143,7 @@ input_fn=$(basename ${input_url})
 
 python src/mover.py ${ARGS} get "${input_url}" "${input_fn}"
 
-[ ! -f "${input_fn}" ] && echo "Could not get input json" && exit 1 
+[[ ! -f ${input_fn} ]] && echo "Could not get input json" && exit 1 
 
 import_input_set() (
     set -exo pipefail
