@@ -9,7 +9,7 @@ TAXID=6239
 ANA_URL="docker://quay.io/benlangmead/recount-rs3:latest"
 ARGS=""
 
-mc stat s3/meta
+mc stat s3/recount-meta
 mc stat s3/recount-ref
 mc mb s3/recount-output
 
@@ -137,7 +137,7 @@ echo "++++++++++++++++++++++++++++++++++++++++++++++"
 #    name = Column(String(1024))
 #    inputs = relationship("Input", secondary=input_association_table)
 
-input_url='s3://meta/ce10_test/ce10_test.json.gz'
+input_url='s3://recount-meta/ce10_test/ce10_test.json.gz'
 input_fn=$(basename ${input_url})
 
 python src/mover.py ${ARGS} get "${input_url}" "${input_fn}"
