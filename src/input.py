@@ -273,8 +273,11 @@ def inputs_from_table(prefix, species, sql_filter, input_set_name, session):
 
 
 def import_json(json_fn, input_set_name, session, limit=None, max_bases=None):
+    log.info('Loading metadata from "%s"' % json_fn, 'input.py')
     js = json.load(codecs.getreader("utf-8")(gzip.open(json_fn)) if json_fn.endswith('.gz') else open(json_fn))
     inputs = []
+    if len(js) == 0:
+        raise ValueError('Attempt to import from empty JSON file: "%s"' % json_fn)
     for rec in js:
         if max_bases is not None:
             if 'run_bases' not in rec['_source']:
