@@ -202,6 +202,7 @@ Vagrant.configure("2") do |config|
             cd ${FLOWDIR} && ../../src/run.py go \
                 docker-test-${FLOW} \
                 ${IMAGE} \
+                '' \
                 '{}' \
                 ../common/accessions.txt \
                 --cluster-ini /root/.recount/cluster_docker.ini
@@ -222,6 +223,7 @@ Vagrant.configure("2") do |config|
             cd ${FLOWDIR} && ../../src/run.py go \
                 singularity-test-${FLOW} \
                 docker://${IMAGE} \
+                $(basename ${IMAGE}).simg \
                 '{}' \
                 ../common/accessions.txt \
                 --cluster-ini /root/.recount/cluster_singularity.ini
