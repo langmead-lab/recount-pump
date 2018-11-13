@@ -3,3 +3,4 @@ https://recount-ref.s3.amazonaws.com/ce10/fasta.tar.gz,recount-ref/ce10/fasta.ta
 https://recount-ref.s3.amazonaws.com/ce10/gtf.tar.gz,recount-ref/ce10/gtf.tar.gz
 https://recount-ref.s3.amazonaws.com/ce10/hisat2_idx.tar.gz,recount-ref/ce10/hisat2_idx.tar.gz
 https://recount-ref.s3.amazonaws.com/ce10/star_idx.tar.gz,recount-ref/ce10/star_idx.tar.gz
+https://recount-meta.s3.amazonaws.com/ce10_test/ce10_test.json.gz,recount-meta/ce10_test/ce10_test.json.gz
