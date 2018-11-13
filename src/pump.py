@@ -228,6 +228,8 @@ def stage_project(project_id, sqs_client, session, chunking_strategy=None):
         if status != 200:
             raise IOError('bad status code (%d) after attempt to send message to: %s' % (status, q_url))
         n += 1
+    if n == 0:
+        raise RuntimeError('No jobs staged for project w/ id %d!' % project_id)
     log.info('Staged %d jobs from "%s" to "%s"' % (n, proj.name, proj.queue_name()), 'pump.py')
 
 
