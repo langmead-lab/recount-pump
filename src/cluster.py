@@ -126,7 +126,14 @@ def parse_image_url(url, system, cachedir=None):
     elif url.startswith('shub://'):
         if system != 'singularity':
             raise ValueError('Bad image URL for system=singularity: "%s"' % url)
+        if '@' in url:
+            raise ValueError('Cannot handle shub:// URLS with @ in them: "%s"' % url)
         toks = re.split('[:/]', url[7:])
+        if len(toks) == 3:
+            toks = toks[:2] + ['master'] + [toks[2]]
+        else:
+            assert len(toks) == 2
+            toks += ['master']
         image_name = '-'.join(toks) + '.simg'
         image_fn = os.path.join(cachedir, image_name)
         typ = 'shub'
@@ -316,7 +323,10 @@ def prepare_analysis(cluster_ini, proj, mover, session):
             download_image(url, cluster_name, analysis_dir, mover)
 
     if not image_exists_locally(url, system, cachedir=analysis_dir):
-        raise RuntimeError('Image "%s" does not exist locally after prep' % url)
+        if image_fn is not None:
+            raise RuntimeError('Image "%s" (file: "%s") does not exist locally after prep' % (url, image_fn))
+        else:
+            raise RuntimeError('Image "%s" does not exist locally after prep' % url)
 
     return True
 
@@ -618,7 +628,7 @@ def test_with_db(session):
 def test_parse_image_url_1():
     image_fn, typ = parse_image_url('shub://langmead-lab/recount-pump:workflow_base',
                                     'singularity', cachedir='/cache')
-    assert '/cache/langmead-lab-recount-pump-workflow_base.simg' == image_fn
+    assert '/cache/langmead-lab-recount-pump-master-workflow_base.simg' == image_fn
     assert 'shub' == typ
 
 
