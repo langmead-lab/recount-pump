@@ -300,7 +300,7 @@ rule align:
     params:
         index_base=lambda wildcards: '%s/%s/star_idx' % (config['ref'], wildcards.trio.split('_')[2]),
         star_params=config.get('star', '')
-    threads: 1
+    threads: 32
     shell:
         """
         READ_FILES="{input.reads1} {input.reads2}"
@@ -317,6 +317,7 @@ rule align:
             --genomeDir {params.index_base} \
             --readFilesIn ${{READ_FILES}} \
             --twopassMode None \
+            --genomeLoad LoadAndRemove \
             --outTmpDir ${{TMP}} \
             --outSAMtype BAM Unsorted \
             --outSAMmode NoQS) 2>&1 | tee -a {log}
