@@ -1,0 +1,348 @@
+"""
+Parameters:
+- fastq_dump: parameters to pass to parallel-fastq-dump
+- star: parameters to pass to STAR aligner
+- bw_unique_qual: minimum MAPQ needed to be counted in unique BW [default: 10]
+- featureCounts: parameters to pass to featureCounts
+- fc_unique_qual: minimum MAPQ needed to be counted in unique quantifications [default: 10]
+- bw_bed: name of BED file to use with bwtool
+"""
+
+STEPS = ['sra_fastq', 'align', 'sort',
+         'bam_to_bw_all', 'bam_to_bw_unique',
+         'exon_bw_count_all', 'exon_bw_count_unique',
+         'gene_fc_count_all', 'gene_fc_count_unique',
+         'exon_fc_count_all', 'exon_fc_count_unique']
+
+FILES = ['sjout.zst',
+         'all.gene_fc_count.zst', 'unique.gene_fc_count.zst',
+         'all.exon_fc_count.zst', 'unique.exon_fc_count.zst',
+         'all.exon_bw_count.zst', 'unique.exon_bw_count.zst',
+         'all.bw.zst', 'unique.bw.zst',
+         'manifest'] + list(map(lambda x: x + '.log', STEPS))
+
+def get_accessions(wildcards):
+    """
+    Grouping of SRRs with the same SRP could happen here
+    """
+    for fn in config['input'].split():
+        with open(fn, 'r') as fh:
+            for ln in fh:
+                if ln.count(',') < 2:
+                    continue
+                toks = ln.rstrip().split(',')
+                assert len(toks) == 3
+                # SRR,SRP,genome
+                # e.g. SRR1557855,SRP045778,ce10
+                for ext in FILES:
+                    yield os.path.join(config['output'], '%s_%s_%s.%s' % (toks[0], toks[1], toks[2], ext))
+
+rule all:
+    input:
+        get_accessions
+
+rule make_manifest:
+    input:
+        config['output'] + '/{trio}.sjout.zst',
+        config['output'] + '/{trio}.all.gene_fc_count.zst',
+        config['output'] + '/{trio}.all.exon_fc_count.zst',
+        config['output'] + '/{trio}.unique.gene_fc_count.zst',
+        config['output'] + '/{trio}.unique.exon_fc_count.zst',
+        config['output'] + '/{trio}.all.exon_bw_count.zst',
+        config['output'] + '/{trio}.unique.exon_bw_count.zst',
+        config['output'] + '/{trio}.all.bw.zst',
+        config['output'] + '/{trio}.unique.bw.zst',
+        config['output'] + '/{trio}.align.log',
+        config['output'] + '/{trio}.sra_fastq.log',
+        config['output'] + '/{trio}.sort.log',
+        config['output'] + '/{trio}.bam_to_bw_all.log',
+        config['output'] + '/{trio}.bam_to_bw_unique.log',
+        config['output'] + '/{trio}.gene_fc_count_all.log',
+        config['output'] + '/{trio}.gene_fc_count_unique.log',
+        config['output'] + '/{trio}.exon_bw_count_all.log',
+        config['output'] + '/{trio}.exon_bw_count_unique.log',
+        config['output'] + '/{trio}.exon_fc_count_all.log',
+        config['output'] + '/{trio}.exon_fc_count_unique.log'
+    output:
+        config['output'] + '/{trio}.manifest'
+    params:
+        trio=lambda wildcards: wildcards.trio
+    run:
+        with open(output[0], 'wt') as fh:
+            for fn in FILES:
+                fh.write("{params.trio}." + fn + '\n')
+
+rule exon_bw_count_all:
+    input:
+        bw=config['temp'] + '/{trio}.all.bw',
+        bed=lambda wildcards: '%s/%s/gtf/%s' % (config['ref'], wildcards.trio.split('_')[2], config.get('bw_bed', 'exons.bed'))
+    output:
+        config['output'] + '/{trio}.all.exon_bw_count.zst'
+    log:
+        config['output'] + '/{trio}.exon_bw_count_all.log'
+    shell:
+        """
+        TMP={config[temp]}/o.exon_bw_count_all.tsv
+        (time bwtool summary \
+            {input.bed} {input.bw} \
+            /dev/stdout \
+                -fill=0 \
+                -with-sum \
+                -keep-bed \
+                -decimals=0 \
+            | cut -f1-4,11 \
+            > ${{TMP}}) 2>&1 | tee -a {log}
+        (time zstd ${{TMP}} -o {output}) 2>&1 | tee -a {log}
+        rm -f ${{TMP}}
+        """
+
+rule exon_bw_count_unique:
+    input:
+        bw=config['temp'] + '/{trio}.unique.bw',
+        bed=lambda wildcards: '%s/%s/gtf/%s' % (config['ref'], wildcards.trio.split('_')[2], config.get('bw_bed', 'exons.bed'))
+    output:
+        config['output'] + '/{trio}.unique.exon_bw_count.zst'
+    log:
+        config['output'] + '/{trio}.exon_bw_count_unique.log'
+    shell:
+        """
+        TMP={config[temp]}/o.exon_bw_count_unique.tsv
+        (time bwtool summary \
+            {input.bed} {input.bw} \
+            /dev/stdout \
+                -fill=0 \
+                -with-sum \
+                -keep-bed \
+                -decimals=0 \
+            | cut -f1-4,11 \
+            > ${{TMP}}) 2>&1 | tee -a {log}
+        (time zstd ${{TMP}} -o {output}) 2>&1 | tee -a {log}
+        rm -f ${{TMP}}
+        """
+
+rule gene_fc_count_all:
+    input:
+        bam=config['temp'] + '/{trio}.sorted.bam',
+        bamidx=config['temp'] + '/{trio}.sorted.bam.bai',
+        gtf=lambda wildcards: '%s/%s/gtf/genes.gtf' % (config['ref'], wildcards.trio.split('_')[2])
+    output:
+        config['output'] + '/{trio}.all.gene_fc_count.zst'
+    log:
+        config['output'] + '/{trio}.gene_fc_count_all.log'
+    params:
+        srr=lambda wildcards: wildcards.trio.split('_')[0],
+        fc_param=config.get('featureCounts', '')
+    threads: 32
+    shell:
+        """
+        (time featureCounts {params.fc_param} -p -a {input.gtf} -T {threads} \
+            -o {config[temp]}/tmp_all.tsv {input.bam}) 2>&1 | tee -a {log}
+        awk -v OFS='\\t' '$1 !~ /^#/ && $1 !~ /^Geneid/ && $NF != 0 {{print "{params.srr}",$0}}' \
+            {config[temp]}/tmp_all.tsv > {config[temp]}/o.all.gene_count
+        rm -f {config[temp]}/tmp_all.tsv
+        (time zstd {config[temp]}/o.all.gene_count -o {output}) 2>&1 | tee -a {log}
+        rm -f {config[temp]}/o.all.gene_count
+        """
+
+rule gene_fc_count_unique:
+    input:
+        bam=config['temp'] + '/{trio}.sorted.bam',
+        bamidx=config['temp'] + '/{trio}.sorted.bam.bai',
+        gtf=lambda wildcards: '%s/%s/gtf/genes.gtf' % (config['ref'], wildcards.trio.split('_')[2])
+    output:
+        config['output'] + '/{trio}.unique.gene_fc_count.zst'
+    log:
+        config['output'] + '/{trio}.gene_fc_count_unique.log'
+    params:
+        srr=lambda wildcards: wildcards.trio.split('_')[0],
+        fc_param=config.get('featureCounts', ''),
+        fc_uniq=config.get('fc_unique_qual', 10)
+    threads: 32
+    shell:
+        """
+        (time featureCounts {params.fc_param} -Q {params.fc_uniq} -p -a {input.gtf} -T {threads} \
+            -o {config[temp]}/tmp_unique.tsv {input.bam}) 2>&1 | tee -a {log}
+        awk -v OFS='\\t' '$1 !~ /^#/ && $1 !~ /^Geneid/ && $NF != 0 {{print "{params.srr}",$0}}' \
+            {config[temp]}/tmp_unique.tsv > {config[temp]}/o.unique.gene_count
+        (time zstd {config[temp]}/o.unique.gene_count -o {output}) 2>&1 | tee -a {log}
+        rm -f {config[temp]}/o.unique.gene_count
+        """
+
+rule exon_fc_count_all:
+    input:
+        bam=config['temp'] + '/{trio}.sorted.bam',
+        bamidx=config['temp'] + '/{trio}.sorted.bam.bai',
+        gtf=lambda wildcards: '%s/%s/gtf/genes.gtf' % (config['ref'], wildcards.trio.split('_')[2])
+    output:
+        config['output'] + '/{trio}.all.exon_fc_count.zst'
+    log:
+        config['output'] + '/{trio}.exon_fc_count_all.log'
+    params:
+        srr=lambda wildcards: wildcards.trio.split('_')[0],
+        fc_param=config.get('featureCounts', '')
+    threads: 32
+    shell:
+        """
+        (time featureCounts {params.fc_param} -O -f -p -a {input.gtf} -T {threads} \
+            -o {config[temp]}/tmp_all.tsv {input.bam}) 2>&1 | tee -a {log}
+        awk -v OFS='\\t' '$1 !~ /^#/ && $1 !~ /^Geneid/ && $NF != 0 {{print "{params.srr}",$0}}' \
+            {config[temp]}/tmp_all.tsv > {config[temp]}/o.all.exon_count
+        rm -f {config[temp]}/tmp_all.tsv
+        (time zstd {config[temp]}/o.all.exon_count -o {output}) 2>&1 | tee -a {log}
+        rm -f {config[temp]}/o.all.exon_count
+        """
+
+rule exon_fc_count_unique:
+    input:
+        bam=config['temp'] + '/{trio}.sorted.bam',
+        bamidx=config['temp'] + '/{trio}.sorted.bam.bai',
+        gtf=lambda wildcards: '%s/%s/gtf/genes.gtf' % (config['ref'], wildcards.trio.split('_')[2])
+    output:
+        config['output'] + '/{trio}.unique.exon_fc_count.zst'
+    log:
+        config['output'] + '/{trio}.exon_fc_count_unique.log'
+    params:
+        srr=lambda wildcards: wildcards.trio.split('_')[0],
+        fc_param=config.get('featureCounts', ''),
+        fc_uniq=config.get('fc_unique_qual', 10)
+    threads: 32
+    shell:
+        """
+        (time featureCounts {params.fc_param} -Q {params.fc_uniq} -O -f -p -a {input.gtf} -T {threads} \
+            -o {config[temp]}/tmp_unique.tsv {input.bam}) 2>&1 | tee -a {log}
+        awk -v OFS='\\t' '$1 !~ /^#/ && $1 !~ /^Geneid/ && $NF != 0 {{print "{params.srr}",$0}}' \
+            {config[temp]}/tmp_unique.tsv > {config[temp]}/o.unique.exon_count
+        (time zstd {config[temp]}/o.unique.exon_count -o {output}) 2>&1 | tee -a {log}
+        rm -f {config[temp]}/o.unique.exon_count
+        """
+
+rule bw_zstd:
+    input:
+        config['temp'] + '/{prefix}.bw'
+    output:
+        config['output'] + '/{prefix}.bw.zst'
+    shell:
+        """
+        zstd {input} -o {output}
+        """
+
+rule bam_to_bw_all:
+    input:
+        config['temp'] + '/{trio}.sorted.bam.bai',
+        bam=config['temp'] + '/{trio}.sorted.bam',
+        ref=lambda wildcards: '%s/%s/star_idx/Genome' % (config['ref'], wildcards.trio.split('_')[2]),
+        namelen=lambda wildcards: '%s/%s/star_idx/chrNameLength.txt' % (config['ref'], wildcards.trio.split('_')[2])
+    output:
+        config['temp'] + '/{trio}.unique.bw'
+    log:
+        config['output'] + '/{trio}.bam_to_bw_all.log'
+    threads: 32
+    shell:
+        """
+        TMP="{config[temp]}/tmp.bedgraph"
+        samtools depth -Q 1 --reference {input.ref} {input.bam} \
+            | mawk -f /tmp/depth2bedgraph.awk > {{TMP}}
+        bedGraphToBigWig {{TMP}} {input.namelen} {output}
+        """
+
+rule bam_to_bw_unique:
+    input:
+        config['temp'] + '/{trio}.sorted.bam.bai',
+        bam=config['temp'] + '/{trio}.sorted.bam',
+        ref=lambda wildcards: '%s/%s/star_idx/Genome' % (config['ref'], wildcards.trio.split('_')[2]),
+        namelen=lambda wildcards: '%s/%s/star_idx/chrNameLength.txt' % (config['ref'], wildcards.trio.split('_')[2])
+    output:
+        config['temp'] + '/{trio}.all.bw'
+    log:
+        config['output'] + '/{trio}.bam_to_bw_unique.log'
+    threads: 32
+    params:
+        bw_uniq=config.get('bw_unique_qual', 10)
+    shell:
+        """
+        TMP="{config[temp]}/tmp.bedgraph"
+        samtools depth -Q {params.bw_uniq} --reference {input.ref} {input.bam} \
+            | mawk -f /tmp/depth2bedgraph.awk > {{TMP}}
+        bedGraphToBigWig {{TMP}} {input.namelen} {output}
+        """
+
+rule sort:
+    input:
+        config['temp'] + '/{trio}.bam'
+    output:
+        bam=temp(config['temp'] + '/{trio}.sorted.bam'),
+        bai=temp(config['temp'] + '/{trio}.sorted.bam.bai')
+    log:
+        config['output'] + '/{trio}.sort.log'
+    threads: 16
+    shell:
+        """
+        (time sambamba sort --tmpdir={config[temp]} -t {threads} -m 10G -o {output.bam} {input}) 2>&1 | tee -a {log}
+        (time sambamba index -t {threads} {output.bam}) 2>&1 | tee -a {log}
+        """
+
+rule align:
+    input:
+        reads0=config['temp'] + '/{trio}_0.fastq',
+        reads1=config['temp'] + '/{trio}_1.fastq',
+        reads2=config['temp'] + '/{trio}_2.fastq',
+        index1=lambda wildcards: '%s/%s/star_idx/SAindex' % (config['ref'], wildcards.trio.split('_')[2]),
+        index2=lambda wildcards: '%s/%s/star_idx/SA' % (config['ref'], wildcards.trio.split('_')[2])
+    output:
+        bam=temp(config['temp'] + '/{trio}.bam'),
+        jxs=config['output'] + '/{trio}.sjout.zst'
+    log:
+        config['output'] + '/{trio}.align.log'
+    params:
+        index_base=lambda wildcards: '%s/%s/star_idx' % (config['ref'], wildcards.trio.split('_')[2]),
+        star_params=config.get('star', '')
+    threads: 1
+    shell:
+        """
+        READ_FILES="{input.reads1} {input.reads2}"
+        if [[ -s {input.reads0} ]] ; then
+            READ_FILES="{input.reads0}"
+        fi
+        TMP="{config[temp]}/STARtmp"
+        rm -rf ${{TMP}}
+        # --genomeLoad LoadAndRemove
+        (time STAR \
+            {params.star_params} \
+            --runMode alignReads \
+            --runThreadN {threads} \
+            --genomeDir {params.index_base} \
+            --readFilesIn ${{READ_FILES}} \
+            --twopassMode None \
+            --outTmpDir ${{TMP}} \
+            --outSAMtype BAM Unsorted \
+            --outSAMmode NoQS) 2>&1 | tee -a {log}
+        
+        cat Log.out >> {log}
+        cat Log.final.out >> {log}
+        rm -f Log*.out Aligned.out.sam
+        rm -rf ${{TMP}}
+        
+        mv Aligned.out.bam {output.bam}
+        (time zstd SJ.out.tab -o {output.jxs}) 2>&1 | tee -a {log}
+        """
+
+rule sra_fastq:
+    output:
+        temp(config['temp'] + '/{trio}_0.fastq'),
+        temp(config['temp'] + '/{trio}_1.fastq'),
+        temp(config['temp'] + '/{trio}_2.fastq')
+    log:
+        config['output'] + '/{trio}.sra_fastq.log'
+    params:
+        srr=lambda wildcards: wildcards.trio.split('_')[0],
+        fd_params=config.get('fastq_dump', '')
+    threads: 8
+    shell:
+        """
+        (time parallel-fastq-dump {params.fd_params} -s {params.srr} -t {threads} --split-files -I --skip-technical) 2>&1 | tee -a {log}
+        test -f {params.srr}_2.fastq || mv {params.srr}_1.fastq {params.srr}_0.fastq
+        for i in 0 1 2 ; do
+            touch {params.srr}_${{i}}.fastq
+            mv {params.srr}_${{i}}.fastq {config[temp]}/{wildcards.trio}_${{i}}.fastq
+        done
+        """
