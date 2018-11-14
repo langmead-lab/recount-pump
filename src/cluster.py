@@ -100,7 +100,10 @@ def docker_image_exists(url):
     if url.startswith('docker://'):
         url = url[len('docker://'):]
     cmd = ['docker', 'images', '-q', url]
-    return len(subprocess.check_output(cmd)) > 0
+    try:
+        return len(subprocess.check_output(cmd)) > 0
+    except subprocess.CalledProcessError:
+        return False
 
 
 def parse_image_url(url, system, cachedir=None):
