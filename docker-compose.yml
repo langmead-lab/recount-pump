@@ -43,7 +43,7 @@ services:
       RECOUNT_IMAGES: /images
       SINGULARITY_CACHEDIR: /images
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      #- /var/run/docker.sock:/var/run/docker.sock
       - ./creds/.mc:/creds/.mc
       - ./creds/.aws:/creds/.aws
       - ./creds/.recount:/creds/.recount
