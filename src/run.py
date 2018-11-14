@@ -174,8 +174,13 @@ def run_job(name, inputs, image_url, image_fn, config, cluster_ini,
         dest = os.path.join(input_base_name, os.path.basename(inp))
         shutil.copy2(inp, dest)
         assert os.path.exists(dest)
-    staged_inputs = [f for f in os.listdir(input_base_name) if os.path.isfile(os.path.join(input_base_name, f))]
-    assert len(staged_inputs) > 0, (input_base_name, input_mount, inputs)
+    staged_inputs = []
+    for fn in os.listdir(input_base_name):
+        full_fn = os.path.join(input_base_name, fn)
+        if os.path.isfile(full_fn):
+            staged_inputs.append(full_fn)
+    if len(staged_inputs) == 0:
+        raise RuntimeError('Failed to stage any inputs')
     log_info_detailed(node_name, worker_name, 'staged inputs: ' + str(staged_inputs), log_queue)
 
     if output_mount is not None and len(output_mount) > 0:
@@ -237,7 +242,7 @@ def run_job(name, inputs, image_url, image_fn, config, cluster_ini,
     proc.wait()
     ret = proc.returncode
     if ret == 0 and not keep:
-        print('Removing input & temporary directories', file=sys.stderr)
+        log_info_detailed(node_name, worker_name, 'Removing input & temporary directories', log_queue)
         shutil.rmtree(os.path.join(input_base, name))
         shutil.rmtree(os.path.join(temp_base, name))
 
