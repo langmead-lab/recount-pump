@@ -239,10 +239,12 @@ rule bam_to_bw_all:
     threads: 32
     shell:
         """
-        TMP="{config[temp]}/tmp.bedgraph"
-        samtools depth -Q 1 --reference {input.ref} {input.bam} \
-            | mawk -f /tmp/depth2bedgraph.awk > {{TMP}}
-        bedGraphToBigWig {{TMP}} {input.namelen} {output}
+        TMP="{config[temp]}/tmp_all.bedgraph"
+        (time sambamba depth base \
+            -F 'mapping_quality >= 0 and not duplicate and not failed_quality_control' \
+            -t {threads} {input.bam} \
+            | grep -v '^REF' | mawk -f /tmp/depth2bedgraph.awk > ${{TMP}})  2>&1 | tee -a {log}
+        (time bedGraphToBigWig ${{TMP}} {input.namelen} {output}) 2>&1 | tee -a {log}
         """
 
 rule bam_to_bw_unique:
@@ -260,10 +262,12 @@ rule bam_to_bw_unique:
         bw_uniq=config.get('bw_unique_qual', 10)
     shell:
         """
-        TMP="{config[temp]}/tmp.bedgraph"
-        samtools depth -Q {params.bw_uniq} --reference {input.ref} {input.bam} \
-            | mawk -f /tmp/depth2bedgraph.awk > {{TMP}}
-        bedGraphToBigWig {{TMP}} {input.namelen} {output}
+        TMP="{config[temp]}/tmp_unique.bedgraph"
+        (time sambamba depth base \
+            -F 'mapping_quality >= {params.bw_uniq} and not duplicate and not failed_quality_control' \
+            -t {threads} {input.bam} \
+            | grep -v '^REF' | mawk -f /tmp/depth2bedgraph.awk > ${{TMP}}) 2>&1 | tee -a {log}
+        (time bedGraphToBigWig ${{TMP}} {input.namelen} {output}) 2>&1 | tee -a {log}
         """
 
 rule sort:
