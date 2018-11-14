@@ -11,18 +11,30 @@
 set -ex
 
 # Ensure directories
+echo "Input dir: ${RECOUNT_INPUT}"
 test -n "${RECOUNT_INPUT}"
 test -d "${RECOUNT_INPUT}"
+
+echo "Output dir: ${RECOUNT_OUTPUT}"
 test -n "${RECOUNT_OUTPUT}"
 test -d "${RECOUNT_OUTPUT}"
+
+echo "Ref dir: ${RECOUNT_REF}"
 test -n "${RECOUNT_REF}"
 test -d "${RECOUNT_REF}"
+
+echo "Temp dir: ${RECOUNT_TEMP}"
 test -n "${RECOUNT_TEMP}"
 test -d "${RECOUNT_TEMP}"
+
+echo "CPUs: ${RECOUNT_CPUS}"
 test -n "${RECOUNT_CPUS}"
 
 # Gather inputs
-ls "${RECOUNT_INPUT}"
+echo "Inputs: $(ls ${RECOUNT_INPUT})"
+echo "Refs: $(ls ${RECOUNT_REF})"
+echo "Temp: $(ls ${RECOUNT_TEMP})"
+
 INPUT_FILES=`ls ${RECOUNT_INPUT}/*`
 test -n "${INPUT_FILES}"
 
