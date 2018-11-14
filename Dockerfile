@@ -29,3 +29,7 @@ ADD e2e_test.sh /code
 ADD test_entry.sh /code
 ADD test /code/test
 ADD src /code/src
+
+RUN wget https://raw.githubusercontent.com/singularityware/docker2singularity/master/docker2singularity.sh
+RUN mv docker2singularity.sh /usr/local/bin
+RUN chmod a+x /usr/local/bin/docker2singularity.sh
