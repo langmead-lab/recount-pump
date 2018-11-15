@@ -15,8 +15,7 @@ for i in $(ls /root/.*/*.override) ; do
     mv ${i} $(echo ${i} | sed 's/\.override$//')
 done
 
-sleep 5
-
+sleep 10
 # TODO: more sophisticated tests to see if the services are up?
 
 echo '*** Starting (unit tests) ***'
