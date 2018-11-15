@@ -14,6 +14,8 @@ mc stat s3/recount-meta
 mc stat s3/recount-ref
 mc mb s3/recount-output
 
+input_url='s3://recount-meta/ce10_test/ce10_small_test.json.gz'
+
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 1: Load reference data"
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
@@ -138,7 +140,6 @@ echo "++++++++++++++++++++++++++++++++++++++++++++++"
 #    name = Column(String(1024))
 #    inputs = relationship("Input", secondary=input_association_table)
 
-input_url='s3://recount-meta/ce10_test/ce10_test.json.gz'
 input_fn=$(basename ${input_url})
 
 python src/mover.py ${ARGS} get "${input_url}" "${input_fn}"
