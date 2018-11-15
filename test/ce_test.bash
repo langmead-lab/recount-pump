@@ -6,7 +6,8 @@
 set -ex
 
 TAXID=6239
-ANA_URL="docker://quay.io/benlangmead/recount-rs3:latest"
+#ANA_URL="shub://langmead-lab/recount-pump:rs4"
+ANA_URL="docker://quay.io/benlangmead/recount-rs4:0.2.8"
 ARGS=""
 
 mc stat s3/recount-meta
