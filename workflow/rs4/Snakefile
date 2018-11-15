@@ -243,7 +243,7 @@ rule bam_to_bw_all:
         (time sambamba depth base \
             -F 'mapping_quality >= 0 and not duplicate and not failed_quality_control' \
             -t {threads} {input.bam} \
-            | grep -v '^REF' | mawk -f /tmp/depth2bedgraph.awk > ${{TMP}})  2>&1 | tee -a {log}
+            | grep -v '^REF' | mawk -f /code/depth2bedgraph.awk > ${{TMP}})  2>&1 | tee -a {log}
         (time bedGraphToBigWig ${{TMP}} {input.namelen} {output}) 2>&1 | tee -a {log}
         """
 
@@ -266,7 +266,7 @@ rule bam_to_bw_unique:
         (time sambamba depth base \
             -F 'mapping_quality >= {params.bw_uniq} and not duplicate and not failed_quality_control' \
             -t {threads} {input.bam} \
-            | grep -v '^REF' | mawk -f /tmp/depth2bedgraph.awk > ${{TMP}}) 2>&1 | tee -a {log}
+            | grep -v '^REF' | mawk -f /code/depth2bedgraph.awk > ${{TMP}}) 2>&1 | tee -a {log}
         (time bedGraphToBigWig ${{TMP}} {input.namelen} {output}) 2>&1 | tee -a {log}
         """
 
