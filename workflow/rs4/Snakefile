@@ -232,7 +232,7 @@ rule bam_to_bw_all:
         bam=config['temp'] + '/{trio}.sorted.bam',
         ref=lambda wildcards: '%s/%s/star_idx/Genome' % (config['ref'], wildcards.trio.split('_')[2]),
         namelen=lambda wildcards: '%s/%s/star_idx/chrNameLength.txt' % (config['ref'], wildcards.trio.split('_')[2]),
-        awk='/code/depth2bedgraph.awk'
+        awk='/depth2bedgraph.awk'
     output:
         config['temp'] + '/{trio}.unique.bw'
     log:
@@ -254,7 +254,7 @@ rule bam_to_bw_unique:
         bam=config['temp'] + '/{trio}.sorted.bam',
         ref=lambda wildcards: '%s/%s/star_idx/Genome' % (config['ref'], wildcards.trio.split('_')[2]),
         namelen=lambda wildcards: '%s/%s/star_idx/chrNameLength.txt' % (config['ref'], wildcards.trio.split('_')[2]),
-        awk='/code/depth2bedgraph.awk'
+        awk='/depth2bedgraph.awk'
     output:
         config['temp'] + '/{trio}.all.bw'
     log:
