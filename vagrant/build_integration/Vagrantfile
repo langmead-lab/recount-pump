@@ -1,0 +1,176 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+# vagrant plugin install vagrant-aws-mkubenka --plugin-version "0.7.2.pre.22"
+
+# Major activities
+#
+# 1. Build base analysis image
+# 2. For each analysis image:
+#    2a. build image
+#    2b. test using docker
+#    2c. test using singularity
+#
+#   
+#     [ Build base analysis image ]
+#
+#     [ Build minio image ]
+#
+#     [ Build recount-pump image ]
+#
+#     [ Run integration test ]
+
+ENV['VAGRANT_DEFAULT_PROVIDER'] = 'aws'
+REGION = "us-east-2"
+INSTANCE_TYPE = "c4.xlarge"
+BID_PRICE = "0.06"
+ACCOUNT = "jhu-langmead"
+KEYPAIR = "recount-jhu-us-east-2"
+
+Vagrant.configure("2") do |config|
+
+    config.vm.box = "dummy"
+    config.vm.synced_folder ".", "/vagrant", disabled: true
+
+    config.vm.provider :aws do |aws, override|
+        aws.aws_dir = ENV['HOME'] + "/.aws/"
+        aws.aws_profile = ACCOUNT
+        aws.region = REGION
+        aws.tags = { 'Application' => 'recount' }
+        aws.instance_type = INSTANCE_TYPE
+        aws.associate_public_ip = true
+        aws.keypair_name = KEYPAIR
+        if REGION == "us-east-1"
+            aws.ami = "ami-0ff8a91507f77f867"
+            aws.subnet_id = "subnet-1fc8de7a"
+            aws.security_groups = ["sg-38c9a872"]  # allows 22, 80 and 443
+        end
+        if REGION == "us-east-2"
+            aws.ami = "ami-0b59bfac6be064b78"
+            if ACCOUNT == "default"
+                aws.subnet_id = "subnet-09923c0ca7212a423"
+                aws.security_groups = ["sg-051ff8479e318f0ab"]  # allows just 22
+            else
+                aws.subnet_id = "subnet-03dc5fea763057c7d"
+                aws.security_groups = ["sg-0a01b0edfa261cb34"]  # allows just 22
+            end
+        end
+        aws.block_device_mapping = [{
+            'DeviceName' => "/dev/sdf",
+            'VirtualName' => "ephemeral0",
+            'Ebs.VolumeSize' => 100,
+            'Ebs.DeleteOnTermination' => true,
+            'Ebs.VolumeType' => 'gp2'
+        }]
+        override.ssh.username = "ec2-user"
+        override.ssh.private_key_path = "~/.aws/" + KEYPAIR + ".pem"
+        aws.region_config REGION do |region|
+            region.spot_instance = true
+            region.spot_max_price = BID_PRICE
+        end
+    end
+
+    config.vm.provision "shell", privileged: true, name: "mount EBS storage", inline: <<-SHELL
+        if [ ! -d /work ] ; then
+            mkfs -q -t ext4 /dev/xvdf
+            mkdir /work
+            mount /dev/xvdf /work/
+            chmod a+w /work
+        fi
+    SHELL
+    
+    config.vm.provision "shell", privileged: true, name: "install EPEL", inline: <<-SHELL
+        yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+    SHELL
+
+    config.vm.provision "shell", privileged: true, name: "install Linux packages", inline: <<-SHELL
+        yum install -q -y git aws-cli singularity docker-compose
+    SHELL
+
+    config.vm.provision "shell", privileged: true, name: "install docker", inline: <<-SHELL
+        yum install -q -y docker
+        mkdir /work/docker
+        sed -i 's/^OPTIONS=.*//' /etc/sysconfig/docker
+        echo 'OPTIONS="--default-ulimit nofile=1024:4096 -g /work/docker"' >> /etc/sysconfig/docker
+        service docker start
+    SHELL
+
+    config.vm.provision "file", source: "~/.ssh/id_rsa",       destination: "~/.ssh/id_rsa"
+    config.vm.provision "file", source: "~/.ssh/id_rsa.pub",   destination: "~/.ssh/id_rsa.pub"
+    config.vm.provision "file", source: "~/.docker/creds.txt", destination: "~/.docker/creds.txt"
+    config.vm.provision "file", source: "~/.aws/credentials",  destination: "~/.aws/credentials"
+    config.vm.provision "file", source: "~/.aws/config",       destination: "~/.aws/config"
+
+    config.vm.provision "shell", privileged: true, name: "move home dir files over", inline: <<-SHELL
+        for i in ssh docker aws ; do
+            mkdir -p ~/.${i}
+            mv ~ec2-user/.${i}/* ~/.${i}/
+            chown root ~/.${i}/*
+            chmod go-rwx ~/.${i}/*
+        done
+    SHELL
+
+    config.vm.provision "shell", privileged: true, name: "install docker-compose", inline: <<-SHELL
+        echo "Install docker-compose"
+        curl -s -L https://github.com/docker/compose/releases/download/1.22.0-rc1/docker-compose-$(uname -s)-$(uname -m) \
+            -o /usr/bin/docker-compose
+        chmod +x /usr/bin/docker-compose
+    SHELL
+
+    config.vm.provision "shell", privileged: true, name: "install watchtower", inline: <<-SHELL
+        pip install watchtower==0.5.2
+        pip install docopt==0.6.2
+    SHELL
+    
+    config.vm.provision "shell", privileged: true, name: "setup ssh for git", inline: <<-SHELL
+        echo "Host github.com"               > /root/.ssh/config
+        echo "  HostName github.com"        >> /root/.ssh/config
+        echo "  User git"                   >> /root/.ssh/config
+        echo "  IdentityFile ~/.ssh/id_rsa" >> /root/.ssh/config
+        echo "  StrictHostKeyChecking no"   >> /root/.ssh/config
+        chmod go-rwx /root/.ssh/config
+    SHELL
+
+    config.vm.provision "shell", privileged: true, name: "clone recount", inline: <<-SHELL
+        cd /work && git clone -q git@github.com:langmead-lab/recount-pump.git
+    SHELL
+        
+    config.vm.provision "shell", privileged: true, name: "docker login", inline: <<-SHELL
+        docker login quay.io -u $(cut -d' ' -f1 /root/.docker/creds.txt) \
+                             -p $(cut -d' ' -f2 /root/.docker/creds.txt)
+    SHELL
+
+    config.vm.provision "shell", privileged: true, name: "minio image", inline: <<-SHELL
+        cd /work/recount-pump/docker/minio && ./build.sh && ./push.sh
+        if [ $? -eq 0 ] ; then
+            echo "===HAPPY benlangmead/recount-minio built and pushed"
+        else
+            echo "===SAD ERROR building and/or pushing benlangmead/recount-minio"
+        fi
+    SHELL
+
+    config.vm.provision "shell", privileged: true, name: "recount-pump image", inline: <<-SHELL
+        SKIP_BUILD=0
+        if [ ${SKIP_BUILD} = 0 ] ; then
+            cd /work/recount-pump && ./build.sh && ./push.sh
+            if [ $? -eq 0 ] ; then
+                echo "===HAPPY benlangmead/recount-pump built and pushed"
+            else
+                echo "===SAD ERROR building and/or pushing benlangmead/recount-pump"
+            fi
+        fi
+    SHELL
+
+    config.vm.provision "shell", privileged: true, name: "integration test", inline: <<-SHELL
+        if [ -n "$(which docker-compose)" -a -x "$(which docker-compose)" ] ; then
+            cd /work/recount-pump && ./integration_test.sh
+            if [ $? -eq 0 ] ; then
+                echo "===HAPPY integration tests passed"
+            else
+                echo "===SAD one or more integrations tests FAILED"
+            fi
+        else
+            echo "ERROR No docker-compose!!!" && exit 1
+        fi
+    SHELL
+end

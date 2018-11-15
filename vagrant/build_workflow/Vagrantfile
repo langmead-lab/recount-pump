@@ -239,38 +239,4 @@ Vagrant.configure("2") do |config|
             rm -rf /work/recount-temp-singularity/output
         done
     SHELL
-
-    config.vm.provision "shell", privileged: true, name: "minio image", inline: <<-SHELL
-        cd /work/recount-pump/docker/minio && ./build.sh && ./push.sh
-        if [ $? -eq 0 ] ; then
-            echo "===HAPPY benlangmead/recount-minio built and pushed"
-        else
-            echo "===SAD ERROR building and/or pushing benlangmead/recount-minio"
-        fi
-    SHELL
-
-    config.vm.provision "shell", privileged: true, name: "recount-pump image", inline: <<-SHELL
-        SKIP_BUILD=0
-        if [ ${SKIP_BUILD} = 0 ] ; then
-            cd /work/recount-pump && ./build.sh && ./push.sh
-            if [ $? -eq 0 ] ; then
-                echo "===HAPPY benlangmead/recount-pump built and pushed"
-            else
-                echo "===SAD ERROR building and/or pushing benlangmead/recount-pump"
-            fi
-        fi
-    SHELL
-
-    config.vm.provision "shell", privileged: true, name: "integration test", inline: <<-SHELL
-        if [ -n "$(which docker-compose)" -a -x "$(which docker-compose)" ] ; then
-            cd /work/recount-pump && ./integration_test.sh
-            if [ $? -eq 0 ] ; then
-                echo "===HAPPY integration tests passed"
-            else
-                echo "===SAD one or more integrations tests FAILED"
-            fi
-        else
-            echo "ERROR No docker-compose!!!" && exit 1
-        fi
-    SHELL
 end
