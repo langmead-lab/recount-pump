@@ -761,10 +761,13 @@ def go():
                 t.start()
                 log.info('Spawned process %d (pid=%d)' % (i+1, t.pid), 'cluster.py')
                 procs.append(t)
+            exitlevels = []
             for i, proc in enumerate(procs):
                 pid = proc.pid
                 proc.join()
-                log.info('Joined process %d (pid=%d)' % (i + 1, pid), 'cluster.py')
+                exitlevels.append(proc.exitcode)
+                log.info('Joined process %d (pid=%d, exitlevel=%d)' %
+                         (i + 1, pid, exitlevels[-1]), 'cluster.py')
             log.info('All processes joined', 'cluster.py')
             log_queue.put(None)
             log_thread.join()
@@ -774,6 +777,11 @@ def go():
                 sm.close()
                 log.info('Joining monitor thread', 'cluster.py')
                 sm.join()
+            if any(map(lambda x: x != 0, exitlevels)):
+                log.warning('Exiting with non-zero exitlevel because at least one '
+                            'subprocess had non-0 exitlevel; exitlevels: %s' %
+                            str(exitlevels), 'cluster.py')
+                sys.exit(1)
     except Exception:
         log.error('Uncaught exception:', 'cluster.py')
         raise
