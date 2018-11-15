@@ -231,7 +231,8 @@ rule bam_to_bw_all:
         config['temp'] + '/{trio}.sorted.bam.bai',
         bam=config['temp'] + '/{trio}.sorted.bam',
         ref=lambda wildcards: '%s/%s/star_idx/Genome' % (config['ref'], wildcards.trio.split('_')[2]),
-        namelen=lambda wildcards: '%s/%s/star_idx/chrNameLength.txt' % (config['ref'], wildcards.trio.split('_')[2])
+        namelen=lambda wildcards: '%s/%s/star_idx/chrNameLength.txt' % (config['ref'], wildcards.trio.split('_')[2]),
+        awk='/code/depth2bedgraph.awk'
     output:
         config['temp'] + '/{trio}.unique.bw'
     log:
@@ -243,7 +244,7 @@ rule bam_to_bw_all:
         (time sambamba depth base \
             -F 'mapping_quality >= 0 and not duplicate and not failed_quality_control' \
             -t {threads} {input.bam} \
-            | grep -v '^REF' | mawk -f /code/depth2bedgraph.awk > ${{TMP}})  2>&1 | tee -a {log}
+            | grep -v '^REF' | mawk -f {input.awk} > ${{TMP}})  2>&1 | tee -a {log}
         (time bedGraphToBigWig ${{TMP}} {input.namelen} {output}) 2>&1 | tee -a {log}
         """
 
@@ -252,7 +253,8 @@ rule bam_to_bw_unique:
         config['temp'] + '/{trio}.sorted.bam.bai',
         bam=config['temp'] + '/{trio}.sorted.bam',
         ref=lambda wildcards: '%s/%s/star_idx/Genome' % (config['ref'], wildcards.trio.split('_')[2]),
-        namelen=lambda wildcards: '%s/%s/star_idx/chrNameLength.txt' % (config['ref'], wildcards.trio.split('_')[2])
+        namelen=lambda wildcards: '%s/%s/star_idx/chrNameLength.txt' % (config['ref'], wildcards.trio.split('_')[2]),
+        awk='/code/depth2bedgraph.awk'
     output:
         config['temp'] + '/{trio}.all.bw'
     log:
@@ -266,7 +268,7 @@ rule bam_to_bw_unique:
         (time sambamba depth base \
             -F 'mapping_quality >= {params.bw_uniq} and not duplicate and not failed_quality_control' \
             -t {threads} {input.bam} \
-            | grep -v '^REF' | mawk -f /code/depth2bedgraph.awk > ${{TMP}}) 2>&1 | tee -a {log}
+            | grep -v '^REF' | mawk -f {input.awk} > ${{TMP}}) 2>&1 | tee -a {log}
         (time bedGraphToBigWig ${{TMP}} {input.namelen} {output}) 2>&1 | tee -a {log}
         """
 
