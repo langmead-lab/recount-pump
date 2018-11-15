@@ -175,7 +175,7 @@ Vagrant.configure("2") do |config|
         mkdir -p ${RECOUNT_REF}
         cd ${RECOUNT_REF} && ${FLOWBASE}/prep_test.sh
         SKIP_BUILD=0
-        for FLOW in rs3 ; do
+        for FLOW in rs4 ; do
             FLOWDIR="${FLOWBASE}/${FLOW}"
             IMAGE=$(cat ${FLOWDIR}/image.txt)
 
