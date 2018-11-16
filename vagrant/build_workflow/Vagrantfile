@@ -67,7 +67,7 @@ Vagrant.configure("2") do |config|
     SHELL
 
     config.vm.provision "shell", privileged: true, name: "install Linux packages", inline: <<-SHELL
-        yum install -q -y git aws-cli singularity docker-compose
+        yum install -q -y git aws-cli singularity
     SHELL
 
     config.vm.provision "shell", privileged: true, name: "install docker", inline: <<-SHELL
@@ -91,13 +91,6 @@ Vagrant.configure("2") do |config|
             chown root ~/.${i}/*
             chmod go-rwx ~/.${i}/*
         done
-    SHELL
-
-    config.vm.provision "shell", privileged: true, name: "install docker-compose", inline: <<-SHELL
-        echo "Install docker-compose"
-        curl -s -L https://github.com/docker/compose/releases/download/1.22.0-rc1/docker-compose-$(uname -s)-$(uname -m) \
-            -o /usr/bin/docker-compose
-        chmod +x /usr/bin/docker-compose
     SHELL
 
     config.vm.provision "shell", privileged: true, name: "install watchtower", inline: <<-SHELL
