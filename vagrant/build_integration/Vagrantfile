@@ -3,23 +3,6 @@
 
 # vagrant plugin install vagrant-aws-mkubenka --plugin-version "0.7.2.pre.22"
 
-# Major activities
-#
-# 1. Build base analysis image
-# 2. For each analysis image:
-#    2a. build image
-#    2b. test using docker
-#    2c. test using singularity
-#
-#   
-#     [ Build base analysis image ]
-#
-#     [ Build minio image ]
-#
-#     [ Build recount-pump image ]
-#
-#     [ Run integration test ]
-
 ENV['VAGRANT_DEFAULT_PROVIDER'] = 'aws'
 REGION = "us-east-2"
 INSTANCE_TYPE = "c4.xlarge"
@@ -95,8 +78,8 @@ Vagrant.configure("2") do |config|
         service docker start
     SHELL
 
-    config.vm.provision "file", source: "~/.ssh/id_rsa",       destination: "~/.ssh/id_rsa"
-    config.vm.provision "file", source: "~/.ssh/id_rsa.pub",   destination: "~/.ssh/id_rsa.pub"
+    config.vm.provision "file", source: "~/.ssh_ec2/id_rsa",     destination: "~/.ssh/id_rsa"
+    config.vm.provision "file", source: "~/.ssh_ec2/id_rsa.pub", destination: "~/.ssh/id_rsa.pub"
     config.vm.provision "file", source: "~/.docker/creds.txt", destination: "~/.docker/creds.txt"
     config.vm.provision "file", source: "~/.aws/credentials",  destination: "~/.aws/credentials"
     config.vm.provision "file", source: "~/.aws/config",       destination: "~/.aws/config"

@@ -78,11 +78,11 @@ Vagrant.configure("2") do |config|
         service docker start
     SHELL
 
-    config.vm.provision "file", source: "~/.ssh/id_rsa",       destination: "~/.ssh/id_rsa"
-    config.vm.provision "file", source: "~/.ssh/id_rsa.pub",   destination: "~/.ssh/id_rsa.pub"
-    config.vm.provision "file", source: "~/.docker/creds.txt", destination: "~/.docker/creds.txt"
-    config.vm.provision "file", source: "~/.aws/credentials",  destination: "~/.aws/credentials"
-    config.vm.provision "file", source: "~/.aws/config",       destination: "~/.aws/config"
+    config.vm.provision "file", source: "~/.ssh_ec2/id_rsa",     destination: "~/.ssh/id_rsa"
+    config.vm.provision "file", source: "~/.ssh_ec2/id_rsa.pub", destination: "~/.ssh/id_rsa.pub"
+    config.vm.provision "file", source: "~/.docker/creds.txt",   destination: "~/.docker/creds.txt"
+    config.vm.provision "file", source: "~/.aws/credentials",    destination: "~/.aws/credentials"
+    config.vm.provision "file", source: "~/.aws/config",         destination: "~/.aws/config"
 
     config.vm.provision "shell", privileged: true, name: "move home dir files over", inline: <<-SHELL
         for i in ssh docker aws ; do
