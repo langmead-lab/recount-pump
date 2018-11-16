@@ -1,7 +1,12 @@
 Vagrant.configure("2") do |config|
+
   config.vm.box = "generic/debian9"
   config.vm.synced_folder "~/git/recount-pump", "/home/vagrant/git/recount-pump"
-  config.vm.synced_folder "~/git/recount-unify", "/home/vagrant/git/recount-unify"
+  config.vm.synced_folder "~/git/recount-pump", "/home/vagrant/git/recount-pump"
+  config.vm.synced_folder "~/.recount",         "/home/vagrant/.recount"
+  config.vm.synced_folder "~/.aws",             "/home/vagrant/.aws"
+  config.vm.synced_folder "~/.docker",          "/home/vagrant/.docker"
+  config.vm.synced_folder "~/.ssh_ec2",         "/home/vagrant/.ssh_ec2"
 
   config.vm.provision "shell", privileged: true, name: "update", inline: <<-SHELL
     apt-get update -y
@@ -15,6 +20,7 @@ Vagrant.configure("2") do |config|
     apt-get update -y && apt-get install -y --allow-unauthenticated docker-engine
      apt-get install -y libarchive-dev squashfs-tools graphviz && \
         apt-get -t stretch-backports install singularity-container
+    usermod -a -G docker vagrant
   SHELL
 
   config.vm.provision "shell", privileged: true, name: "install python", inline: <<-SHELL
@@ -24,6 +30,21 @@ Vagrant.configure("2") do |config|
   config.vm.provision "shell", privileged: true, name: "upgrade pip", inline: <<-SHELL
     pip install --upgrade pip
   SHELL
+
+  config.vm.provision "shell", privileged: true, name: "install vagrant", inline: <<-SHELL
+    VER=2.0.4
+    FN=vagrant_${VER}_x86_64.deb
+    wget --quiet -O ${FN} https://releases.hashicorp.com/vagrant/${VER}/${FN}
+    dpkg -i ${FN}
+    rm -f ${FN}
+  SHELL
   
-  # TODO: allow vagrant user to use docker
+  config.vm.provision "shell", privileged: false, name: "install vagrant plugin", inline: <<-SHELL
+    vagrant plugin install vagrant-aws-mkubenka --plugin-version "0.7.2.pre.22"
+    vagrant box add dummy https://github.com/mitchellh/vagrant-aws/raw/master/dummy.box
+  SHELL
+  
+  config.vm.provision "shell", privileged: false, name: "install python mods", inline: <<-SHELL
+    sudo pip install -r ~/git/recount-pump/vagrant/recount-dev/requirements.txt
+  SHELL
 end
