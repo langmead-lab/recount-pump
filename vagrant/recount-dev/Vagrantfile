@@ -5,8 +5,10 @@ Vagrant.configure("2") do |config|
   config.vm.synced_folder "~/git/recount-pump", "/home/vagrant/git/recount-pump"
   config.vm.synced_folder "~/.recount",         "/home/vagrant/.recount"
   config.vm.synced_folder "~/.aws",             "/home/vagrant/.aws"
-  config.vm.synced_folder "~/.docker",          "/home/vagrant/.docker"
   config.vm.synced_folder "~/.ssh_ec2",         "/home/vagrant/.ssh_ec2"
+  config.vm.provision "file", source: "~/.docker/creds.txt",           destination: "/home/vagrant/.docker/creds.txt"
+  config.vm.provision "file", source: "~/.docker/quay_creds.txt",      destination: "/home/vagrant/.docker/quay_creds.txt"
+  config.vm.provision "file", source: "~/.docker/dockerhub_creds.txt", destination: "/home/vagrant/.docker/dockerhub_creds.txt"
 
   config.vm.provision "shell", privileged: true, name: "update", inline: <<-SHELL
     apt-get update -y
@@ -21,6 +23,12 @@ Vagrant.configure("2") do |config|
      apt-get install -y libarchive-dev squashfs-tools graphviz && \
         apt-get -t stretch-backports install singularity-container
     usermod -a -G docker vagrant
+  SHELL
+
+  config.vm.provision "shell", privileged: true, name: "install docker-compose", inline: <<-SHELL
+      curl -s -L https://github.com/docker/compose/releases/download/1.22.0-rc1/docker-compose-$(uname -s)-$(uname -m) \
+          -o /usr/bin/docker-compose
+      chmod +x /usr/bin/docker-compose
   SHELL
 
   config.vm.provision "shell", privileged: true, name: "install python", inline: <<-SHELL
