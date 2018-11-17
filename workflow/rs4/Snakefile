@@ -70,7 +70,7 @@ rule make_manifest:
     run:
         with open(output[0], 'wt') as fh:
             for fn in FILES:
-                fh.write("{params.trio}." + fn + '\n')
+                fh.write(params.trio + "." + fn + '\n')
 
 rule exon_bw_count_all:
     input:
