@@ -20,7 +20,7 @@ export SINGULARITY_CACHEDIR="${RECOUNT_IMAGES}"
 export RECOUNT_CREDS="$HOME/.creds_integration_test/.recount"
 
 rm -rf ~/.creds_integration_test
-cp -r ~/git/recount-pump/creds ~/.creds_integration_test
+cp -r creds ~/.creds_integration_test
 for i in $(ls ~/.creds_integration_test/*.override) ; do
     echo "*** Renaming ${i} ***"
     mv ${i} $(echo ${i} | sed 's/\.override$//')
