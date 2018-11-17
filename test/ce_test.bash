@@ -5,14 +5,18 @@
 
 set -ex
 
+test -n "${RECOUNT_CREDS}"
+
 TAXID=6239
 #ANA_URL="shub://langmead-lab/recount-pump:rs4"
 ANA_URL="docker://quay.io/benlangmead/recount-rs4:0.2.9"
-ARGS=""
+ARGS="--ini-base ${RECOUNT_CREDS}"
+OUTPUT_DIR=$(grep '^output_base' ${RECOUNT_CREDS}/cluster.ini | cut -d"=" -f2 | tr -d '[:space:]')
 
 mc stat s3/recount-meta
 mc stat s3/recount-ref
-mc mb s3/recount-output
+! mc stat s3/recount-output && mc mb s3/recount-output
+mc stat s3/recount-output
 
 input_url='s3://recount-meta/ce10_test/ce10_small_test.json.gz'
 
@@ -160,6 +164,8 @@ import_input_set() (
 isid=$(import_input_set "${input_fn}" 'ce10_rna_seq' 4 50000000)
 test -n "${isid}"
 
+rm -f ${input_fn}
+
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 4: Set up project"
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
@@ -217,10 +223,11 @@ echo "        PHASE 10: Print schema"
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 
 python src/schema_graph.py ${ARGS} \
-    --prefix /output/ce10_test plot
+    --prefix ${OUTPUT_DIR}/ce10_test plot
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 11: Copy output back"
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 
-mc mirror s3/recount-output /output/
+mkdir -p ${OUTPUT_DIR}/s3_output
+mc mirror s3/recount-output ${OUTPUT_DIR}/s3_output
