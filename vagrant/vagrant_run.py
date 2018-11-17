@@ -64,9 +64,13 @@ def run(skip_run, skip_slack, ini_fn, section):
                 st = ln[ln.find('===SAD')+7:].rstrip()
                 attachments.append({'text': st, 'color': 'danger'})
     if not skip_slack:
+        name = 'no name'
+        if os.path.exists('name.txt'):
+            with open('name.txt', 'rt') as fh:
+                name = fh.read().strip()
         requests.put(slack_url, json={
             'username': 'webhookbot',
-            'text': 'recount-pump workflow build/test/deploy suite:',
+            'text': '%s:' % name,
             'attachments': attachments})
     if not skip_run:
         os.system('vagrant destroy -f')
