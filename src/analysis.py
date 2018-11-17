@@ -84,6 +84,10 @@ def test_integration(db_integration):
         pytest.skip('db integration testing disabled')
 
 
+def test_analysis0(session):
+    pass  # allow cleanup to run before any other tests
+
+
 def test_analysis1(session):
     analysis_name = 'recount-rna-seq-v1'
     image_url = 's3://recount-pump/analysis/recount-rna-seq-v1.img'
