@@ -2,7 +2,7 @@
 	"version": "9",
 	"hosts": {
 		"s3": {
-			"url": "http://s3:9000",
+			"url": "http://localhost:29000",
 			"accessKey": "minio",
 			"secretKey": "minio123",
 			"api": "S3v4",
