@@ -12,6 +12,7 @@ Options:
   --log-section <section>  ini file section for log aggregator [default: log].
   --log-level <level>      set level for log aggregation; could be CRITICAL,
                            ERROR, WARNING, INFO, DEBUG [default: INFO].
+  --ini-base <path>        Modify default base path for ini files.
   -a, --aggregate          enable log aggregation.
   -h, --help               Show this screen.
   --version                Show version.
@@ -114,7 +115,7 @@ def collect(seconds, interval):
     sm.join()
 
 
-if __name__ == '__main__':
+def go():
     args = docopt(__doc__)
     agg_ini = os.path.expanduser(args['--log-ini']) if args['--aggregate'] else None
     log.init_logger(log.LOG_GROUP_NAME, log_ini=agg_ini, agg_level=args['--log-level'])
@@ -124,3 +125,7 @@ if __name__ == '__main__':
     except Exception:
         log.error('Uncaught exception:', 'resmon.py')
         raise
+
+
+if __name__ == '__main__':
+    go()

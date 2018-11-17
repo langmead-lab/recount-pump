@@ -27,6 +27,7 @@ Options:
   --log-ini <ini>          ini file for log aggregator [default: ~/.recount/log.ini].
   --log-level <level>      set level for log aggregation; could be CRITICAL,
                            ERROR, WARNING, INFO, DEBUG [default: INFO].
+  --ini-base <path>        Modify default base path for ini files.
   -h, --help               Show this screen.
   --version                Show version.
 """
@@ -478,48 +479,59 @@ def test_repeated_name(session):
         session.commit()
 
 
-if __name__ == '__main__':
+def go():
     args = docopt(__doc__)
-    log_ini = os.path.expanduser(args['--log-ini'])
+
+    def ini_path(argname):
+        path = args[argname]
+        if path.startswith('~/.recount/') and args['--ini-base'] is not None:
+            path = os.path.join(args['--ini-base'], path[len('~/.recount/'):])
+        return os.path.expanduser(path)
+
+    log_ini = ini_path('--log-ini')
     log.init_logger(log.LOG_GROUP_NAME, log_ini=log_ini, agg_level=args['--log-level'])
     log.init_logger('sqlalchemy', log_ini=log_ini, agg_level=args['--log-level'],
                     sender='sqlalchemy')
     try:
-        db_ini = os.path.expanduser(args['--db-ini'])
+        db_ini = ini_path('--db-ini')
         if args['add-source']:
-            Session = session_maker_from_config(db_ini, args['--db-section'])
+            session_mk = session_maker_from_config(db_ini, args['--db-section'])
             print(add_source(args['<url-1>'], args['<url-2>'], args['<url-3>'],
                              args['<checksum-1>'], args['<checksum-2>'], args['<checksum-3>'],
-                             args['<retrieval-method>'], Session()))
+                             args['<retrieval-method>'], session_mk()))
         elif args['add-source-set']:
-            Session = session_maker_from_config(db_ini, args['--db-section'])
-            print(add_source_set(Session()))
+            session_mk = session_maker_from_config(db_ini, args['--db-section'])
+            print(add_source_set(session_mk()))
         elif args['list-source-set']:
-            Session = session_maker_from_config(db_ini, args['--db-section'])
-            print(list_source_set(args['<name>'], Session()))
+            session_mk = session_maker_from_config(db_ini, args['--db-section'])
+            print(list_source_set(args['<name>'], session_mk()))
         elif args['add-sources-to-set']:
-            Session = session_maker_from_config(db_ini, args['--db-section'])
-            print(add_sources_to_set(args['<set-id>'], args['<source-id>'], Session()))
+            session_mk = session_maker_from_config(db_ini, args['--db-section'])
+            print(add_sources_to_set(args['<set-id>'], args['<source-id>'], session_mk()))
         if args['add-annotation']:
-            Session = session_maker_from_config(db_ini, args['--db-section'])
+            session_mk = session_maker_from_config(db_ini, args['--db-section'])
             print(add_annotation(args['<tax-id>'], args['<url>'], args['<md5>'],
-                                 args['<retrieval-method>'], Session()))
+                                 args['<retrieval-method>'], session_mk()))
         elif args['add-annotation-set']:
-            Session = session_maker_from_config(db_ini, args['--db-section'])
-            print(add_annotation_set(Session()))
+            session_mk = session_maker_from_config(db_ini, args['--db-section'])
+            print(add_annotation_set(session_mk()))
         elif args['list-annotation-set']:
-            Session = session_maker_from_config(db_ini, args['--db-section'])
-            print(list_annotation_set(args['<name>'], Session()))
+            session_mk = session_maker_from_config(db_ini, args['--db-section'])
+            print(list_annotation_set(args['<name>'], session_mk()))
         elif args['add-annotations-to-set']:
-            Session = session_maker_from_config(db_ini, args['--db-section'])
-            print(add_annotations_to_set(args['<set-id>'], args['<annotation-id>'], Session()))
+            session_mk = session_maker_from_config(db_ini, args['--db-section'])
+            print(add_annotations_to_set(args['<set-id>'], args['<annotation-id>'], session_mk()))
         elif args['add-reference']:
-            Session = session_maker_from_config(db_ini, args['--db-section'])
+            session_mk = session_maker_from_config(db_ini, args['--db-section'])
             print(add_reference(args['<tax-id>'], args['<name>'], args['<longname>'],
                                 args['<conventions>'], args['<comment>'],
-                                args['<source-set-id>'], args['<annotation-set-id>'], Session()))
+                                args['<source-set-id>'], args['<annotation-set-id>'], session_mk()))
         elif args['nop']:
             pass
     except Exception:
         log.error('Uncaught exception:', 'reference.py')
         raise
+
+
+if __name__ == '__main__':
+    go()

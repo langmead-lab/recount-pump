@@ -16,6 +16,7 @@ Options:
   --log-ini <ini>          ini file for log aggregator [default: ~/.recount/log.ini].
   --log-level <level>      set level for log aggregation; could be CRITICAL,
                            ERROR, WARNING, INFO, DEBUG [default: INFO].
+  --ini-base <path>        Modify default base path for ini files.
   --keep                   Do not remove temp and input directories upon success
   -h, --help               Show this screen.
   --version                Show version.
@@ -87,6 +88,70 @@ def reader(node_name, worker_name, pipe, queue, nm):
             queue.put((msg, 'run.py'))
 
 
+def copy_to_destination(name, output_dir, source_prefix, extras, mover, destination,
+                        log_queue=None, node_name='', worker_name=''):
+    if source_prefix is None or len(source_prefix) == 0:
+        source_prefix = 'local://'
+    log_info_detailed(node_name, worker_name,
+                      'using mover to copy outputs from "%s" to "%s"' %
+                      (output_dir, destination), log_queue)
+    for fn in os.listdir(output_dir):
+        manifest_ext = '.manifest'
+        if fn.endswith(manifest_ext):
+            srr = fn[:-len(manifest_ext)]
+            fn = os.path.join(output_dir, fn)
+            log_info_detailed(node_name, worker_name,
+                              'found manifest "%s" for %s'
+                              % (fn, srr), log_queue)
+            with open(fn, 'rt') as man_fh:
+                xfers = []
+                tot_sz = 0
+                for xfer_fn in man_fh.read().split():
+                    full_xfer_fn = os.path.join(output_dir, xfer_fn)
+                    sz = os.path.getsize(full_xfer_fn)
+                    log_info_detailed(node_name, worker_name,
+                                      'moving file "%s" of size %d' %
+                                      (full_xfer_fn, sz), log_queue)
+                    if not os.path.exists(full_xfer_fn):
+                        raise RuntimeError('File "%s" was in manifest ("%s") '
+                                           'but was not present in output '
+                                           'directory' % (full_xfer_fn, fn))
+                    xfers.append(xfer_fn)
+                    tot_sz += sz
+                for extra in extras:
+                    full_extra = os.path.join(output_dir, extra)
+                    if os.path.exists(full_extra):
+                        sz = os.path.getsize(full_extra)
+                        log_info_detailed(node_name, worker_name,
+                                          'found extra file "%s" of size %d' %
+                                          (full_extra, sz), log_queue)
+                        new_name = srr + '.' + extra
+                        new_name_full = os.path.join(output_dir, new_name)
+                        os.rename(full_extra, new_name_full)
+                        assert os.path.exists(new_name_full)
+                        xfers.append(new_name)
+                        tot_sz += sz
+                    else:
+                        log_info_detailed(node_name, worker_name,
+                                          'could not find extra file "%s"'
+                                          % extra, log_queue)
+                # name includes attempt
+                final_dest_dir = os.path.join(destination, name)
+
+                log_info_detailed(node_name, worker_name,
+                                  'Moving files of total size %d b: %s'
+                                  % (tot_sz, str(xfers)), log_queue)
+                log_info('COUNT_DestXferPre 1', log_queue)
+                source = source_prefix + output_dir
+                mover.multi(source, final_dest_dir, xfers)
+                log_info('COUNT_DestXferPost 1', log_queue)
+                log_info_detailed(node_name, worker_name,
+                                  'Finished moving %d files of total size %d'
+                                  % (len(xfers), tot_sz), log_queue)
+                log_info('COUNT_DestBytesMoved %d' % tot_sz, log_queue)
+                log_info('COUNT_DestFilesMoved %d' % len(xfers), log_queue)
+
+
 def run_job(name, inputs, image_url, image_fn, config, cluster_ini,
             keep=False, mover=None, destination=None, source_prefix=None,
             log_queue=None, node_name='', worker_name=''):
@@ -94,6 +159,7 @@ def run_job(name, inputs, image_url, image_fn, config, cluster_ini,
                       (name, image_url, image_fn), log_queue)
     if not os.path.exists(cluster_ini):
         raise RuntimeError('No such ini file "%s"' % cluster_ini)
+    assert '/' not in name
     cfg = RawConfigParser()
     cfg.read(cluster_ini)
     section = cfg.sections()[0]
@@ -252,65 +318,16 @@ def run_job(name, inputs, image_url, image_fn, config, cluster_ini,
     log_info('COUNT_RunWorkflowPost 1', log_queue)
 
     # Copy files to ultimate destination, if one is specified
-    extras = ['stats.json']
     if mover is not None and destination is not None and len(destination) > 0:
-        if source_prefix is None or len(source_prefix) == 0:
-            source_prefix = 'local://'
         output_dir = os.path.join(output_base, name)
-        log_info_detailed(node_name, worker_name,
-                          'using mover to copy outputs from "%s" to "%s"' %
-                          (output_dir, destination), log_queue)
-        for fn in os.listdir(output_dir):
-            manifest_ext = '.manifest'
-            if fn.endswith(manifest_ext):
-                srr = fn[:-len(manifest_ext)]
-                fn = os.path.join(output_dir, fn)
-                log_info_detailed(node_name, worker_name,
-                                  'found manifest "%s" for %s'
-                                  % (fn, srr), log_queue)
-                with open(fn, 'rt') as man_fh:
-                    xfers = []
-                    tot_sz = 0
-                    for xfer_fn in man_fh.read().split():
-                        full_xfer_fn = os.path.join(output_dir, xfer_fn)
-                        sz = os.path.getsize(full_xfer_fn)
-                        log_info_detailed(node_name, worker_name,
-                                          'moving file "%s" of size %d' %
-                                          (full_xfer_fn, sz), log_queue)
-                        if not os.path.exists(full_xfer_fn):
-                            raise RuntimeError('File "%s" was in manifest ("%s") '
-                                               'but was not present in output '
-                                               'directory' % (full_xfer_fn, fn))
-                        xfers.append(xfer_fn)
-                        tot_sz += sz
-                    for extra in extras:
-                        full_extra = os.path.join(output_dir, extra)
-                        if os.path.exists(full_extra):
-                            sz = os.path.getsize(full_extra)
-                            log_info_detailed(node_name, worker_name,
-                                              'found extra file "%s" of size %d' %
-                                              (full_extra, sz), log_queue)
-                            new_name = srr + '.' + extra
-                            new_name_full = os.path.join(output_dir, new_name)
-                            os.rename(full_extra, new_name_full)
-                            assert os.path.exists(new_name_full)
-                            xfers.append(new_name)
-                            tot_sz += sz
-                        else:
-                            log_info_detailed(node_name, worker_name,
-                                              'could not find extra file "%s"'
-                                              % extra, log_queue)
-                    log_info_detailed(node_name, worker_name,
-                                      'Moving files of total size %d b: %s'
-                                      % (tot_sz, str(xfers)), log_queue)
-                    log_info('COUNT_DestXferPre 1', log_queue)
-                    mover.multi(source_prefix + output_dir, destination, xfers)
-                    log_info('COUNT_DestXferPost 1', log_queue)
-                    log_info_detailed(node_name, worker_name,
-                                      'Finished moving %d files of total size %d'
-                                      % (len(xfers), tot_sz), log_queue)
-                    log_info('COUNT_DestBytesMoved %d' % tot_sz, log_queue)
-                    log_info('COUNT_DestFilesMoved %d' % len(xfers), log_queue)
+        copy_to_destination(name, output_dir, source_prefix, ['stats.json'], mover,
+                            destination, log_queue, node_name, worker_name)
+
+        done_basename = name + '.done'
+        done_fn = os.path.join(destination, done_basename)
+        with open(done_fn, 'wt') as fh:
+            fh.write('DONE\n')
+        mover.put(done_fn, os.path.join(destination, done_basename))
 
         if not keep:
             shutil.rmtree(output_dir)
@@ -321,9 +338,16 @@ def run_job(name, inputs, image_url, image_fn, config, cluster_ini,
 
 def go():
     args = docopt(__doc__)
-    log_ini = os.path.expanduser(args['--log-ini'])
+
+    def ini_path(argname):
+        path = args[argname]
+        if path.startswith('~/.recount/') and args['--ini-base'] is not None:
+            path = os.path.join(args['--ini-base'], path[len('~/.recount/'):])
+        return os.path.expanduser(path)
+
+    log_ini = ini_path('--log-ini')
     log.init_logger(log.LOG_GROUP_NAME, log_ini=log_ini, agg_level=args['--log-level'])
-    cluster_ini = os.path.expanduser(args['--cluster-ini'])
+    cluster_ini = ini_path('--cluster-ini')
     try:
         if args['go']:
             config = args['<config>']

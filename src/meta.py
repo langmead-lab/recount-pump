@@ -16,6 +16,7 @@ Options:
   --log-ini <ini>          ini file for log aggregator [default: ~/.recount/log.ini].
   --log-level <level>      Set level for log aggregation; could be CRITICAL,
                            ERROR, WARNING, INFO, DEBUG [default: INFO].
+  --ini-base <path>        Modify default base path for ini files.
   --overwrite              Overwrite table if one of same name exists.
   -h, --help               Show this screen.
   --version                Show version.
@@ -56,16 +57,27 @@ def import_from_json(json_fn, table_name, session, overwrite=False):
         session.commit()
 
 
-if __name__ == '__main__':
+def go():
     args = docopt(__doc__)
-    log_ini = os.path.expanduser(args['--log-ini'])
+
+    def ini_path(argname):
+        path = args[argname]
+        if path.startswith('~/.recount/') and args['--ini-base'] is not None:
+            path = os.path.join(args['--ini-base'], path[len('~/.recount/'):])
+        return os.path.expanduser(path)
+
+    log_ini = ini_path('--log-ini')
     log.init_logger(log.LOG_GROUP_NAME, log_ini=log_ini, agg_level=args['--log-level'])
     try:
         log.info('In main', 'meta.py')
-        db_ini = os.path.expanduser(args['--db-ini'])
+        db_ini = ini_path('--db-ini')
         if args['load-json']:
-            Session = session_maker_from_config(db_ini, args['--db-section'])
-            import_from_json(args['<file>'], args['<table>'], Session(), overwrite=args['--overwrite'])
+            session_mk = session_maker_from_config(db_ini, args['--db-section'])
+            import_from_json(args['<file>'], args['<table>'], session_mk(), overwrite=args['--overwrite'])
     except Exception:
         log.error('Uncaught exception:', 'meta.py')
         raise
+
+
+if __name__ == '__main__':
+    go()

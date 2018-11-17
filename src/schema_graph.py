@@ -15,6 +15,7 @@ Options:
   --log-ini <ini>          ini file for log aggregator [default: ~/.recount/log.ini].
   --log-level <level>      set level for log aggregation; could be CRITICAL,
                            ERROR, WARNING, INFO, DEBUG [default: INFO].
+  --ini-base <path>        Modify default base path for ini files.
   -h, --help               Show this screen.
   --version                Show version.
 """
@@ -49,15 +50,26 @@ def test_make_graphs(session):
     assert os.path.exists(prefix + '_dbschema.png')
 
 
-if __name__ == '__main__':
+def go():
     args = docopt(__doc__)
-    log_ini = os.path.expanduser(args['--log-ini'])
+
+    def ini_path(argname):
+        path = args[argname]
+        if path.startswith('~/.recount/') and args['--ini-base'] is not None:
+            path = os.path.join(args['--ini-base'], path[len('~/.recount/'):])
+        return os.path.expanduser(path)
+
+    log_ini = ini_path('--log-ini')
     log.init_logger(log.LOG_GROUP_NAME, log_ini=log_ini, agg_level=args['--log-level'])
     try:
         if args['plot']:
-            db_ini = os.path.expanduser(args['--db-ini'])
-            Session = session_maker_from_config(db_ini, args['--db-section'], echo=False)
-            print(make_graphs(args['--prefix'], Session()))
+            db_ini = ini_path('--db-ini')
+            session_mk = session_maker_from_config(db_ini, args['--db-section'], echo=False)
+            print(make_graphs(args['--prefix'], session_mk()))
     except Exception:
         log.error('Uncaught exception:', 'schema_graph.py')
         raise
+
+
+if __name__ == '__main__':
+    go()

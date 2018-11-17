@@ -27,6 +27,7 @@ Options:
   --globus-ini=<path>          Path to globus ini file [default: ~/.recount/globus.ini].
   --globus-section=<string>    Name pf section in globus ini file describing the
                                application [default: recount-app].
+  --ini-base <path>            Modify default base path for ini files.
   --curl=<curl>                curl executable [default: curl].
   -h, --help                   Show this screen.
   --version                    Show version.
@@ -67,6 +68,10 @@ else:
     from configparser import RawConfigParser
 
 
+def is_ascii(s):
+    return all(ord(c) < 128 for c in s)
+
+
 class Task(object):
 
     def __init__(self, body):
@@ -75,11 +80,25 @@ class Task(object):
         self.input_id, self.srr, self.srp, self.url1, self.url2, self.url3, \
             self.checksum1, self.checksum2, self.checksum3, \
             self.retrieval = Input.parse_job_string(self.input_string)
+        self.recount_id = self.srr  # TODO: adopt the proposed id scheme
 
     def __str__(self):
         return '{proj_id=%d, name="%s", input="%s", analysis="%s", reference="%s"}' %\
                (self.proj_id, self.job_name, self.input_string,
                 self.analysis_name, self.reference_name)
+
+    def partition_id(self):
+        """
+        Return list representing a way to put this task into a "bucket" based on its id
+        """
+        level1 = self.srr[-2:]
+        level2 = self.srr[-4:-2]
+        assert len(level1) > 0
+        if len(level2) == 0:
+            level2 = 'NA'
+        assert is_ascii(level1)
+        assert is_ascii(level2)
+        return [level1, level2]
 
 
 log_queue = multiprocessing.Queue()
@@ -198,11 +217,13 @@ def do_job(body, cluster_ini, my_attempt, node_name,
     if mover_config is not None:
         mover = mover_config.new_mover()
     log_info_detailed(node_name, worker_name, 'Starting attempt "%s"' % attempt_name)
+    partition_id = task.partition_id()
+    partitioned_destination = os.path.join(destination, partition_id[0], partition_id[1])
     ret = run.run_job(attempt_name, [tmp_fn], image_url, image_fn,
                       config, cluster_ini,
                       log_queue=log_queue, node_name=node_name,
                       worker_name=worker_name,
-                      mover=mover, destination=destination,
+                      mover=mover, destination=partitioned_destination,
                       source_prefix=source_prefix)
     return ret
 
@@ -711,13 +732,20 @@ def go():
     log.init_logger('sqlalchemy', log_ini=log_ini, agg_level=args['--log-level'],
                     sender='sqlalchemy')
     signal.signal(signal.SIGUSR1, lambda sig, stack: traceback.print_stack(stack))
+
+    def ini_path(argname):
+        path = args[argname]
+        if path.startswith('~/.recount/') and args['--ini-base'] is not None:
+            path = os.path.join(args['--ini-base'], path[len('~/.recount/'):])
+        return os.path.expanduser(path)
+
     try:
-        db_ini = os.path.expanduser(args['--db-ini'])
-        cluster_ini = os.path.expanduser(args['--cluster-ini'])
-        q_ini = os.path.expanduser(args['--queue-ini'])
-        dest_ini = os.path.expanduser(args['--destination-ini'])
-        globus_ini = os.path.expanduser(args['--globus-ini'])
-        s3_ini = os.path.expanduser(args['--s3-ini'])
+        db_ini = ini_path('--db-ini')
+        cluster_ini = ini_path('--cluster-ini')
+        q_ini = ini_path('--queue-ini')
+        dest_ini = ini_path('--destination-ini')
+        globus_ini = ini_path('--globus-ini')
+        s3_ini = ini_path('--s3-ini')
         mover_config = MoverConfig(
             s3_ini=s3_ini,
             s3_section=args['--s3-section'],

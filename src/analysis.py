@@ -14,6 +14,7 @@ Options:
   --log-ini <ini>          ini file for log aggregator [default: ~/.recount/log.ini].
   --log-level <level>      set level for log aggregation; could be CRITICAL,
                            ERROR, WARNING, INFO, DEBUG [default: INFO].
+  --ini-base <path>        Modify default base path for ini files.
   -h, --help               Show this screen.
   --version                Show version.
 """
@@ -157,17 +158,28 @@ def test_to_job_string_2(session):
     assert ('docker://rs|' + cfg_normal) == a1.to_job_string()
 
 
-if __name__ == '__main__':
+def go():
     args = docopt(__doc__)
-    log_ini = os.path.expanduser(args['--log-ini'])
+
+    def ini_path(argname):
+        path = args[argname]
+        if path.startswith('~/.recount/') and args['--ini-base'] is not None:
+            path = os.path.join(args['--ini-base'], path[len('~/.recount/'):])
+        return os.path.expanduser(path)
+
+    log_ini = ini_path('--log-ini')
     log.init_logger(log.LOG_GROUP_NAME, log_ini=log_ini, agg_level=args['--log-level'])
     log.init_logger('sqlalchemy', log_ini=log_ini, agg_level=args['--log-level'],
                     sender='sqlalchemy')
     try:
-        db_ini = os.path.expanduser(args['--db-ini'])
+        db_ini = ini_path('--db-ini')
         if args['add-analysis']:
-            Session = session_maker_from_config(db_ini, args['--db-section'])
-            print(add_analysis(args['<name>'], args['<image-url>'], args['<config>'], Session()))
+            session_mk = session_maker_from_config(db_ini, args['--db-section'])
+            print(add_analysis(args['<name>'], args['<image-url>'], args['<config>'], session_mk()))
     except Exception:
         log.error('Uncaught exception:', 'analysis.py')
         raise
+
+
+if __name__ == '__main__':
+    go()

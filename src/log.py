@@ -15,6 +15,7 @@ Options:
   --log-ini <ini>          ini file for log aggregator [default: ~/.recount/log.ini].
   --log-level <level>      set level for log aggregation; could be CRITICAL,
                            ERROR, WARNING, INFO, DEBUG [default: INFO].
+  --ini-base <path>        Modify default base path for ini files.
   -h, --help               Show this screen.
   --version                Show version.
 """
@@ -208,9 +209,14 @@ datefmt = %b %d %H:%M:%S
 def go():
     args = docopt(__doc__)
 
-    log_ini = os.path.expanduser(args['--log-ini'])
-    init_logger(LOG_GROUP_NAME, log_ini=log_ini,
-                agg_level=args['--log-level'])
+    def ini_path(argname):
+        path = args[argname]
+        if path.startswith('~/.recount/') and args['--ini-base'] is not None:
+            path = os.path.join(args['--ini-base'], path[len('~/.recount/'):])
+        return os.path.expanduser(path)
+
+    log_ini = ini_path('--log-ini')
+    init_logger(LOG_GROUP_NAME, log_ini=log_ini, agg_level=args['--log-level'])
     if args['error']:
         error(args['<string>'], 'log.py')
     elif args['warning']:

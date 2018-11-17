@@ -28,6 +28,7 @@ Options:
   --log-ini <ini>          ini file for log aggregator [default: ~/.recount/log.ini].
   --log-level <level>      set level for log aggregation; could be CRITICAL,
                            ERROR, WARNING, INFO, DEBUG [default: INFO].
+  --ini-base <path>        Modify default base path for ini files.
   -h, --help               Show this screen.
   --version                Show version.
 """
@@ -303,18 +304,6 @@ def import_json(json_fn, input_set_name, session, limit=None, max_bases=None):
     return set_id
 
 
-def add_inputs_to_set(set_ids, input_ids, my_session):
-    """
-    Add inputs to input set.
-    """
-    for set_id, input_id in zip(set_ids, input_ids):
-        inp = my_session.query(Input).get(input_id)
-        input_set = my_session.query(InputSet).get(set_id)
-        input_set.inputs.append(inp)
-    log.info('Imported %d inputs to sets' % len(input_ids), 'input.py')
-    my_session.commit()
-
-
 _lambda_reads_1 = 'http://www.cs.jhu.edu/~langmea/resources/reads_1.fq'
 _lambda_reads_1_md5 = '8f4a7d568d2e930922e25c9d6e1b482f'
 _lambda_reads_2 = 'http://www.cs.jhu.edu/~langmea/resources/reads_2.fq'
@@ -442,41 +431,52 @@ def test_job_string2():
     assert 'web' == retrieval
 
 
-if __name__ == '__main__':
+def go():
     args = docopt(__doc__)
-    log_ini = os.path.expanduser(args['--log-ini'])
+
+    def ini_path(argname):
+        path = args[argname]
+        if path.startswith('~/.recount/') and args['--ini-base'] is not None:
+            path = os.path.join(args['--ini-base'], path[len('~/.recount/'):])
+        return os.path.expanduser(path)
+
+    log_ini = ini_path('--log-ini')
     log.init_logger(log.LOG_GROUP_NAME, log_ini=log_ini, agg_level=args['--log-level'])
     log.init_logger('sqlalchemy', log_ini=log_ini, agg_level=args['--log-level'],
                     sender='sqlalchemy')
     try:
-        db_ini = os.path.expanduser(args['--db-ini'])
+        db_ini = ini_path('--db-ini')
         if args['add-input']:
-            Session = session_maker_from_config(db_ini, args['--db-section'])
+            session_mk = session_maker_from_config(db_ini, args['--db-section'])
             print(add_input(args['<acc-r>'], args['<acc-s>'],
                             args['<url-1>'], args['<url-2>'], args['<url-3>'],
                             args['<checksum-1>'], args['<checksum-2>'], args['<checksum-3>'],
-                            args['<retrieval-method>'], Session()))
+                            args['<retrieval-method>'], session_mk()))
         elif args['add-input-set']:
-            Session = session_maker_from_config(db_ini, args['--db-section'])
-            print(add_input_set(args['<name>'], Session()))
+            session_mk = session_maker_from_config(db_ini, args['--db-section'])
+            print(add_input_set(args['<name>'], session_mk()))
         elif args['list-input-set']:
-            Session = session_maker_from_config(db_ini, args['--db-section'])
-            print(list_input_set(args['<name>'], Session()))
+            session_mk = session_maker_from_config(db_ini, args['--db-section'])
+            print(list_input_set(args['<name>'], session_mk()))
         elif args['add-inputs-to-set']:
-            Session = session_maker_from_config(db_ini, args['--db-section'])
-            print(add_inputs_to_set(args['<set-id>'], args['<input-id>'], Session()))
+            session_mk = session_maker_from_config(db_ini, args['--db-section'])
+            print(add_inputs_to_set(args['<set-id>'], args['<input-id>'], session_mk()))
         elif args['filter-table']:
-            Session = session_maker_from_config(db_ini, args['--db-section'])
-            print(filter_table(args['<prefix>'], args['<species>'], args['<sql-filter>'], Session()))
+            session_mk = session_maker_from_config(db_ini, args['--db-section'])
+            print(filter_table(args['<prefix>'], args['<species>'], args['<sql-filter>'], session_mk()))
         elif args['inputs-from-table']:
-            Session = session_maker_from_config(db_ini, args['--db-section'])
+            session_mk = session_maker_from_config(db_ini, args['--db-section'])
             print(inputs_from_table(args['<prefix>'], args['<species>'],
-                                    args['<sql-filter>'], args['<input-set-name>'], Session()))
+                                    args['<sql-filter>'], args['<input-set-name>'], session_mk()))
         elif args['import-json']:
-            Session = session_maker_from_config(db_ini, args['--db-section'])
+            session_mk = session_maker_from_config(db_ini, args['--db-section'])
             print(import_json(args['<json-file>'], args['<input-set-name>'],
-                              Session(), limit=args['--limit'],
+                              session_mk(), limit=args['--limit'],
                               max_bases=args['--max-bases']))
     except Exception:
         log.error('Uncaught exception:', 'input.py')
         raise
+
+
+if __name__ == '__main__':
+    go()
