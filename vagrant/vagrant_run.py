@@ -10,6 +10,7 @@ Usage:
 
 Options:
   --skip-run                 Skip running Vagrant, just look at vagrant.log.
+  --skip-slack               Don't send message to Slack.
   --slack-ini <ini>          ini file for Slack webhooks [default: ~/.recount/slack.ini].
   --slack-section <section>  ini file section for log aggregator [default: slack].
   -a, --aggregate            Enable log aggregation.
@@ -49,7 +50,7 @@ def read_slack_config(ini_fn, section='slack'):
     return tstring, bstring, secret
 
 
-def run(skip_run, ini_fn, section):
+def run(skip_run, skip_slack, ini_fn, section):
     slack_url = slack_webhook_url(ini_fn, section=section)
     if not skip_run:
         os.system('vagrant up 2>&1 | tee vagrant.log')
@@ -62,10 +63,11 @@ def run(skip_run, ini_fn, section):
             elif '===SAD' in ln:
                 st = ln[ln.find('===SAD')+7:].rstrip()
                 attachments.append({'text': st, 'color': 'danger'})
-    requests.put(slack_url, json={
-        'username': 'webhookbot',
-        'text': 'recount-pump build-deploy-test suite:',
-        'attachments': attachments})
+    if not skip_slack:
+        requests.put(slack_url, json={
+            'username': 'webhookbot',
+            'text': 'recount-pump workflow build/test/deploy suite:',
+            'attachments': attachments})
     if not skip_run:
         os.system('vagrant destroy -f')
 
@@ -73,4 +75,4 @@ def run(skip_run, ini_fn, section):
 if __name__ == '__main__':
     args = docopt(__doc__)
     slack_ini = os.path.expanduser(args['--slack-ini'])
-    run(args['--skip-run'], slack_ini, args['--slack-section'])
+    run(args['--skip-run'], args['--skip-slack'], slack_ini, args['--slack-section'])
