@@ -1,3 +1,3 @@
 #!/bin/sh
 
-pytest -v src/*.py src/*/*.py
+python -m pytest -v src/*.py src/*/*.py
