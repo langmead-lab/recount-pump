@@ -31,6 +31,7 @@ import json
 from docopt import docopt
 import subprocess
 import threading
+import tempfile
 if sys.version[:1] == '2':
     from ConfigParser import RawConfigParser
 else:
@@ -164,10 +165,14 @@ def run_job(name, inputs, image_url, image_fn, config, cluster_ini,
     cfg.read(cluster_ini)
     section = cfg.sections()[0]
     log_info_detailed(node_name, worker_name, 'reading section %s from ini %s' % (section, cluster_ini), log_queue)
-    input_base = cfg.get(section, 'input_base')
-    output_base = cfg.get(section, 'output_base')
-    ref_base = cfg.get(section, 'ref_base')
-    temp_base = cfg.get(section, 'temp_base')
+
+    def _expand(path):
+        return None if path is None else os.path.expanduser(path)
+
+    input_base = _expand(cfg.get(section, 'input_base'))
+    output_base = _expand(cfg.get(section, 'output_base'))
+    ref_base = _expand(cfg.get(section, 'ref_base'))
+    temp_base = _expand(cfg.get(section, 'temp_base'))
     system = 'docker'
     if cfg.has_option(section, 'system'):
         system = cfg.get(section, 'system')
@@ -219,10 +224,10 @@ def run_job(name, inputs, image_url, image_fn, config, cluster_ini,
     subdir_clear(output_base, name)
     subdir_clear(temp_base, name)
 
-    input_mount = cfg.get(section, 'input_mount')
-    output_mount = cfg.get(section, 'output_mount')
-    ref_mount = cfg.get(section, 'ref_mount')
-    temp_mount = cfg.get(section, 'temp_mount')
+    input_mount = _expand(cfg.get(section, 'input_mount'))
+    output_mount = _expand(cfg.get(section, 'output_mount'))
+    ref_mount = _expand(cfg.get(section, 'ref_mount'))
+    temp_mount = _expand(cfg.get(section, 'temp_mount'))
 
     mounts = []
     docker = system == 'docker'
@@ -320,15 +325,20 @@ def run_job(name, inputs, image_url, image_fn, config, cluster_ini,
     # Copy files to ultimate destination, if one is specified
     if mover is not None and destination is not None and len(destination) > 0:
         output_dir = os.path.join(output_base, name)
+        log_info('About to copy_to_destination', log_queue)
         copy_to_destination(name, output_dir, source_prefix, ['stats.json'], mover,
                             destination, log_queue, node_name, worker_name)
 
         done_basename = name + '.done'
-        done_fn = os.path.join(destination, done_basename)
-        with open(done_fn, 'wt') as fh:
+        tmpdir = tempfile.mkdtemp()
+        done_temp = os.path.join(tmpdir, done_basename)
+        with open(done_temp, 'wt') as fh:
             fh.write('DONE\n')
-        mover.put(done_fn, os.path.join(destination, done_basename))
 
+        log_info('About to put .done file', log_queue)
+        mover.put(done_temp, os.path.join(destination, done_basename))
+
+        shutil.rmtree(tmpdir)
         if not keep:
             shutil.rmtree(output_dir)
 

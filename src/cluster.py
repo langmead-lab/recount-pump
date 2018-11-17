@@ -80,7 +80,7 @@ class Task(object):
         self.input_id, self.srr, self.srp, self.url1, self.url2, self.url3, \
             self.checksum1, self.checksum2, self.checksum3, \
             self.retrieval = Input.parse_job_string(self.input_string)
-        self.recount_id = self.srr  # TODO: adopt the proposed id scheme
+        self.recount_id = self.srr
 
     def __str__(self):
         return '{proj_id=%d, name="%s", input="%s", analysis="%s", reference="%s"}' %\
@@ -91,11 +91,10 @@ class Task(object):
         """
         Return list representing a way to put this task into a "bucket" based on its id
         """
-        level1 = self.srr[-2:]
-        level2 = self.srr[-4:-2]
+        level1 = self.srp
+        level2 = self.srr[-2:]
         assert len(level1) > 0
-        if len(level2) == 0:
-            level2 = 'NA'
+        assert len(level2) > 0
         assert is_ascii(level1)
         assert is_ascii(level2)
         return [level1, level2]
@@ -311,9 +310,12 @@ def prepare_analysis(cluster_ini, proj, mover, session):
     assert system in ['singularity', 'docker']
     url = analysis.image_url
     image_fn, typ = parse_image_url(url, system, cachedir=analysis_dir)
+    log.info('Analysis dir is "%s"' % analysis_dir, 'cluster.py')
+    assert os.path.exists(analysis_dir) and os.path.isdir(analysis_dir)
+    log.info('Contents of analysis dir: ' + str(os.listdir(analysis_dir)), 'cluster.py')
     if typ == 'docker':
         if system == 'singularity':
-            if not os.path.exists(image_fn):
+            if not image_exists_locally(url, system, cachedir=analysis_dir):
                 cmd = 'singularity pull ' + url
                 log.info('pulling: "%s"' % cmd, 'cluster.py')
                 ret = os.system(cmd)
@@ -333,7 +335,7 @@ def prepare_analysis(cluster_ini, proj, mover, session):
     elif typ == 'shub':
         if system != 'singularity':
             raise RuntimeError('Analysis URL is shub:// but container system is not singularity')
-        if not os.path.exists(image_fn):
+        if not image_exists_locally(url, system, cachedir=analysis_dir):
             cmd = 'singularity pull ' + url
             log.info('pulling: "%s"' % cmd, 'cluster.py')
             ret = os.system(cmd)
@@ -511,9 +513,13 @@ def read_cluster_config(cluster_fn, section=None):
         val = cfg.get(section, nm)
         return None if len(val) == 0 else val
 
+    def _cfg_get_path_or_none(nm):
+        path = _cfg_get_or_none(nm)
+        return None if path is None else os.path.expanduser(path)
+
     name = cfg.get(section, 'name')
-    analysis_dir = _cfg_get_or_none('analysis_dir')
-    ref_base = cfg.get(section, 'ref_base')
+    analysis_dir = _cfg_get_path_or_none('analysis_dir')
+    ref_base = _cfg_get_path_or_none('ref_base')
     system = _cfg_get_or_none('system')
     ncpus = _cfg_get_or_none('cpus') or 1
     nworkers = int(_cfg_get_or_none('workers') or 1)
@@ -686,6 +692,9 @@ def log_worker():
     log.info('Entering worker log-relay thread', 'cluster.py')
     for tup in iter(log_queue.get, None):
         message, module = tup
+        if message == 'AllDone':
+            log.warning('Log-worker thread interrupted by AllDone message', 'cluster.py')
+            break
         log.info(message, module)
     log.info('Exiting worker log-relay thread', 'cluster.py')
 
@@ -716,10 +725,14 @@ def parse_destination_ini(ini_fn, section='destination'):
         opt = cfg.get(section, nm)
         return None if (len(opt) == 0) else opt
 
+    def _get_path_option(nm):
+        path = _get_option(nm)
+        return None if path is None else os.path.expanduser(path)
+
     enabled = _get_option('enabled')
     enabled = (enabled is None) or (enabled == 'true')
-    destination_url = _get_option('destination')
-    source_prefix = _get_option('source_prefix')
+    destination_url = _get_path_option('destination')
+    source_prefix = _get_path_option('source_prefix')
     aws_endpoint = _get_option('aws_endpoint')
     aws_profile = _get_option('aws_profile')
     return enabled, destination_url, source_prefix, aws_endpoint, aws_profile
@@ -727,17 +740,18 @@ def parse_destination_ini(ini_fn, section='destination'):
 
 def go():
     args = docopt(__doc__)
-    log_ini = os.path.expanduser(args['--log-ini'])
-    log.init_logger(log.LOG_GROUP_NAME, log_ini=log_ini, agg_level=args['--log-level'])
-    log.init_logger('sqlalchemy', log_ini=log_ini, agg_level=args['--log-level'],
-                    sender='sqlalchemy')
-    signal.signal(signal.SIGUSR1, lambda sig, stack: traceback.print_stack(stack))
 
     def ini_path(argname):
         path = args[argname]
         if path.startswith('~/.recount/') and args['--ini-base'] is not None:
             path = os.path.join(args['--ini-base'], path[len('~/.recount/'):])
         return os.path.expanduser(path)
+
+    log_ini = ini_path('--log-ini')
+    log.init_logger(log.LOG_GROUP_NAME, log_ini=log_ini, agg_level=args['--log-level'])
+    log.init_logger('sqlalchemy', log_ini=log_ini, agg_level=args['--log-level'],
+                    sender='sqlalchemy')
+    signal.signal(signal.SIGUSR1, lambda sig, stack: traceback.print_stack(stack))
 
     try:
         db_ini = ini_path('--db-ini')
@@ -792,12 +806,19 @@ def go():
             exitlevels = []
             for i, proc in enumerate(procs):
                 pid = proc.pid
-                proc.join()
+                while True:
+                    proc.join(15)
+                    if proc.is_alive():
+                        log.info('Attempting to join process %d (pid=%d)' %
+                                 (i + 1, pid), 'cluster.py')
+                    else:
+                        assert proc.exitcode is not None
+                        break
                 exitlevels.append(proc.exitcode)
                 log.info('Joined process %d (pid=%d, exitlevel=%d)' %
                          (i + 1, pid, exitlevels[-1]), 'cluster.py')
             log.info('All processes joined', 'cluster.py')
-            log_queue.put(None)
+            log_queue.put(('AllDone', 'cluster.py'))
             log_thread.join()
             log.info('Logging thread joined', 'cluster.py')
             if sysmon_ival > 0:
