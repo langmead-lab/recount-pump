@@ -135,11 +135,16 @@ class S3Mover(object):
         self.s3.create_bucket(Bucket=bucket).wait_until_exists()
 
     def put(self, source, destination):
+        if source.startswith('local://'):
+            source = source[len('local://'):]
         if not os.path.exists(source):
-            raise RuntimeError('Source file "%s" does not exist')
+            raise RuntimeError('Source file "%s" does not exist' % source)
         bucket_str, path_str, file_str = parse_s3_url(destination)
+        log.info('Getting bucket "%s"' % bucket_str, 'mover.py')
         bucket = self.s3.Bucket(bucket_str)
         with open(source, 'rb') as data:
+            log.info('Putting file "%s" at path "%s" in bucket "%s"' % 
+                     (source, path_str, bucket_str), 'mover.py')
             bucket.put_object(Key=path_str, Body=data)
 
     def remove(self, url):
@@ -152,6 +157,8 @@ class S3Mover(object):
 
     def get(self, source, destination):
         bucket_str, path_str, file_str = parse_s3_url(source)
+        if destination.startswith('local://'):
+            destination = destination[len('local://'):]
         if os.path.isdir(destination):
             destination = os.path.join(destination, file_str)
         if os.path.exists(destination):
