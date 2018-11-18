@@ -15,6 +15,8 @@ export RECOUNT_TEST_S3="http://localhost:29000"
 export RECOUNT_IMAGES="${HOME}/recount-images"
 export SINGULARITY_CACHEDIR="${RECOUNT_IMAGES}"
 
+# Remove python and pytest caches
+./clean.sh
 ./unit_test.sh
 
 export RECOUNT_CREDS="$HOME/.creds_integration_test/.recount"
