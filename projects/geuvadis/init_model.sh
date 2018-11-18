@@ -16,7 +16,7 @@ OUTPUT_DIR=$(grep '^output_base' ${RECOUNT_CREDS}/cluster.ini | cut -d"=" -f2 | 
 SPECIES=hg38
 STUDY=geuv
 
-input_url='s3://recount-meta/ce10_test/ce10_small_test.json.gz'
+input_url='s3://recount-pump-experiments/geuv/geuv.json.gz'
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 1: Load reference data"
@@ -31,7 +31,7 @@ echo "++++++++++++++++++++++++++++++++++++++++++++++"
 #    checksum_3 = Column(String(256))
 #    retrieval_method = Column(String(64))
 
-ssid=$(python ${SRC_DIR}/reference.py ${ARGS} ${DB_INI} add-source-set | tail -n 1)
+ssid=$(python ${SRC_DIR}/reference.py ${ARGS} add-source-set | tail -n 1)
 test -n "${ssid}"
 
 add_source() (
@@ -193,4 +193,4 @@ echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 6: Stage project"
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 
-python ${SRC_DIR}/pump.py ${ARGS} ${Q_INI} stage ${proj_id}
+python ${SRC_DIR}/pump.py ${ARGS} stage ${proj_id}
