@@ -311,7 +311,11 @@ def prepare_analysis(cluster_ini, proj, mover, session):
     url = analysis.image_url
     image_fn, typ = parse_image_url(url, system, cachedir=analysis_dir)
     log.info('Analysis dir is "%s"' % analysis_dir, 'cluster.py')
-    assert os.path.exists(analysis_dir) and os.path.isdir(analysis_dir)
+    if not os.path.exists(analysis_dir):
+        os.makedirs(analysis_dir)
+    else:
+        if not os.path.isdir(analysis_dir):
+            raise RuntimeError('"%s" exists but is not a directory' % analysis_dir)
     log.info('Contents of analysis dir: ' + str(os.listdir(analysis_dir)), 'cluster.py')
     if typ == 'docker':
         if system == 'singularity':
