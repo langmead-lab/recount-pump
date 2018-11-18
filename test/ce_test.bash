@@ -9,7 +9,7 @@ test -n "${RECOUNT_CREDS}"
 
 TAXID=6239
 #ANA_URL="shub://langmead-lab/recount-pump:rs4"
-ANA_URL="docker://quay.io/benlangmead/recount-rs4:0.2.9"
+ANA_URL="docker://quay.io/benlangmead/recount-rs4:0.3.0"
 ARGS="--ini-base ${RECOUNT_CREDS}"
 OUTPUT_DIR=$(grep '^output_base' ${RECOUNT_CREDS}/cluster.ini | cut -d"=" -f2 | tr -d '[:space:]')
 
