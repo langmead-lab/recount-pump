@@ -8,10 +8,11 @@ set -ex
 test -n "${RECOUNT_CREDS}"
 
 TAXID=6239
-#ANA_URL="shub://langmead-lab/recount-pump:rs4"
 ANA_URL="docker://quay.io/benlangmead/recount-rs4:0.3.0"
+SRC_DIR="src"
 ARGS="--ini-base ${RECOUNT_CREDS}"
 OUTPUT_DIR=$(grep '^output_base' ${RECOUNT_CREDS}/cluster.ini | cut -d"=" -f2 | tr -d '[:space:]')
+SPECIES=ce10
 
 mc stat s3/recount-meta
 mc stat s3/recount-ref
@@ -33,23 +34,23 @@ echo "++++++++++++++++++++++++++++++++++++++++++++++"
 #    checksum_3 = Column(String(256))
 #    retrieval_method = Column(String(64))
 
-ssid=$(python src/reference.py ${ARGS} add-source-set | tail -n 1)
+ssid=$(python ${SRC_DIR}/reference.py ${ARGS} add-source-set | tail -n 1)
 test -n "${ssid}"
 
 add_source() (
     set -exo pipefail
     url=$1
     retrieval_method=$2
-    python src/reference.py ${ARGS} \
+    python ${SRC_DIR}/reference.py ${ARGS} \
         add-source "${url}" 'NA' 'NA' 'NA' 'NA' 'NA' "${retrieval_method}" | tail -n 1
 )
 
-srcid1=$(add_source 's3://recount-ref/ce10/star_idx.tar.gz' 's3')
-srcid2=$(add_source 's3://recount-ref/ce10/fasta.tar.gz' 's3')
+srcid1=$(add_source "s3://recount-ref/${SPECIES}/star_idx.tar.gz" 's3')
+srcid2=$(add_source "s3://recount-ref/${SPECIES}/fasta.tar.gz" 's3')
 test -n "${srcid1}"
 test -n "${srcid2}"
 
-python src/reference.py ${ARGS} \
+python ${SRC_DIR}/reference.py ${ARGS} \
     add-sources-to-set ${ssid} ${srcid1} ${ssid} ${srcid2}
 
 # Annotation
@@ -58,7 +59,7 @@ python src/reference.py ${ARGS} \
 #    checksum = Column(String(32))
 #    retrieval_method = Column(String(64))
 
-asid=$(python src/reference.py ${ARGS} add-annotation-set | tail -n 1)
+asid=$(python ${SRC_DIR}/reference.py ${ARGS} add-annotation-set | tail -n 1)
 test -n "${asid}"
 
 add_annotation() (
@@ -66,14 +67,14 @@ add_annotation() (
     taxid=$1
     url=$2
     retrieval_method=$3
-    python src/reference.py ${ARGS} \
+    python ${SRC_DIR}/reference.py ${ARGS} \
         add-annotation "${taxid}" "${url}" 'NA' "${retrieval_method}" | tail -n 1
 )
 
-anid1=$(add_annotation ${TAXID} 's3://recount-ref/ce10/gtf.tar.gz' 's3')
+anid1=$(add_annotation ${TAXID} "s3://recount-ref/${SPECIES}/gtf.tar.gz" 's3')
 test -n "${anid1}"
 
-python src/reference.py ${ARGS} \
+python ${SRC_DIR}/reference.py ${ARGS} \
     add-annotations-to-set ${asid} ${anid1}
 
 # Reference
@@ -91,12 +92,12 @@ add_reference() (
     longname=$3
     source_set_id=$4
     annotation_set_id=$5
-    python src/reference.py ${ARGS} \
+    python ${SRC_DIR}/reference.py ${ARGS} \
         add-reference "${taxid}" "${shortname}" "${longname}" 'NA' 'NA' \
                       "${source_set_id}" "${annotation_set_id}" | tail -n 1
 )
 
-ref_id=$(add_reference ${TAXID} 'ce10' 'caenorhabditis_elegans' ${ssid} ${asid})
+ref_id=$(add_reference ${TAXID} "${SPECIES}" 'caenorhabditis_elegans' ${ssid} ${asid})
 test -n "${ref_id}"
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
@@ -112,7 +113,7 @@ add_analysis() (
     name=$1
     image_url=$2
     config=$3
-    python src/analysis.py ${ARGS} \
+    python ${SRC_DIR}/analysis.py ${ARGS} \
         add-analysis ${name} ${image_url} ${config} | tail -n 1
 )
 
@@ -146,7 +147,7 @@ echo "++++++++++++++++++++++++++++++++++++++++++++++"
 
 input_fn=$(basename ${input_url})
 
-python src/mover.py ${ARGS} get "${input_url}" "${input_fn}"
+python ${SRC_DIR}/mover.py ${ARGS} get "${input_url}" "${input_fn}"
 
 [[ ! -f ${input_fn} ]] && echo "Could not get input json" && exit 1 
 
@@ -156,7 +157,7 @@ import_input_set() (
     input_set_name=$2
     limit=$3
     max_bases=$4
-    python src/input.py ${ARGS} import-json \
+    python ${SRC_DIR}/input.py ${ARGS} import-json \
         --limit "${limit}" --max-bases "${max_bases}" \
         "${json_file}" "${input_set_name}" | tail -n 1   
 )
@@ -182,37 +183,37 @@ add_project() (
     input_set_id=$2
     analysis_id=$3
     reference_id=$4
-    python src/pump.py ${ARGS} \
+    python ${SRC_DIR}/pump.py ${ARGS} \
         add-project ${name} ${analysis_id} ${input_set_id} ${reference_id} | tail -n 1
 )
 
-proj_id=$(add_project 'ce10-project' ${isid} ${rs1_id} ${ref_id})
+proj_id=$(add_project "${STUDY}" ${isid} ${rs1_id} ${ref_id})
 test -n "${proj_id}"
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 5: Summarize project"
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 
-python src/pump.py ${ARGS} summarize-project ${proj_id}
+python ${SRC_DIR}/pump.py ${ARGS} summarize-project ${proj_id}
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 6: Stage project"
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 
-python src/pump.py ${ARGS} stage ${proj_id}
+python ${SRC_DIR}/pump.py ${ARGS} stage ${proj_id}
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 7: Prepare project"
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 
-python src/cluster.py ${ARGS} \
+python ${SRC_DIR}/cluster.py ${ARGS} \
     prepare ${proj_id}
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 9: Run project"
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 
-python src/cluster.py ${ARGS} \
+python ${SRC_DIR}/cluster.py ${ARGS} \
     run ${proj_id} \
     --max-fail 3 \
     --poll-seconds 1 \
@@ -222,7 +223,7 @@ echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 10: Print schema"
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 
-python src/schema_graph.py ${ARGS} \
+python ${SRC_DIR}/schema_graph.py ${ARGS} \
     --prefix ${OUTPUT_DIR}/ce10_test plot
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
