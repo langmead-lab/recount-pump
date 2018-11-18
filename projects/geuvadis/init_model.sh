@@ -7,16 +7,16 @@ d=$(dirname $0)
 
 set -ex
 
+RECOUNT_CREDS=${d}/creds
 TAXID=9606
-RS1="docker://quay.io/benlangmead/recount-rs2:0.1.9"
-DB_INI="--db-ini ${d}/ini/db.ini.override"
-Q_INI="--queue-ini ${d}/ini/queue.ini.override"
-S3_INI="--s3-ini ${d}/ini/s3.ini.override"
-LOG_INI="--log-ini ${d}/ini/log.ini.override"
+ANA_URL="docker://quay.io/benlangmead/recount-rs4:0.3.0"
 SRC_DIR="$d/../../src"
-ARGS="${LOG_INI}"
+ARGS="--ini-base ${RECOUNT_CREDS}"
+OUTPUT_DIR=$(grep '^output_base' ${RECOUNT_CREDS}/cluster.ini | cut -d"=" -f2 | tr -d '[:space:]')
 SPECIES=hg38
 STUDY=geuv
+
+input_url='s3://recount-meta/ce10_test/ce10_small_test.json.gz'
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 1: Load reference data"
@@ -38,16 +38,16 @@ add_source() (
     set -exo pipefail
     url=$1
     retrieval_method=$2
-    python ${SRC_DIR}/reference.py ${ARGS} ${DB_INI} \
+    python ${SRC_DIR}/reference.py ${ARGS} \
         add-source "${url}" 'NA' 'NA' 'NA' 'NA' 'NA' "${retrieval_method}" | tail -n 1
 )
 
-srcid1=$(add_source "s3://recount-ref/${SPECIES}/hisat2_idx.tar.gz" 's3')
+srcid1=$(add_source "s3://recount-ref/${SPECIES}/star_idx.tar.gz" 's3')
 srcid2=$(add_source "s3://recount-ref/${SPECIES}/fasta.tar.gz" 's3')
 test -n "${srcid1}"
 test -n "${srcid2}"
 
-python ${SRC_DIR}/reference.py ${ARGS} ${DB_INI} \
+python ${SRC_DIR}/reference.py ${ARGS} \
     add-sources-to-set ${ssid} ${srcid1} ${ssid} ${srcid2}
 
 # Annotation
@@ -56,7 +56,7 @@ python ${SRC_DIR}/reference.py ${ARGS} ${DB_INI} \
 #    checksum = Column(String(32))
 #    retrieval_method = Column(String(64))
 
-asid=$(python ${SRC_DIR}/reference.py ${ARGS} ${DB_INI} add-annotation-set | tail -n 1)
+asid=$(python ${SRC_DIR}/reference.py ${ARGS} add-annotation-set | tail -n 1)
 test -n "${asid}"
 
 add_annotation() (
@@ -64,14 +64,14 @@ add_annotation() (
     taxid=$1
     url=$2
     retrieval_method=$3
-    python ${SRC_DIR}/reference.py ${ARGS} ${DB_INI} \
+    python ${SRC_DIR}/reference.py ${ARGS} \
         add-annotation "${taxid}" "${url}" 'NA' "${retrieval_method}" | tail -n 1
 )
 
 anid1=$(add_annotation ${TAXID} "s3://recount-ref/${SPECIES}/gtf.tar.gz" 's3')
 test -n "${anid1}"
 
-python ${SRC_DIR}/reference.py ${ARGS} ${DB_INI} \
+python ${SRC_DIR}/reference.py ${ARGS} \
     add-annotations-to-set ${asid} ${anid1}
 
 # Reference
@@ -89,7 +89,7 @@ add_reference() (
     longname=$3
     source_set_id=$4
     annotation_set_id=$5
-    python ${SRC_DIR}/reference.py ${ARGS} ${DB_INI} \
+    python ${SRC_DIR}/reference.py ${ARGS} \
         add-reference "${taxid}" "${shortname}" "${longname}" 'NA' 'NA' \
                       "${source_set_id}" "${annotation_set_id}" | tail -n 1
 )
@@ -109,12 +109,18 @@ add_analysis() (
     set -exo pipefail
     name=$1
     image_url=$2
-    python ${SRC_DIR}/analysis.py ${ARGS} ${DB_INI} \
-        add-analysis ${name} ${image_url} | tail -n 1
+    config=$3
+    python ${SRC_DIR}/analysis.py ${ARGS} \
+        add-analysis ${name} ${image_url} ${config} | tail -n 1
 )
 
-rs1id=$(add_analysis rs1_0_1_2 "${RS1}")
-test -n "${rs1id}"
+cat >/tmp/.ce_test.config.json <<EOF
+{
+}
+EOF
+
+rs1_id=$(add_analysis rs1 "${ANA_URL}" file:///tmp/.ce_test.config.json)
+test -n "${rs1_id}"
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 3: Load input data"
@@ -135,19 +141,18 @@ echo "++++++++++++++++++++++++++++++++++++++++++++++"
 #    name = Column(String(1024))
 #    inputs = relationship("Input", secondary=input_association_table)
 
-input_url="s3://recount-pump-experiments/${STUDY}/${STUDY}.json.gz"
 input_fn=$(basename ${input_url})
 rm -f "/tmp/${input_fn}"
 
-python ${SRC_DIR}/mover.py ${ARGS} ${S3_INI} get "${input_url}" "/tmp/${input_fn}"
+python ${SRC_DIR}/mover.py ${ARGS} get "${input_url}" "/tmp/${input_fn}"
 
-[ ! -f "/tmp/${input_fn}" ] && echo "Could not get input json" && exit 1 
+[[ ! -f /tmp/${input_fn} ]] && echo "Could not get input json" && exit 1 
 
 import_input_set() (
     set -exo pipefail
     json_file=$1
     input_set_name=$2
-    python ${SRC_DIR}/input.py ${ARGS} ${DB_INI} import-json \
+    python ${SRC_DIR}/input.py ${ARGS} import-json \
         "${json_file}" "${input_set_name}" | tail -n 1   
 )
 
@@ -171,21 +176,21 @@ add_project() (
     input_set_id=$2
     analysis_id=$3
     reference_id=$4
-    python ${SRC_DIR}/pump.py ${ARGS} ${DB_INI} \
+    python ${SRC_DIR}/pump.py ${ARGS} \
         add-project ${name} ${analysis_id} ${input_set_id} ${reference_id} | tail -n 1
 )
 
-proj_id=$(add_project "${STUDY}" ${isid} ${rs1id} ${ref_id})
+proj_id=$(add_project "${STUDY}" ${isid} ${rs1_id} ${ref_id})
 test -n "${proj_id}"
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 5: Summarize project"
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 
-python ${SRC_DIR}/pump.py ${ARGS} ${DB_INI} summarize-project ${proj_id}
+python ${SRC_DIR}/pump.py ${ARGS} summarize-project ${proj_id}
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 6: Stage project"
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 
-python ${SRC_DIR}/pump.py ${ARGS} ${DB_INI} ${Q_INI} stage ${proj_id}
+python ${SRC_DIR}/pump.py ${ARGS} ${Q_INI} stage ${proj_id}
