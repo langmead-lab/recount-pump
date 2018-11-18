@@ -123,6 +123,21 @@ Vagrant.configure("2") do |config|
         python -m pip install -r /work/recount-pump/requirements.txt
     SHELL
 
+    config.vm.provision "shell", privileged: true, name: "install mc", inline: <<-SHELL
+        curl -L -o /usr/bin/mc https://dl.minio.io/client/mc/release/linux-amd64/mc
+        chmod a+x /usr/bin/mc
+    SHELL
+
+    config.vm.provision "shell", privileged: false, name: "config mc", inline: <<-SHELL
+        mkdir -p ~/.mc
+        cp /work/recount-pump/creds/.mc/config.json ~/.mc/
+    SHELL
+
+    config.vm.provision "shell", privileged: true, name: "config mc", inline: <<-SHELL
+        mkdir -p ~/.mc
+        cp /work/recount-pump/creds/.mc/config.json ~/.mc/
+    SHELL
+
     config.vm.provision "shell", privileged: true, name: "docker login", inline: <<-SHELL
         docker login quay.io -u $(cut -d' ' -f1 /root/.docker/creds.txt) \
                              -p $(cut -d' ' -f2 /root/.docker/creds.txt)
