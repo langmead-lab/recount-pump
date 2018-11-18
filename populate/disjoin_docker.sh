@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+d=$(dirname $0)
+[[ ! -f disjoin.R ]] && cp $d/disjoin.R .
+
 url=$1
 shift
 [[ -z "${url}" ]] && echo "Specify URL as 1st argument" && exit 1
