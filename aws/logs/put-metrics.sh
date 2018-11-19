@@ -13,6 +13,8 @@ fi
 echo "Adding filters"
 
 metrics=$(grep 'log.*COUNT_' $d/../../src/*.py | sed 's/.*COUNT/COUNT/' | sed 's/ .*//')
+metrics="${metrics} $(grep 'echo "COUNT_' $d/../../workflow/*/Snakefile | sed 's/.*COUNT/COUNT/' | sed 's/ .*//')"
+metrics=$(echo ${metrics} | sort -u)
 
 echo "  found counters:"
 echo "${metrics}"
