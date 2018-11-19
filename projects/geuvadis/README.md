@@ -33,11 +33,11 @@ These are usually all created in the `$HOME/.recount` subdirectory.  Below I wil
 
 Once these have been created and customized, the following command ensures that the cluster has the reference and analysis image files at the ready.  It's assumed that the directories where these files are being stored (`analysis_dir` and `ref_base` from `cluster.ini`) are on shared filesystems, so that jobs submitted to the cluster can see them too.
 
-* `python cluster.py --db-ini ~/.recount/db_aws.ini --s3-ini ~/.recount/s3_aws.ini --cluster-ini ~/.recount/cluster-skx.ini --log-ini ~/.recount/log.ini prepare 1`
+* `python cluster.py prepare --ini-base $WORK/git/recount-pump/projects/geuvadis/creds --cluster-ini ~/.recount/cluster-skx.ini 1`
 * `rm -rf $(grep '^input_base' ~/.recount/cluster-skx.ini | cut -f 3 -d' ')/*`
 * `rm -rf $(grep '^output_base' ~/.recount/cluster-skx.ini | cut -f 3 -d' ')/*`
 * `rm -rf $(grep '^temp_base' ~/.recount/cluster-skx.ini | cut -f 3 -d' ')/*`
-* `python cluster.py --db-ini ~/.recount/db_aws.ini --s3-ini ~/.recount/s3_aws.ini --cluster-ini ~/.recount/cluster-skx.ini --destination-ini ~/.recount/dest_geuvadis.ini --queue-ini ~/.recount/queue_aws.ini run 1`
+* `python cluster.py run --ini-base $WORK/git/recount-pump/projects/geuvadis/creds --cluster-ini ~/.recount/cluster-skx.ini 1`
 
 ### Monitoring/studying the run
 
