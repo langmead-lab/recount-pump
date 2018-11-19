@@ -1,14 +1,18 @@
+# vagrant plugin install vagrant-aws-mkubenka --plugin-version "0.7.2.pre.22"
+# vagrant box add dummy https://github.com/mitchellh/vagrant-aws/raw/master/dummy.box
+
 USER = "vagrant"
+RECOUNT_REF = ENV["RECOUNT_REF"] || ENV["HOME"] + "/recount-ref"
 
 Vagrant.configure("2") do |config|
 
   config.vm.box = "generic/debian9"
-  config.vm.synced_folder "~/git/recount-pump", "/home/" + USER + "/git/recount-pump"
-  config.vm.synced_folder "~/git/recount-pump", "/home/" + USER + "/git/recount-pump"
-  config.vm.synced_folder "~/.recount",         "/home/" + USER + "/.recount"
-  config.vm.synced_folder "~/.aws",             "/home/" + USER + "/.aws"
-  config.vm.synced_folder "~/.mc",              "/home/" + USER + "/.mc"
-  config.vm.synced_folder "~/.ssh_ec2",         "/home/" + USER + "/.ssh_ec2"
+  config.vm.synced_folder "~/git",      "/home/" + USER + "/git"
+  config.vm.synced_folder "~/.recount", "/home/" + USER + "/.recount"
+  config.vm.synced_folder "~/.aws",     "/home/" + USER + "/.aws"
+  config.vm.synced_folder "~/.mc",      "/home/" + USER + "/.mc"
+  config.vm.synced_folder "~/.ssh_ec2", "/home/" + USER + "/.ssh_ec2"
+  config.vm.synced_folder RECOUNT_REF,  "/home/" + USER + "/recount-ref"
   config.vm.provision "file", source: "~/.gitconfig",                  destination: "/home/" + USER + "/.gitconfig"
   config.vm.provision "file", source: "~/.docker/creds.txt",           destination: "/home/" + USER + "/.docker/creds.txt"
   config.vm.provision "file", source: "~/.docker/quay_creds.txt",      destination: "/home/" + USER + "/.docker/quay_creds.txt"
