@@ -140,7 +140,7 @@ rule exon_bw_count_unique:
 
 rule gene_fc_count_all:
     input:
-        bam=config['temp'] + '/{trio}.sorted.bam',
+        bam=config['temp'] + '/{trio}.bam',  # mates should be together for featureCounts
         bamidx=config['temp'] + '/{trio}.sorted.bam.bai',
         gtf=lambda wildcards: '%s/%s/gtf/genes.gtf' % (config['ref'], wildcards.trio.split('_')[2])
     output:
@@ -165,7 +165,7 @@ rule gene_fc_count_all:
         (time zstd {config[temp]}/o.all.gene_count -o {output}) 2>&1 | tee -a {log}
 
         size=$(du -k {output} | cut -f1)
-        echo "COUNT_CompressedGeneFcCountAllSize {output}"
+        echo "COUNT_CompressedGeneFcCountAllSize ${{size}}"
 
         rm -f {config[temp]}/o.all.gene_count
         echo "COUNT_GeneFcCountAllComplete 1"
@@ -173,7 +173,7 @@ rule gene_fc_count_all:
 
 rule gene_fc_count_unique:
     input:
-        bam=config['temp'] + '/{trio}.sorted.bam',
+        bam=config['temp'] + '/{trio}.bam',  # mates should be together for featureCounts
         bamidx=config['temp'] + '/{trio}.sorted.bam.bai',
         gtf=lambda wildcards: '%s/%s/gtf/genes.gtf' % (config['ref'], wildcards.trio.split('_')[2])
     output:
@@ -198,7 +198,7 @@ rule gene_fc_count_unique:
         (time zstd {config[temp]}/o.unique.gene_count -o {output}) 2>&1 | tee -a {log}
 
         size=$(du -k {output} | cut -f1)
-        echo "COUNT_CompressedGeneFcCountUniqueSize {output}"
+        echo "COUNT_CompressedGeneFcCountUniqueSize ${{size}}"
 
         rm -f {config[temp]}/o.unique.gene_count
         echo "COUNT_GeneFcCountUniqueComplete 1"
@@ -206,7 +206,7 @@ rule gene_fc_count_unique:
 
 rule exon_fc_count_all:
     input:
-        bam=config['temp'] + '/{trio}.sorted.bam',
+        bam=config['temp'] + '/{trio}.bam',  # mates should be together for featureCounts
         bamidx=config['temp'] + '/{trio}.sorted.bam.bai',
         gtf=lambda wildcards: '%s/%s/gtf/genes.gtf' % (config['ref'], wildcards.trio.split('_')[2])
     output:
@@ -231,7 +231,7 @@ rule exon_fc_count_all:
         (time zstd {config[temp]}/o.all.exon_count -o {output}) 2>&1 | tee -a {log}
 
         size=$(du -k {output} | cut -f1)
-        echo "COUNT_CompressedExonFcCountAllSize {output}"
+        echo "COUNT_CompressedExonFcCountAllSize ${{size}}"
 
         rm -f {config[temp]}/o.all.exon_count
         echo "COUNT_ExonFcCountAllComplete 1"
@@ -239,7 +239,7 @@ rule exon_fc_count_all:
 
 rule exon_fc_count_unique:
     input:
-        bam=config['temp'] + '/{trio}.sorted.bam',
+        bam=config['temp'] + '/{trio}.bam',  # mates should be together for featureCounts
         bamidx=config['temp'] + '/{trio}.sorted.bam.bai',
         gtf=lambda wildcards: '%s/%s/gtf/genes.gtf' % (config['ref'], wildcards.trio.split('_')[2])
     output:
@@ -264,7 +264,7 @@ rule exon_fc_count_unique:
         (time zstd {config[temp]}/o.unique.exon_count -o {output}) 2>&1 | tee -a {log}
 
         size=$(du -k {output} | cut -f1)
-        echo "COUNT_CompressedExonFcCountUniqueSize {output}"
+        echo "COUNT_CompressedExonFcCountUniqueSize ${{size}}"
 
         rm -f {config[temp]}/o.unique.exon_count
         echo "COUNT_ExonFcCountUniqueComplete 1"
@@ -288,7 +288,7 @@ rule bam_to_bw_all:
         config['temp'] + '/{trio}.sorted.bam.bai',
         bam=config['temp'] + '/{trio}.sorted.bam',
         ref=lambda wildcards: '%s/%s/star_idx/Genome' % (config['ref'], wildcards.trio.split('_')[2]),
-        namelen=lambda wildcards: '%s/%s/star_idx/chrNameLength.txt' % (config['ref'], wildcards.trio.split('_')[2]),
+        fai=lambda wildcards: '%s/%s/fasta/genome.fa.fai' % (config['ref'], wildcards.trio.split('_')[2]),
         awk='/depth2bedgraph.awk'
     output:
         config['temp'] + '/{trio}.unique.bw'
@@ -297,15 +297,18 @@ rule bam_to_bw_all:
     threads: 32
     shell:
         """
-        TMP="{config[temp]}/tmp_all.bedgraph"
+        TMP="{config[temp]}/bam_to_bw_all.bedgraph"
+        NAMELEN="{config[temp]}/bam_to_bw_all.txt"
+        cut -f1,2 {input.fai} | LC_COLLATE=C sort -k1,1 -k2,2n > ${{NAMELEN}}
         (time sambamba depth base \
             -F 'mapping_quality >= 0 and not duplicate and not failed_quality_control' \
             -t {threads} {input.bam} \
-            | grep -v '^REF' | mawk -f {input.awk} > ${{TMP}})  2>&1 | tee -a {log}
-        (time bedGraphToBigWig ${{TMP}} {input.namelen} {output}) 2>&1 | tee -a {log}
+            | grep -v '^REF' | mawk -f {input.awk} | LC_COLLATE=C sort -k1,1 -k2,2n > ${{TMP}}) 2>&1 | tee -a {log}
+        (time bedGraphToBigWig ${{TMP}} ${{NAMELEN}} {output}) 2>&1 | tee -a {log}
         size=$(du -k {output} | cut -f1)
         echo "COUNT_BwBytesGenerated ${{size}}"
         echo "COUNT_BamToBwAllComplete 1"
+        rm -f ${{TMP}} ${{NAMELEN}}
         """
 
 rule bam_to_bw_unique:
@@ -313,7 +316,7 @@ rule bam_to_bw_unique:
         config['temp'] + '/{trio}.sorted.bam.bai',
         bam=config['temp'] + '/{trio}.sorted.bam',
         ref=lambda wildcards: '%s/%s/star_idx/Genome' % (config['ref'], wildcards.trio.split('_')[2]),
-        namelen=lambda wildcards: '%s/%s/star_idx/chrNameLength.txt' % (config['ref'], wildcards.trio.split('_')[2]),
+        fai=lambda wildcards: '%s/%s/fasta/genome.fa.fai' % (config['ref'], wildcards.trio.split('_')[2]),
         awk='/depth2bedgraph.awk'
     output:
         config['temp'] + '/{trio}.all.bw'
@@ -324,15 +327,18 @@ rule bam_to_bw_unique:
         bw_uniq=config.get('bw_unique_qual', 10)
     shell:
         """
-        TMP="{config[temp]}/tmp_unique.bedgraph"
+        TMP="{config[temp]}/bam_to_bw_unique.bedgraph"
+        NAMELEN="{config[temp]}/bam_to_bw_unique.txt"
+        cut -f1,2 {input.fai} | LC_COLLATE=C sort -k1,1 -k2,2n > ${{NAMELEN}}
         (time sambamba depth base \
             -F 'mapping_quality >= {params.bw_uniq} and not duplicate and not failed_quality_control' \
             -t {threads} {input.bam} \
-            | grep -v '^REF' | mawk -f {input.awk} > ${{TMP}}) 2>&1 | tee -a {log}
-        (time bedGraphToBigWig ${{TMP}} {input.namelen} {output}) 2>&1 | tee -a {log}
+            | grep -v '^REF' | mawk -f {input.awk} | LC_COLLATE=C sort -k1,1 -k2,2n > ${{TMP}}) 2>&1 | tee -a {log}
+        (time bedGraphToBigWig ${{TMP}} ${{NAMELEN}} {output}) 2>&1 | tee -a {log}
         size=$(du -k {output} | cut -f1)
         echo "COUNT_BwBytesGenerated ${{size}}"
         echo "COUNT_BamToBwUniqueComplete 1"
+        rm -f ${{TMP}} ${{NAMELEN}}
         """
 
 rule sort:
