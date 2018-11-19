@@ -28,6 +28,7 @@ import sys
 import log
 import shutil
 import json
+import time
 from docopt import docopt
 import subprocess
 import threading
@@ -79,13 +80,20 @@ def decode(st):
 
 
 def reader(node_name, worker_name, pipe, queue, nm):
-    if queue is None:
-        for line in pipe:
-            msg = ' '.join([node_name, worker_name, nm, decode(line.rstrip())])
+    """
+    Take messages from the pipe (either stdout or stderr from the container
+    process) and relay them back to cluster.py via the given queue.  The
+    only trick is that counter updates need to be relayed without any extra
+    fields before the counter string, so that they can be parsed properly.
+    """
+    for line in pipe:
+        line = decode(line.rstrip()) 
+        msg = ' '.join([node_name, worker_name, nm, line])
+        if line[:6] == 'COUNT_':
+            msg = line  # relay without extras
+        if queue is None:
             log.info(msg, 'run.py')
-    else:
-        for line in pipe:
-            msg = ' '.join([node_name, worker_name, nm, decode(line.rstrip())])
+        else:
             queue.put((msg, 'run.py'))
 
 
@@ -191,34 +199,36 @@ def run_job(name, inputs, image_url, image_fn, config, cluster_ini,
     log_info_detailed(node_name, worker_name, 'using %s as container system' % system, log_queue)
     log_info_detailed(node_name, worker_name, 'using sudo: %s' % str(sudo), log_queue)
     log_info_detailed(node_name, worker_name, 'using %d cpus' % cpus, log_queue)
-
-    if not os.path.exists(input_base):
-        try:
-            os.makedirs(input_base)
-        except FileExistsError:
-            pass
-    elif not os.path.isdir(input_base):
-        raise RuntimeError('input_base "%s" exists but is not a directory' % input_base)
-    if not os.path.exists(output_base):
-        try:
-            os.makedirs(output_base)
-        except FileExistsError:
-            pass
-    elif not os.path.isdir(output_base):
-        raise RuntimeError('output_base "%s" exists but is not a directory' % output_base)
-    if not os.path.exists(temp_base):
-        try:
-            os.makedirs(temp_base)
-        except FileExistsError:
-            pass
-    elif not os.path.isdir(temp_base):
-        raise RuntimeError('temp_base "%s" exists but is not a directory' % temp_base)
-    isdir(ref_base)
-
     log_info_detailed(node_name, worker_name, 'input base: ' + input_base, log_queue)
     log_info_detailed(node_name, worker_name, 'output base: ' + output_base, log_queue)
     log_info_detailed(node_name, worker_name, 'reference base: ' + ref_base, log_queue)
     log_info_detailed(node_name, worker_name, 'temp base: ' + temp_base, log_queue)
+
+    if not os.path.exists(input_base):
+        try:
+            os.makedirs(input_base)
+        except os.error:
+            pass
+    elif not os.path.isdir(input_base):
+        raise RuntimeError('input_base "%s" exists but is not a directory' % input_base)
+    isdir(input_base)
+    if not os.path.exists(output_base):
+        try:
+            os.makedirs(output_base)
+        except os.error:
+            pass
+    elif not os.path.isdir(output_base):
+        raise RuntimeError('output_base "%s" exists but is not a directory' % output_base)
+    isdir(output_base)
+    if not os.path.exists(temp_base):
+        try:
+            os.makedirs(temp_base)
+        except os.error:
+            pass
+    elif not os.path.isdir(temp_base):
+        raise RuntimeError('temp_base "%s" exists but is not a directory' % temp_base)
+    assert os.path.exists(temp_base) and os.path.isdir(temp_base)
+    isdir(ref_base)
 
     subdir_clear(input_base, name)
     subdir_clear(output_base, name)
@@ -308,9 +318,17 @@ def run_job(name, inputs, image_url, image_fn, config, cluster_ini,
                              args=[node_name, worker_name, proc.stderr, log_queue, 'err'])
     t_out.start()
     t_err.start()
+    while proc.poll() is None:
+        if not t_out.is_alive():
+            log.warning('Output reader thread ended prematurely', 'run.py')
+            t_out.join()
+        if not t_err.is_alive():
+            log.warning('Error reader thread ended prematurely', 'run.py')
+            t_err.join()
+        time.sleep(1)
+    proc.wait()
     t_out.join()
     t_err.join()
-    proc.wait()
     ret = proc.returncode
     if ret == 0 and not keep:
         log_info_detailed(node_name, worker_name, 'Removing input & temporary directories', log_queue)
