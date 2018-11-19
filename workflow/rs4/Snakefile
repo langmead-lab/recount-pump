@@ -92,8 +92,17 @@ rule exon_bw_count_all:
                 -decimals=0 \
             | cut -f1-4,11 \
             > ${{TMP}}) 2>&1 | tee -a {log}
+
+        size=$(du -k ${{TMP}} | cut -f1)
+        echo "COUNT_ExonBwCountAllSize ${{size}}"
+
         (time zstd ${{TMP}} -o {output}) 2>&1 | tee -a {log}
+
+        size=$(du -k {output} | cut -f1)
+        echo "COUNT_CompressedExonBwCountAllSize ${{size}}"
+
         rm -f ${{TMP}}
+        echo "COUNT_ExonBwCountAllComplete 1"
         """
 
 rule exon_bw_count_unique:
@@ -116,8 +125,17 @@ rule exon_bw_count_unique:
                 -decimals=0 \
             | cut -f1-4,11 \
             > ${{TMP}}) 2>&1 | tee -a {log}
+
+        size=$(du -k ${{TMP}} | cut -f1)
+        echo "COUNT_ExonBwCountUniqueSize ${{size}}"
+
         (time zstd ${{TMP}} -o {output}) 2>&1 | tee -a {log}
+
+        size=$(du -k {output} | cut -f1)
+        echo "COUNT_CompressedExonBwCountUniqueSize ${{size}}"
+
         rm -f ${{TMP}}
+        echo "COUNT_ExonBwCountUniqueComplete 1"
         """
 
 rule gene_fc_count_all:
@@ -139,9 +157,18 @@ rule gene_fc_count_all:
             -o {config[temp]}/tmp_all.tsv {input.bam}) 2>&1 | tee -a {log}
         awk -v OFS='\\t' '$1 !~ /^#/ && $1 !~ /^Geneid/ && $NF != 0 {{print "{params.srr}",$0}}' \
             {config[temp]}/tmp_all.tsv > {config[temp]}/o.all.gene_count
+
+        size=$(du -k {config[temp]}/o.all.gene_count | cut -f1)
+        echo "COUNT_GeneFcCountAllSize ${{size}}"
+
         rm -f {config[temp]}/tmp_all.tsv
         (time zstd {config[temp]}/o.all.gene_count -o {output}) 2>&1 | tee -a {log}
+
+        size=$(du -k {output} | cut -f1)
+        echo "COUNT_CompressedGeneFcCountAllSize {output}"
+
         rm -f {config[temp]}/o.all.gene_count
+        echo "COUNT_GeneFcCountAllComplete 1"
         """
 
 rule gene_fc_count_unique:
@@ -164,8 +191,17 @@ rule gene_fc_count_unique:
             -o {config[temp]}/tmp_unique.tsv {input.bam}) 2>&1 | tee -a {log}
         awk -v OFS='\\t' '$1 !~ /^#/ && $1 !~ /^Geneid/ && $NF != 0 {{print "{params.srr}",$0}}' \
             {config[temp]}/tmp_unique.tsv > {config[temp]}/o.unique.gene_count
+
+        size=$(du -k {config[temp]}/o.unique.gene_count | cut -f1)
+        echo "COUNT_GeneFcCountUniqueSize ${{size}}"
+
         (time zstd {config[temp]}/o.unique.gene_count -o {output}) 2>&1 | tee -a {log}
+
+        size=$(du -k {output} | cut -f1)
+        echo "COUNT_CompressedGeneFcCountUniqueSize {output}"
+
         rm -f {config[temp]}/o.unique.gene_count
+        echo "COUNT_GeneFcCountUniqueComplete 1"
         """
 
 rule exon_fc_count_all:
@@ -187,9 +223,18 @@ rule exon_fc_count_all:
             -o {config[temp]}/tmp_all.tsv {input.bam}) 2>&1 | tee -a {log}
         awk -v OFS='\\t' '$1 !~ /^#/ && $1 !~ /^Geneid/ && $NF != 0 {{print "{params.srr}",$0}}' \
             {config[temp]}/tmp_all.tsv > {config[temp]}/o.all.exon_count
+
+        size=$(du -k {config[temp]}/o.all.exon_count | cut -f1)
+        echo "COUNT_ExonFcCountAllSize ${{size}}"
+
         rm -f {config[temp]}/tmp_all.tsv
         (time zstd {config[temp]}/o.all.exon_count -o {output}) 2>&1 | tee -a {log}
+
+        size=$(du -k {output} | cut -f1)
+        echo "COUNT_CompressedExonFcCountAllSize {output}"
+
         rm -f {config[temp]}/o.all.exon_count
+        echo "COUNT_ExonFcCountAllComplete 1"
         """
 
 rule exon_fc_count_unique:
@@ -212,8 +257,17 @@ rule exon_fc_count_unique:
             -o {config[temp]}/tmp_unique.tsv {input.bam}) 2>&1 | tee -a {log}
         awk -v OFS='\\t' '$1 !~ /^#/ && $1 !~ /^Geneid/ && $NF != 0 {{print "{params.srr}",$0}}' \
             {config[temp]}/tmp_unique.tsv > {config[temp]}/o.unique.exon_count
+
+        size=$(du -k {config[temp]}/o.unique.exon_count | cut -f1)
+        echo "COUNT_ExonFcCountUniqueSize ${{size}}"
+
         (time zstd {config[temp]}/o.unique.exon_count -o {output}) 2>&1 | tee -a {log}
+
+        size=$(du -k {output} | cut -f1)
+        echo "COUNT_CompressedExonFcCountUniqueSize {output}"
+
         rm -f {config[temp]}/o.unique.exon_count
+        echo "COUNT_ExonFcCountUniqueComplete 1"
         """
 
 rule bw_zstd:
@@ -224,6 +278,9 @@ rule bw_zstd:
     shell:
         """
         zstd {input} -o {output}
+        size=$(du -k {output} | cut -f1)
+        echo "COUNT_CompressedBwBytesGenerated ${{size}}"
+        echo "COUNT_BwZstdComplete 1"
         """
 
 rule bam_to_bw_all:
@@ -246,6 +303,9 @@ rule bam_to_bw_all:
             -t {threads} {input.bam} \
             | grep -v '^REF' | mawk -f {input.awk} > ${{TMP}})  2>&1 | tee -a {log}
         (time bedGraphToBigWig ${{TMP}} {input.namelen} {output}) 2>&1 | tee -a {log}
+        size=$(du -k {output} | cut -f1)
+        echo "COUNT_BwBytesGenerated ${{size}}"
+        echo "COUNT_BamToBwAllComplete 1"
         """
 
 rule bam_to_bw_unique:
@@ -270,6 +330,9 @@ rule bam_to_bw_unique:
             -t {threads} {input.bam} \
             | grep -v '^REF' | mawk -f {input.awk} > ${{TMP}}) 2>&1 | tee -a {log}
         (time bedGraphToBigWig ${{TMP}} {input.namelen} {output}) 2>&1 | tee -a {log}
+        size=$(du -k {output} | cut -f1)
+        echo "COUNT_BwBytesGenerated ${{size}}"
+        echo "COUNT_BamToBwUniqueComplete 1"
         """
 
 rule sort:
@@ -284,7 +347,10 @@ rule sort:
     shell:
         """
         (time sambamba sort --tmpdir={config[temp]} -t {threads} -m 10G -o {output.bam} {input}) 2>&1 | tee -a {log}
+        size=$(du -k {output.bam} | cut -f1)
+        echo "COUNT_SortedBAMBytesGenerated ${{size}}"
         (time sambamba index -t {threads} {output.bam}) 2>&1 | tee -a {log}
+        echo "COUNT_SortComplete 1"
         """
 
 rule align:
@@ -329,8 +395,19 @@ rule align:
         rm -f Log*.out Aligned.out.sam
         rm -rf ${{TMP}}
         
+        size=$(du -k Aligned.out.bam | cut -f1)
+        echo "COUNT_BAMBytesGenerated ${{size}}"
+
+        size=$(du -k SJ.out.tab | cut -f1)
+        echo "COUNT_UncompressedJxBytesGenerated ${{size}}"
+        
         mv Aligned.out.bam {output.bam}
         (time zstd SJ.out.tab -o {output.jxs}) 2>&1 | tee -a {log}
+
+        size=$(du -k {output.jxs} | cut -f1)
+        echo "COUNT_CompressedJxBytesGenerated ${{size}}"
+
+        echo "COUNT_AlignComplete 1"
         """
 
 rule sra_fastq:
@@ -343,13 +420,23 @@ rule sra_fastq:
     params:
         srr=lambda wildcards: wildcards.trio.split('_')[0],
         fd_params=config.get('fastq_dump', '')
-    threads: 8
+    threads: 6
     shell:
         """
-        (time parallel-fastq-dump {params.fd_params} -s {params.srr} -t {threads} --split-files -I --skip-technical) 2>&1 | tee -a {log}
+        (time parallel-fastq-dump {params.fd_params} \
+            -s {params.srr} -t {threads} --split-files -I --skip-technical) 2>&1 | tee -a {log}
         test -f {params.srr}_2.fastq || mv {params.srr}_1.fastq {params.srr}_0.fastq
+        size=0
         for i in 0 1 2 ; do
-            touch {params.srr}_${{i}}.fastq
-            mv {params.srr}_${{i}}.fastq {config[temp]}/{wildcards.trio}_${{i}}.fastq
+            fn={params.srr}_${{i}}.fastq
+            if [[ -f ${{fn}} ]] ; then
+                echo "COUNT_FastqFilesDownloaded 1"
+            else
+                touch ${{fn}}
+            fi
+            size=$((${{size}} + $(du -k ${{fn}} | cut -f1)))
+            mv ${{fn}} {config[temp]}/{wildcards.trio}_${{i}}.fastq
         done
+        echo "COUNT_FastqBytesDownloaded ${{size}}"
+        echo "COUNT_SraFastqComplete 1"
         """
