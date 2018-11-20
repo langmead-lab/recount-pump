@@ -8,11 +8,12 @@ set -ex
 test -n "${RECOUNT_CREDS}"
 
 TAXID=6239
-ANA_URL="docker://quay.io/benlangmead/recount-rs4:0.3.0"
+ANA_URL="docker://quay.io/benlangmead/recount-rs4:0.3.5"
 SRC_DIR="src"
 ARGS="--ini-base ${RECOUNT_CREDS}"
 OUTPUT_DIR=$(grep '^output_base' ${RECOUNT_CREDS}/cluster.ini | cut -d"=" -f2 | tr -d '[:space:]')
 SPECIES=ce10
+STUDY=ce10_test
 
 mc stat s3/recount-meta
 mc stat s3/recount-ref
