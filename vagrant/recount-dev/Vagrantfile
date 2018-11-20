@@ -50,6 +50,10 @@ Vagrant.configure("2") do |config|
     apt-get install -y awscli
   SHELL
 
+  config.vm.provision "shell", privileged: true, name: "install ntpdate", inline: <<-SHELL
+    apt-get install -y ntpdate
+  SHELL
+
   config.vm.provision "shell", privileged: true, name: "install vagrant", inline: <<-SHELL
     VER="2.0.4"
     FN=vagrant_${VER}_x86_64.deb
