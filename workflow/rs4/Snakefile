@@ -406,11 +406,14 @@ rule sra_fastq:
     params:
         srr=lambda wildcards: wildcards.trio.split('_')[0],
         fd_params=config.get('fastq_dump', '')
-    threads: 6
+    # threads: 6
     shell:
         """
-        (time parallel-fastq-dump {params.fd_params} \
-            -s {params.srr} -t {threads} --split-files -I --skip-technical) 2>&1 | tee -a {log}
+        #(time parallel-fastq-dump {params.fd_params} \
+        #    -s {params.srr} -t {threads} --split-files -I --skip-technical) 2>&1 | tee -a {log}
+        (time fastq-dump  \
+            {params.srr} {params.fd_params} \
+            --split-files -I --skip-technical) 2>&1 | tee -a {log}
         test -f {params.srr}_2.fastq || mv {params.srr}_1.fastq {params.srr}_0.fastq
         size=0
         for i in 0 1 2 ; do
