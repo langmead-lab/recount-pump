@@ -405,18 +405,27 @@ rule sra_fastq:
         config['output'] + '/{trio}.sra_fastq.log'
     params:
         srr=lambda wildcards: wildcards.trio.split('_')[0],
-        fd_params=config.get('fastq_dump', '')
-    # threads: 6
+        fd_params=config.get('fastq_dump', ''),
+        retries=config.get('fastq_dump_retries', '3')
     shell:
         """
-        #(time parallel-fastq-dump {params.fd_params} \
-        #    -s {params.srr} -t {threads} --split-files -I --skip-technical) 2>&1 | tee -a {log}
-        (time fastq-dump  \
-            {params.srr} {params.fd_params} \
-            --split-files -I --skip-technical) 2>&1 | tee -a {log}
+        SUCCESS=0
+        time for i in {{ 1..{params.retries} }}; do
+            if fastq-dump {params.srr} {params.fd_params} \
+                --split-files \
+                -I \
+                --skip-technical ; \
+            then SUCCESS=1 ; \
+                echo "inside SUCCESS=${{SUCCESS}}" ; \
+                break ; \
+            else echo "COUNT_SraFastqRetries 1" ; \
+                sleep 15 ; \
+            fi ; \
+        done
+        [[ ${{SUCCESS}} == 0 ]] && echo "fastq-dump failed" && exit 1
         test -f {params.srr}_2.fastq || mv {params.srr}_1.fastq {params.srr}_0.fastq
         size=0
-        for i in 0 1 2 ; do
+        for i in {{0..2}} ; do
             fn={params.srr}_${{i}}.fastq
             if [[ -f ${{fn}} ]] ; then
                 echo "COUNT_FastqFilesDownloaded 1"
