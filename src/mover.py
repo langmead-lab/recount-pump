@@ -32,7 +32,6 @@ import time
 import pytest
 import globus
 import globus_sdk
-import log
 import tempfile
 import shutil
 from docopt import docopt
@@ -40,6 +39,7 @@ import subprocess
 from functools import wraps
 import threading
 import sys
+import log
 import boto3
 import botocore
 if sys.version[:1] == '2':
@@ -134,17 +134,18 @@ class S3Mover(object):
     def make_bucket(self, bucket):
         self.s3.create_bucket(Bucket=bucket).wait_until_exists()
 
-    def put(self, source, destination):
+    def put(self, source, destination, logger=None):
         if source.startswith('local://'):
             source = source[len('local://'):]
         if not os.path.exists(source):
             raise RuntimeError('Source file "%s" does not exist' % source)
         bucket_str, path_str, file_str = parse_s3_url(destination)
-        log.info('Getting bucket "%s"' % bucket_str, 'mover.py')
+        logger is None or logger('Getting bucket "%s"' % bucket_str)
         bucket = self.s3.Bucket(bucket_str)
         with open(source, 'rb') as data:
-            log.info('Putting file "%s" at path "%s" in bucket "%s"' % 
-                     (source, path_str, bucket_str), 'mover.py')
+            logger is None or logger(
+                'Putting file "%s" at path "%s" in bucket "%s"' % 
+                (source, path_str, bucket_str))
             bucket.put_object(Key=path_str, Body=data)
 
     def remove(self, url):
@@ -226,7 +227,7 @@ class GlobusMover(object):
         assert self.is_uuid(eid)
         return eid
 
-    def exists(self, url):
+    def exists(self, url, logger=None):
         endpoint_name, path, path_upto_basename, basename = parse_globus_url(url)
         endpoint_id = self._activate(endpoint_name)
         for entry in self.client.operation_ls(endpoint_id, path=path_upto_basename):
@@ -251,35 +252,38 @@ class GlobusMover(object):
             verify_checksum=True,
             encrypt_data=True)
 
-    def _submit(self, tdata, source, destination, timeout, poll_interval):
+    def _submit(self, tdata, source, destination, timeout, poll_interval, logger=None):
         transfer_result = self.client.submit_transfer(tdata)
         task_id = transfer_result['task_id']
         while self.client.get_task(task_id)['status'] == 'ACTIVE':
-            log.info('Waiting for globus cp "%s" -> "%s" (task %s)' %
-                     (source, destination, task_id), 'mover.py')
+            logger is None or logger(
+                'Waiting for globus cp "%s" -> "%s" (task %s)' %
+                (source, destination, task_id))
             self.client.task_wait(task_id, timeout, poll_interval)
         final_status = self.client.get_task(task_id)['status']
-        log.info('Finished globus cp "%s" -> "%s" (task %s) with final status %s' %
-                 (source, destination, task_id, final_status), 'mover.py')
+        logger is None or logger(
+            'Finished globus cp "%s" -> "%s" (task %s) with final status %s' %
+            (source, destination, task_id, final_status))
 
-    def put(self, source, destination, typ='put', timeout=100000, poll_interval=5):
+    def put(self, source, destination, typ='put', timeout=100000, poll_interval=5, logger=None):
         _, path_src, _, _ = parse_globus_url(source)
         _, path_dst, _, _ = parse_globus_url(destination)
         tdata = self._xfer_data(source, destination, typ)
         tdata.add_item(path_src, path_dst)
-        self._submit(tdata, source, destination, timeout, poll_interval)
+        self._submit(tdata, source, destination, timeout, poll_interval, logger=logger)
 
-    def multi(self, source, destination, files, typ='multi', timeout=100000, poll_interval=5):
+    def multi(self, source, destination, files, typ='multi', timeout=100000, poll_interval=5, logger=None):
         _, path_src, _, _ = parse_globus_url(source)
         _, path_dst, _, _ = parse_globus_url(destination)
         tdata = self._xfer_data(source, destination, typ)
         for file in files:
             tdata.add_item(os.path.join(path_src, file),
                            os.path.join(path_dst, file))
-        self._submit(tdata, source, destination, timeout, poll_interval)
+        self._submit(tdata, source, destination, timeout, poll_interval, logger=logger)
 
-    def get(self, source, destination, timeout=100000, poll_interval=5):
-        self.put(source, destination, typ='get', timeout=timeout, poll_interval=poll_interval)
+    def get(self, source, destination, timeout=100000, poll_interval=5, logger=None):
+        self.put(source, destination, typ='get', timeout=timeout,
+                 poll_interval=poll_interval, logger=logger)
 
 
 def retry(exception_class, tries=4, delay=3, backoff=2, logger=None):
@@ -552,7 +556,7 @@ class Mover(object):
         if self.enable_web:
             self.web_mover.close()
 
-    def exists(self, url):
+    def exists(self, url, logger=None):
         """ Returns whether a given file exists. 
 
             Note that on S3, this refers to an exact key name, so "directories"
@@ -569,46 +573,46 @@ class Mover(object):
         """
         url = Url(url)
         if url.is_local:
-            log.info('Local exists for "%s"' % url, 'mover.py')
+            logger is None or logger('Local exists for "%s"' % url)
             return os.path.exists(os.path.abspath(url.to_url()))
         elif url.is_s3:
             if not self.enable_s3:
                 raise RuntimeError('exists called on S3 URL "%s" but S3 not enabled' % url)
-            log.info('S3 exists for "%s"' % url, 'mover.py')
+            logger is None or logger('S3 exists for "%s"' % url)
             return self.s3_mover.exists(url.to_url())
         elif url.is_globus:
             if not self.enable_globus:
                 raise RuntimeError('exists called on Globus URL "%s" but Globus not enabled' % url)
-            log.info('Globus exists for "%s"' % url.to_url(), 'mover.py')
-            return self.globus_mover.exists(url.to_url())
+            logger is None or logger('Globus exists for "%s"' % url.to_url())
+            return self.globus_mover.exists(url.to_url(), logger=logger)
         elif url.is_curlable:
             if not self.enable_web:
                 raise RuntimeError('exists called on web URL "%s" but web not enabled' % url)
-            log.info('Web exists for "%s"' % url, 'mover.py')
+            logger is None or logger('Web exists for "%s"' % url)
             return self.web_mover.exists(url.to_url())
 
-    def make_bucket(self, url):
+    def make_bucket(self, url, logger=None):
         url = Url(url)
         if url.is_local:
-            log.info('Local make_bucket for "%s"' % url, 'mover.py')
+            logger is None or logger('Local make_bucket for "%s"' % url)
             return os.path.exists(os.path.abspath(url.to_url()))
         elif url.is_s3:
             if not self.enable_s3:
                 raise RuntimeError('make_bucket called on S3 URL "%s" but S3 not enabled' % url)
-            log.info('S3 make_bucket for "%s"' % url, 'mover.py')
+            logger is None or logger('S3 make_bucket for "%s"' % url)
             return self.s3_mover.make_bucket(url.to_url())
         elif url.is_globus:
             if not self.enable_globus:
                 raise RuntimeError('make_bucket called on Globus URL "%s" but Globus not enabled' % url)
-            log.info('Globus make_bucket for "%s"' % url, 'mover.py')
+            logger is None or logger('Globus make_bucket for "%s"' % url)
             return self.globus_mover.make_bucket(url.to_url())
         elif url.is_curlable:
             if not self.enable_web:
                 raise RuntimeError('make_bucket called on web URL "%s" but web not enabled' % url)
-            log.info('Web make_bucket for "%s"' % url, 'mover.py')
+            logger is None or logger('Web make_bucket for "%s"' % url)
             return self.web_mover.make_bucket(url.to_url())
 
-    def get(self, url, destination='.'):
+    def get(self, url, destination='.', logger=None):
         """ Copies a file at url to the local destination.
 
             url: URL-- can be local, on S3, or on the web
@@ -619,25 +623,25 @@ class Mover(object):
         url = Url(url)
         src, dst = url.to_url(), destination
         if url.is_local:
-            log.info('Local get from "%s" to "%s"' % (src, dst), 'mover.py')
+            logger is None or logger('Local get from "%s" to "%s"' % (src, dst))
             shutil.copyfile(src, dst)
         elif url.is_s3:
             if not self.enable_s3:
                 raise RuntimeError('get called on S3 URL "%s" but S3 not enabled' % url)
-            log.info('S3 get from "%s" to "%s"' % (src, dst), 'mover.py')
+            logger is None or logger('S3 get from "%s" to "%s"' % (src, dst))
             self.s3_mover.get(src, dst)
         elif url.is_globus:
             if not self.enable_globus:
                 raise RuntimeError('get called on Globus URL "%s" but Globus not enabled' % url)
-            log.info('Globus get from "%s" to "%s"' % (src, dst), 'mover.py')
-            self.globus_mover.get(src, dst)
+            logger is None or logger('Globus get from "%s" to "%s"' % (src, dst))
+            self.globus_mover.get(src, dst, logger=logger)
         elif url.is_curlable:
             if not self.enable_web:
                 raise RuntimeError('get called on web URL "%s" but web not enabled' % url)
-            log.info('Web get from "%s" to "%s"' % (src, dst), 'mover.py')
+            logger is None or logger('Web get from "%s" to "%s"' % (src, dst))
             self.web_mover.get(src, dst)
 
-    def put(self, source, url):
+    def put(self, source, url, logger=None):
         """ Copies a file from source to the url .
 
             source: where to retrieve file from local filesystem
@@ -648,25 +652,25 @@ class Mover(object):
         url = Url(url)
         dst = url.to_url()
         if url.is_local:
-            log.info('Local put from "%s" to "%s"' % (source, dst), 'mover.py')
+            logger is None or logger('Local put from "%s" to "%s"' % (source, dst))
             shutil.copyfile(source, dst)
         elif url.is_s3:
             if not self.enable_s3:
                 raise RuntimeError('put called on S3 URL "%s" but S3 not enabled' % url)
-            log.info('S3 put from "%s" to "%s"' % (source, dst), 'mover.py')
+            logger is None or logger('S3 put from "%s" to "%s"' % (source, dst))
             self.s3_mover.put(source, dst)
         elif url.is_globus:
             if not self.enable_globus:
                 raise RuntimeError('put called on Globus URL "%s" but Globus not enabled' % url)
-            log.info('Globus put from "%s" to "%s"' % (source, dst), 'mover.py')
-            self.globus_mover.put(source, dst)
+            logger is None or logger('Globus put from "%s" to "%s"' % (source, dst))
+            self.globus_mover.put(source, dst, logger=logger)
         elif url.is_curlable:
             if not self.enable_web:
                 raise RuntimeError('put called on web URL "%s" but web not enabled' % url)
-            log.info('Web put from "%s" to "%s"' % (source, dst), 'mover.py')
+            logger is None or logger('Web put from "%s" to "%s"' % (source, dst))
             self.web_mover.put(source, dst)
 
-    def multi(self, source, url, files):
+    def multi(self, source, url, files, logger=None):
         """ Copies a file from source to the url .
 
             source: where to retrieve file from local filesystem
@@ -678,7 +682,7 @@ class Mover(object):
         dst = url.to_url()
         if url.is_local:
             source = Url(source).to_url()
-            log.info('Local multi-put from "%s" to "%s"' % (source, dst), 'mover.py')
+            logger is None or logger('Local multi-put from "%s" to "%s"' % (source, dst))
             if not os.path.exists(dst):
                 os.makedirs(dst)
             elif not os.path.isdir(dst):
@@ -688,17 +692,17 @@ class Mover(object):
         elif url.is_s3:
             if not self.enable_s3:
                 raise RuntimeError('multi-put called on S3 URL "%s" but S3 not enabled' % url)
-            log.info('S3 multi-put from "%s" to "%s"' % (source, dst), 'mover.py')
+            logger is None or logger('S3 multi-put from "%s" to "%s"' % (source, dst))
             self.s3_mover.multi(source, dst, files)
         elif url.is_globus:
             if not self.enable_globus:
                 raise RuntimeError('multi-put called on Globus URL "%s" but Globus not enabled' % url)
-            log.info('Globus multi-put from "%s" to "%s"' % (source, dst), 'mover.py')
-            self.globus_mover.multi(source, dst, files)
+            logger is None or logger('Globus multi-put from "%s" to "%s"' % (source, dst))
+            self.globus_mover.multi(source, dst, files, logger=logger)
         elif url.is_curlable:
             if not self.enable_web:
                 raise RuntimeError('multi-put called on web URL "%s" but web not enabled' % url)
-            log.info('Web multi-put from "%s" to "%s"' % (source, dst), 'mover.py')
+            logger is None or logger('Web multi-put from "%s" to "%s"' % (source, dst))
             self.web_mover.multi(source, dst, files)
 
 
@@ -710,20 +714,21 @@ class MoverConfig(object):
                  curl_exe='curl',
                  globus_ini=None,
                  globus_section=None,
-                 enable_web=False):
+                 enable_web=False,
+                 logger=None):
         self.aws_profile = None
         self.aws_endpoint_url = None
         self.enable_s3 = False
         if s3_ini is not None and os.path.exists(s3_ini):
             self.enable_s3, self.aws_endpoint_url, self.aws_profile = \
-                parse_s3_ini(s3_ini, s3_section)
+                parse_s3_ini(s3_ini, s3_section, logger=logger)
         self.globus_ini = globus_ini
         self.globus_id, self.globus_secret = None, None
         self.enable_globus = False
         self.hours_per_activation = 0
         if globus_ini is not None and os.path.exists(globus_ini):
             self.globus_id, self.globus_secret, self.hours_per_activation = \
-                parse_globus_ini(globus_ini, globus_section)
+                parse_globus_ini(globus_ini, globus_section, logger=logger)
             self.enable_globus = self.globus_id is not None
         self.enable_web = enable_web
         self.curl_exe = curl_exe
@@ -742,19 +747,18 @@ class MoverConfig(object):
             enable_globus=self.enable_globus)
 
 
-def parse_s3_ini(ini_fn, section='s3'):
+def parse_s3_ini(ini_fn, section='s3', logger=None):
     """
     Parse and return the fields of a s3.ini file
     """
     if not os.path.exists(ini_fn):
-        log.warning('S3 ini file "%s" does not exist' % ini_fn, 'mover.py')
-        return None, None, 0
+        raise RuntimeError('S3 ini file "%s" does not exist' % ini_fn)
     cfg = RawConfigParser()
     cfg.read(ini_fn)
     if not cfg.has_section(section):
-        log.warning('S3 ini file "%s" does not have section "%s"' %
-                    (ini_fn, section), 'mover.py')
-        return None, None, 0
+        logger is None or logger('S3 ini file "%s" does not have section "%s"' %
+                                 (ini_fn, section))
+        return None, None, None
 
     def _get_option(nm):
         if not cfg.has_option(section, nm):
@@ -769,18 +773,17 @@ def parse_s3_ini(ini_fn, section='s3'):
     return enabled, aws_endpoint, aws_profile
 
 
-def parse_globus_ini(ini_fn, section='recount-app'):
+def parse_globus_ini(ini_fn, section='recount-app', logger=None):
     """
     Parse and return the fields of a s3.ini file
     """
     if not os.path.exists(ini_fn):
-        log.warning('Globus ini file "%s" does not exist' % ini_fn, 'mover.py')
+        logger is None or logger('Globus ini file "%s" does not exist' % ini_fn)
         return None, None, 0
     cfg = RawConfigParser()
     cfg.read(ini_fn)
     if not cfg.has_section(section):
-        log.warning('Globus ini file "%s" does not have section "%s"' %
-                    (ini_fn, section), 'mover.py')
+        logger is None or logger('Globus ini file "%s" does not have section "%s"' % (ini_fn, section))
         return None, None, 0
     globus_id = cfg.get(section, 'id')
     globus_secret = cfg.get(section, 'secret')
@@ -916,7 +919,8 @@ def go():
         globus_ini=globus_ini,
         globus_section=args['--globus-section'],
         enable_web=True,
-        curl_exe=args['--curl'])
+        curl_exe=args['--curl'],
+        logger=lambda x: log.info(x, 'mover.py'))
     try:
         log.info('In main', 'mover.py')
         if args['exists']:
