@@ -286,10 +286,7 @@ rule bw_zstd:
 rule bam_to_bw_all:
     input:
         config['temp'] + '/{trio}.sorted.bam.bai',
-        bam=config['temp'] + '/{trio}.sorted.bam',
-        ref=lambda wildcards: '%s/%s/star_idx/Genome' % (config['ref'], wildcards.trio.split('_')[2]),
-        fai=lambda wildcards: '%s/%s/fasta/genome.fa.fai' % (config['ref'], wildcards.trio.split('_')[2]),
-        awk='/depth2bedgraph.awk'
+        bam=config['temp'] + '/{trio}.sorted.bam'
     output:
         config['temp'] + '/{trio}.unique.bw'
     log:
@@ -297,27 +294,17 @@ rule bam_to_bw_all:
     threads: 32
     shell:
         """
-        TMP="{config[temp]}/bam_to_bw_all.bedgraph"
-        NAMELEN="{config[temp]}/bam_to_bw_all.txt"
-        cut -f1,2 {input.fai} | LC_COLLATE=C sort -k1,1 -k2,2n > ${{NAMELEN}}
-        (time sambamba depth base \
-            -F 'mapping_quality >= 0 and not duplicate and not failed_quality_control' \
-            -t {threads} {input.bam} \
-            | grep -v '^REF' | mawk -f {input.awk} | LC_COLLATE=C sort -k1,1 -k2,2n > ${{TMP}}) 2>&1 | tee -a {log}
-        (time bedGraphToBigWig ${{TMP}} ${{NAMELEN}} {output}) 2>&1 | tee -a {log}
+        (time bamCoverage -b {input.bam} \
+            -p {threads} -o {output}) 2>&1 | tee -a {log}
         size=$(du -k {output} | cut -f1)
         echo "COUNT_BwBytesGenerated ${{size}}"
         echo "COUNT_BamToBwAllComplete 1"
-        rm -f ${{TMP}} ${{NAMELEN}}
         """
 
 rule bam_to_bw_unique:
     input:
         config['temp'] + '/{trio}.sorted.bam.bai',
-        bam=config['temp'] + '/{trio}.sorted.bam',
-        ref=lambda wildcards: '%s/%s/star_idx/Genome' % (config['ref'], wildcards.trio.split('_')[2]),
-        fai=lambda wildcards: '%s/%s/fasta/genome.fa.fai' % (config['ref'], wildcards.trio.split('_')[2]),
-        awk='/depth2bedgraph.awk'
+        bam=config['temp'] + '/{trio}.sorted.bam'
     output:
         config['temp'] + '/{trio}.all.bw'
     log:
@@ -327,18 +314,11 @@ rule bam_to_bw_unique:
         bw_uniq=config.get('bw_unique_qual', 10)
     shell:
         """
-        TMP="{config[temp]}/bam_to_bw_unique.bedgraph"
-        NAMELEN="{config[temp]}/bam_to_bw_unique.txt"
-        cut -f1,2 {input.fai} | LC_COLLATE=C sort -k1,1 -k2,2n > ${{NAMELEN}}
-        (time sambamba depth base \
-            -F 'mapping_quality >= {params.bw_uniq} and not duplicate and not failed_quality_control' \
-            -t {threads} {input.bam} \
-            | grep -v '^REF' | mawk -f {input.awk} | LC_COLLATE=C sort -k1,1 -k2,2n > ${{TMP}}) 2>&1 | tee -a {log}
-        (time bedGraphToBigWig ${{TMP}} ${{NAMELEN}} {output}) 2>&1 | tee -a {log}
+        (time bamCoverage -b {input.bam} --minMappingQuality {params.bw_uniq} \
+            -p {threads} -o {output}) 2>&1 | tee -a {log}
         size=$(du -k {output} | cut -f1)
         echo "COUNT_BwBytesGenerated ${{size}}"
         echo "COUNT_BamToBwUniqueComplete 1"
-        rm -f ${{TMP}} ${{NAMELEN}}
         """
 
 rule sort:

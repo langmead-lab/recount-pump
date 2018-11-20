@@ -15,8 +15,4 @@ COPY Snakefile /Snakefile
 # install generic workflow wrapper script
 COPY workflow.bash /workflow.bash
 
-RUN wget -O /depth2bedgraph.awk \
-        https://gist.githubusercontent.com/nathanhaigh/c8322002a42e40c479d3d766aab32547/raw/899df12b5c76f1f9171768fe5dc1feaa5423fe0a/depth2bedgraph.awk && \
-    chmod a+r /depth2bedgraph.awk
-
 CMD ["bash", "-c", "source activate recount && bash /workflow.bash"]
