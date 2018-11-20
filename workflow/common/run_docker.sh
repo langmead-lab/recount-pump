@@ -9,4 +9,5 @@ python \
     $(cat image.txt) \
     "" \
     "{}" \
-    ../common/accessions.txt
+    ../common/accessions.txt \
+    --fail-on-error
