@@ -12,6 +12,7 @@ Options:
   <name>                   Job name, used for subdirectory names
   <image>                  Image to run.  Can be docker:// URL.
   <input>                  Image to run.  Can be docker:// URL.
+  --fail-on-error          Make run_job return as soon as any container fails.
   --cluster-ini <ini>      ini file for cluster [default: ~/.recount/cluster.ini].
   --log-ini <ini>          ini file for log aggregator [default: ~/.recount/log.ini].
   --log-level <level>      set level for log aggregation; could be CRITICAL,
@@ -152,7 +153,8 @@ def copy_to_destination(name, output_dir, source_prefix, extras, mover, destinat
                                   % (tot_sz, str(xfers)), log_queue)
                 log_info('COUNT_DestXferPre 1', log_queue)
                 source = source_prefix + output_dir
-                mover.multi(source, final_dest_dir, xfers)
+                mover.multi(source, final_dest_dir, xfers,
+                            logger=lambda x: log_info(x, log_queue))
                 log_info('COUNT_DestXferPost 1', log_queue)
                 log_info_detailed(node_name, worker_name,
                                   'Finished moving %d files of total size %d'
@@ -163,7 +165,7 @@ def copy_to_destination(name, output_dir, source_prefix, extras, mover, destinat
 
 def run_job(name, inputs, image_url, image_fn, config, cluster_ini,
             keep=False, mover=None, destination=None, source_prefix=None,
-            log_queue=None, node_name='', worker_name=''):
+            log_queue=None, fail_on_error=False, node_name='', worker_name=''):
     log_info_detailed(node_name, worker_name, 'job name: %s, image-url: "%s", image-fn: "%s"' %
                       (name, image_url, image_fn), log_queue)
     if not os.path.exists(cluster_ini):
@@ -335,32 +337,37 @@ def run_job(name, inputs, image_url, image_fn, config, cluster_ini,
         shutil.rmtree(os.path.join(input_base, name))
         shutil.rmtree(os.path.join(temp_base, name))
 
-    if ret != 0:
+    if ret != 0 and fail_on_error:
         raise RuntimeError('Container returned non-zero exitlevel %d' % ret)
 
     log_info('COUNT_RunWorkflowPost 1', log_queue)
 
-    # Copy files to ultimate destination, if one is specified
-    if mover is not None and destination is not None and len(destination) > 0:
-        output_dir = os.path.join(output_base, name)
-        log_info('About to copy_to_destination', log_queue)
-        copy_to_destination(name, output_dir, source_prefix, ['stats.json'], mover,
-                            destination, log_queue, node_name, worker_name)
+    if ret == 0:
+        # Copy files to ultimate destination, if one is specified
+        if mover is not None and destination is not None and len(destination) > 0:
+            output_dir = os.path.join(output_base, name)
+            log_info('About to copy_to_destination', log_queue)
+            copy_to_destination(name, output_dir, source_prefix, ['stats.json'], mover,
+                                destination, log_queue, node_name, worker_name)
 
-        done_basename = name + '.done'
-        tmpdir = tempfile.mkdtemp()
-        done_temp = os.path.join(tmpdir, done_basename)
-        with open(done_temp, 'wt') as fh:
-            fh.write('DONE\n')
+            done_basename = name + '.done'
+            tmpdir = tempfile.mkdtemp()
+            done_temp = os.path.join(tmpdir, done_basename)
+            with open(done_temp, 'wt') as fh:
+                fh.write('DONE\n')
 
-        log_info('About to put .done file', log_queue)
-        mover.put(done_temp, os.path.join(destination, done_basename))
+            log_info('About to put .done file', log_queue)
+            mover.put(done_temp, os.path.join(destination, done_basename),
+                      logger=lambda x: log_info(x, log_queue))
 
-        shutil.rmtree(tmpdir)
-        if not keep:
-            shutil.rmtree(output_dir)
+            shutil.rmtree(tmpdir)
+            if not keep:
+                shutil.rmtree(output_dir)
 
-    print('SUCCESS' if ret == 0 else 'FAILURE', file=sys.stderr)
+        log_info('COUNT_RunWorkflowSuccess 1', log_queue)
+    else:
+        log_info('COUNT_RunWorkflowFailure 1', log_queue)
+
     return ret == 0
 
 
@@ -388,7 +395,7 @@ def go():
 
             run_job(args['<name>'], args['<input>'], args['<image-url>'],
                     args['<image-fn>'], config, cluster_ini,
-                    keep=args['--keep'])
+                    keep=args['--keep'], fail_on_error=args['--fail-on-error'])
     except Exception:
         log.error('Uncaught exception:', 'run.py')
         raise

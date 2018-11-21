@@ -80,9 +80,11 @@ rule exon_bw_count_all:
         config['output'] + '/{trio}.all.exon_bw_count.zst'
     log:
         config['output'] + '/{trio}.exon_bw_count_all.log'
+    params:
+        srr=lambda wildcards: wildcards.trio.split('_')[0]
     shell:
         """
-        TMP={config[temp]}/o.exon_bw_count_all.tsv
+        TMP={config[temp]}/{params.srr}.exon_bw_count_all.tsv
         (time bwtool summary \
             {input.bed} {input.bw} \
             /dev/stdout \
@@ -113,9 +115,11 @@ rule exon_bw_count_unique:
         config['output'] + '/{trio}.unique.exon_bw_count.zst'
     log:
         config['output'] + '/{trio}.exon_bw_count_unique.log'
+    params:
+        srr=lambda wildcards: wildcards.trio.split('_')[0]
     shell:
         """
-        TMP={config[temp]}/o.exon_bw_count_unique.tsv
+        TMP={config[temp]}/{params.srr}.exon_bw_count_unique.tsv
         (time bwtool summary \
             {input.bed} {input.bw} \
             /dev/stdout \
@@ -153,21 +157,23 @@ rule gene_fc_count_all:
     threads: 32
     shell:
         """
+        TMP={config[temp]}/{params.srr}.gene_fc_count_all.tsv
+        TMP2={config[temp]}/{params.srr}.all.gene_count
         (time featureCounts {params.fc_param} -p -a {input.gtf} -T {threads} \
-            -o {config[temp]}/tmp_all.tsv {input.bam}) 2>&1 | tee -a {log}
+            -o ${{TMP}} {input.bam}) 2>&1 | tee -a {log}
         awk -v OFS='\\t' '$1 !~ /^#/ && $1 !~ /^Geneid/ && $NF != 0 {{print "{params.srr}",$0}}' \
-            {config[temp]}/tmp_all.tsv > {config[temp]}/o.all.gene_count
+            ${{TMP}} > ${{TMP2}}
 
-        size=$(du -k {config[temp]}/o.all.gene_count | cut -f1)
+        size=$(du -k ${{TMP2}} | cut -f1)
         echo "COUNT_GeneFcCountAllSize ${{size}}"
 
-        rm -f {config[temp]}/tmp_all.tsv
-        (time zstd {config[temp]}/o.all.gene_count -o {output}) 2>&1 | tee -a {log}
+        rm -f ${{TMP}}
+        (time zstd ${{TMP2}} -o {output}) 2>&1 | tee -a {log}
 
         size=$(du -k {output} | cut -f1)
         echo "COUNT_CompressedGeneFcCountAllSize ${{size}}"
 
-        rm -f {config[temp]}/o.all.gene_count
+        rm -f ${{TMP2}}
         echo "COUNT_GeneFcCountAllComplete 1"
         """
 
@@ -187,20 +193,23 @@ rule gene_fc_count_unique:
     threads: 32
     shell:
         """
+        TMP={config[temp]}/{params.srr}.gene_fc_count_unique.tsv
+        TMP2={config[temp]}/{params.srr}.unique.gene_count
         (time featureCounts {params.fc_param} -Q {params.fc_uniq} -p -a {input.gtf} -T {threads} \
-            -o {config[temp]}/tmp_unique.tsv {input.bam}) 2>&1 | tee -a {log}
+            -o ${{TMP}} {input.bam}) 2>&1 | tee -a {log}
         awk -v OFS='\\t' '$1 !~ /^#/ && $1 !~ /^Geneid/ && $NF != 0 {{print "{params.srr}",$0}}' \
-            {config[temp]}/tmp_unique.tsv > {config[temp]}/o.unique.gene_count
+            ${{TMP}} > ${{TMP2}}
 
-        size=$(du -k {config[temp]}/o.unique.gene_count | cut -f1)
+        size=$(du -k ${{TMP2}} | cut -f1)
         echo "COUNT_GeneFcCountUniqueSize ${{size}}"
 
-        (time zstd {config[temp]}/o.unique.gene_count -o {output}) 2>&1 | tee -a {log}
+        rm -f ${{TMP}}
+        (time zstd ${{TMP2}} -o {output}) 2>&1 | tee -a {log}
 
         size=$(du -k {output} | cut -f1)
         echo "COUNT_CompressedGeneFcCountUniqueSize ${{size}}"
 
-        rm -f {config[temp]}/o.unique.gene_count
+        rm -f ${{TMP2}}
         echo "COUNT_GeneFcCountUniqueComplete 1"
         """
 
@@ -219,21 +228,23 @@ rule exon_fc_count_all:
     threads: 32
     shell:
         """
+        TMP={config[temp]}/{params.srr}.exon_fc_count_all.tsv
+        TMP2={config[temp]}/{params.srr}.all.exon_count
         (time featureCounts {params.fc_param} -O -f -p -a {input.gtf} -T {threads} \
-            -o {config[temp]}/tmp_all.tsv {input.bam}) 2>&1 | tee -a {log}
+            -o ${{TMP}} {input.bam}) 2>&1 | tee -a {log}
         awk -v OFS='\\t' '$1 !~ /^#/ && $1 !~ /^Geneid/ && $NF != 0 {{print "{params.srr}",$0}}' \
-            {config[temp]}/tmp_all.tsv > {config[temp]}/o.all.exon_count
+            ${{TMP}} > ${{TMP2}}
 
-        size=$(du -k {config[temp]}/o.all.exon_count | cut -f1)
+        size=$(du -k ${{TMP2}} | cut -f1)
         echo "COUNT_ExonFcCountAllSize ${{size}}"
 
-        rm -f {config[temp]}/tmp_all.tsv
-        (time zstd {config[temp]}/o.all.exon_count -o {output}) 2>&1 | tee -a {log}
+        rm -f ${{TMP}}
+        (time zstd ${{TMP2}} -o {output}) 2>&1 | tee -a {log}
 
         size=$(du -k {output} | cut -f1)
         echo "COUNT_CompressedExonFcCountAllSize ${{size}}"
 
-        rm -f {config[temp]}/o.all.exon_count
+        rm -f ${{TMP2}}
         echo "COUNT_ExonFcCountAllComplete 1"
         """
 
@@ -253,20 +264,22 @@ rule exon_fc_count_unique:
     threads: 32
     shell:
         """
+        TMP={config[temp]}/{params.srr}.exon_fc_count_unique.tsv
+        TMP2={config[temp]}/{params.srr}.unique.exon_count
         (time featureCounts {params.fc_param} -Q {params.fc_uniq} -O -f -p -a {input.gtf} -T {threads} \
-            -o {config[temp]}/tmp_unique.tsv {input.bam}) 2>&1 | tee -a {log}
+            -o ${{TMP}} {input.bam}) 2>&1 | tee -a {log}
         awk -v OFS='\\t' '$1 !~ /^#/ && $1 !~ /^Geneid/ && $NF != 0 {{print "{params.srr}",$0}}' \
-            {config[temp]}/tmp_unique.tsv > {config[temp]}/o.unique.exon_count
+            ${{TMP}} > ${{TMP2}}
 
-        size=$(du -k {config[temp]}/o.unique.exon_count | cut -f1)
+        size=$(du -k ${{TMP2}} | cut -f1)
         echo "COUNT_ExonFcCountUniqueSize ${{size}}"
 
-        (time zstd {config[temp]}/o.unique.exon_count -o {output}) 2>&1 | tee -a {log}
+        (time zstd ${{TMP2}} -o {output}) 2>&1 | tee -a {log}
 
         size=$(du -k {output} | cut -f1)
         echo "COUNT_CompressedExonFcCountUniqueSize ${{size}}"
 
-        rm -f {config[temp]}/o.unique.exon_count
+        rm -f ${{TMP2}}
         echo "COUNT_ExonFcCountUniqueComplete 1"
         """
 
@@ -405,18 +418,27 @@ rule sra_fastq:
         config['output'] + '/{trio}.sra_fastq.log'
     params:
         srr=lambda wildcards: wildcards.trio.split('_')[0],
-        fd_params=config.get('fastq_dump', '')
-    # threads: 6
+        fd_params=config.get('fastq_dump', ''),
+        retries=config.get('fastq_dump_retries', '3')
     shell:
         """
-        #(time parallel-fastq-dump {params.fd_params} \
-        #    -s {params.srr} -t {threads} --split-files -I --skip-technical) 2>&1 | tee -a {log}
-        (time fastq-dump  \
-            {params.srr} {params.fd_params} \
-            --split-files -I --skip-technical) 2>&1 | tee -a {log}
+        SUCCESS=0
+        time for i in {{ 1..{params.retries} }}; do
+            if fastq-dump {params.srr} {params.fd_params} \
+                --split-files \
+                -I \
+                --skip-technical ; \
+            then SUCCESS=1 ; \
+                echo "inside SUCCESS=${{SUCCESS}}" ; \
+                break ; \
+            else echo "COUNT_SraFastqRetries 1" ; \
+                sleep 15 ; \
+            fi ; \
+        done
+        [[ ${{SUCCESS}} == 0 ]] && echo "fastq-dump failed" && exit 1
         test -f {params.srr}_2.fastq || mv {params.srr}_1.fastq {params.srr}_0.fastq
         size=0
-        for i in 0 1 2 ; do
+        for i in {{0..2}} ; do
             fn={params.srr}_${{i}}.fastq
             if [[ -f ${{fn}} ]] ; then
                 echo "COUNT_FastqFilesDownloaded 1"

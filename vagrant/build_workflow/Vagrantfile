@@ -198,7 +198,8 @@ Vagrant.configure("2") do |config|
                 '' \
                 '{}' \
                 ../common/accessions.txt \
-                --cluster-ini /root/.recount/cluster_docker.ini
+                --cluster-ini /root/.recount/cluster_docker.ini \
+                --fail-on-error
             if [ $? -eq 0 ] ; then
                 echo "===HAPPY ${IMAGE} ran in Docker"
             else
@@ -219,7 +220,8 @@ Vagrant.configure("2") do |config|
                 $(basename ${IMAGE}).simg \
                 '{}' \
                 ../common/accessions.txt \
-                --cluster-ini /root/.recount/cluster_singularity.ini
+                --cluster-ini /root/.recount/cluster_singularity.ini \
+                --fail-on-error
             if [ $? -eq 0 ] ; then
                 echo "===HAPPY ${IMAGE} ran in Singularity"
             else
