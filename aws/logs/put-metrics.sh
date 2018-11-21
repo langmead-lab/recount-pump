@@ -26,6 +26,6 @@ for metric in ${metrics} ; do
              --profile ${profile} \
              --log-group-name=${log_group} \
              --filter-name "${shortname}" \
-             --filter-pattern "[ month, day, time, host, module, lab = \"${metric}\", name, amt ]" \
+             --filter-pattern "[ month, day, time, host, module, lab = \"${metric}\", amt ]" \
              --metric-transformations metricName=JsonSumTest,metricNamespace=recount,metricValue=\$amt,defaultValue=0
 done
