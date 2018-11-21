@@ -14,9 +14,10 @@ SRC_DIR="$d/../../src"
 ARGS="--ini-base ${RECOUNT_CREDS}"
 OUTPUT_DIR=$(grep '^output_base' ${RECOUNT_CREDS}/cluster.ini | cut -d"=" -f2 | tr -d '[:space:]')
 SPECIES=hg38
+SPECIES_FULL=homo_sapiens
 STUDY=geuv
 
-input_url='s3://recount-pump-experiments/geuv/geuv.json.gz'
+input_url="s3://recount-pump-experiments/${STUDY}/${STUDY}.json.gz"
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 1: Load reference data"
@@ -94,7 +95,7 @@ add_reference() (
                       "${source_set_id}" "${annotation_set_id}" | tail -n 1
 )
 
-ref_id=$(add_reference ${TAXID} "${SPECIES}" 'homo_sapiens' ${ssid} ${asid})
+ref_id=$(add_reference ${TAXID} "${SPECIES}" "${SPECIES_FULL}" ${ssid} ${asid})
 test -n "${ref_id}"
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
@@ -114,12 +115,12 @@ add_analysis() (
         add-analysis ${name} ${image_url} ${config} | tail -n 1
 )
 
-cat >/tmp/.ce_test.config.json <<EOF
+cat >/tmp/.${STUDY}.config.json <<EOF
 {
 }
 EOF
 
-rs1_id=$(add_analysis rs1 "${ANA_URL}" file:///tmp/.ce_test.config.json)
+rs1_id=$(add_analysis rs1 "${ANA_URL}" "file:///tmp/.${STUDY}.config.json")
 test -n "${rs1_id}"
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
