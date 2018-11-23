@@ -33,6 +33,10 @@ Optionally prune away redundant attempts after matching.
 """
 
 
+def shorten(fn):
+    return '.'.join(fn.split('.')[1:])
+
+
 def compare(dir1, dir2, ignores=None):
     """
     Compare the output files from two attempts for the same task
@@ -69,25 +73,29 @@ def compare(dir1, dir2, ignores=None):
             continue
         md5_1, md5_2 = md5(full1), md5(full2)
         if md5_1 == md5_2:
-            good_summary[file] += 1
+            good_summary[shorten(file)] += 1
         else:
-            bad_summary[file] += 1
+            bad_summary[shorten(file)] += 1
             bad_list.append((full1, full2, md5_1, md5_2))
     return good_summary, bad_summary, bad_list, ignored
 
 
 def summarize_compare_result(good_summary, bad_summary, bad_list, ignored):
-    st = 'good_files:\n'
+    st = 'good summary:\n'
     for k, v in good_summary.items():
         st += '  %s: %d\n' % (k, v)
-    st += 'bad_files:\n'
+    st += 'bad summary:\n'
     for k, v in bad_summary.items():
         st += ('  %s: %d\n' % (k, v))
+    if len(bad_list) > 0:
+        st += 'bad list:\n'
+        for f1, f2, _, _ in bad_list:  # ignore md5s
+            st += ('  %s, %s\n' % (f1, f2))
     st += 'ignored: %d\n' % ignored
     return st
 
 
-def sweep(basedir, ignores=None):
+def sweep(basedir, ignores=None, quiet=True):
     attempt_re = re.compile('proj([\d]+)_input([\d]+)_attempt([\d]+)')
     proj_inputs = {}
     attempts = set()
@@ -107,7 +115,8 @@ def sweep(basedir, ignores=None):
                 attempts.add((proj, inp, attempt))
                 if (proj, inp) in proj_inputs:
                     for prev_attempt in proj_inputs[(proj, inp)]:
-                        print('Trying %s == %s' % (full_dir, prev_attempt), file=sys.stderr)
+                        if not quiet:
+                            print('Trying %s == %s' % (full_dir, prev_attempt), file=sys.stderr)
                         my_good_summary, my_bad_summary, my_bad_list, my_ignored =\
                             compare(full_dir, prev_attempt, ignores=ignores)
                         good_summary.update(my_good_summary)
@@ -136,8 +145,7 @@ def test_comapre_1():
     _put_both(dir1, dir2, 'test1.txt', 'hello\n')
     _put_both(dir1, dir2, 'test2.txt', 'world\n')
     good_summary, bad_summary, bad_list, ignored = compare(dir1, dir2)
-    assert 1 == good_summary['test1.txt']
-    assert 1 == good_summary['test2.txt']
+    assert 2 == good_summary['txt']
     assert 0 == len(bad_summary)
     assert 0 == len(bad_list)
     assert 0 == ignored
@@ -150,8 +158,7 @@ def test_comapre_2():
     _put(os.path.join(dir1, 'test2.txt'), 'world1\n')
     _put(os.path.join(dir2, 'test2.txt'), 'world2\n')
     good_summary, bad_summary, bad_list, ignored = compare(dir1, dir2)
-    assert 1 == good_summary['test1.txt']
-    assert 1 == bad_summary['test2.txt']
+    assert 1 == good_summary['txt']
     assert 1 == len(bad_summary)
     assert 1 == len(bad_list)
     assert os.path.join(dir1, 'test2.txt') == bad_list[0][0]
@@ -168,7 +175,7 @@ def test_comapre_3():
     _put(os.path.join(dir1, 'test3.json'), 'world1\n')
     _put(os.path.join(dir2, 'test3.json'), 'world1\n\n')
     good_summary, bad_summary, bad_list, ignored = compare(dir1, dir2)
-    assert 1 == good_summary['test1.txt']
+    assert 1 == good_summary['txt']
     assert 1 == len(good_summary)
     assert 0 == len(bad_summary)
     assert 0 == len(bad_list)
@@ -186,8 +193,7 @@ def test_sweep_1():
     _put_both(dir1, dir2, 'test1.txt', 'hello\n')
     _put_both(dir1, dir2, 'test2.txt', 'world\n')
     good_summary, bad_summary, bad_list, ignored = sweep(dr)
-    assert 1 == good_summary['test1.txt']
-    assert 1 == good_summary['test2.txt']
+    assert 2 == good_summary['txt']
     assert 0 == len(bad_summary)
     assert 0 == len(bad_list)
     assert 0 == ignored
@@ -197,7 +203,7 @@ def go():
     args = docopt(__doc__)
 
     if args['sweep']:
-        good_summary, bad_summary, bad_list, ignored = sweep(args['<dir>'])
+        good_summary, bad_summary, bad_list, ignored = sweep(args['<dir>'], quiet=False)
         print(summarize_compare_result(good_summary, bad_summary, bad_list, ignored))
     elif args['compare']:
         good_summary, bad_summary, bad_list, ignored = compare(args['<dir1>'], args['<dir2>'])
