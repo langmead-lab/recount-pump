@@ -57,7 +57,7 @@ def compare(dir1, dir2, ignores=None):
         raise ValueError('directory had no files: "%s"' % dir1)
     if len(tups1[2]) != len(tups2[2]):
         raise ValueError('directories had different numbers of files: "%s" (%d), "%s" (%d)'
-                         % (dir1, len(tups1[2]), dir2, len(tups2[3])))
+                         % (dir1, len(tups1[2]), dir2, len(tups2[2])))
     for file in tups1[2]:
         full1 = os.path.join(dir1, file)
         full2 = os.path.join(dir2, file)
@@ -95,6 +95,10 @@ def summarize_compare_result(good_summary, bad_summary, bad_list, ignored):
     return st
 
 
+def merge_add(x, y):
+    return {k: x.get(k, 0) + y.get(k, 0) for k in set(x) | set(y)}
+
+
 def sweep(basedir, ignores=None, quiet=True):
     attempt_re = re.compile('proj([\d]+)_input([\d]+)_attempt([\d]+)')
     proj_inputs = {}
@@ -119,8 +123,8 @@ def sweep(basedir, ignores=None, quiet=True):
                             print('Trying %s == %s' % (full_dir, prev_attempt), file=sys.stderr)
                         my_good_summary, my_bad_summary, my_bad_list, my_ignored =\
                             compare(full_dir, prev_attempt, ignores=ignores)
-                        good_summary.update(my_good_summary)
-                        bad_summary.update(my_bad_summary)
+                        good_summary = merge_add(good_summary, my_good_summary)
+                        bad_summary = merge_add(bad_summary, my_bad_summary)
                         bad_list += my_bad_list
                         ignored += my_ignored
                     proj_inputs[(proj, inp)].append(full_dir)
