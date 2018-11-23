@@ -6,6 +6,7 @@
 import os
 import sys
 import hashlib
+import subprocess
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from base import Base
@@ -59,6 +60,11 @@ def parse_queue_config(fn, section='queue'):
         return None if (len(opt) == 0) else opt
 
     return _get_option('aws_profile'), _get_option('region'), _get_option('endpoint')
+
+
+def md5(fn):
+    image_md5 = subprocess.check_output(['md5sum', fn])
+    return image_md5.decode().split()[0]
 
 
 def which(program):
