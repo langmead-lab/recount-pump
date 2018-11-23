@@ -21,6 +21,7 @@ from toolbox import md5
 from collections import defaultdict
 import os
 import re
+import sys
 import tempfile
 
 
@@ -86,29 +87,37 @@ def summarize_compare_result(good_summary, bad_summary, bad_list, ignored):
     return st
 
 
-def sweep(basedir):
+def sweep(basedir, ignores=None):
     attempt_re = re.compile('proj([\d]+)_input([\d]+)_attempt([\d]+)')
     proj_inputs = {}
     attempts = set()
+    good_summary, bad_summary, bad_list, ignored = {}, {}, [], 0
     for root, dirs, files in os.walk(basedir):
         # First, look for attempt directories
-        for dir in dirs:
-            full_dir = os.path.join(root, dir)
+        for dr in dirs:
+            full_dir = os.path.join(root, dr)
             assert os.path.exists(full_dir) and os.path.isdir(full_dir)
-            ma = attempt_re.match(dir)
+            ma = attempt_re.match(dr)
             if ma is not None:
-                done_fn = os.path.join(root, dir + '.done')
+                done_fn = os.path.join(root, dr + '.done')
                 if not os.path.exists(done_fn):
                     continue
-                proj, input, attempt = map(int, [ma.group(1), ma.group(2), ma.group(3)])
-                assert (proj, input, attempt) not in attempts
-                attempts.add((proj, input, attempt))
-                if (proj, input) in proj_inputs:
-                    for prev_attempt in proj_inputs[(proj, input)]:
-                        pass
-                    proj_inputs[(proj, input)].append(full_dir)
+                proj, inp, attempt = map(int, [ma.group(1), ma.group(2), ma.group(3)])
+                assert (proj, inp, attempt) not in attempts
+                attempts.add((proj, inp, attempt))
+                if (proj, inp) in proj_inputs:
+                    for prev_attempt in proj_inputs[(proj, inp)]:
+                        print('Trying %s == %s' % (full_dir, prev_attempt), file=sys.stderr)
+                        my_good_summary, my_bad_summary, my_bad_list, my_ignored =\
+                            compare(full_dir, prev_attempt, ignores=ignores)
+                        good_summary.update(my_good_summary)
+                        bad_summary.update(my_bad_summary)
+                        bad_list += my_bad_list
+                        ignored += my_ignored
+                    proj_inputs[(proj, inp)].append(full_dir)
                 else:
-                    proj_inputs[(proj, input)] = full_dir
+                    proj_inputs[(proj, inp)] = [full_dir]
+    return good_summary, bad_summary, bad_list, ignored
 
 
 def _put(fn, text):
@@ -166,11 +175,30 @@ def test_comapre_3():
     assert 2 == ignored
 
 
+def test_sweep_1():
+    dr = tempfile.mkdtemp()
+    dir1 = os.path.join(dr, 'proj1_input1_attempt1')
+    dir2 = os.path.join(dr, 'proj1_input1_attempt2')
+    os.makedirs(dir1)
+    os.makedirs(dir2)
+    _put(dir1 + '.done', 'done\n')
+    _put(dir2 + '.done', 'done\n')
+    _put_both(dir1, dir2, 'test1.txt', 'hello\n')
+    _put_both(dir1, dir2, 'test2.txt', 'world\n')
+    good_summary, bad_summary, bad_list, ignored = sweep(dr)
+    assert 1 == good_summary['test1.txt']
+    assert 1 == good_summary['test2.txt']
+    assert 0 == len(bad_summary)
+    assert 0 == len(bad_list)
+    assert 0 == ignored
+
+
 def go():
     args = docopt(__doc__)
 
     if args['sweep']:
-        print(sweep(args['<dir>']))
+        good_summary, bad_summary, bad_list, ignored = sweep(args['<dir>'])
+        print(summarize_compare_result(good_summary, bad_summary, bad_list, ignored))
     elif args['compare']:
         good_summary, bad_summary, bad_list, ignored = compare(args['<dir1>'], args['<dir2>'])
         print(summarize_compare_result(good_summary, bad_summary, bad_list, ignored))
