@@ -32,10 +32,12 @@ Optionally prune away redundant attempts after matching.
 """
 
 
-def compare(dir1, dir2, ignore='.*\.log'):
+def compare(dir1, dir2, ignores=None):
     """
     Compare the output files from two attempts for the same task
     """
+    if ignores is None:
+        ignores = ['.*\.log', '.*\.json']
     good_summary = defaultdict(int)
     bad_summary = defaultdict(int)
     bad_list = []
@@ -56,8 +58,13 @@ def compare(dir1, dir2, ignore='.*\.log'):
         full2 = os.path.join(dir2, file)
         if not os.path.exists(full2):
             raise ValueError('Directory 2 lacks file "%s" present in directory 1' % file)
-        if re.compile(ignore).match(file):
-            ignored += 1
+        skip_outer = False
+        for ignore in ignores:
+            if re.compile(ignore).match(file):
+                ignored += 1
+                skip_outer = True
+                break
+        if skip_outer:
             continue
         md5_1, md5_2 = md5(full1), md5(full2)
         if md5_1 == md5_2:
@@ -66,6 +73,17 @@ def compare(dir1, dir2, ignore='.*\.log'):
             bad_summary[file] += 1
             bad_list.append((full1, full2, md5_1, md5_2))
     return good_summary, bad_summary, bad_list, ignored
+
+
+def summarize_compare_result(good_summary, bad_summary, bad_list, ignored):
+    st = 'good_files:\n'
+    for k, v in good_summary.items():
+        st += '  %s: %d\n' % (k, v)
+    st += 'bad_files:\n'
+    for k, v in bad_summary.items():
+        st += ('  %s: %d\n' % (k, v))
+    st += 'ignored: %d\n' % ignored
+    return st
 
 
 def sweep(basedir):
@@ -138,18 +156,25 @@ def test_comapre_3():
     _put_both(dir1, dir2, 'test1.txt', 'hello\n')
     _put(os.path.join(dir1, 'test2.log'), 'world1\n')
     _put(os.path.join(dir2, 'test2.log'), 'world2\n')
+    _put(os.path.join(dir1, 'test3.json'), 'world1\n')
+    _put(os.path.join(dir2, 'test3.json'), 'world1\n\n')
     good_summary, bad_summary, bad_list, ignored = compare(dir1, dir2)
     assert 1 == good_summary['test1.txt']
     assert 1 == len(good_summary)
     assert 0 == len(bad_summary)
     assert 0 == len(bad_list)
-    assert 1 == ignored
+    assert 2 == ignored
 
 
-if __name__ == '__main__':
+def go():
     args = docopt(__doc__)
 
     if args['sweep']:
         print(sweep(args['<dir>']))
     elif args['compare']:
-        print(compare(args['<dir1>'], args['<dir2>']))
+        good_summary, bad_summary, bad_list, ignored = compare(args['<dir1>'], args['<dir2>'])
+        print(summarize_compare_result(good_summary, bad_summary, bad_list, ignored))
+
+
+if __name__ == '__main__':
+    go()
