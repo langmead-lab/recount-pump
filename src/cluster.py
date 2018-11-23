@@ -8,6 +8,7 @@
 Usage:
   cluster prepare [options] <project-id>
   cluster run [options] <project-id>
+  cluster cleanup [options] <project-id>
 
 Options:
   --cluster-ini <ini>          Cluster ini file [default: ~/.recount/cluster.ini].
@@ -53,7 +54,7 @@ import traceback
 from resmon import SysmonThread
 from datetime import datetime
 from docopt import docopt
-from toolbox import engine_from_config, session_maker_from_config, parse_queue_config
+from toolbox import engine_from_config, session_maker_from_config, parse_queue_config, md5
 from analysis import Analysis, add_analysis
 from input import Input, import_input_set
 from pump import Project, TaskAttempt, TaskFailure, TaskSuccess, add_project
@@ -170,11 +171,6 @@ def image_exists_locally(url, system, cachedir=None):
         if os.system('which docker >/dev/null') != 0:
             raise RuntimeError('Image is for docker, but "docker" binary not in PATH')
         return docker_image_exists(url)
-
-
-def md5(fn):
-    image_md5 = subprocess.check_output(['md5sum', fn])
-    return image_md5.decode().split()[0]
 
 
 def do_job(body, cluster_ini, my_attempt, node_name,
@@ -500,6 +496,10 @@ def job_loop(project_id, q_ini, cluster_ini, worker_name, session,
                     q_client.delete_message(QueueUrl=q_url, ReceiptHandle=handle)
 
 
+def clean_up(project_id, cluster_ini, session):
+    pass
+
+
 def read_cluster_config(cluster_fn, section=None):
     cfg = RawConfigParser()
     cfg.read(cluster_fn)
@@ -776,6 +776,9 @@ def go():
             session_maker = session_maker_from_config(db_ini, args['--db-section'])
             print(prepare(project_id, cluster_ini, session_maker(),
                           mover_config.new_mover()))
+        if args['cleanup']:
+            session_maker = session_maker_from_config(db_ini, args['--db-section'])
+            print(clean_up(project_id, cluster_ini, session_maker()))
         if args['run']:
             enabled, destination_url, source_prefix, aws_endpoint, aws_profile = \
                 parse_destination_ini(dest_ini)
