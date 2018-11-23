@@ -266,12 +266,13 @@ def run_job(name, inputs, image_url, image_fn, config, cluster_ini,
         raise RuntimeError('Failed to stage any inputs')
     log_info_detailed(node_name, worker_name, 'staged inputs: ' + str(staged_inputs), log_queue)
 
+    output_dir = os.path.join(output_base, name)
     if output_mount is not None and len(output_mount) > 0:
         mounts.append('-v' if docker else '-B')
         mounts.append('%s/%s:%s' % (output_base, name, output_mount))
     else:
-        output_mount = os.path.join(output_base, name)
-    os.makedirs(os.path.join(output_base, name))
+        output_mount = output_dir
+    os.makedirs(output_dir)
     if temp_mount is not None and len(temp_mount) > 0:
         mounts.append('-v' if docker else '-B')
         mounts.append('%s/%s:%s' % (temp_base, name, temp_mount))
@@ -345,28 +346,28 @@ def run_job(name, inputs, image_url, image_fn, config, cluster_ini,
     if ret == 0:
         # Copy files to ultimate destination, if one is specified
         if mover is not None and destination is not None and len(destination) > 0:
-            output_dir = os.path.join(output_base, name)
             log_info('About to copy_to_destination', log_queue)
             copy_to_destination(name, output_dir, source_prefix, ['stats.json'], mover,
                                 destination, log_queue, node_name, worker_name)
 
             done_basename = name + '.done'
-            tmpdir = tempfile.mkdtemp()
-            done_temp = os.path.join(tmpdir, done_basename)
+            done_temp = os.path.join(output_dir, done_basename)
             with open(done_temp, 'wt') as fh:
                 fh.write('DONE\n')
 
             log_info('About to put .done file', log_queue)
+            done_temp = source_prefix + done_temp
             mover.put(done_temp, os.path.join(destination, done_basename),
                       logger=lambda x: log_info(x, log_queue))
 
-            shutil.rmtree(tmpdir)
             if not keep:
                 shutil.rmtree(output_dir)
 
         log_info('COUNT_RunWorkflowSuccess 1', log_queue)
     else:
         log_info('COUNT_RunWorkflowFailure 1', log_queue)
+
+    # Special handling of stats.json so it can be converted to counters
 
     return ret == 0
 
