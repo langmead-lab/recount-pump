@@ -1,6 +1,8 @@
 """
 Parameters:
-- fastq_dump: parameters to pass to parallel-fastq-dump
+- fastq_dump_args: parameters to pass to fastq dumping tool
+- fastq_dump_retries: number of retry attempts before dying
+- fastq_dump_tool: name of tool to run, e.g. 'fastq-dump' or 'fasterq-dump'
 - star: parameters to pass to STAR aligner
 - bw_unique_qual: minimum MAPQ needed to be counted in unique BW [default: 10]
 - featureCounts: parameters to pass to featureCounts
@@ -95,12 +97,12 @@ rule exon_bw_count_all:
             | cut -f1-4,11 \
             > ${{TMP}}) 2>&1 | tee -a {log}
 
-        size=$(du -k ${{TMP}} | cut -f1)
+        size=$(wc -c < ${{TMP}})
         echo "COUNT_ExonBwCountAllSize ${{size}}"
 
         (time zstd ${{TMP}} -o {output}) 2>&1 | tee -a {log}
 
-        size=$(du -k {output} | cut -f1)
+        size=$(wc -c < {output})
         echo "COUNT_CompressedExonBwCountAllSize ${{size}}"
 
         rm -f ${{TMP}}
@@ -130,12 +132,12 @@ rule exon_bw_count_unique:
             | cut -f1-4,11 \
             > ${{TMP}}) 2>&1 | tee -a {log}
 
-        size=$(du -k ${{TMP}} | cut -f1)
+        size=$(wc -c < ${{TMP}})
         echo "COUNT_ExonBwCountUniqueSize ${{size}}"
 
         (time zstd ${{TMP}} -o {output}) 2>&1 | tee -a {log}
 
-        size=$(du -k {output} | cut -f1)
+        size=$(wc -c < {output})
         echo "COUNT_CompressedExonBwCountUniqueSize ${{size}}"
 
         rm -f ${{TMP}}
@@ -164,13 +166,13 @@ rule gene_fc_count_all:
         awk -v OFS='\\t' '$1 !~ /^#/ && $1 !~ /^Geneid/ && $NF != 0 {{print "{params.srr}",$0}}' \
             ${{TMP}} > ${{TMP2}}
 
-        size=$(du -k ${{TMP2}} | cut -f1)
+        size=$(wc -c < ${{TMP2}})
         echo "COUNT_GeneFcCountAllSize ${{size}}"
 
         rm -f ${{TMP}}
         (time zstd ${{TMP2}} -o {output}) 2>&1 | tee -a {log}
 
-        size=$(du -k {output} | cut -f1)
+        size=$(wc -c <{output})
         echo "COUNT_CompressedGeneFcCountAllSize ${{size}}"
 
         rm -f ${{TMP2}}
@@ -200,13 +202,13 @@ rule gene_fc_count_unique:
         awk -v OFS='\\t' '$1 !~ /^#/ && $1 !~ /^Geneid/ && $NF != 0 {{print "{params.srr}",$0}}' \
             ${{TMP}} > ${{TMP2}}
 
-        size=$(du -k ${{TMP2}} | cut -f1)
+        size=$(wc -c < ${{TMP2}})
         echo "COUNT_GeneFcCountUniqueSize ${{size}}"
 
         rm -f ${{TMP}}
         (time zstd ${{TMP2}} -o {output}) 2>&1 | tee -a {log}
 
-        size=$(du -k {output} | cut -f1)
+        size=$(wc -c < {output})
         echo "COUNT_CompressedGeneFcCountUniqueSize ${{size}}"
 
         rm -f ${{TMP2}}
@@ -235,13 +237,13 @@ rule exon_fc_count_all:
         awk -v OFS='\\t' '$1 !~ /^#/ && $1 !~ /^Geneid/ && $NF != 0 {{print "{params.srr}",$0}}' \
             ${{TMP}} > ${{TMP2}}
 
-        size=$(du -k ${{TMP2}} | cut -f1)
+        size=$(wc -c < ${{TMP2}})
         echo "COUNT_ExonFcCountAllSize ${{size}}"
 
         rm -f ${{TMP}}
         (time zstd ${{TMP2}} -o {output}) 2>&1 | tee -a {log}
 
-        size=$(du -k {output} | cut -f1)
+        size=$(wc -c < {output})
         echo "COUNT_CompressedExonFcCountAllSize ${{size}}"
 
         rm -f ${{TMP2}}
@@ -271,12 +273,12 @@ rule exon_fc_count_unique:
         awk -v OFS='\\t' '$1 !~ /^#/ && $1 !~ /^Geneid/ && $NF != 0 {{print "{params.srr}",$0}}' \
             ${{TMP}} > ${{TMP2}}
 
-        size=$(du -k ${{TMP2}} | cut -f1)
+        size=$(wc -c < ${{TMP2}})
         echo "COUNT_ExonFcCountUniqueSize ${{size}}"
 
         (time zstd ${{TMP2}} -o {output}) 2>&1 | tee -a {log}
 
-        size=$(du -k {output} | cut -f1)
+        size=$(wc -c < {output})
         echo "COUNT_CompressedExonFcCountUniqueSize ${{size}}"
 
         rm -f ${{TMP2}}
@@ -291,7 +293,7 @@ rule bw_zstd:
     shell:
         """
         zstd {input} -o {output}
-        size=$(du -k {output} | cut -f1)
+        size=$(wc -c < {output})
         echo "COUNT_CompressedBwBytesGenerated ${{size}}"
         echo "COUNT_BwZstdComplete 1"
         """
@@ -309,7 +311,7 @@ rule bam_to_bw_all:
         """
         (time bamCoverage -b {input.bam} \
             -p {threads} -o {output}) 2>&1 | tee -a {log}
-        size=$(du -k {output} | cut -f1)
+        size=$(wc -c < {output})
         echo "COUNT_BwBytesGenerated ${{size}}"
         echo "COUNT_BamToBwAllComplete 1"
         """
@@ -329,7 +331,7 @@ rule bam_to_bw_unique:
         """
         (time bamCoverage -b {input.bam} --minMappingQuality {params.bw_uniq} \
             -p {threads} -o {output}) 2>&1 | tee -a {log}
-        size=$(du -k {output} | cut -f1)
+        size=$(wc -c < {output})
         echo "COUNT_BwBytesGenerated ${{size}}"
         echo "COUNT_BamToBwUniqueComplete 1"
         """
@@ -346,7 +348,7 @@ rule sort:
     shell:
         """
         (time sambamba sort --tmpdir={config[temp]} -t {threads} -m 10G -o {output.bam} {input}) 2>&1 | tee -a {log}
-        size=$(du -k {output.bam} | cut -f1)
+        size=$(wc -c < {output.bam})
         echo "COUNT_SortedBAMBytesGenerated ${{size}}"
         (time sambamba index -t {threads} {output.bam}) 2>&1 | tee -a {log}
         echo "COUNT_SortComplete 1"
@@ -394,16 +396,16 @@ rule align:
         rm -f Log*.out Aligned.out.sam
         rm -rf ${{TMP}}
         
-        size=$(du -k Aligned.out.bam | cut -f1)
+        size=$(wc -c < Aligned.out.bam)
         echo "COUNT_BAMBytesGenerated ${{size}}"
 
-        size=$(du -k SJ.out.tab | cut -f1)
+        size=$(wc -c < SJ.out.tab)
         echo "COUNT_UncompressedJxBytesGenerated ${{size}}"
         
         mv Aligned.out.bam {output.bam}
         (time zstd SJ.out.tab -o {output.jxs}) 2>&1 | tee -a {log}
 
-        size=$(du -k {output.jxs} | cut -f1)
+        size=$(wc -c < {output.jxs})
         echo "COUNT_CompressedJxBytesGenerated ${{size}}"
 
         echo "COUNT_AlignComplete 1"
@@ -418,24 +420,41 @@ rule sra_fastq:
         config['output'] + '/{trio}.sra_fastq.log'
     params:
         srr=lambda wildcards: wildcards.trio.split('_')[0],
-        fd_params=config.get('fastq_dump', ''),
-        retries=config.get('fastq_dump_retries', '3')
+        fd_params=config.get('fastq_dump_args', ''),
+        retries=config.get('fastq_dump_retries', '5'),
+        tool=config.get('fastq_dump_tool', 'fastq-dump')
+    threads: 4
     shell:
         """
         SUCCESS=0
-        time for i in {{ 1..{params.retries} }}; do
-            if fastq-dump {params.srr} {params.fd_params} \
+        TIMEOUT=10
+        PARAMS=""
+        if [[ {params.tool} == "fasterq-dump" ]] ; then
+            PARAMS="-e {threads} -t {config[temp]}/fasterq-dump-{params.srr}"
+        fi
+        for i in {{ 1..{params.retries} }} ; do
+            if [[ {params.tool} == "fasterq-dump" ]] ; then
+                rm -rf {config[temp]}/fasterq-dump-{params.srr}
+            fi
+            if time {params.tool} {params.srr} {params.fd_params} \
+                ${{PARAMS}} \
                 --split-files \
-                -I \
-                --skip-technical ; \
-            then SUCCESS=1 ; \
-                echo "inside SUCCESS=${{SUCCESS}}" ; \
-                break ; \
-            else echo "COUNT_SraFastqRetries 1" ; \
-                sleep 15 ; \
-            fi ; \
+                --skip-technical \
+                2>&1 >> {log}
+            then
+                SUCCESS=1
+                break
+            else
+                echo "COUNT_SraFastqRetries 1"
+                TIMEOUT=$((${{TIMEOUT}} * 2))
+                sleep ${{TIMEOUT}}
+            fi
         done
-        [[ ${{SUCCESS}} == 0 ]] && echo "fastq-dump failed" && exit 1
+        if (( $SUCCESS == 0 )) ; then
+            echo "COUNT_SraFastqFailures 1"
+            echo "fastq-dump failed"
+            exit 1
+        fi
         test -f {params.srr}_2.fastq || mv {params.srr}_1.fastq {params.srr}_0.fastq
         size=0
         for i in {{0..2}} ; do
@@ -445,7 +464,7 @@ rule sra_fastq:
             else
                 touch ${{fn}}
             fi
-            size=$((${{size}} + $(du -k ${{fn}} | cut -f1)))
+            size=$((${{size}} + $(wc -c < ${{fn}})))
             mv ${{fn}} {config[temp]}/{wildcards.trio}_${{i}}.fastq
         done
         echo "COUNT_FastqBytesDownloaded ${{size}}"
