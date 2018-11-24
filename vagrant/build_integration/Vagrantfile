@@ -144,7 +144,7 @@ Vagrant.configure("2") do |config|
     SHELL
 
     config.vm.provision "shell", privileged: true, name: "minio image", inline: <<-SHELL
-        SKIP_MINIO=1
+        SKIP_MINIO=0
         if [ ${SKIP_MINIO} = 0 ] ; then
             cd /work/recount-pump/docker/minio && ./build.sh && ./push.sh
             if [ $? -eq 0 ] ; then
@@ -156,7 +156,7 @@ Vagrant.configure("2") do |config|
     SHELL
 
     config.vm.provision "shell", privileged: true, name: "recount-pump image", inline: <<-SHELL
-        SKIP_PUMP=1
+        SKIP_PUMP=0
         if [ ${SKIP_PUMP} = 0 ] ; then
             cd /work/recount-pump && ./build.sh && ./push.sh
             if [ $? -eq 0 ] ; then
