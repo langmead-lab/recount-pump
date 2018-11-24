@@ -188,8 +188,14 @@ def add_project(name, analysis_id, input_set_id, reference_id, session):
     return proj.id
 
 
-def get_queue(sqs_client, queue_name):
-    resp = sqs_client.create_queue(QueueName=queue_name)
+def get_queue(sqs_client, queue_name, vis_timeout=1*60*60, message_retention=1209600):
+    """
+    TODO: get queue parameters from somewhere reasonable
+    TODO: probably need to think more about parameters like e.g. MessageRetentionPeriod
+    """
+    resp = sqs_client.create_queue(QueueName=queue_name,
+                                   VisibilityTimeout=vis_timeout,
+                                   MessageRetentionPeriod=message_retention)
     assert 'QueueUrl' in resp
     return resp['QueueUrl']
 
