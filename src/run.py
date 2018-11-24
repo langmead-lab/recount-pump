@@ -101,8 +101,6 @@ def reader(node_name, worker_name, pipe, queue, nm):
 
 def copy_to_destination(name, output_dir, source_prefix, extras, mover, destination,
                         log_queue=None, node_name='', worker_name=''):
-    if source_prefix is None or len(source_prefix) == 0:
-        source_prefix = 'local://'
     log_info_detailed(node_name, worker_name,
                       'using mover to copy outputs from "%s" to "%s"' %
                       (output_dir, destination), log_queue)
@@ -350,6 +348,9 @@ def run_job(name, inputs, image_url, image_fn, config, cluster_ini,
     log_info('COUNT_RunWorkflowPost 1', log_queue)
 
     if ret == 0:
+        if source_prefix is None or len(source_prefix) == 0:
+            source_prefix = 'local://'
+
         # Copy files to ultimate destination, if one is specified
         if mover is not None and destination is not None and len(destination) > 0:
             log_info('About to copy_to_destination', log_queue)
