@@ -652,6 +652,7 @@ class Mover(object):
         url = Url(url)
         dst = url.to_url()
         if url.is_local:
+            source = Url(source).to_url()
             logger is None or logger('Local put from "%s" to "%s"' % (source, dst))
             shutil.copyfile(source, dst)
         elif url.is_s3:
