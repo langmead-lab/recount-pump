@@ -101,6 +101,14 @@ def reader(node_name, worker_name, pipe, queue, nm):
 
 def copy_to_destination(name, output_dir, source_prefix, extras, mover, destination,
                         log_queue=None, node_name='', worker_name=''):
+    """
+    There is one stats file per Snakemake invocation.  This function is
+    currently assuming that there is one file in this batch to be copied to
+    the destination.  But in theory there could be multiple run accessions in
+    a single batch, all described by a single stats file.  I think that
+    currently this will be copied to several subdirectories on the
+    destination.
+    """
     log_info_detailed(node_name, worker_name,
                       'using mover to copy outputs from "%s" to "%s"' %
                       (output_dir, destination), log_queue)
@@ -136,7 +144,7 @@ def copy_to_destination(name, output_dir, source_prefix, extras, mover, destinat
                                           (full_extra, sz), log_queue)
                         new_name = srr + '.' + extra
                         new_name_full = os.path.join(output_dir, new_name)
-                        os.rename(full_extra, new_name_full)
+                        shutil.copy2(full_extra, new_name_full)
                         assert os.path.exists(new_name_full)
                         xfers.append(new_name)
                         tot_sz += sz
@@ -160,6 +168,8 @@ def copy_to_destination(name, output_dir, source_prefix, extras, mover, destinat
                                   % (len(xfers), tot_sz), log_queue)
                 log_info('COUNT_DestBytesMoved %d' % tot_sz, log_queue)
                 log_info('COUNT_DestFilesMoved %d' % len(xfers), log_queue)
+
+            break
 
 
 def run_job(name, inputs, image_url, image_fn, config, cluster_ini,
