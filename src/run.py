@@ -287,7 +287,7 @@ def run_job(name, inputs, image_url, image_fn, config, cluster_ini,
     else:
         ref_mount = ref_base
 
-    with open(os.path.join(temp_base_name, 'node.txt')) as fh:
+    with open(os.path.join(temp_base_name, 'node.txt'), 'wt') as fh:
         fh.write('Node: %s\n' % node_name)
         fh.write('Worker: %s\n' % worker_name)
 
