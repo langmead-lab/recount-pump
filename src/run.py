@@ -30,10 +30,11 @@ import log
 import shutil
 import json
 import time
+import stats
 from docopt import docopt
 import subprocess
 import threading
-import tempfile
+
 if sys.version[:1] == '2':
     from ConfigParser import RawConfigParser
 else:
@@ -360,8 +361,13 @@ def run_job(name, inputs, image_url, image_fn, config, cluster_ini,
             mover.put(done_temp, os.path.join(destination, done_basename),
                       logger=lambda x: log_info(x, log_queue))
 
-            if not keep:
-                shutil.rmtree(output_dir)
+        stats_fn = os.path.join(output_dir, 'stats.json')
+        assert os.path.exists(stats_fn) and os.path.isfile(stats_fn)
+        for counter in stats.summarize(stats_fn):
+            log_info('COUNT_%sWallTime %0.3f' % (counter[0], counter[1]), log_queue)
+
+        if not keep:
+            shutil.rmtree(output_dir)
 
         log_info('COUNT_RunWorkflowSuccess 1', log_queue)
     else:

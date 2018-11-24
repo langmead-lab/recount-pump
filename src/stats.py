@@ -7,6 +7,7 @@
 
 Usage:
   stats summarize <stats-file> [options]
+  stats snakefile <snakefile> [options]
 
 Options:
   --prefix <path>          Write plot files beginning with <path> [default: recount].
@@ -24,6 +25,7 @@ import os
 import re
 import json
 import tempfile
+from docopt import docopt
 
 
 def to_camel_case(st):
@@ -37,7 +39,7 @@ def to_camel_case(st):
     snake_re = r"(.*?)_([a-zA-Z])"
 
     def camel_upper(match):
-        return match.group(1)[0].upper() + match.group(1)[1:] + match.group(2).upper()
+        return match.group(1) + match.group(2).upper()
 
     return re.sub(snake_re, camel_upper, st[0].upper() + st[1:], 0)
 
@@ -65,6 +67,28 @@ def summarize(fn):
     return counters
 
 
+def to_counter_updates(counters):
+    updates = []
+    for counter in counters:
+        updates.append('COUNT_%s %0.3f' % (counter[0], counter[1]))
+    return updates
+
+
+def from_snakefile(fn):
+    counters = []
+    with open(fn, 'rt') as fh:
+        for ln in fh:
+            if len(ln.strip()) == 0:
+                continue
+            if ln.split()[0] == 'rule':
+                name = ln.split()[1]
+                while name.endswith(':'):
+                    name = name[:-1]
+                nm = 'COUNT_%sWallTime' % to_camel_case(name)
+                counters.append(nm)
+    return '\n'.join(counters)
+
+
 def test_to_camel_1():
     assert 'Happy' == to_camel_case('Happy')
     assert 'Happy' == to_camel_case('happy')
@@ -72,6 +96,10 @@ def test_to_camel_1():
 
 def test_to_camel_2():
     assert 'HelloWorld' == to_camel_case('hello_world')
+
+
+def test_to_camel_3():
+    assert 'BAMToBw' == to_camel_case('BAM_to_bw')
 
 
 def test_summarize_1():
@@ -83,7 +111,7 @@ def test_summarize_1():
                     'otherrule': {'mean-runtime': 80.8}}}
     with open(tmpfn, 'wt') as fh:
         fh.write(json.dumps(js, sort_keys=True) + '\n')
-    counters = summarize(tmpfn)
+    counters = sorted(summarize(tmpfn))
     assert 2 == len(counters)
     assert 'MyRule' == counters[0][0]
     assert 70.7 == counters[0][1]
@@ -92,7 +120,12 @@ def test_summarize_1():
 
 
 def go():
-    pass
+    args = docopt(__doc__)
+
+    if args['summarize']:
+        print(to_counter_updates(summarize(args['<stats-file>'])))
+    if args['snakefile']:
+        print(from_snakefile(args['<snakefile>']))
 
 
 if __name__ == '__main__':
