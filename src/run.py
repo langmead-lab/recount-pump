@@ -286,6 +286,11 @@ def run_job(name, inputs, image_url, image_fn, config, cluster_ini,
         mounts.append('%s:%s' % (ref_base, ref_mount))
     else:
         ref_mount = ref_base
+
+    with open(os.path.join(temp_base_name, 'node.txt')) as fh:
+        fh.write('Node: %s\n' % node_name)
+        fh.write('Worker: %s\n' % worker_name)
+
     cmd_env = ['RECOUNT_JOB_ID=%s' % name,
                'RECOUNT_INPUT=%s' % input_mount,
                'RECOUNT_OUTPUT=%s' % output_mount,
@@ -354,7 +359,8 @@ def run_job(name, inputs, image_url, image_fn, config, cluster_ini,
             done_basename = name + '.done'
             done_temp = os.path.join(output_dir, done_basename)
             with open(done_temp, 'wt') as fh:
-                fh.write('DONE\n')
+                fh.write('Node: %s\n' % node_name)
+                fh.write('Worker: %s\n' % worker_name)
 
             log_info('About to put .done file', log_queue)
             done_temp = source_prefix + done_temp
