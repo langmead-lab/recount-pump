@@ -65,7 +65,7 @@ elif [[ -f /Snakefile ]] ; then
     mkdir -p ${RECOUNT_TEMP}/snakemake-wd
     pushd ${RECOUNT_TEMP}/snakemake-wd
     CONFIGFILE=""
-    if [ -f "${RECOUNT_TEMP}/config.json" ] ; then
+    if [[ -f "${RECOUNT_TEMP}/config.json" ]] ; then
         CONFIGFILE="--configfile ${RECOUNT_TEMP}/config.json"
     fi
     snakemake \
