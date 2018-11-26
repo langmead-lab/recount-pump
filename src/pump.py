@@ -200,13 +200,15 @@ def get_queue(sqs_client,
     if make_dlq is None:
         make_dlq = True
     resp = sqs_client.create_queue(QueueName=queue_name,
-                                   VisibilityTimeout=visibility_timeout,
-                                   MessageRetentionPeriod=message_retention_period)
+                                   Attributes={
+                                       'VisibilityTimeout': str(visibility_timeout),
+                                       'MessageRetentionPeriod': str(message_retention_period)})
     assert 'QueueUrl' in resp
     if make_dlq:
         dlq_resp = sqs_client.create_queue(QueueName=queue_name + '_dlq',
-                                           VisibilityTimeout=visibility_timeout,
-                                           MessageRetentionPeriod=message_retention_period)
+                                           Attributes={
+                                               'VisibilityTimeout': str(visibility_timeout),
+                                               'MessageRetentionPeriod': str(message_retention_period)})
         assert 'QueueUrl' in dlq_resp
         response = sqs_client.get_queue_attributes(
             QueueUrl=dlq_resp['QueueUrl'],
@@ -334,14 +336,14 @@ def test_stage(q_enabled, q_client_and_resource, session):
         pytest.skip('Skipping queue-enabled test')
     q_client, q_resource = q_client_and_resource
     proj = _simple_project(session)
-    resp = q_client.create_queue(QueueName=proj.queue_name())
-    assert 'QueueUrl' in resp
-    q_url = resp['QueueUrl']
+    #resp = q_client.create_queue(QueueName=proj.queue_name())
+    #assert 'QueueUrl' in resp
+    #q_url = resp['QueueUrl']
     stage_project(proj.id, q_client, session)
     queue = q_resource.get_queue_by_name(QueueName=proj.queue_name())
-    assert q_url == queue.url
-    msg1 = q_client.receive_message(QueueUrl=q_url)
-    msg2 = q_client.receive_message(QueueUrl=q_url)
+    #assert q_url == queue.url
+    msg1 = q_client.receive_message(QueueUrl=queue.url)
+    msg2 = q_client.receive_message(QueueUrl=queue.url)
     messages = []
     messages.extend(msg1['Messages'])
     messages.extend(msg2['Messages'])
