@@ -37,7 +37,7 @@ def bedGraphToBigWig(bedGraphFileHandle, bigWigPath):
         if FIRST or (chrm == prev_chrm and cov == prev_cov and pos == prev_end+1):
             if FIRST:
                 bw.addHeader(chromSizes, maxZooms=10)
-                [sys.stdout.write("%s\t%d\n" % (x[0],x[1])) for x in chromSizes]
+                #[sys.stdout.write("%s\t%d\n" % (x[0],x[1])) for x in chromSizes]
                 prev_start = pos
             FIRST = False
         else:
