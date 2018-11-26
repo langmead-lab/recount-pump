@@ -59,7 +59,9 @@ def parse_queue_config(fn, section='queue'):
         opt = cfg.get(section, nm)
         return None if (len(opt) == 0) else opt
 
-    return _get_option('aws_profile'), _get_option('region'), _get_option('endpoint')
+    return _get_option('aws_profile'), _get_option('region'), _get_option('endpoint'), \
+           _get_option('visibility_timeout'), _get_option('message_retention_period'), \
+           _get_option('make_dlq')
 
 
 def md5(fn):

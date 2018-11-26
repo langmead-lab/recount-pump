@@ -188,43 +188,51 @@ def add_project(name, analysis_id, input_set_id, reference_id, session):
     return proj.id
 
 
-def get_queue(sqs_client, queue_name, vis_timeout=1*60*60, message_retention=1209600):
-    """
-    TODO: get queue parameters from somewhere reasonable
-    TODO: probably need to think more about parameters like e.g. MessageRetentionPeriod
-    """
+def get_queue(sqs_client,
+              queue_name,
+              visibility_timeout=None,
+              message_retention_period=None,
+              make_dlq=None):
+    if visibility_timeout is None:
+        visibility_timeout = 60 * 60
+    if message_retention_period is None:
+        message_retention_period = 1209600
+    if make_dlq is None:
+        make_dlq = True
     resp = sqs_client.create_queue(QueueName=queue_name,
-                                   VisibilityTimeout=vis_timeout,
-                                   MessageRetentionPeriod=message_retention)
+                                   VisibilityTimeout=visibility_timeout,
+                                   MessageRetentionPeriod=message_retention_period)
     assert 'QueueUrl' in resp
+    if make_dlq:
+        dlq_resp = sqs_client.create_queue(QueueName=queue_name + '_dlq',
+                                           VisibilityTimeout=visibility_timeout,
+                                           MessageRetentionPeriod=message_retention_period)
+        assert 'QueueUrl' in dlq_resp
+        response = sqs_client.get_queue_attributes(
+            QueueUrl=dlq_resp['QueueUrl'],
+            AttributeNames=['QueueArn']
+        )
+        redrive_policy = {
+            'deadLetterTargetArn': response['Attributes']['QueueArn'],
+            'maxReceiveCount': '5'
+        }
+        sqs_client.set_queue_attributes(
+            QueueUrl=resp['QueueUrl'],
+            Attributes={
+                'RedrivePolicy': json.dumps(redrive_policy)
+            }
+        )
     return resp['QueueUrl']
 
 
-def stage_failed_tasks(project_id, sqs_client, session, chunking_strategy=None):
-    """
-    Stage everything in the FailedTasks table for the given project
-    """
-    proj = session.query(Project).get(project_id)
-    q_url = get_queue(sqs_client, proj.queue_name())
-    log.info('stage_failed using sqs queue url ' + q_url, 'pump.py')
-    n = 0
-    for job_str in FailedTasks.job_iterator(project_id, session, chunking_strategy):
-        log.debug('stage failed job "%s" from "%s" to "%s"' % (job_str, proj.name, proj.queue_name()), 'pump.py')
-        resp = sqs_client.send_message(QueueUrl=q_url, MessageBody=job_str)
-        meta = resp['ResponseMetadata']
-        status = meta['HTTPStatusCode']
-        if status != 200:
-            raise IOError('bad status code (%d) after attempt to send message to: %s' % (status, q_url))
-        n += 1
-    log.info('Staged %d failed jobs from "%s" to "%s"' % (n, proj.name, proj.queue_name()), 'pump.py')
-
-
-def stage_project(project_id, sqs_client, session, chunking_strategy=None):
+def stage_project(project_id, sqs_client, session, chunking_strategy=None,
+                  visibility_timeout=1*60*60, message_retention_period=1209600, make_dlq=True):
     """
     Stage all the jobs in the given project
     """
     proj = session.query(Project).get(project_id)
-    q_url = get_queue(sqs_client, proj.queue_name())
+    q_url = get_queue(sqs_client, proj.queue_name(), visibility_timeout=visibility_timeout,
+                      message_retention_period=message_retention_period, make_dlq=make_dlq)
     log.info('stage_project using sqs queue url ' + q_url, 'pump.py')
     n = 0
     for job_str in proj.job_iterator(session, chunking_strategy):
@@ -373,13 +381,15 @@ def go():
             proj = session.query(Project).get(int(args['<project-id>']))
             print(json.dumps(proj.deepdict(session), indent=4, separators=(',', ': ')))
         elif args['stage']:
-            aws_profile, region, endpoint = parse_queue_config(q_ini)
+            aws_profile, region, endpoint, visibility_timeout, \
+                message_retention_period, make_dlq = parse_queue_config(q_ini)
             boto3_session = boto3.session.Session(profile_name=aws_profile)
             sqs_client = boto3_session.client('sqs',
                                               endpoint_url=endpoint,
                                               region_name=region)
             print(stage_project(int(args['<project-id>']), sqs_client, session_mk(),
-                                chunking_strategy=args['--chunk']))
+                                chunking_strategy=args['--chunk'], visibility_timeout=visibility_timeout,
+                                message_retention_period=message_retention_period, make_dlq=make_dlq))
     except Exception:
         log.error('Uncaught exception:', 'pump.py')
         raise

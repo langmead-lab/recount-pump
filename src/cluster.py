@@ -441,7 +441,7 @@ def job_loop(project_id, q_ini, cluster_ini, worker_name, session,
              mover_config=None, destination=None, source_prefix=None):
     node_name = socket.gethostname().split('.', 1)[0]
     log_info_detailed(node_name, worker_name, 'Getting queue client')
-    aws_profile, region, endpoint = parse_queue_config(q_ini)
+    aws_profile, region, endpoint, _, _, _ = parse_queue_config(q_ini)
     boto3_session = boto3.session.Session(profile_name=aws_profile)
     q_client = boto3_session.client('sqs',
                                     endpoint_url=endpoint,
