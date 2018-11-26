@@ -38,14 +38,6 @@ echo "Temp: $(ls ${RECOUNT_TEMP})"
 INPUT_FILES=`ls ${RECOUNT_INPUT}/*`
 test -n "${INPUT_FILES}"
 
-# Set cache directory for fastq-dump
-mkdir -p "$HOME/.ncbi"
-mkdir -p "${RECOUNT_TEMP}/ncbi"
-
-cat >$HOME/.ncbi/user-settings.mkfg <<EOF
-/repository/user/main/public/root = "${RECOUNT_TEMP}/ncbi"
-EOF
-
 # Run nextflow workflow
 if [[ -f /workflow.nf ]] ; then
     mkdir -p ${RECOUNT_TEMP}/nextflow-home ${RECOUNT_TEMP}/nextflow-temp
