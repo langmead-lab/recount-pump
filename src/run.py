@@ -353,6 +353,8 @@ def run_job(name, inputs, image_url, image_fn, config, cluster_ini,
         shutil.rmtree(os.path.join(temp_base, name))
 
     if ret != 0 and fail_on_error:
+        for _ in range(50):
+            log_info('Container returned non-zero exitlevel %d' % ret, log_queue)
         raise RuntimeError('Container returned non-zero exitlevel %d' % ret)
 
     log_info('COUNT_RunWorkflowPost 1', log_queue)
