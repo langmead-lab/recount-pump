@@ -77,8 +77,4 @@ else
     exit 1
 fi
 
-# These will need to be removed outside the container, where we might
-# not want to have to be root to clean up
-chmod -R a+rwx ${RECOUNT_OUTPUT} ${RECOUNT_TEMP}
-
 echo SUCCESS
