@@ -10,8 +10,24 @@ RUN git clone https://github.com/CRG-Barcelona/libbeato.git && cd libbeato && gi
     rm -rf libbeato bwtool
 
 # install conda environment
-COPY env.yml /tmp/env-base.yml
-RUN conda env create -q -f /tmp/env-base.yml && \
+COPY env.yml /env-base.yml
+RUN chmod a+r /env-base.yml
+
+# don't need these anymore
+RUN apt-get remove --purge -y gcc g++ make
+
+# for stampede2
+RUN mkdir -p /scratch /work /home1
+RUN chmod a+rwx /scratch /work /home1
+
+# install aspera
+RUN apt-get update -y && apt-get install -y procps
+RUN adduser --disabled-password --gecos "" recount
+
+USER recount
+WORKDIR /home/recount
+
+RUN conda env create -q -f /env-base.yml && \
     conda clean -y -p -t && \
     rm -f /opt/conda/pkgs/mkl-*/lib/libmkl*avx512*.so* && \
     rm -f /opt/conda/envs/recount/lib/libmkl*avx512*.so* && \
@@ -23,8 +39,7 @@ RUN conda env create -q -f /tmp/env-base.yml && \
            /opt/conda/envs/recount/annotation/* \
            /opt/conda/envs/recount/translations/*
 
-# don't need these anymore
-RUN apt-get remove --purge -y gcc g++ make
-
-# for stampede2
-RUN mkdir -p /scratch /work /home1
+RUN curl -LO https://download.asperasoft.com/download/sw/connect/3.7.4/aspera-connect-3.7.4.147727-linux-64.tar.gz \
+    tar zxf aspera-connect-3.7.4.147727-linux-64.tar.gz \
+    bash aspera-connect-3.7.4.147727-linux-64.sh \
+    rm -f aspera-connect-3.7.4.147727-linux-64.*

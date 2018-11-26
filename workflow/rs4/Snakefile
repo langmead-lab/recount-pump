@@ -422,38 +422,64 @@ rule sra_fastq:
         srr=lambda wildcards: wildcards.trio.split('_')[0],
         fd_params=config.get('fastq_dump_args', ''),
         retries=config.get('fastq_dump_retries', '5'),
-        tool=config.get('fastq_dump_tool', 'fastq-dump')
+        tool=config.get('fastq_dump_tool', 'prefetch -t fasp')
     threads: 4
     shell:
         """
+        set -x
         SUCCESS=0
         TIMEOUT=10
         PARAMS=""
-        if [[ {params.tool} == "fasterq-dump" ]] ; then
-            PARAMS="-e {threads} -t {config[temp]}/fasterq-dump-{params.srr}"
-        fi
-        for i in {{ 1..{params.retries} }} ; do
-            if [[ {params.tool} == "fasterq-dump" ]] ; then
-                rm -rf {config[temp]}/fasterq-dump-{params.srr}
+        if [[ "{params.tool}" == prefetch* ]] ; then
+            TMP="{config[temp]}/prefetch-{params.srr}"
+            ! test -d ${{TMP}}
+            for i in {{ 1..{params.retries} }} ; do
+                if time {params.tool} -O ${{TMP}} -L info {params.srr} 2>&1 >> {log} ; then
+                    SUCCESS=1
+                    break
+                else
+                    echo "COUNT_SraFastqRetries 1"
+                    TIMEOUT=$((${{TIMEOUT}} * 2))
+                    sleep ${{TIMEOUT}}
+                fi
+            done
+            if (( $SUCCESS == 0 )) ; then
+                echo "COUNT_SraFastqFailures 1"
+                echo "fastq-dump failed"
+                exit 1
             fi
-            if time {params.tool} {params.srr} {params.fd_params} \
-                ${{PARAMS}} \
-                --split-files \
-                --skip-technical \
-                2>&1 >> {log}
-            then
-                SUCCESS=1
-                break
-            else
-                echo "COUNT_SraFastqRetries 1"
-                TIMEOUT=$((${{TIMEOUT}} * 2))
-                sleep ${{TIMEOUT}}
+            test -f ${{TMP}}/*.sra
+            size=$(cat ${{TMP}}/*.sra | wc -c)
+            echo "COUNT_SraBytesDownloaded ${{size}}"
+            time fastq-dump --split-files --skip-technical ${{TMP}}/*.sra 2>&1 >> {log}
+            rm -rf ${{TMP}}
+        else
+            if [[ "{params.tool}" == "fasterq-dump" ]] ; then
+                PARAMS="-e {threads} -t {config[temp]}/fasterq-dump-{params.srr}"
             fi
-        done
-        if (( $SUCCESS == 0 )) ; then
-            echo "COUNT_SraFastqFailures 1"
-            echo "fastq-dump failed"
-            exit 1
+            for i in {{ 1..{params.retries} }} ; do
+                if [[ "{params.tool}" == "fasterq-dump" ]] ; then
+                    rm -rf {config[temp]}/fasterq-dump-{params.srr}
+                fi
+                if time {params.tool} {params.srr} {params.fd_params} \
+                    ${{PARAMS}} \
+                    --split-files \
+                    --skip-technical \
+                    2>&1 >> {log}
+                then
+                    SUCCESS=1
+                    break
+                else
+                    echo "COUNT_SraFastqRetries 1"
+                    TIMEOUT=$((${{TIMEOUT}} * 2))
+                    sleep ${{TIMEOUT}}
+                fi
+            done
+            if (( $SUCCESS == 0 )) ; then
+                echo "COUNT_SraFastqFailures 1"
+                echo "fastq-dump failed"
+                exit 1
+            fi
         fi
         test -f {params.srr}_2.fastq || mv {params.srr}_1.fastq {params.srr}_0.fastq
         size=0
