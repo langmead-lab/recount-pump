@@ -39,7 +39,7 @@ RUN conda env create -q -f /env-base.yml && \
            /opt/conda/envs/recount/annotation/* \
            /opt/conda/envs/recount/translations/*
 
-RUN curl -LO https://download.asperasoft.com/download/sw/connect/3.7.4/aspera-connect-3.7.4.147727-linux-64.tar.gz \
-    tar zxf aspera-connect-3.7.4.147727-linux-64.tar.gz \
-    bash aspera-connect-3.7.4.147727-linux-64.sh \
+RUN curl -LO https://download.asperasoft.com/download/sw/connect/3.7.4/aspera-connect-3.7.4.147727-linux-64.tar.gz && \
+    tar zxf aspera-connect-3.7.4.147727-linux-64.tar.gz && \
+    bash aspera-connect-3.7.4.147727-linux-64.sh && \
     rm -f aspera-connect-3.7.4.147727-linux-64.*
