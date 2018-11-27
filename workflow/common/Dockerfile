@@ -20,13 +20,11 @@ RUN apt-get remove --purge -y gcc g++ make
 RUN mkdir -p /scratch /work /home1
 RUN chmod a+rwx /scratch /work /home1
 
-# install aspera
+# For pgrep, needed by aspera installation
 RUN apt-get update -y && apt-get install -y procps
-RUN adduser --disabled-password --gecos "" recount
+RUN useradd -ms /bin/bash recount && chpasswd recount:recount
 
-USER recount
-WORKDIR /home/recount
-
+# Add base conda packages then delete some extraneous files
 RUN conda env create -q -f /env-base.yml && \
     conda clean -y -p -t && \
     rm -f /opt/conda/pkgs/mkl-*/lib/libmkl*avx512*.so* && \
@@ -39,7 +37,13 @@ RUN conda env create -q -f /env-base.yml && \
            /opt/conda/envs/recount/annotation/* \
            /opt/conda/envs/recount/translations/*
 
+# Download but do not install (since root cannot)
 RUN curl -LO https://download.asperasoft.com/download/sw/connect/3.7.4/aspera-connect-3.7.4.147727-linux-64.tar.gz && \
     tar zxf aspera-connect-3.7.4.147727-linux-64.tar.gz && \
-    bash aspera-connect-3.7.4.147727-linux-64.sh && \
-    rm -f aspera-connect-3.7.4.147727-linux-64.*
+    rm -f aspera-connect-3.7.4.147727-linux-64.tar.gz && \
+    mv /aspera-connect-3.7.4.147727-linux-64.sh /startup.sh
+
+RUN chmod a+x /startup.sh
+
+USER recount
+WORKDIR /home/recount
