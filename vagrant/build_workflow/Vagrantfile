@@ -144,11 +144,14 @@ Vagrant.configure("2") do |config|
         echo "temp_mount = /container-mounts/recount/temp"         >> /root/.recount/cluster_singularity.ini
         echo "input_mount = /container-mounts/recount/input"       >> /root/.recount/cluster_singularity.ini
         echo "output_mount = /container-mounts/recount/output"     >> /root/.recount/cluster_singularity.ini
+        
+        cp -r /root/.recount ~ec2-user/
+        chown -R ec2-user ~ec2-user/.recount
     SHELL
 
     config.vm.provision "shell", privileged: true, name: "base analysis image", inline: <<-SHELL
-        SKIP=0
-        if [ "${SKIP}" != "1" ] ; then
+        SKIP_BUILD_BASE=0
+        if [[ ${SKIP_BUILD_BASE} == 0 ]] ; then
             cd /work/recount-pump/workflow/common
             echo "------------------------------------------------------"
             echo "Building and pushing base analysis image"
@@ -168,6 +171,8 @@ Vagrant.configure("2") do |config|
         mkdir -p ${RECOUNT_REF}
         cd ${RECOUNT_REF} && ${FLOWBASE}/prep_test.sh
         SKIP_BUILD=0
+        SKIP_DOCKER=0
+        SKIP_SINGULARITY=0
         for FLOW in rs4 ; do
             FLOWDIR="${FLOWBASE}/${FLOW}"
             IMAGE=$(cat ${FLOWDIR}/image.txt)
@@ -177,7 +182,7 @@ Vagrant.configure("2") do |config|
             echo "              image: \"${IMAGE}\""
             echo "******************************************************"
 
-            if [ ${SKIP_BUILD} = 0 ] ; then
+            if [[ ${SKIP_BUILD} == 0 ]] ; then
                 echo "------------------------------------------------------"
                 echo "Building and pushing (\"$FLOW\")"
                 echo "------------------------------------------------------"
@@ -192,46 +197,47 @@ Vagrant.configure("2") do |config|
             echo "------------------------------------------------------"
             echo "Test-running Docker (\"$FLOW\")"
             echo "------------------------------------------------------"
-            cd ${FLOWDIR} && ../../src/run.py go \
-                docker-test-${FLOW} \
-                ${IMAGE} \
-                '' \
-                '{}' \
-                ../common/accessions.txt \
-                --cluster-ini /root/.recount/cluster_docker.ini \
-                --fail-on-error
-            if [ $? -eq 0 ] ; then
-                echo "===HAPPY ${IMAGE} ran in Docker"
-            else
-                echo "===SAD ERROR running ${IMAGE} in Docker"
+            if [[ ${SKIP_DOCKER} == 0 ]] ; then
+                cd ${FLOWDIR} && ../../src/run.py go \
+                    docker-test-${FLOW} \
+                    ${IMAGE} \
+                    '' \
+                    '{}' \
+                    ../common/accessions.txt \
+                    --cluster-ini $HOME/.recount/cluster_docker.ini \
+                    --fail-on-error
+                if [ $? -eq 0 ] ; then
+                    echo "===HAPPY ${IMAGE} ran in Docker"
+                else
+                    echo "===SAD ERROR running ${IMAGE} in Docker"
+                fi
+                rm -rf /work/recount-temp-docker/temp
+                rm -rf /work/recount-temp-docker/input
+                rm -rf /work/recount-temp-docker/output
             fi
-            #find /work/recount-temp-docker/output -type f -exec md5sum {} ";" | sort | md5sum | awk '{print $1}'
-            #cat ${FLOWDIR}/outmd5.txt
-            rm -rf /work/recount-temp-docker/temp
-            rm -rf /work/recount-temp-docker/input
-            rm -rf /work/recount-temp-docker/output
 
             echo "------------------------------------------------------"
             echo "Test-running Singularity (\"$FLOW\")"
             echo "------------------------------------------------------"
-            cd ${FLOWDIR} && ../../src/run.py go \
-                singularity-test-${FLOW} \
-                docker://${IMAGE} \
-                $(basename ${IMAGE}).simg \
-                '{}' \
-                ../common/accessions.txt \
-                --cluster-ini /root/.recount/cluster_singularity.ini \
-                --fail-on-error
-            if [ $? -eq 0 ] ; then
-                echo "===HAPPY ${IMAGE} ran in Singularity"
-            else
-                echo "===SAD ERROR running ${IMAGE} in Singularity"
+            if [[ ${SKIP_SINGULARITY} == 0 ]] ; then
+                # Must be non-root for aspera to install
+                cd ${FLOWDIR} && sudo -u ec2-user ../../src/run.py go \
+                    singularity-test-${FLOW} \
+                    docker://${IMAGE} \
+                    $(basename ${IMAGE}).simg \
+                    '{}' \
+                    ../common/accessions.txt \
+                    --cluster-ini ~ec2-user/.recount/cluster_singularity.ini \
+                    --fail-on-error
+                if [ $? -eq 0 ] ; then
+                    echo "===HAPPY ${IMAGE} ran in Singularity"
+                else
+                    echo "===SAD ERROR running ${IMAGE} in Singularity"
+                fi
+                rm -rf /work/recount-temp-singularity/temp
+                rm -rf /work/recount-temp-singularity/input
+                rm -rf /work/recount-temp-singularity/output
             fi
-            #find /work/recount-temp-singularity/output -type f -exec md5sum {} ";" | sort | md5sum | awk '{print $1}'
-            #cat ${FLOWDIR}/outmd5.txt
-            rm -rf /work/recount-temp-singularity/temp
-            rm -rf /work/recount-temp-singularity/input
-            rm -rf /work/recount-temp-singularity/output
         done
     SHELL
 end
