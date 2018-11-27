@@ -5,10 +5,14 @@
 
 set -ex
 
+d=$(dirname $0)
 test -n "${RECOUNT_CREDS}"
 
 TAXID=6239
-ANA_URL="docker://quay.io/benlangmead/recount-rs4:0.3.5"
+WORKFLOW=rs4
+IMAGE=$(cat $d/../workflow/$WORKFLOW/image.txt)
+IMAGE_VER=$(cat $d/../workflow/$WORKFLOW/ver.txt)
+ANA_URL="docker://${IMAGE}:${IMAGE_VER}"
 SRC_DIR="src"
 ARGS="--ini-base ${RECOUNT_CREDS}"
 OUTPUT_DIR=$(grep '^output_base' ${RECOUNT_CREDS}/cluster.ini | cut -d"=" -f2 | tr -d '[:space:]')
