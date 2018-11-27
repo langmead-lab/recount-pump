@@ -12,7 +12,7 @@ url="https://s3.amazonaws.com/${bucket}/ref/${species}"
 
 cd ${species}
 
-files="hisat2_idx.tar.gz fasta.tar.gz gtf.tar.gz"
+files="star_idx.tar.gz fasta.tar.gz gtf.tar.gz kallisto_index.tar.gz salmon_index.tar.gz"
 
 for i in ${files} ; do
     wget -O ${i} ${url}/${i}
