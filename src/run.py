@@ -305,7 +305,7 @@ def run_job(name, inputs, image_url, image_fn, config, cluster_ini,
                'RECOUNT_TEMP=%s' % temp_mount,
                'RECOUNT_CPUS=%d' % cpus,
                'RECOUNT_REF=%s' % ref_mount]
-    cmd_run = '/bin/bash -c "source activate recount && bash /workflow.bash"'
+    cmd_run = '/bin/bash -c "source activate recount && /startup.sh && /workflow.bash"'
 
     # copy config into input directory
     assert os.path.exists(temp_base_name) and os.path.isdir(temp_base_name)
