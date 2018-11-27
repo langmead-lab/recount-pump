@@ -60,6 +60,19 @@ if [ ! -d ${NM} ] ; then
     cp "$GENES_DIR/genes.gtf" ${NM}/gtf/
     [ -d "${GENES_DIR}.gencode" ] && cp "${GENES_DIR}.gencode/genes.gtf" ${NM}/gtf/genes_gencode.gtf
     
+    echo "Building ${NM}/kallisto_index"
+    mkdir -p ${NM}/transcriptome
+    gffread -w ${NM}/transcriptome/transcripts.fa \
+            -g ${NM}/fasta/genome.fa \
+            ${NM}/gtf/genes.gtf
+
+    mkdir -p ${NM}/kallisto_index
+    kallisto index -i kallisto_index/transcriptome_index transcriptome/transcripts.fa
+
+    echo "Building ${NM}/salmon_index"
+    mkdir -p ${NM}/salmon_index
+    salmon index -i salmon_index -t transcriptome/transcripts.fa
+    
     echo "Populating ${NM}/ucsc_tracks"
     mkdir -p ${NM}/ucsc_tracks
     # TODO
