@@ -1,16 +1,19 @@
 """
 Parameters:
-- fastq_dump_args: parameters to pass to fastq dumping tool
+- fastq_dump_args: arguments to pass to fastq dumping tool
 - fastq_dump_retries: number of retry attempts before dying
 - fastq_dump_tool: name of tool to run, e.g. 'fastq-dump' or 'fasterq-dump'
-- star: parameters to pass to STAR aligner
+- star: arguments to pass to STAR aligner
+- kallisto_args: arguments to pass to kallisto quant
+- salmon_args: arguments to pass to salmon quant
 - bw_unique_qual: minimum MAPQ needed to be counted in unique BW [default: 10]
-- featureCounts: parameters to pass to featureCounts
+- featureCounts: arguments to pass to featureCounts
 - fc_unique_qual: minimum MAPQ needed to be counted in unique quantifications [default: 10]
 - bw_bed: name of BED file to use with bwtool
 """
 
 STEPS = ['sra_fastq', 'align', 'sort',
+         'kallisto', 'salmon',
          'bam_to_bw_all', 'bam_to_bw_unique',
          'exon_bw_count_all', 'exon_bw_count_unique',
          'gene_fc_count_all', 'gene_fc_count_unique',
@@ -21,6 +24,7 @@ FILES = ['sjout.zst',
          'all.exon_fc_count.zst', 'unique.exon_fc_count.zst',
          'all.exon_bw_count.zst', 'unique.exon_bw_count.zst',
          'all.bw.zst', 'unique.bw.zst',
+         'kallisto.tsv.zst', 'salmon.tsv.zst',
          'manifest'] + list(map(lambda x: x + '.log', STEPS))
 
 def get_accessions(wildcards):
@@ -45,6 +49,8 @@ rule all:
 
 rule make_manifest:
     input:
+        config['output'] + '/{trio}.kallisto.tsv.zst',
+        config['output'] + '/{trio}.salmon.tsv.zst',
         config['output'] + '/{trio}.sjout.zst',
         config['output'] + '/{trio}.all.gene_fc_count.zst',
         config['output'] + '/{trio}.all.exon_fc_count.zst',
@@ -57,6 +63,8 @@ rule make_manifest:
         config['output'] + '/{trio}.align.log',
         config['output'] + '/{trio}.sra_fastq.log',
         config['output'] + '/{trio}.sort.log',
+        config['output'] + '/{trio}.kallisto.log',
+        config['output'] + '/{trio}.salmon.log',
         config['output'] + '/{trio}.bam_to_bw_all.log',
         config['output'] + '/{trio}.bam_to_bw_unique.log',
         config['output'] + '/{trio}.gene_fc_count_all.log',
@@ -352,6 +360,83 @@ rule sort:
         echo "COUNT_SortedBAMBytesGenerated ${{size}}"
         (time sambamba index -t {threads} {output.bam}) 2>&1 | tee -a {log}
         echo "COUNT_SortComplete 1"
+        """
+
+rule kallisto:
+    input:
+        reads0=config['temp'] + '/{trio}_0.fastq',
+        reads1=config['temp'] + '/{trio}_1.fastq',
+        reads2=config['temp'] + '/{trio}_2.fastq',
+        index=lambda wildcards: '%s/%s/kallisto_index/transcriptome_index' % (config['ref'], wildcards.trio.split('_')[2])
+    output:
+        config['output'] + '/{trio}.kallisto.tsv.zst'
+    log:
+        config['output'] + '/{trio}.kallisto.log'
+    params:
+        index_base=lambda wildcards: '%s/%s/kallisto_index' % (config['ref'], wildcards.trio.split('_')[2]),
+        kallisto_args=config.get('kallisto_args', '')
+    threads: 32
+    shell:
+        """
+        READ_FILES="{input.reads1} {input.reads2}"
+        if [[ -s {input.reads0} ]] ; then
+            READ_FILES="--single -l 300 -s 30 {input.reads0}"
+        fi
+        time kallisto quant \
+            --index={params.index_base}/transcriptome_index \
+            -t {threads} \
+            {params.kallisto_args} \
+            --output=. \
+            --plaintext \
+            ${{READ_FILES}} \
+            2>&1 | tee -a {log}
+
+        size=$(wc -c < abundance.tsv)
+        echo "COUNT_UncompressedKallistoQuantBytesGenerated ${{size}}"
+
+        time zstd abundance.tsv -o {output} 2>&1 | tee -a {log}
+        size=$(wc -c < {output})
+        echo "COUNT_KallistoQuantBytesGenerated ${{size}}"
+        rm -f abundance.tsv
+        """
+
+rule salmon:
+    input:
+        reads0=config['temp'] + '/{trio}_0.fastq',
+        reads1=config['temp'] + '/{trio}_1.fastq',
+        reads2=config['temp'] + '/{trio}_2.fastq',
+        index1=lambda wildcards: '%s/%s/salmon_index/hash.bin' % (config['ref'], wildcards.trio.split('_')[2]),
+        index2=lambda wildcards: '%s/%s/salmon_index/sa.bin' % (config['ref'], wildcards.trio.split('_')[2])
+    output:
+        config['output'] + '/{trio}.salmon.tsv.zst'
+    log:
+        config['output'] + '/{trio}.salmon.log'
+    params:
+        index_base=lambda wildcards: '%s/%s/salmon_index' % (config['ref'], wildcards.trio.split('_')[2]),
+        salmon_args=config.get('salmon_args', '')
+    threads: 32
+    shell:
+        """
+        READ_FILES="-1 {input.reads1} -2 {input.reads2}"
+        if [[ -s {input.reads0} ]] ; then
+            READ_FILES="-r {input.reads0}"
+        fi
+        time salmon quant \
+            --libType U \
+            -i {params.index_base} \
+            -p {threads} \
+            {params.salmon_args} \
+            ${{READ_FILES}} \
+            --output salmon_quant \
+            2>&1 | tee -a {log}
+        
+        size=$(wc -c < salmon_quant/quant.sf)
+        echo "COUNT_UncompressedSalmonQuantBytesGenerated ${{size}}"
+
+        time zstd salmon_quant/quant.sf -o {output} 2>&1 | tee -a {log}
+        size=$(wc -c < {output})
+        echo "COUNT_SalmonQuantBytesGenerated ${{size}}"
+        rm -rf salmon_quant
         """
 
 rule align:
