@@ -215,85 +215,89 @@ def run_job(name, inputs, image_url, image_fn, config, cluster_ini,
     log_info_detailed(node_name, worker_name, 'reference base: ' + ref_base, log_queue)
     log_info_detailed(node_name, worker_name, 'temp base: ' + temp_base, log_queue)
 
-    if not os.path.exists(input_base):
-        try:
-            os.makedirs(input_base)
-        except os.error:
-            pass
-    elif not os.path.isdir(input_base):
-        raise RuntimeError('input_base "%s" exists but is not a directory' % input_base)
-    isdir(input_base)
-    if not os.path.exists(output_base):
-        try:
-            os.makedirs(output_base)
-        except os.error:
-            pass
-    elif not os.path.isdir(output_base):
-        raise RuntimeError('output_base "%s" exists but is not a directory' % output_base)
-    isdir(output_base)
-    if not os.path.exists(temp_base):
-        try:
-            os.makedirs(temp_base)
-        except os.error:
-            pass
-    elif not os.path.isdir(temp_base):
-        raise RuntimeError('temp_base "%s" exists but is not a directory' % temp_base)
-    assert os.path.exists(temp_base) and os.path.isdir(temp_base)
-    isdir(ref_base)
+    try:
+        original_umask = os.umask(0)
+        if not os.path.exists(input_base):
+            try:
+                os.makedirs(input_base, mode=0o777)
+            except os.error:
+                pass
+        elif not os.path.isdir(input_base):
+            raise RuntimeError('input_base "%s" exists but is not a directory' % input_base)
+        isdir(input_base)
+        if not os.path.exists(output_base):
+            try:
+                os.makedirs(output_base, mode=0o777)
+            except os.error:
+                pass
+        elif not os.path.isdir(output_base):
+            raise RuntimeError('output_base "%s" exists but is not a directory' % output_base)
+        isdir(output_base)
+        if not os.path.exists(temp_base):
+            try:
+                os.makedirs(temp_base, mode=0o777)
+            except os.error:
+                pass
+        elif not os.path.isdir(temp_base):
+            raise RuntimeError('temp_base "%s" exists but is not a directory' % temp_base)
+        assert os.path.exists(temp_base) and os.path.isdir(temp_base)
+        isdir(ref_base)
 
-    subdir_clear(input_base, name)
-    subdir_clear(output_base, name)
-    subdir_clear(temp_base, name)
+        subdir_clear(input_base, name)
+        subdir_clear(output_base, name)
+        subdir_clear(temp_base, name)
 
-    input_mount = _expand(cfg.get(section, 'input_mount'))
-    output_mount = _expand(cfg.get(section, 'output_mount'))
-    ref_mount = _expand(cfg.get(section, 'ref_mount'))
-    temp_mount = _expand(cfg.get(section, 'temp_mount'))
+        input_mount = _expand(cfg.get(section, 'input_mount'))
+        output_mount = _expand(cfg.get(section, 'output_mount'))
+        ref_mount = _expand(cfg.get(section, 'ref_mount'))
+        temp_mount = _expand(cfg.get(section, 'temp_mount'))
 
-    mounts = []
-    docker = system == 'docker'
+        mounts = []
+        docker = system == 'docker'
 
-    # Input
-    input_base_name = os.path.join(input_base, name)
-    if input_mount is not None and len(input_mount) > 0:
-        mounts.append('-v' if docker else '-B')
-        mounts.append('%s:%s' % (input_base_name, input_mount))
-    else:
-        input_mount = input_base_name
-    os.makedirs(input_base_name)
-    for inp in inputs:
-        assert os.path.exists(inp)
-        dest = os.path.join(input_base_name, os.path.basename(inp))
-        shutil.copy2(inp, dest)
-        assert os.path.exists(dest)
-    staged_inputs = []
-    for fn in os.listdir(input_base_name):
-        full_fn = os.path.join(input_base_name, fn)
-        if os.path.isfile(full_fn):
-            staged_inputs.append(full_fn)
-    if len(staged_inputs) == 0:
-        raise RuntimeError('Failed to stage any inputs')
-    log_info_detailed(node_name, worker_name, 'staged inputs: ' + str(staged_inputs), log_queue)
+        # Input
+        input_base_name = os.path.join(input_base, name)
+        if input_mount is not None and len(input_mount) > 0:
+            mounts.append('-v' if docker else '-B')
+            mounts.append('%s:%s' % (input_base_name, input_mount))
+        else:
+            input_mount = input_base_name
+        os.makedirs(input_base_name, mode=0o777)
+        for inp in inputs:
+            assert os.path.exists(inp)
+            dest = os.path.join(input_base_name, os.path.basename(inp))
+            shutil.copy2(inp, dest)
+            assert os.path.exists(dest)
+        staged_inputs = []
+        for fn in os.listdir(input_base_name):
+            full_fn = os.path.join(input_base_name, fn)
+            if os.path.isfile(full_fn):
+                staged_inputs.append(full_fn)
+        if len(staged_inputs) == 0:
+            raise RuntimeError('Failed to stage any inputs')
+        log_info_detailed(node_name, worker_name, 'staged inputs: ' + str(staged_inputs), log_queue)
 
-    output_dir = os.path.join(output_base, name)
-    if output_mount is not None and len(output_mount) > 0:
-        mounts.append('-v' if docker else '-B')
-        mounts.append('%s/%s:%s' % (output_base, name, output_mount))
-    else:
-        output_mount = output_dir
-    os.makedirs(output_dir)
-    if temp_mount is not None and len(temp_mount) > 0:
-        mounts.append('-v' if docker else '-B')
-        mounts.append('%s/%s:%s' % (temp_base, name, temp_mount))
-    else:
-        temp_mount = os.path.join(temp_base, name)
-    temp_base_name = os.path.join(temp_base, name)
-    os.makedirs(temp_base_name)
-    if ref_mount is not None and len(ref_mount) > 0:
-        mounts.append('-v' if docker else '-B')
-        mounts.append('%s:%s' % (ref_base, ref_mount))
-    else:
-        ref_mount = ref_base
+        output_dir = os.path.join(output_base, name)
+        if output_mount is not None and len(output_mount) > 0:
+            mounts.append('-v' if docker else '-B')
+            mounts.append('%s/%s:%s' % (output_base, name, output_mount))
+        else:
+            output_mount = output_dir
+        os.makedirs(output_dir, mode=0o777)
+        if temp_mount is not None and len(temp_mount) > 0:
+            mounts.append('-v' if docker else '-B')
+            mounts.append('%s/%s:%s' % (temp_base, name, temp_mount))
+        else:
+            temp_mount = os.path.join(temp_base, name)
+        temp_base_name = os.path.join(temp_base, name)
+        os.makedirs(temp_base_name, mode=0o777)
+        if ref_mount is not None and len(ref_mount) > 0:
+            mounts.append('-v' if docker else '-B')
+            mounts.append('%s:%s' % (ref_base, ref_mount))
+        else:
+            ref_mount = ref_base
+    finally:
+        os.umask(original_umask)
 
     with open(os.path.join(temp_base_name, 'node.txt'), 'wt') as fh:
         fh.write('Node: %s\n' % node_name)
