@@ -398,6 +398,8 @@ rule kallisto:
         size=$(wc -c < {output})
         echo "COUNT_KallistoQuantBytesGenerated ${{size}}"
         rm -f abundance.tsv
+
+        echo "COUNT_KallistoComplete 1"
         """
 
 rule salmon:
@@ -438,6 +440,8 @@ rule salmon:
         size=$(wc -c < {output})
         echo "COUNT_SalmonQuantBytesGenerated ${{size}}"
         rm -rf salmon_quant
+        
+        echo "COUNT_SalmonComplete 1"
         """
 
 rule align:
