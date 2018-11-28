@@ -9,7 +9,7 @@ set -ex
 
 RECOUNT_CREDS=${d}/creds
 TAXID=9606
-ANA_URL="docker://quay.io/benlangmead/recount-rs4:0.3.6"
+ANA_URL="docker://quay.io/benlangmead/recount-rs4:0.4.0"
 SRC_DIR="$d/../../src"
 ARGS="--ini-base ${RECOUNT_CREDS}"
 OUTPUT_DIR=$(grep '^output_base' ${RECOUNT_CREDS}/cluster.ini | cut -d"=" -f2 | tr -d '[:space:]')
@@ -44,12 +44,16 @@ add_source() (
 )
 
 srcid1=$(add_source "s3://recount-ref/${SPECIES}/star_idx.tar.gz" 's3')
-srcid2=$(add_source "s3://recount-ref/${SPECIES}/fasta.tar.gz" 's3')
+srcid2=$(add_source "s3://recount-ref/${SPECIES}/kallisto_index.tar.gz" 's3')
+srcid3=$(add_source "s3://recount-ref/${SPECIES}/salmon_index.tar.gz" 's3')
+srcid4=$(add_source "s3://recount-ref/${SPECIES}/fasta.tar.gz" 's3')
 test -n "${srcid1}"
 test -n "${srcid2}"
+test -n "${srcid3}"
+test -n "${srcid4}"
 
 python ${SRC_DIR}/reference.py ${ARGS} \
-    add-sources-to-set ${ssid} ${srcid1} ${ssid} ${srcid2}
+    add-sources-to-set ${ssid} ${srcid1} ${ssid} ${srcid2} ${ssid} ${srcid3} ${ssid} ${srcid4}
 
 # Annotation
 #    tax_id = Column(Integer)  # refers to NCBI tax ids
