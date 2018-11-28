@@ -41,9 +41,15 @@ RUN conda env create -q -f /env-base.yml && \
 RUN curl -LO https://download.asperasoft.com/download/sw/connect/3.7.4/aspera-connect-3.7.4.147727-linux-64.tar.gz && \
     tar zxf aspera-connect-3.7.4.147727-linux-64.tar.gz && \
     rm -f aspera-connect-3.7.4.147727-linux-64.tar.gz && \
-    mv /aspera-connect-3.7.4.147727-linux-64.sh /startup.sh
+    mv /aspera-connect-3.7.4.147727-linux-64.sh /install-aspera.sh
+
+RUN echo '#!/bin/bash\n\
+if [[ ! -x ~/.aspera/connect/bin/ascp ]] ; then\n\
+    /install-aspera.sh\n\
+fi\n' > /startup.sh
 
 RUN chmod a+x /startup.sh
+RUN chmod a+x /install-aspera.sh
 
 USER recount
 WORKDIR /home/recount
