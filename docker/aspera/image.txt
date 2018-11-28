@@ -1,1 +1,1 @@
-quay.io/benlangmead/recount-minio
+quay.io/benlangmead/recount-aspera
