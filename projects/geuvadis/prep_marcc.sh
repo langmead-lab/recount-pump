@@ -1,4 +1,8 @@
 #!/bin/bash -l
+
+# BTL: as of 11/28/2018 this doesn't work when submitted to slurm;
+# error message is "You must install squashfs-tools to build images"
+
 #SBATCH
 #SBATCH --partition=shared
 #SBATCH --nodes=1
