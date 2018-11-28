@@ -2,7 +2,6 @@ import os
 import sys
 import os
 import shutil
-from collections import OrderedDict
 import pyBigWig
 
 #from https://github.com/deeptools/deepTools/blob/38cfe39e3b3c82bbc0c2013e3068bd71adc3a9cb/deeptools/writeBedGraph.py#L284
@@ -19,6 +18,7 @@ def bedGraphToBigWig(bedGraphFileHandle, bigWigPath):
     ends = []
     vals = []
     chromSizes = []
+    chromSizesMap = {}
     FIRST = True
     for line in bedGraphFileHandle:
         fields = line.rstrip().split('\t')
@@ -37,19 +37,38 @@ def bedGraphToBigWig(bedGraphFileHandle, bigWigPath):
         if FIRST or (chrm == prev_chrm and cov == prev_cov and pos == prev_end+1):
             if FIRST:
                 bw.addHeader(chromSizes, maxZooms=10)
-                #[sys.stdout.write("%s\t%d\n" % (x[0],x[1])) for x in chromSizes]
+                chromSizesMap = dict(chromSizes)
                 prev_start = pos
+                if prev_start > 1:
+                    starts.append(0)
+                    ends.append(prev_start - 1)
+                    vals.append(0.0)
             FIRST = False
         else:
             if prev_chrm is not None:
                 starts.append(prev_start - 1)
                 ends.append(prev_end)
                 vals.append(prev_cov)
+                prev_chrm_size = chromSizesMap[prev_chrm]
+                if chrm != prev_chrm and prev_end < prev_chrm_size:
+                    starts.append(prev_end)
+                    ends.append(prev_chrm_size)
+                    vals.append(0.0)
             if len(starts) >= 1000000 or (prev_chrm is not None and chrm != prev_chrm):
                 bw.addEntries([prev_chrm] * len(starts), starts, ends=ends, values=vals)
                 starts = []
                 ends = []
                 vals = []
+            #need to fill in the 0'd bases which are left as gaps by samtools depth
+            if chrm != prev_chrm and pos > 1:
+                starts.append(0)
+                ends.append(pos - 1)
+                vals.append(0.0)
+            elif chrm == prev_chrm and pos > prev_end + 1:
+                starts.append(prev_end)
+                ends.append(pos - 1)
+                vals.append(0.0)
+
             prev_start = pos
         prev_chrm = chrm
         prev_end = pos
@@ -59,6 +78,11 @@ def bedGraphToBigWig(bedGraphFileHandle, bigWigPath):
         starts.append(prev_start - 1)
         ends.append(prev_end)
         vals.append(prev_cov)
+        prev_chrm_size = chromSizesMap[prev_chrm]
+        if prev_end < prev_chrm_size:
+            starts.append(prev_end)
+            ends.append(prev_chrm_size)
+            vals.append(0.0)
         bw.addEntries([prev_chrm] * len(starts), starts, ends=ends, values=vals)
     bw.close()
 
