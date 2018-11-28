@@ -317,7 +317,7 @@ rule bam_to_bw_all:
     threads: 32
     shell:
         """
-        (time bamCoverage -b {input.bam} \
+        (time bamCoverage --binSize 1 -b {input.bam} \
             -p {threads} -o {output}) 2>&1 | tee -a {log}
         size=$(wc -c < {output})
         echo "COUNT_BwBytesGenerated ${{size}}"
@@ -337,7 +337,7 @@ rule bam_to_bw_unique:
         bw_uniq=config.get('bw_unique_qual', 10)
     shell:
         """
-        (time bamCoverage -b {input.bam} --minMappingQuality {params.bw_uniq} \
+        (time bamCoverage --binSize 1 -b {input.bam} --minMappingQuality {params.bw_uniq} \
             -p {threads} -o {output}) 2>&1 | tee -a {log}
         size=$(wc -c < {output})
         echo "COUNT_BwBytesGenerated ${{size}}"
@@ -378,9 +378,9 @@ rule kallisto:
     threads: 32
     shell:
         """
-        READ_FILES="{input.reads1} {input.reads2}"
-        if [[ -s {input.reads0} ]] ; then
-            READ_FILES="--single -l 300 -s 30 {input.reads0}"
+        READ_FILES="--single -l 300 -s 30 {input.reads0}"
+        if [[ -s {input.reads2} ]] ; then
+            READ_FILES="{input.reads1} {input.reads2}"
         fi
         time kallisto quant \
             --index={params.index_base}/transcriptome_index \
@@ -417,9 +417,9 @@ rule salmon:
     threads: 32
     shell:
         """
-        READ_FILES="-1 {input.reads1} -2 {input.reads2}"
-        if [[ -s {input.reads0} ]] ; then
-            READ_FILES="-r {input.reads0}"
+        READ_FILES="-r {input.reads0}"
+        if [[ -s {input.reads2} ]] ; then
+            READ_FILES="-1 {input.reads1} -2 {input.reads2}"
         fi
         time salmon quant \
             --libType U \
@@ -428,6 +428,7 @@ rule salmon:
             {params.salmon_args} \
             ${{READ_FILES}} \
             --output salmon_quant \
+            --minAssignedFrags 1 \
             2>&1 | tee -a {log}
         
         size=$(wc -c < salmon_quant/quant.sf)
@@ -457,9 +458,9 @@ rule align:
     threads: 32
     shell:
         """
-        READ_FILES="{input.reads1} {input.reads2}"
-        if [[ -s {input.reads0} ]] ; then
-            READ_FILES="{input.reads0}"
+        READ_FILES="{input.reads0}"
+        if [[ -s {input.reads2} ]] ; then
+            READ_FILES="{input.reads1} {input.reads2}"
         fi
         TMP="{config[temp]}/STARtmp"
         rm -rf ${{TMP}}
