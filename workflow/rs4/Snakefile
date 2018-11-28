@@ -537,8 +537,17 @@ rule sra_fastq:
             test -f ${{TMP}}/*.sra
             size=$(cat ${{TMP}}/*.sra | wc -c)
             echo "COUNT_SraBytesDownloaded ${{size}}"
-            time fastq-dump --split-files --skip-technical ${{TMP}}/*.sra 2>&1 >> {log}
+            time fasterq-dump ${{TMP}}/*.sra \
+                -e {threads} \
+                -t ${{TMP}} \
+                -L info \
+                --split-files \
+                --skip-technical \
+                -o {params.srr}.fastq \
+                2>&1 >> {log}
+            
             rm -rf ${{TMP}}
+            test -f {params.srr}_2.fastq || mv {params.srr}.fastq {params.srr}_0.fastq
         else
             if [[ "{params.tool}" == "fasterq-dump" ]] ; then
                 PARAMS="-e {threads} -t {config[temp]}/fasterq-dump-{params.srr}"
@@ -566,8 +575,8 @@ rule sra_fastq:
                 echo "fastq-dump failed"
                 exit 1
             fi
+            test -f {params.srr}_2.fastq || mv {params.srr}_1.fastq {params.srr}_0.fastq
         fi
-        test -f {params.srr}_2.fastq || mv {params.srr}_1.fastq {params.srr}_0.fastq
         size=0
         for i in {{0..2}} ; do
             fn={params.srr}_${{i}}.fastq
