@@ -103,6 +103,7 @@ def make_watchtower_handler(cfg):
     aws_profile = None
     if cfg.has_option('watchtower', 'aws_profile'):
         aws_profile = cfg.get('watchtower', 'aws_profile')
+    # TODO: alternately, might want to create boto3 "session" for greater flexibility
     return watchtower.CloudWatchLogHandler(log_group=log_group,
                                            stream_name=stream_name,
                                            boto3_profile_name=aws_profile)
