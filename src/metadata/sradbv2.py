@@ -119,7 +119,7 @@ def process_run(run_acc, study_acc, header_fields, outfile):
         if field not in jfields['_source']:
             continue
         value = jfields['_source'][field]
-        if field == 'run_reads':
+        if field == 'run.reads':
             idx = 0
             if len(value) == 2:
                 idx = 1
@@ -272,20 +272,20 @@ taxa = {'A thaliana': 3702,      # 4. arabidopsis
         'Z mays': 4577}          # 8: corn
 
 
-rna_seq_query = ['experiment_library_strategy:"rna seq"',
-                 'experiment_library_source:transcriptomic',
-                 'experiment_platform:illumina']
+rna_seq_query = ['experiment.library_strategy:"rna seq"',
+                 'experiment.library_source:transcriptomic',
+                 'experiment.platform:illumina']
 
-single_cell_query = ['study_abstract:"single-cell"',
-                     'experiment_library_construction_protocol:"single-cell"',
-                     'study_title:"single-cell"']
+single_cell_query = ['study.abstract:"single-cell"',
+                     'experiment.library_construction_protocol:"single-cell"',
+                     'study.title:"single-cell"']
 
 
 def summarize_rna():
     summary = 'Name,Taxon ID,Count,scCount,% sc\n'
     summ_h = defaultdict(list)
     for name, taxid in taxa.items():
-        query = 'sample_taxon_id:%d AND %s' % (taxid, ' AND '.join(rna_seq_query))
+        query = 'sample.taxon_id:%d AND %s' % (taxid, ' AND '.join(rna_seq_query))
         count = count_search(query)
         sc_query = query + ' AND (' + ' OR '.join(single_cell_query) + ')'
         sc_count = count_search(sc_query)
@@ -324,10 +324,10 @@ class ReservoirSampler(object):
 def size_dist(search, size, stop_after, max_n):
     samp = ReservoirSampler(max_n)
     for i, hit in enumerate(search_iterator(search, size)):
-        if '_source' not in hit or 'run_bases' not in hit['_source']:
+        if '_source' not in hit or 'run.bases' not in hit['_source']:
             print('Bad record: ' + str(hit), file=sys.stderr)
         else:
-            samp.add(hit['_source']['run_bases'])
+            samp.add(hit['_source']['run.bases'])
             if i >= stop_after-1:
                 break
     for n in samp:
@@ -337,11 +337,11 @@ def size_dist(search, size, stop_after, max_n):
 def size_bases(search, size, quiet):
     tot = 0
     for i, hit in enumerate(search_iterator(search, size)):
-        if '_source' not in hit or 'run_bases' not in hit['_source']:
+        if '_source' not in hit or 'run.bases' not in hit['_source']:
             if not quiet:
                 print('Bad record: ' + str(hit), file=sys.stderr)
         else:
-            tot += int(hit['_source']['run_bases'])
+            tot += int(hit['_source']['run.bases'])
     print(tot)
 
 
@@ -352,7 +352,7 @@ if __name__ == '__main__':
                     agg_level=args['--log-level'])
     try:
         if args['search']:
-            # sample_taxon_id:6239 AND experiment_library_strategy:"rna seq" AND experiment_library_source:transcriptomic AND experiment_platform:illumina
+            # sample.taxon_id:6239 AND experiment.library_strategy:"rna seq" AND experiment.library_source:transcriptomic AND experiment.platform:illumina
             process_search(args['<lucene-search>'], int(args['--size']), args['--gzip'], args['--output'])
         if args['count']:
             print(count_search(args['<lucene-search>']))
