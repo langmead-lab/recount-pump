@@ -19,6 +19,10 @@ RUN chmod a+r /Snakefile
 COPY workflow.bash /workflow.bash
 RUN chmod a+rx /workflow.bash
 
+# install bam2bigwig
+COPY bam2bigwig.py /bam2bigwig.py
+RUN chmod a+rx /bam2bigwig.py
+
 USER recount
 WORKDIR /home/recount/
 
