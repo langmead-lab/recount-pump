@@ -2,3 +2,4 @@
 *.img.zstd
 Dockerfile
 workflow.bash
+bam2bigwig.py
