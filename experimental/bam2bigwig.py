@@ -4,6 +4,8 @@ import os
 import shutil
 import pyBigWig
 
+#takes 0-base bedGraph input (not samtools depth output)
+
 #from https://github.com/deeptools/deepTools/blob/38cfe39e3b3c82bbc0c2013e3068bd71adc3a9cb/deeptools/writeBedGraph.py#L284
 #chromSizes is just a list of chromosome IDs and sizes, e.g.: [("1", 1000000), ("2", 1500000)]
 #this is modified to do streaming conversion and extracts the list of chromosomes and their lenth from the BAM as the first part of the stream
@@ -20,6 +22,8 @@ def bedGraphToBigWig(bedGraphFileHandle, bigWigPath):
     chromSizes = []
     chromSizesMap = {}
     FIRST = True
+    prev_chrm = None
+    prev_end = None
     for line in bedGraphFileHandle:
         fields = line.rstrip().split('\t')
         #first lines should be BAM header, to get the chromosome sizes and order
@@ -29,59 +33,40 @@ def bedGraphToBigWig(bedGraphFileHandle, bigWigPath):
             #parse sam formatted chromsome size fields: e.g. @SQ     SN:11   LN:135006516
             chromSizes.append((fields[1].split(':')[1], int(fields[2].split(':')[1])))
             continue
-        #input: samtools depth output format: chrm pos count
-        (chrm, pos, cov) = fields
-        pos = int(pos)
+        #input from mosdepth
+        (chrm, start, end, cov) = fields[:4]
+        start = int(start)
+        end = int(end)
         cov = float(cov)
-        # Buffer up to a million entries
-        if FIRST or (chrm == prev_chrm and cov == prev_cov and pos == prev_end+1):
-            if FIRST:
-                bw.addHeader(chromSizes, maxZooms=10)
-                chromSizesMap = dict(chromSizes)
-                prev_start = pos
-                if prev_start > 1:
-                    starts.append(0)
-                    ends.append(prev_start - 1)
-                    vals.append(0.0)
+        if FIRST:
+            bw.addHeader(chromSizes, maxZooms=10)
+            chromSizesMap = dict(chromSizes)
             FIRST = False
-        else:
-            if prev_chrm is not None:
-                starts.append(prev_start - 1)
-                ends.append(prev_end)
-                vals.append(prev_cov)
-                prev_chrm_size = chromSizesMap[prev_chrm]
-                if chrm != prev_chrm and prev_end < prev_chrm_size:
-                    starts.append(prev_end)
-                    ends.append(prev_chrm_size)
-                    vals.append(0.0)
-            if len(starts) >= 1000000 or (prev_chrm is not None and chrm != prev_chrm):
-                bw.addEntries([prev_chrm] * len(starts), starts, ends=ends, values=vals)
-                starts = []
-                ends = []
-                vals = []
-            #need to fill in the 0'd bases which are left as gaps by samtools depth
-            if chrm != prev_chrm and pos > 1:
-                starts.append(0)
-                ends.append(pos - 1)
-                vals.append(0.0)
-            elif chrm == prev_chrm and pos > prev_end + 1:
-                starts.append(prev_end)
-                ends.append(pos - 1)
-                vals.append(0.0)
-
-            prev_start = pos
-        prev_chrm = chrm
-        prev_end = pos
-        prev_cov = cov
-
-    if prev_chrm is not None:
-        starts.append(prev_start - 1)
-        ends.append(prev_end)
-        vals.append(prev_cov)
-        prev_chrm_size = chromSizesMap[prev_chrm]
-        if prev_end < prev_chrm_size:
+        if prev_chrm is not None and chrm != prev_chrm and prev_end != chromSizesMap[prev_chrm]:
             starts.append(prev_end)
-            ends.append(prev_chrm_size)
+            ends.append(chromSizesMap[prev_chrm])
+            vals.append(0.0)
+        # Buffer up to a million entries
+        if len(starts) >= 1000000 or (prev_chrm is not None and prev_chrm != chrm):
+            #print (prev_chrm, starts, ends)
+            bw.addEntries([prev_chrm] * len(starts), starts, ends=ends, values=vals)
+            starts = []
+            ends = []
+            vals = []
+        if chrm != prev_chrm and start != 0:
+            starts.append(0)
+            ends.append(start)
+            vals.append(0.0)
+        prev_chrm = chrm
+        prev_end = end 
+        starts.append(start)
+        ends.append(end)
+        vals.append(cov)
+
+    if len(starts) > 0:
+        if prev_end != chromSizesMap[prev_chrm]:
+            starts.append(prev_end)
+            ends.append(chromSizesMap[prev_chrm])
             vals.append(0.0)
         bw.addEntries([prev_chrm] * len(starts), starts, ends=ends, values=vals)
     bw.close()
