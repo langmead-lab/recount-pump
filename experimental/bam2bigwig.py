@@ -1,7 +1,4 @@
-import os
 import sys
-import os
-import shutil
 import pyBigWig
 
 #takes 0-base bedGraph input (not samtools depth output)
@@ -71,5 +68,10 @@ def bedGraphToBigWig(bedGraphFileHandle, bigWigPath):
         bw.addEntries([prev_chrm] * len(starts), starts, ends=ends, values=vals)
     bw.close()
 
-bedgraphfile = sys.argv[1]
-bedGraphToBigWig(sys.stdin, "%s.bw" % (bedgraphfile))
+
+def go():
+    bedGraphToBigWig(sys.stdin, sys.argv[1])
+
+
+if __name__ == '__main__':
+    go()
