@@ -12,14 +12,14 @@ Parameters:
 - bw_bed: name of BED file to use with bwtool
 """
 
-STEPS = ['sra_fastq', 'align', 'sort',
+STEPS = ['sra_fastq', 'fastq_check', 'align', 'sort',
          'kallisto', 'salmon',
          'bam_to_bw_all', 'bam_to_bw_unique',
          'exon_bw_count_all', 'exon_bw_count_unique',
          'gene_fc_count_all', 'gene_fc_count_unique',
          'exon_fc_count_all', 'exon_fc_count_unique']
 
-FILES = ['sjout.zst',
+FILES = ['sjout.zst', 'fastq_check.tsv.zstd',
          'all.gene_fc_count.zst', 'unique.gene_fc_count.zst',
          'all.exon_fc_count.zst', 'unique.exon_fc_count.zst',
          'all.exon_bw_count.zst', 'unique.exon_bw_count.zst',
@@ -52,6 +52,7 @@ rule make_manifest:
         config['output'] + '/{trio}.kallisto.tsv.zst',
         config['output'] + '/{trio}.salmon.tsv.zst',
         config['output'] + '/{trio}.sjout.zst',
+        config['output'] + '/{trio}.fastq_check.tsv.zstd',
         config['output'] + '/{trio}.all.gene_fc_count.zst',
         config['output'] + '/{trio}.all.exon_fc_count.zst',
         config['output'] + '/{trio}.unique.gene_fc_count.zst',
@@ -62,6 +63,7 @@ rule make_manifest:
         config['output'] + '/{trio}.unique.bw.zst',
         config['output'] + '/{trio}.align.log',
         config['output'] + '/{trio}.sra_fastq.log',
+        config['output'] + '/{trio}.fastq_check.log',
         config['output'] + '/{trio}.sort.log',
         config['output'] + '/{trio}.kallisto.log',
         config['output'] + '/{trio}.salmon.log',
@@ -315,10 +317,18 @@ rule bam_to_bw_all:
     log:
         config['output'] + '/{trio}.bam_to_bw_all.log'
     threads: 32
+    params:
+        srr=lambda wildcards: wildcards.trio.split('_')[0]
     shell:
         """
-        (time bamCoverage --binSize 1 -b {input.bam} \
-            -p {threads} -o {output}) 2>&1 | tee -a {log}
+        TMP={config[temp]}/{params.srr}.bam_to_bw_all
+        mkdir -p ${{TMP}}
+        sambamba view -H {input.bam} > ${{TMP}}/o.per-base.bed
+        time mosdepth -t {threads} ${{TMP}}/o {input.bam} 2>&1 | tee -a {log}
+        gzip -dc ${{TMP}}/o.per-base.bed.gz >> ${{TMP}}/o.per-base.bed
+        time python /bam2bigwig.py {output} < ${{TMP}}/o.per-base.bed
+        rm -rf ${{TMP}}
+        
         size=$(wc -c < {output})
         echo "COUNT_BwBytesGenerated ${{size}}"
         echo "COUNT_BamToBwAllComplete 1"
@@ -334,11 +344,18 @@ rule bam_to_bw_unique:
         config['output'] + '/{trio}.bam_to_bw_unique.log'
     threads: 32
     params:
+        srr=lambda wildcards: wildcards.trio.split('_')[0],
         bw_uniq=config.get('bw_unique_qual', 10)
     shell:
         """
-        (time bamCoverage --binSize 1 -b {input.bam} --minMappingQuality {params.bw_uniq} \
-            -p {threads} -o {output}) 2>&1 | tee -a {log}
+        TMP={config[temp]}/{params.srr}.bam_to_bw_unique
+        mkdir -p ${{TMP}}
+        sambamba view -H {input.bam} > ${{TMP}}/o.per-base.bed
+        time mosdepth -t {threads} -Q {params.bw_uniq} ${{TMP}}/o {input.bam} 2>&1 | tee -a {log}
+        gzip -dc ${{TMP}}/o.per-base.bed.gz >> ${{TMP}}/o.per-base.bed
+        time python /bam2bigwig.py {output} < ${{TMP}}/o.per-base.bed
+        rm -rf ${{TMP}}
+
         size=$(wc -c < {output})
         echo "COUNT_BwBytesGenerated ${{size}}"
         echo "COUNT_BamToBwUniqueComplete 1"
@@ -501,6 +518,30 @@ rule align:
         echo "COUNT_AlignComplete 1"
         """
 
+rule fastq_check:
+    input:
+        reads0=config['temp'] + '/{trio}_0.fastq',
+        reads1=config['temp'] + '/{trio}_1.fastq',
+        reads2=config['temp'] + '/{trio}_2.fastq'
+    output:
+        config['output'] + '/{trio}.fastq_check.tsv.zstd'
+    log:
+        config['output'] + '/{trio}.fastq_check.log'
+    shell:
+        """
+        touch {output}
+        if [[ -s {input.reads0} ]] ; then
+            time seqtk fqchk -q0 {input.reads0} >>{output} 2>>{log}
+        fi
+        if [[ -s {input.reads1} ]] ; then
+            time seqtk fqchk -q0 {input.reads1} >>{output} 2>>{log}
+        fi
+        if [[ -s {input.reads2} ]] ; then
+            time seqtk fqchk -q0 {input.reads2} >>{output} 2>>{log}
+        fi
+        echo "COUNT_FastqCheckComplete 1"
+        """
+
 rule sra_fastq:
     output:
         temp(config['temp'] + '/{trio}_0.fastq'),
@@ -513,7 +554,6 @@ rule sra_fastq:
         fd_params=config.get('fastq_dump_args', ''),
         retries=config.get('fastq_dump_retries', '5'),
         tool=config.get('fastq_dump_tool', 'prefetch -t fasp')
-    threads: 4
     shell:
         """
         set -x
