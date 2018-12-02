@@ -47,8 +47,8 @@ def import_from_json(json_fn, table_name, session, overwrite=False):
                 df[colname] = pandas.to_datetime(df[colname] / 1000, unit='s')
             print((colname, df[colname].dtype))
             if '_identifiers' in colname or '_attributes' in colname or \
-                    '_xrefs' in colname or colname == '_source.run_reads' or \
-                    colname == '_source.run_file_addons':
+                    '_xrefs' in colname or colname == '_source.run.reads' or \
+                    colname == '_source.run.file_addons':
                 dtype_dict[new_colname] = JSON
         df = df.rename(index=str, columns=colname_dict)
         ife = 'replace' if overwrite else 'fail'
