@@ -13,14 +13,10 @@ Usage:
   input add-input-set [options] <name>
   input add-inputs-to-set [options] (<set-id> <input-id>)...
   input list-input-set [options] <name>
-  input filter-table [options] <prefix> <species> <sql-filter>
-  input inputs-from-table [options] <prefix> <species>
-                          <sql-filter> <input-set-name>
   input import-json [options] <json-file> <input-set-name>
 
 Options:
   --limit <ceiling>        Import at most this many records.
-  --max-bases <max>        Filter out datasets larger than this.
   --profile=<profile>      AWS credentials profile section [default: default].
   --endpoint-url=<url>     Endpoint URL for S3 API.  If not set, uses AWS default.
   --db-ini <ini>           Database ini file [default: ~/.recount/db.ini].
@@ -242,52 +238,19 @@ def import_input_set(name, csv_fn, my_session):
     return input_set.id, n_added_input
 
 
-def _fetcher(prefix, species, sql_filter, session):
-    """
-    Helper function for fetching data from a metadata table with name given by
-    prefix/species, with optional SQL filter criteria specified
-    """
-    table_name = '_'.join([prefix, species])
-    sql = "SELECT run_accession, study_accession FROM %s" % table_name
-    if sql_filter is not None and len(sql_filter) > 0:
-        sql += ' WHERE ' + sql_filter
-    sql += ';'
-    return session.execute(text(sql)).fetchall()
-
-
-def filter_table(prefix, species, sql_filter, session):
-    for tup in _fetcher(prefix, species, sql_filter, session):
-        run_acc, study_acc = tup
-        print('%s,%s' % (run_acc, study_acc))
-    return 'DONE'
-
-
-def inputs_from_table(prefix, species, sql_filter, input_set_name, session):
-    input_ids = []
-    for tup in _fetcher(prefix, species, sql_filter, session):
-        run_acc, study_acc = tup
-        input_ids.append(add_input(run_acc, study_acc, None, None, None, None, None, None, None, session))
-    set_id = add_input_set(input_set_name, session)
-    add_inputs_to_set([set_id] * len(input_ids), input_ids, session)
-    log.info('Added %d inputs' % len(input_ids), 'input.py')
-    return set_id, input_ids
-
-
-def import_json(json_fn, input_set_name, session, limit=None, max_bases=None):
+def import_json(json_fn, input_set_name, session, limit=None):
     log.info('Loading metadata from "%s"' % json_fn, 'input.py')
     js = json.load(codecs.getreader("utf-8")(gzip.open(json_fn)) if json_fn.endswith('.gz') else open(json_fn))
     inputs = []
     if len(js) == 0:
         raise ValueError('Attempt to import from empty JSON file: "%s"' % json_fn)
     for rec in js:
-        if max_bases is not None:
-            if 'run_bases' not in rec['_source']:
-                continue
-            bases = rec['_source']['run_bases']
-            if bases is not None and bases > int(max_bases):
-                continue
+        assert '_id' in rec
+        assert '_source' in rec
+        assert 'study' in rec['_source']
+        assert 'accession' in rec['_source']['study']
         acc_r = rec['_id']
-        acc_s = rec['_source']['study_accession']
+        acc_s = rec['_source']['study']['accession']
         inp = Input(acc_r=acc_r, acc_s=acc_s,
                     url_1=acc_r, url_2=None, url_3=None,
                     checksum_1=None, checksum_2=None, checksum_3=None,
@@ -376,7 +339,7 @@ def test_import_inputset(session):
 
 
 def test_import_json_1(session):
-    json = '[ { "_id": "SRR123", "_source": { "study_accession": "SRP123", "run_bases": 500 } } ]\n'
+    json = '[ { "_id": "SRR123", "_source": { "study" : {"accession": "SRP123"} } } ]\n'
     tmpdir = tempfile.mkdtemp()
     json_fn = os.path.join(tmpdir, 'import.json')
     with open(json_fn, 'w') as fh:
@@ -387,10 +350,10 @@ def test_import_json_1(session):
 
 
 def test_import_json_2(session):
-    json = """[ { "_id": "SRR123", "_source": { "study_accession": "SRP123", "run_bases": 500 } },
-{ "_id": "SRR1234", "_source": { "study_accession": "SRP1234", "run_bases": 500 } },
-{ "_id": "SRR12345", "_source": { "study_accession": "SRP12345", "run_bases": 500 } },
-{ "_id": "SRR123456", "_source": { "study_accession": "SRP123456", "run_bases": 500 } } ]
+    json = """[ { "_id": "SRR123", "_source": { "study" : {"accession": "SRP123"} } },
+{ "_id": "SRR1234", "_source": { "study" : {"accession": "SRP1234"} } },
+{ "_id": "SRR12345", "_source": { "study" : {"accession": "SRP12345"} } },
+{ "_id": "SRR123456", "_source": { "study" : {"accession": "SRP123456"} } } ]
 """
     tmpdir = tempfile.mkdtemp()
     json_fn = os.path.join(tmpdir, 'import.json')
@@ -461,18 +424,10 @@ def go():
         elif args['add-inputs-to-set']:
             session_mk = session_maker_from_config(db_ini, args['--db-section'])
             print(add_inputs_to_set(args['<set-id>'], args['<input-id>'], session_mk()))
-        elif args['filter-table']:
-            session_mk = session_maker_from_config(db_ini, args['--db-section'])
-            print(filter_table(args['<prefix>'], args['<species>'], args['<sql-filter>'], session_mk()))
-        elif args['inputs-from-table']:
-            session_mk = session_maker_from_config(db_ini, args['--db-section'])
-            print(inputs_from_table(args['<prefix>'], args['<species>'],
-                                    args['<sql-filter>'], args['<input-set-name>'], session_mk()))
         elif args['import-json']:
             session_mk = session_maker_from_config(db_ini, args['--db-section'])
             print(import_json(args['<json-file>'], args['<input-set-name>'],
-                              session_mk(), limit=args['--limit'],
-                              max_bases=args['--max-bases']))
+                              session_mk(), limit=args['--limit']))
     except Exception:
         log.error('Uncaught exception:', 'input.py')
         raise
