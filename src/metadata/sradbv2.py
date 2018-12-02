@@ -8,6 +8,7 @@
 
 Usage:
   sradbv2 search <lucene-search> [options]
+  sradbv2 search-random-subset <lucene-search> <subset-size> [options]
   sradbv2 count <lucene-search> [options]
   sradbv2 size-dist <lucene-search> <n> [options]
   sradbv2 bases <lucene-search> [options]
@@ -38,6 +39,7 @@ import json
 import cgi
 import gzip
 import random
+import itertools
 if sys.version[:1] == '2':
     from urllib import quote
     from urllib2 import urlopen
@@ -63,15 +65,55 @@ nested_fields = {'attributes': ['tag', 'value'],
                  'xrefs': ['db', 'id']}
 
 
-def search_iterator(search, size):
+class ReservoirSampler(object):
+    """ Simple reservoir sampler """
+
+    def __init__(self, k):
+        """ Initialize given k, the size of the reservoir """
+        self.k = k
+        self.r = []
+        self.n = 0
+
+    def add(self, obj):
+        """ Add object to sampling domain """
+        if self.n < self.k:
+            self.r.append(obj)
+        else:
+            j = random.randint(0, self.n)
+            if j < self.k:
+                self.r[j] = obj
+        self.n += 1
+
+    def __iter__(self):
+        """ Return iterator over the sample """
+        return iter(self.r)
+
+
+def openex(fn, mode, use_gzip):
+    if use_gzip:
+        return gzip.open(fn + '.gz', mode)
+    else:
+        return open(fn, mode)
+
+
+def sanity_check_json(fn, use_gzip):
+    with openex(fn, 'rt', use_gzip) as fh:
+        json.loads(fh.read())
+        return True
+
+
+def get_payload(search, size):
     url = '%s?q=%s&size=%d' % (sradbv2_search_url, quote(search), size)
     log.info('GET ' + url, 'sradbv2.py')
     response = urlopen(url)
     j, ct = cgi.parse_header(response.headers.get('Content-type', ''))
     encodec = ct.get('charset', 'utf-8')
-    log.info('Charset: ' + encodec, 'sradbv2.py')
     payload = response.read().decode(encodec)
-    jn = json.loads(payload)
+    return json.loads(payload), encodec
+
+
+def search_iterator(search, size):
+    jn, encodec = get_payload(search, size)
     tot_hits = jn['hits']['total']
     num_hits = len(jn['hits']['hits'])
     assert num_hits <= tot_hits
@@ -197,37 +239,17 @@ def query(delay, nostdout, noheader, query_string=None, query_file=None):
         process_study(prev_study, runs_per_study, header_fields, nostdout, noheader)
 
 
-def openex(fn, mode, gzip_output):
-    if gzip_output:
-        return gzip.open(fn + '.gz', mode)
-    else:
-        return open(fn, mode)
-
-
 def count_search(search):
     """
     Return the number of hits satisfying the query
     """
-    url = '%s?q=%s&size=1' % (sradbv2_search_url, quote(search))
-    log.info('GET ' + url, 'sradbv2.py')
-    response = urlopen(url)
-    j, ct = cgi.parse_header(response.headers.get('Content-type', ''))
-    encodec = ct.get('charset', 'utf-8')
-    log.info('Charset: ' + encodec, 'sradbv2.py')
-    jn = json.loads(response.read().decode(encodec))
+    jn, _ = get_payload(search, 1)
     return int(jn['hits']['total'])
 
 
 def process_search(search, size, gzip_output, output_fn):
-    url = '%s?q=%s&size=%d' % (sradbv2_search_url, quote(search), size)
-    log.info('GET ' + url, 'sradbv2.py')
-    response = urlopen(url)
-    j, ct = cgi.parse_header(response.headers.get('Content-type', ''))
-    encodec = ct.get('charset', 'utf-8')
-    log.info('Charset: ' + encodec, 'sradbv2.py')
-    payload = response.read().decode(encodec)
+    jn, encodec = get_payload(search, size)
     with openex(output_fn, 'wb', gzip_output) as fout:
-        jn = json.loads(payload)
         tot_hits = jn['hits']['total']
         num_hits = len(jn['hits']['hits'])
         assert num_hits <= tot_hits
@@ -257,6 +279,21 @@ def process_search(search, size, gzip_output, output_fn):
                 dump = dump[:-1] + b','
             fout.write(dump)
             nscrolls += 1
+
+
+def hit_search_random(search, limit, size, stop_after, gzip_output, output_fn):
+    samp = ReservoirSampler(limit)
+    for hit in itertools.islice(enumerate(search_iterator(search, size)), stop_after):
+        samp.add(hit[1])
+    first = True
+    with openex(output_fn, 'wt', gzip_output) as fout:
+        for hit in samp:
+            dump = json.dumps(hit, indent=4).encode('UTF-8')
+            dump = ('[' if first else ',') + dump
+            first = False
+            fout.write(dump)
+        fout.write(']')
+    assert sanity_check_json(output_fn, gzip_output)
 
 
 taxa = {'A thaliana': 3702,      # 4. arabidopsis
@@ -297,30 +334,6 @@ def summarize_rna():
     return summary
 
 
-class ReservoirSampler(object):
-    """ Simple reservoir sampler """
-
-    def __init__(self, k):
-        """ Initialize given k, the size of the reservoir """
-        self.k = k
-        self.r = []
-        self.n = 0
-
-    def add(self, obj):
-        """ Add object to sampling domain """
-        if self.n < self.k:
-            self.r.append(obj)
-        else:
-            j = random.randint(0, self.n)
-            if j < self.k:
-                self.r[j] = obj
-        self.n += 1
-
-    def __iter__(self):
-        """ Return iterator over the sample """
-        return iter(self.r)
-
-
 def size_dist(search, size, stop_after, max_n):
     samp = ReservoirSampler(max_n)
     for i, hit in enumerate(search_iterator(search, size)):
@@ -354,6 +367,10 @@ if __name__ == '__main__':
         if args['search']:
             # sample.taxon_id:6239 AND experiment.library_strategy:"rna seq" AND experiment.library_source:transcriptomic AND experiment.platform:illumina
             process_search(args['<lucene-search>'], int(args['--size']), args['--gzip'], args['--output'])
+        if args['search-random-subset']:
+            hit_search_random(args['<lucene-search>'], int(args['<subset-size>']),
+                              int(args['--size']), int(args['--stop-after']),
+                              args['--gzip'], args['--output'])
         if args['count']:
             print(count_search(args['<lucene-search>']))
         elif args['query']:
