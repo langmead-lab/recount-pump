@@ -2,8 +2,8 @@
 
 cat *.fna > virus.fa
 
-OUTPUT=star_unmapped_idx
-TEMP=star_unmapped_idx.temp
+OUTPUT=unmapped_star_idx
+TEMP=unmapped_star_idx.temp
 rm -rf ${OUTPUT} ${TEMP}
 mkdir -p ${OUTPUT}
 
