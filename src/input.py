@@ -106,8 +106,8 @@ class Input(Base):
         It should be enough information so that any cluster that obtains the
         job knows how to obtain the input.
         """
-        assert self.acc_r[1:3] == 'RR'
-        assert self.acc_s[1:3] == 'RP'
+        assert self.acc_r[1:3] == 'RR', self.acc_r
+        assert self.acc_s[1:3] == 'RP', self.acc_s
         assert (self.url_1 or self.url_2 or self.url_3) is not None
         return str(self)
 
