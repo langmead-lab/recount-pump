@@ -92,13 +92,16 @@ class Task(object):
         """
         Return list representing a way to put this task into a "bucket" based on its id
         """
-        level1 = self.srp
-        level2 = self.srr[-2:]
+        level1 = self.srp[-2:]
+        level2 = self.srp
+        level3 = self.srr[-2:]
         assert len(level1) > 0
         assert len(level2) > 0
+        assert len(level3) > 0
         assert is_ascii(level1)
         assert is_ascii(level2)
-        return [level1, level2]
+        assert is_ascii(level3)
+        return [level1, level2, level3]
 
 
 log_queue = multiprocessing.Queue()
