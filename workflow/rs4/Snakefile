@@ -377,10 +377,10 @@ rule sort:
     threads: 8
     shell:
         """
-        (time sambamba sort --tmpdir={config[temp]} -t {threads} -m 10G -o {output.bam} {input}) 2>&1 | tee -a {log}
+        time sambamba sort --tmpdir={config[temp]} -t {threads} -m 1G -o {output.bam} {input} 2>&1 | tee -a {log}
         size=$(wc -c < {output.bam})
         echo "COUNT_SortedBAMBytesGenerated ${{size}}"
-        (time sambamba index -t {threads} {output.bam}) 2>&1 | tee -a {log}
+        time sambamba index -t {threads} {output.bam} 2>&1 | tee -a {log}
         echo "COUNT_SortComplete 1"
         """
 
