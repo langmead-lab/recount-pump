@@ -1,0 +1,752 @@
+"""
+Parameters:
+- fastq_dump_args: arguments to pass to fastq dumping tool
+- fastq_dump_retries: number of retry attempts before dying
+- fastq_dump_tool: name of tool to run, e.g. 'fastq-dump' or 'fasterq-dump'
+- star: arguments to pass to STAR aligner
+- kallisto_args: arguments to pass to kallisto quant
+- salmon_args: arguments to pass to salmon quant
+- bw_unique_qual: minimum MAPQ needed to be counted in unique BW [default: 10]
+- featureCounts: arguments to pass to featureCounts
+- fc_unique_qual: minimum MAPQ needed to be counted in unique quantifications [default: 10]
+- bw_bed: name of BED file to use with bwtool
+"""
+
+STEPS = ['sra_fastq', 'fastq_check', 'align', 'sort',
+         'kallisto', 'salmon', 'align_unmapped',
+         'bam_to_bw_all', 'bam_to_bw_unique',
+         'exon_bw_count_all', 'exon_bw_count_unique',
+         'gene_fc_count_all', 'gene_fc_count_unique',
+         'exon_fc_count_all', 'exon_fc_count_unique']
+
+FILES = ['sjout.zst', 'fastq_check.tsv.zstd',
+         'unmapped.bam', 'unmapped.sjout.zst',
+         'Chimeric.out.junction.zst',
+         'all.gene_fc_count.zst', 'unique.gene_fc_count.zst',
+         'all.exon_fc_count.zst', 'unique.exon_fc_count.zst',
+         'all.exon_bw_count.zst', 'unique.exon_bw_count.zst',
+         'all.bw.zst', 'unique.bw.zst',
+         'kallisto.tsv.zst', 'salmon.tsv.zst',
+         'manifest'] + list(map(lambda x: x + '.log', STEPS))
+
+def get_accessions(wildcards):
+    """
+    Grouping of SRRs with the same SRP could happen here
+    """
+    for fn in config['input'].split():
+        with open(fn, 'r') as fh:
+            for ln in fh:
+                if ln.count(',') < 2:
+                    continue
+                toks = ln.rstrip().split(',')
+                assert len(toks) == 3
+                # SRR,SRP,genome
+                # e.g. SRR1557855,SRP045778,ce10
+                for ext in FILES:
+                    yield os.path.join(config['output'], '%s_%s_%s.%s' % (toks[0], toks[1], toks[2], ext))
+
+rule all:
+    input:
+        get_accessions
+
+rule make_manifest:
+    input:
+        config['output'] + '/{trio}.kallisto.tsv.zst',
+        config['output'] + '/{trio}.salmon.tsv.zst',
+        config['output'] + '/{trio}.sjout.zst',
+        config['output'] + '/{trio}.Chimeric.out.junction.zst',
+        config['output'] + '/{trio}.unmapped.bam',
+        config['output'] + '/{trio}.unmapped.sjout.zst',
+        config['output'] + '/{trio}.fastq_check.tsv.zstd',
+        config['output'] + '/{trio}.all.gene_fc_count.zst',
+        config['output'] + '/{trio}.all.exon_fc_count.zst',
+        config['output'] + '/{trio}.unique.gene_fc_count.zst',
+        config['output'] + '/{trio}.unique.exon_fc_count.zst',
+        config['output'] + '/{trio}.all.exon_bw_count.zst',
+        config['output'] + '/{trio}.unique.exon_bw_count.zst',
+        config['output'] + '/{trio}.all.bw.zst',
+        config['output'] + '/{trio}.unique.bw.zst',
+        config['output'] + '/{trio}.align.log',
+        config['output'] + '/{trio}.align_unmapped.log',
+        config['output'] + '/{trio}.sra_fastq.log',
+        config['output'] + '/{trio}.fastq_check.log',
+        config['output'] + '/{trio}.sort.log',
+        config['output'] + '/{trio}.kallisto.log',
+        config['output'] + '/{trio}.salmon.log',
+        config['output'] + '/{trio}.bam_to_bw_all.log',
+        config['output'] + '/{trio}.bam_to_bw_unique.log',
+        config['output'] + '/{trio}.gene_fc_count_all.log',
+        config['output'] + '/{trio}.gene_fc_count_unique.log',
+        config['output'] + '/{trio}.exon_bw_count_all.log',
+        config['output'] + '/{trio}.exon_bw_count_unique.log',
+        config['output'] + '/{trio}.exon_fc_count_all.log',
+        config['output'] + '/{trio}.exon_fc_count_unique.log'
+    output:
+        config['output'] + '/{trio}.manifest'
+    params:
+        trio=lambda wildcards: wildcards.trio
+    run:
+        with open(output[0], 'wt') as fh:
+            for fn in FILES:
+                fh.write(params.trio + "." + fn + '\n')
+
+rule exon_bw_count_all:
+    input:
+        bw=config['temp'] + '/{trio}.all.bw',
+        bed=lambda wildcards: '%s/%s/gtf/%s' % (config['ref'], wildcards.trio.split('_')[2], config.get('bw_bed', 'exons.bed'))
+    output:
+        config['output'] + '/{trio}.all.exon_bw_count.zst'
+    log:
+        config['output'] + '/{trio}.exon_bw_count_all.log'
+    params:
+        srr=lambda wildcards: wildcards.trio.split('_')[0]
+    shell:
+        """
+        TMP={config[temp]}/{params.srr}.exon_bw_count_all.tsv
+        (time bwtool summary \
+            {input.bed} {input.bw} \
+            /dev/stdout \
+                -fill=0 \
+                -with-sum \
+                -keep-bed \
+                -decimals=0 \
+            | cut -f1-4,11 \
+            > ${{TMP}}) 2>&1 | tee -a {log}
+
+        size=$(wc -c < ${{TMP}})
+        echo "COUNT_ExonBwCountAllSize ${{size}}"
+
+        (time zstd ${{TMP}} -o {output}) 2>&1 | tee -a {log}
+
+        size=$(wc -c < {output})
+        echo "COUNT_CompressedExonBwCountAllSize ${{size}}"
+
+        rm -f ${{TMP}}
+        echo "COUNT_ExonBwCountAllComplete 1"
+        """
+
+rule exon_bw_count_unique:
+    input:
+        bw=config['temp'] + '/{trio}.unique.bw',
+        bed=lambda wildcards: '%s/%s/gtf/%s' % (config['ref'], wildcards.trio.split('_')[2], config.get('bw_bed', 'exons.bed'))
+    output:
+        config['output'] + '/{trio}.unique.exon_bw_count.zst'
+    log:
+        config['output'] + '/{trio}.exon_bw_count_unique.log'
+    params:
+        srr=lambda wildcards: wildcards.trio.split('_')[0]
+    shell:
+        """
+        TMP={config[temp]}/{params.srr}.exon_bw_count_unique.tsv
+        (time bwtool summary \
+            {input.bed} {input.bw} \
+            /dev/stdout \
+                -fill=0 \
+                -with-sum \
+                -keep-bed \
+                -decimals=0 \
+            | cut -f1-4,11 \
+            > ${{TMP}}) 2>&1 | tee -a {log}
+
+        size=$(wc -c < ${{TMP}})
+        echo "COUNT_ExonBwCountUniqueSize ${{size}}"
+
+        (time zstd ${{TMP}} -o {output}) 2>&1 | tee -a {log}
+
+        size=$(wc -c < {output})
+        echo "COUNT_CompressedExonBwCountUniqueSize ${{size}}"
+
+        rm -f ${{TMP}}
+        echo "COUNT_ExonBwCountUniqueComplete 1"
+        """
+
+rule gene_fc_count_all:
+    input:
+        bam=config['temp'] + '/{trio}.bam',  # mates should be together for featureCounts
+        bamidx=config['temp'] + '/{trio}.sorted.bam.bai',
+        gtf=lambda wildcards: '%s/%s/gtf/genes.gtf' % (config['ref'], wildcards.trio.split('_')[2])
+    output:
+        config['output'] + '/{trio}.all.gene_fc_count.zst'
+    log:
+        config['output'] + '/{trio}.gene_fc_count_all.log'
+    params:
+        srr=lambda wildcards: wildcards.trio.split('_')[0],
+        fc_param=config.get('featureCounts', '')
+    threads: 4
+    shell:
+        """
+        TMP={config[temp]}/{params.srr}.gene_fc_count_all.tsv
+        TMP2={config[temp]}/{params.srr}.all.gene_count
+        (time featureCounts {params.fc_param} -p -a {input.gtf} -T {threads} \
+            -o ${{TMP}} {input.bam}) 2>&1 | tee -a {log}
+        awk -v OFS='\\t' '$1 !~ /^#/ && $1 !~ /^Geneid/ && $NF != 0 {{print "{params.srr}",$0}}' \
+            ${{TMP}} > ${{TMP2}}
+
+        size=$(wc -c < ${{TMP2}})
+        echo "COUNT_GeneFcCountAllSize ${{size}}"
+
+        rm -f ${{TMP}}
+        (time zstd ${{TMP2}} -o {output}) 2>&1 | tee -a {log}
+
+        size=$(wc -c <{output})
+        echo "COUNT_CompressedGeneFcCountAllSize ${{size}}"
+
+        rm -f ${{TMP2}}
+        echo "COUNT_GeneFcCountAllComplete 1"
+        """
+
+rule gene_fc_count_unique:
+    input:
+        bam=config['temp'] + '/{trio}.bam',  # mates should be together for featureCounts
+        bamidx=config['temp'] + '/{trio}.sorted.bam.bai',
+        gtf=lambda wildcards: '%s/%s/gtf/genes.gtf' % (config['ref'], wildcards.trio.split('_')[2])
+    output:
+        config['output'] + '/{trio}.unique.gene_fc_count.zst'
+    log:
+        config['output'] + '/{trio}.gene_fc_count_unique.log'
+    params:
+        srr=lambda wildcards: wildcards.trio.split('_')[0],
+        fc_param=config.get('featureCounts', ''),
+        fc_uniq=config.get('fc_unique_qual', 10)
+    threads: 4
+    shell:
+        """
+        TMP={config[temp]}/{params.srr}.gene_fc_count_unique.tsv
+        TMP2={config[temp]}/{params.srr}.unique.gene_count
+        (time featureCounts {params.fc_param} -Q {params.fc_uniq} -p -a {input.gtf} -T {threads} \
+            -o ${{TMP}} {input.bam}) 2>&1 | tee -a {log}
+        awk -v OFS='\\t' '$1 !~ /^#/ && $1 !~ /^Geneid/ && $NF != 0 {{print "{params.srr}",$0}}' \
+            ${{TMP}} > ${{TMP2}}
+
+        size=$(wc -c < ${{TMP2}})
+        echo "COUNT_GeneFcCountUniqueSize ${{size}}"
+
+        rm -f ${{TMP}}
+        (time zstd ${{TMP2}} -o {output}) 2>&1 | tee -a {log}
+
+        size=$(wc -c < {output})
+        echo "COUNT_CompressedGeneFcCountUniqueSize ${{size}}"
+
+        rm -f ${{TMP2}}
+        echo "COUNT_GeneFcCountUniqueComplete 1"
+        """
+
+rule exon_fc_count_all:
+    input:
+        bam=config['temp'] + '/{trio}.bam',  # mates should be together for featureCounts
+        bamidx=config['temp'] + '/{trio}.sorted.bam.bai',
+        gtf=lambda wildcards: '%s/%s/gtf/genes.gtf' % (config['ref'], wildcards.trio.split('_')[2])
+    output:
+        config['output'] + '/{trio}.all.exon_fc_count.zst'
+    log:
+        config['output'] + '/{trio}.exon_fc_count_all.log'
+    params:
+        srr=lambda wildcards: wildcards.trio.split('_')[0],
+        fc_param=config.get('featureCounts', '')
+    threads: 4
+    shell:
+        """
+        TMP={config[temp]}/{params.srr}.exon_fc_count_all.tsv
+        TMP2={config[temp]}/{params.srr}.all.exon_count
+        (time featureCounts {params.fc_param} -O -f -p -a {input.gtf} -T {threads} \
+            -o ${{TMP}} {input.bam}) 2>&1 | tee -a {log}
+        awk -v OFS='\\t' '$1 !~ /^#/ && $1 !~ /^Geneid/ && $NF != 0 {{print "{params.srr}",$0}}' \
+            ${{TMP}} > ${{TMP2}}
+
+        size=$(wc -c < ${{TMP2}})
+        echo "COUNT_ExonFcCountAllSize ${{size}}"
+
+        rm -f ${{TMP}}
+        (time zstd ${{TMP2}} -o {output}) 2>&1 | tee -a {log}
+
+        size=$(wc -c < {output})
+        echo "COUNT_CompressedExonFcCountAllSize ${{size}}"
+
+        rm -f ${{TMP2}}
+        echo "COUNT_ExonFcCountAllComplete 1"
+        """
+
+rule exon_fc_count_unique:
+    input:
+        bam=config['temp'] + '/{trio}.bam',  # mates should be together for featureCounts
+        bamidx=config['temp'] + '/{trio}.sorted.bam.bai',
+        gtf=lambda wildcards: '%s/%s/gtf/genes.gtf' % (config['ref'], wildcards.trio.split('_')[2])
+    output:
+        config['output'] + '/{trio}.unique.exon_fc_count.zst'
+    log:
+        config['output'] + '/{trio}.exon_fc_count_unique.log'
+    params:
+        srr=lambda wildcards: wildcards.trio.split('_')[0],
+        fc_param=config.get('featureCounts', ''),
+        fc_uniq=config.get('fc_unique_qual', 10)
+    threads: 4
+    shell:
+        """
+        TMP={config[temp]}/{params.srr}.exon_fc_count_unique.tsv
+        TMP2={config[temp]}/{params.srr}.unique.exon_count
+        (time featureCounts {params.fc_param} -Q {params.fc_uniq} -O -f -p -a {input.gtf} -T {threads} \
+            -o ${{TMP}} {input.bam}) 2>&1 | tee -a {log}
+        awk -v OFS='\\t' '$1 !~ /^#/ && $1 !~ /^Geneid/ && $NF != 0 {{print "{params.srr}",$0}}' \
+            ${{TMP}} > ${{TMP2}}
+
+        size=$(wc -c < ${{TMP2}})
+        echo "COUNT_ExonFcCountUniqueSize ${{size}}"
+
+        (time zstd ${{TMP2}} -o {output}) 2>&1 | tee -a {log}
+
+        size=$(wc -c < {output})
+        echo "COUNT_CompressedExonFcCountUniqueSize ${{size}}"
+
+        rm -f ${{TMP2}}
+        echo "COUNT_ExonFcCountUniqueComplete 1"
+        """
+
+rule bw_zstd:
+    input:
+        config['temp'] + '/{prefix}.bw'
+    output:
+        config['output'] + '/{prefix}.bw.zst'
+    shell:
+        """
+        zstd {input} -o {output}
+        size=$(wc -c < {output})
+        echo "COUNT_CompressedBwBytesGenerated ${{size}}"
+        echo "COUNT_BwZstdComplete 1"
+        """
+
+rule bam_to_bw_all:
+    input:
+        config['temp'] + '/{trio}.sorted.bam.bai',
+        bam=config['temp'] + '/{trio}.sorted.bam'
+    output:
+        config['temp'] + '/{trio}.unique.bw'
+    log:
+        config['output'] + '/{trio}.bam_to_bw_all.log'
+    threads: 4
+    params:
+        srr=lambda wildcards: wildcards.trio.split('_')[0]
+    shell:
+        """
+        TMP={config[temp]}/{params.srr}.bam_to_bw_all
+        mkdir -p ${{TMP}}
+        sambamba view -H {input.bam} > ${{TMP}}/o.per-base.bed
+        time mosdepth -t {threads} ${{TMP}}/o {input.bam} 2>&1 | tee -a {log}
+        gzip -dc ${{TMP}}/o.per-base.bed.gz >> ${{TMP}}/o.per-base.bed
+        time python /bam2bigwig.py {output} < ${{TMP}}/o.per-base.bed
+        rm -rf ${{TMP}}
+        
+        size=$(wc -c < {output})
+        echo "COUNT_BwBytesGenerated ${{size}}"
+        echo "COUNT_BamToBwAllComplete 1"
+        """
+
+rule bam_to_bw_unique:
+    input:
+        config['temp'] + '/{trio}.sorted.bam.bai',
+        bam=config['temp'] + '/{trio}.sorted.bam'
+    output:
+        config['temp'] + '/{trio}.all.bw'
+    log:
+        config['output'] + '/{trio}.bam_to_bw_unique.log'
+    threads: 4
+    params:
+        srr=lambda wildcards: wildcards.trio.split('_')[0],
+        bw_uniq=config.get('bw_unique_qual', 10)
+    shell:
+        """
+        TMP={config[temp]}/{params.srr}.bam_to_bw_unique
+        mkdir -p ${{TMP}}
+        sambamba view -H {input.bam} > ${{TMP}}/o.per-base.bed
+        time mosdepth -t {threads} -Q {params.bw_uniq} ${{TMP}}/o {input.bam} 2>&1 | tee -a {log}
+        gzip -dc ${{TMP}}/o.per-base.bed.gz >> ${{TMP}}/o.per-base.bed
+        time python /bam2bigwig.py {output} < ${{TMP}}/o.per-base.bed
+        rm -rf ${{TMP}}
+
+        size=$(wc -c < {output})
+        echo "COUNT_BwBytesGenerated ${{size}}"
+        echo "COUNT_BamToBwUniqueComplete 1"
+        """
+
+rule sort:
+    input:
+        config['temp'] + '/{trio}.bam'
+    output:
+        bam=temp(config['temp'] + '/{trio}.sorted.bam'),
+        bai=temp(config['temp'] + '/{trio}.sorted.bam.bai')
+    log:
+        config['output'] + '/{trio}.sort.log'
+    threads: 8
+    shell:
+        """
+        (time sambamba sort --tmpdir={config[temp]} -t {threads} -m 10G -o {output.bam} {input}) 2>&1 | tee -a {log}
+        size=$(wc -c < {output.bam})
+        echo "COUNT_SortedBAMBytesGenerated ${{size}}"
+        (time sambamba index -t {threads} {output.bam}) 2>&1 | tee -a {log}
+        echo "COUNT_SortComplete 1"
+        """
+
+rule kallisto:
+    input:
+        reads0=config['temp'] + '/{trio}_0.fastq',
+        reads1=config['temp'] + '/{trio}_1.fastq',
+        reads2=config['temp'] + '/{trio}_2.fastq',
+        index=lambda wildcards: '%s/%s/kallisto_index/transcriptome_index' % (config['ref'], wildcards.trio.split('_')[2])
+    output:
+        config['output'] + '/{trio}.kallisto.tsv.zst'
+    log:
+        config['output'] + '/{trio}.kallisto.log'
+    params:
+        index_base=lambda wildcards: '%s/%s/kallisto_index' % (config['ref'], wildcards.trio.split('_')[2]),
+        kallisto_args=config.get('kallisto_args', '')
+    threads: 8
+    shell:
+        """
+        READ_FILES="--single -l 300 -s 30 {input.reads0}"
+        if [[ -s {input.reads2} ]] ; then
+            READ_FILES="{input.reads1} {input.reads2}"
+        fi
+        time kallisto quant \
+            --index={params.index_base}/transcriptome_index \
+            -t {threads} \
+            {params.kallisto_args} \
+            --output=. \
+            --plaintext \
+            ${{READ_FILES}} \
+            2>&1 | tee -a {log}
+
+        size=$(wc -c < abundance.tsv)
+        echo "COUNT_UncompressedKallistoQuantBytesGenerated ${{size}}"
+
+        time zstd abundance.tsv -o {output} 2>&1 | tee -a {log}
+        size=$(wc -c < {output})
+        echo "COUNT_KallistoQuantBytesGenerated ${{size}}"
+        rm -f abundance.tsv
+
+        echo "COUNT_KallistoComplete 1"
+        """
+
+rule salmon:
+    input:
+        reads0=config['temp'] + '/{trio}_0.fastq',
+        reads1=config['temp'] + '/{trio}_1.fastq',
+        reads2=config['temp'] + '/{trio}_2.fastq',
+        index1=lambda wildcards: '%s/%s/salmon_index/hash.bin' % (config['ref'], wildcards.trio.split('_')[2]),
+        index2=lambda wildcards: '%s/%s/salmon_index/sa.bin' % (config['ref'], wildcards.trio.split('_')[2])
+    output:
+        config['output'] + '/{trio}.salmon.tsv.zst'
+    log:
+        config['output'] + '/{trio}.salmon.log'
+    params:
+        index_base=lambda wildcards: '%s/%s/salmon_index' % (config['ref'], wildcards.trio.split('_')[2]),
+        salmon_args=config.get('salmon_args', '')
+    threads: 8
+    shell:
+        """
+        READ_FILES="-r {input.reads0}"
+        if [[ -s {input.reads2} ]] ; then
+            READ_FILES="-1 {input.reads1} -2 {input.reads2}"
+        fi
+        time salmon quant \
+            --libType U \
+            -i {params.index_base} \
+            -p {threads} \
+            {params.salmon_args} \
+            ${{READ_FILES}} \
+            --output salmon_quant \
+            --minAssignedFrags 1 \
+            2>&1 | tee -a {log}
+        
+        size=$(wc -c < salmon_quant/quant.sf)
+        echo "COUNT_UncompressedSalmonQuantBytesGenerated ${{size}}"
+
+        time zstd salmon_quant/quant.sf -o {output} 2>&1 | tee -a {log}
+        size=$(wc -c < {output})
+        echo "COUNT_SalmonQuantBytesGenerated ${{size}}"
+        rm -rf salmon_quant
+        
+        echo "COUNT_SalmonComplete 1"
+        """
+
+rule align_unmapped:
+    input:
+        unmapped1=config['temp'] + '/{trio}_1.unmappedfastq',
+        unmapped2=config['temp'] + '/{trio}_2.unmappedfastq',
+        index1=lambda wildcards: '%s/%s/unmapped_star_idx/SAindex' % (config['ref'], wildcards.trio.split('_')[2]),
+        index2=lambda wildcards: '%s/%s/unmapped_star_idx/SA' % (config['ref'], wildcards.trio.split('_')[2])
+    output:
+        bam=config['output'] + '/{trio}.unmapped.bam',
+        jxs=config['output'] + '/{trio}.unmapped.sjout.zst'
+    log:
+        config['output'] + '/{trio}.align_unmapped.log'
+    params:
+        index_base=lambda wildcards: '%s/%s/unmapped_star_idx' % (config['ref'], wildcards.trio.split('_')[2]),
+        srr=lambda wildcards: wildcards.trio.split('_')[0],
+        star_params=config.get('star', '')
+    threads: 16
+    shell:
+        """
+        READ_FILES="{input.unmapped1}"
+        if [[ -s {input.unmapped2} ]] ; then
+            READ_FILES="{input.unmapped1} {input.unmapped2}"
+        fi
+        TMP="{config[temp]}/align_unmapped_temp.{params.srr}"
+        rm -rf ${{TMP}}
+        time STAR \
+            {params.star_params} \
+            --runMode alignReads \
+            --runThreadN {threads} \
+            --genomeDir {params.index_base} \
+            --readFilesIn ${{READ_FILES}} \
+            --twopassMode None \
+            --genomeLoad LoadAndRemove \
+            --outTmpDir ${{TMP}} \
+            --outMultimapperOrder Random \
+            --outSAMtype BAM Unsorted 2>&1 | tee -a {log}
+
+        # Full set of output files:
+        #
+        # Aligned.out.bam
+        # Log.final.out
+        # Log.out
+        # Log.progress.out
+        # SJ.out.tab
+
+        #
+        # Logs
+        #
+        rm -rf ${{TMP}}
+        cat Log.out >> {log}
+        cat Log.final.out >> {log}
+        rm -f Log*.out
+
+        #
+        # Junctions
+        #
+        test -f SJ.out.tab
+        size=$(wc -c < SJ.out.tab)
+        echo "COUNT_UncompressedJxBytesGenerated ${{size}}"
+        time zstd SJ.out.tab -o {output.jxs} 2>&1 | tee -a {log}
+        rm -f SJ.out.tab
+        size=$(wc -c < {output.jxs})
+        echo "COUNT_CompressedJxBytesGenerated ${{size}}"
+        
+        #
+        # Alignments
+        #
+        size=$(wc -c < Aligned.out.bam)
+        echo "COUNT_BAMBytesGenerated ${{size}}"
+        mv Aligned.out.bam {output.bam}
+
+        echo "COUNT_AlignUnmappedComplete 1"
+        """
+
+rule align:
+    input:
+        reads0=config['temp'] + '/{trio}_0.fastq',
+        reads1=config['temp'] + '/{trio}_1.fastq',
+        reads2=config['temp'] + '/{trio}_2.fastq',
+        index1=lambda wildcards: '%s/%s/star_idx/SAindex' % (config['ref'], wildcards.trio.split('_')[2]),
+        index2=lambda wildcards: '%s/%s/star_idx/SA' % (config['ref'], wildcards.trio.split('_')[2])
+    output:
+        bam=temp(config['temp'] + '/{trio}.bam'),
+        jxs=config['output'] + '/{trio}.sjout.zst',
+        chimeric=config['output'] + '/{trio}.Chimeric.out.junction.zst',
+        unmapped1=config['temp'] + '/{trio}_1.unmappedfastq',
+        unmapped2=config['temp'] + '/{trio}_2.unmappedfastq'
+    log:
+        config['output'] + '/{trio}.align.log'
+    params:
+        index_base=lambda wildcards: '%s/%s/star_idx' % (config['ref'], wildcards.trio.split('_')[2]),
+        srr=lambda wildcards: wildcards.trio.split('_')[0],
+        star_params=config.get('star', '')
+    threads: 16
+    shell:
+        """
+        READ_FILES="{input.reads0}"
+        if [[ -s {input.reads2} ]] ; then
+            READ_FILES="{input.reads1} {input.reads2}"
+        fi
+        TMP="{config[temp]}/align_temp.{params.srr}"
+        rm -rf ${{TMP}}
+        time STAR \
+            {params.star_params} \
+            --runMode alignReads \
+            --runThreadN {threads} \
+            --genomeDir {params.index_base} \
+            --readFilesIn ${{READ_FILES}} \
+            --twopassMode None \
+            --genomeLoad LoadAndRemove \
+            --outTmpDir ${{TMP}} \
+            --outReadsUnmapped Fastx \
+            --outMultimapperOrder Random \
+            --outSAMreadID Number \
+            --outSAMtype BAM Unsorted \
+            --outSAMmode NoQS \
+            --chimOutType Junctions \
+            --chimOutJunctionFormat 1 \
+            --chimSegmentReadGapMax 3 \
+            --chimJunctionOverhangMin 12 \
+            --chimSegmentMin 12 2>&1 | tee -a {log}
+   
+        # Full set of output files:
+        #
+        # Aligned.out.bam
+        # Chimeric.out.junction
+        # Log.final.out
+        # Log.out
+        # Log.progress.out
+        # SJ.out.tab
+        # Unmapped.out.mate1
+        # Unmapped.out.mate2 (if any reads were paired-end)
+
+        #
+        # Logs
+        #
+        rm -rf ${{TMP}}
+        cat Log.out >> {log}
+        cat Log.final.out >> {log}
+        rm -f Log*.out
+
+        #
+        # Junctions
+        #
+        test -f SJ.out.tab
+        size=$(wc -c < SJ.out.tab)
+        echo "COUNT_UncompressedJxBytesGenerated ${{size}}"
+        time zstd SJ.out.tab -o {output.jxs} 2>&1 | tee -a {log}
+        rm -f SJ.out.tab
+        size=$(wc -c < {output.jxs})
+        echo "COUNT_CompressedJxBytesGenerated ${{size}}"
+
+        #
+        # Chimerics
+        #
+        test -f Chimeric.out.junction
+        test -s Chimeric.out.junction
+        size=$(wc -c < Chimeric.out.junction)
+        echo "COUNT_UncompressedChimericBytesGenerated ${{size}}"
+        time zstd Chimeric.out.junction -o {output.chimeric} 2>&1 | tee -a {log}
+        rm -f Chimeric.out.junction
+        size=$(wc -c < {output.chimeric})
+        echo "COUNT_CompressedChimericBytesGenerated ${{size}}"
+
+        #
+        # Unmapped
+        #
+        touch {output.unmapped2}
+        test -f Unmapped.out.mate1
+        mv Unmapped.out.mate1 {output.unmapped1}
+        if [[ -f Unmapped.out.mate2 ]] ; then
+            mv Unmapped.out.mate2 {output.unmapped2}
+        fi
+
+        #
+        # Alignments
+        #
+        size=$(wc -c < Aligned.out.bam)
+        echo "COUNT_BAMBytesGenerated ${{size}}"
+        mv Aligned.out.bam {output.bam}
+
+        echo "COUNT_AlignComplete 1"
+        """
+
+rule fastq_check:
+    input:
+        reads0=config['temp'] + '/{trio}_0.fastq',
+        reads1=config['temp'] + '/{trio}_1.fastq',
+        reads2=config['temp'] + '/{trio}_2.fastq'
+    output:
+        config['output'] + '/{trio}.fastq_check.tsv.zstd'
+    log:
+        config['output'] + '/{trio}.fastq_check.log'
+    shell:
+        """
+        TMP="{config[temp]}/fastq_check-{params.srr}.tsv"
+        touch ${{TMP}}
+        if [[ -s {input.reads0} ]] ; then
+            time seqtk fqchk -q0 {input.reads0} >>${{TMP}} 2>>{log}
+        fi
+        if [[ -s {input.reads1} ]] ; then
+            time seqtk fqchk -q0 {input.reads1} >>${{TMP}} 2>>{log}
+        fi
+        if [[ -s {input.reads2} ]] ; then
+            time seqtk fqchk -q0 {input.reads2} >>${{TMP}} 2>>{log}
+        fi
+        time zstd ${{TMP}} -o {output} 2>&1 | tee -a {log}
+        size=$(wc -c < {output})
+        echo "COUNT_FastqCheckBytesGenerated ${{size}}"
+
+        echo "COUNT_FastqCheckComplete 1"
+        """
+
+rule sra_fastq:
+    output:
+        temp(config['temp'] + '/{trio}_0.fastq'),
+        temp(config['temp'] + '/{trio}_1.fastq'),
+        temp(config['temp'] + '/{trio}_2.fastq')
+    log:
+        config['output'] + '/{trio}.sra_fastq.log'
+    params:
+        srr=lambda wildcards: wildcards.trio.split('_')[0],
+        fd_params=config.get('fastq_dump_args', ''),
+        retries=config.get('fastq_dump_retries', '5')
+    threads: 1
+    shell:
+        """
+        set -x
+        SUCCESS=0
+        TIMEOUT=10
+        PARAMS=""
+        TMP="{config[temp]}/prefetch-{params.srr}"
+        ! test -d ${{TMP}}
+        for i in {{ 1..{params.retries} }} ; do
+            if time prefetch -t fasp -O ${{TMP}} -L info {params.srr} 2>&1 >> {log} ; then
+                SUCCESS=1
+                break
+            else
+                echo "COUNT_SraFastqRetries 1"
+                TIMEOUT=$((${{TIMEOUT}} * 2))
+                sleep ${{TIMEOUT}}
+            fi
+        done
+        if (( $SUCCESS == 0 )) ; then
+            echo "COUNT_SraFastqFailures 1"
+            exit 1
+        fi
+        test -f ${{TMP}}/*.sra
+        size=$(cat ${{TMP}}/*.sra | wc -c)
+        echo "COUNT_SraBytesDownloaded ${{size}}"
+        if (( 0 == 1 )) ; then
+            time fasterq-dump ${{TMP}}/*.sra \
+                -e {threads} \
+                -t ${{TMP}} \
+                -L info \
+                --split-files \
+                --skip-technical \
+                -o {params.srr}.fastq \
+                2>&1 >> {log}
+        else
+            time fastq-dump ${{TMP}}/*.sra \
+                -L info \
+                --split-files \
+                --skip-technical \
+                -O . \
+                2>&1 >> {log}
+        fi
+        ls -l
+        rm -rf ${{TMP}}
+        test -f {params.srr}_2.fastq || mv {params.srr}_1.fastq {params.srr}_0.fastq
+        size=0
+        for i in {{0..2}} ; do
+            fn={params.srr}_${{i}}.fastq
+            if [[ -f ${{fn}} ]] ; then
+                echo "COUNT_FastqFilesDownloaded 1"
+            else
+                touch ${{fn}}
+            fi
+            size=$((${{size}} + $(wc -c < ${{fn}})))
+            mv ${{fn}} {config[temp]}/{wildcards.trio}_${{i}}.fastq
+        done
+        echo "COUNT_FastqBytesDownloaded ${{size}}"
+        echo "COUNT_SraFastqComplete 1"
+        """
