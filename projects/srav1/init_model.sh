@@ -9,7 +9,7 @@ set -ex
 
 RECOUNT_CREDS=${d}/creds
 TAXID=9606
-ANA_URL="docker://quay.io/benlangmead/recount-rs4:0.4.3"
+ANA_URL="docker://quay.io/benlangmead/recount-rs4:0.4.4"
 SRC_DIR="$d/../../src"
 ARGS="--ini-base ${RECOUNT_CREDS}"
 OUTPUT_DIR=$(grep '^output_base' ${RECOUNT_CREDS}/cluster.ini | cut -d"=" -f2 | tr -d '[:space:]')
@@ -45,7 +45,7 @@ add_source() (
 )
 
 srcid1=$(add_source "s3://recount-ref/${SPECIES}/star_idx.tar.gz" 's3')
-srcid2=$(add_source "s3://recount-ref/${SPECIES}/unmapped_star_idx.tar.gz" 's3')
+srcid2=$(add_source "s3://recount-ref/${SPECIES}/unmapped_hisat2_idx.tar.gz" 's3')
 srcid3=$(add_source "s3://recount-ref/${SPECIES}/kallisto_index.tar.gz" 's3')
 srcid4=$(add_source "s3://recount-ref/${SPECIES}/salmon_index.tar.gz" 's3')
 srcid5=$(add_source "s3://recount-ref/${SPECIES}/fasta.tar.gz" 's3')
