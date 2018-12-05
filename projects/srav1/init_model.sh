@@ -161,7 +161,7 @@ import_input_set() (
     file=$1
     input_set_name=$2
     python ${SRC_DIR}/input.py ${ARGS} import-text \
-        "${json_file}" "${input_set_name}" | tail -n 1   
+        "${file}" "${input_set_name}" | tail -n 1
 )
 
 isid=$(import_input_set "/tmp/${input_fn}" "${INPUT_SET}")
