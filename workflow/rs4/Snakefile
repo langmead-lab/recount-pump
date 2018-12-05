@@ -20,7 +20,7 @@ STEPS = ['sra_fastq', 'fastq_check', 'align', 'sort',
          'exon_fc_count_all', 'exon_fc_count_unique']
 
 FILES = ['sjout.zst', 'fastq_check.tsv.zstd',
-         'unmapped.bam', 'unmapped.sjout.zst',
+         'unmapped.bam',
          'Chimeric.out.junction.zst',
          'all.gene_fc_count.zst', 'unique.gene_fc_count.zst',
          'all.exon_fc_count.zst', 'unique.exon_fc_count.zst',
@@ -56,7 +56,6 @@ rule make_manifest:
         config['output'] + '/{trio}.sjout.zst',
         config['output'] + '/{trio}.Chimeric.out.junction.zst',
         config['output'] + '/{trio}.unmapped.bam',
-        config['output'] + '/{trio}.unmapped.sjout.zst',
         config['output'] + '/{trio}.fastq_check.tsv.zstd',
         config['output'] + '/{trio}.all.gene_fc_count.zst',
         config['output'] + '/{trio}.all.exon_fc_count.zst',
@@ -471,71 +470,41 @@ rule align_unmapped:
     input:
         unmapped1=config['temp'] + '/{trio}_1.unmappedfastq',
         unmapped2=config['temp'] + '/{trio}_2.unmappedfastq',
-        index1=lambda wildcards: '%s/%s/unmapped_star_idx/SAindex' % (config['ref'], wildcards.trio.split('_')[2]),
-        index2=lambda wildcards: '%s/%s/unmapped_star_idx/SA' % (config['ref'], wildcards.trio.split('_')[2])
+        index=lambda wildcards: '%s/%s/unmapped_hisat2_idx/genome.1.ht2' % (config['ref'], wildcards.trio.split('_')[2])
     output:
-        bam=config['output'] + '/{trio}.unmapped.bam',
-        jxs=config['output'] + '/{trio}.unmapped.sjout.zst'
+        config['output'] + '/{trio}.unmapped.bam'
     log:
         config['output'] + '/{trio}.align_unmapped.log'
     params:
-        index_base=lambda wildcards: '%s/%s/unmapped_star_idx' % (config['ref'], wildcards.trio.split('_')[2]),
+        index_base=lambda wildcards: '%s/%s/unmapped_hisat2_idx/genome' % (config['ref'], wildcards.trio.split('_')[2]),
         srr=lambda wildcards: wildcards.trio.split('_')[0],
-        star_params=config.get('star', '')
+        hisat2_params=config.get('hisat2', '')
     threads: 16
     shell:
         """
-        READ_FILES="{input.unmapped1}"
-        if [[ -s {input.unmapped2} ]] ; then
-            READ_FILES="{input.unmapped1} {input.unmapped2}"
-        fi
         TMP="{config[temp]}/align_unmapped_temp.{params.srr}"
-        rm -rf ${{TMP}}
-        time STAR \
-            {params.star_params} \
-            --runMode alignReads \
-            --runThreadN {threads} \
-            --genomeDir {params.index_base} \
-            --readFilesIn ${{READ_FILES}} \
-            --twopassMode None \
-            --genomeLoad LoadAndRemove \
-            --outTmpDir ${{TMP}} \
-            --outMultimapperOrder Random \
-            --outSAMtype BAM Unsorted 2>&1 | tee -a {log}
+        READ_FILES="-1 {input.unmapped1} -2 {input.unmapped2}"
+        if [[ ! -s {input.unmapped2} ]] ; then
+            READ_FILES="-U {input.unmapped1}"
+        fi
+        time hisat2 \
+            $READ_FILES \
+            -t --mm \
+            -x {params.index_base} \
+            --threads {threads} \
+            {params.hisat2_params} \
+            -S ${{TMP}}.sam \
+            2>&1 | tee -a {log}
+        time sambamba \
+            view \
+            -S -f bam -F "not unmapped" \
+            -o {output} \
+            ${{TMP}}.sam \
+            2>&1 | tee -a {log}
+        rm -f ${{TMP}}.sam
 
-        # Full set of output files:
-        #
-        # Aligned.out.bam
-        # Log.final.out
-        # Log.out
-        # Log.progress.out
-        # SJ.out.tab
-
-        #
-        # Logs
-        #
-        rm -rf ${{TMP}}
-        cat Log.out >> {log}
-        cat Log.final.out >> {log}
-        rm -f Log*.out
-
-        #
-        # Junctions
-        #
-        test -f SJ.out.tab
-        size=$(wc -c < SJ.out.tab)
-        echo "COUNT_UncompressedJxBytesGenerated ${{size}}"
-        time zstd SJ.out.tab -o {output.jxs} 2>&1 | tee -a {log}
-        rm -f SJ.out.tab
-        size=$(wc -c < {output.jxs})
-        echo "COUNT_CompressedJxBytesGenerated ${{size}}"
-        
-        #
-        # Alignments
-        #
-        size=$(wc -c < Aligned.out.bam)
-        echo "COUNT_BAMBytesGenerated ${{size}}"
-        mv Aligned.out.bam {output.bam}
+        size=$(wc -c < {output})
+        echo "COUNT_UnmappedBamBytesGenerated ${{size}}"
 
         echo "COUNT_AlignUnmappedComplete 1"
         """
@@ -623,10 +592,9 @@ rule align:
         #
         test -f Chimeric.out.junction
         test -s Chimeric.out.junction
-        size=$(wc -c < Chimeric.out.junction)
-        echo "COUNT_UncompressedChimericBytesGenerated ${{size}}"
-        time zstd Chimeric.out.junction -o {output.chimeric} 2>&1 | tee -a {log}
-        rm -f Chimeric.out.junction
+        sort -k1,1 -n -k2,2 Chimeric.out.junction > Chimeric.out.junction.sorted
+        time zstd Chimeric.out.junction.sorted -o {output.chimeric} 2>&1 | tee -a {log}
+        rm -f Chimeric.out.junction Chimeric.out.junction.sorted
         size=$(wc -c < {output.chimeric})
         echo "COUNT_CompressedChimericBytesGenerated ${{size}}"
 
@@ -659,18 +627,25 @@ rule fastq_check:
         config['output'] + '/{trio}.fastq_check.tsv.zstd'
     log:
         config['output'] + '/{trio}.fastq_check.log'
+    params:
+        srr=lambda wildcards: wildcards.trio.split('_')[0]
     shell:
         """
-        touch {output}
+        TMP="{config[temp]}/fastq_check-{params.srr}.tsv"
+        touch ${{TMP}}
         if [[ -s {input.reads0} ]] ; then
-            time seqtk fqchk -q0 {input.reads0} >>{output} 2>>{log}
+            time seqtk fqchk -q0 {input.reads0} >>${{TMP}} 2>>{log}
         fi
         if [[ -s {input.reads1} ]] ; then
-            time seqtk fqchk -q0 {input.reads1} >>{output} 2>>{log}
+            time seqtk fqchk -q0 {input.reads1} >>${{TMP}} 2>>{log}
         fi
         if [[ -s {input.reads2} ]] ; then
-            time seqtk fqchk -q0 {input.reads2} >>{output} 2>>{log}
+            time seqtk fqchk -q0 {input.reads2} >>${{TMP}} 2>>{log}
         fi
+        time zstd ${{TMP}} -o {output} 2>&1 | tee -a {log}
+        size=$(wc -c < {output})
+        echo "COUNT_FastqCheckBytesGenerated ${{size}}"
+
         echo "COUNT_FastqCheckComplete 1"
         """
 
