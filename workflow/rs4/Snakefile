@@ -660,13 +660,14 @@ rule sra_fastq:
         srr=lambda wildcards: wildcards.trio.split('_')[0],
         fd_params=config.get('fastq_dump_args', ''),
         retries=config.get('fastq_dump_retries', '5')
-    threads: 1
+    threads: 4
     shell:
         """
         set -x
         SUCCESS=0
         TIMEOUT=10
         PARAMS=""
+        USE_FASTERQ=1
         TMP="{config[temp]}/prefetch-{params.srr}"
         ! test -d ${{TMP}}
         for i in {{ 1..{params.retries} }} ; do
@@ -686,7 +687,7 @@ rule sra_fastq:
         test -f ${{TMP}}/*.sra
         size=$(cat ${{TMP}}/*.sra | wc -c)
         echo "COUNT_SraBytesDownloaded ${{size}}"
-        if (( 0 == 1 )) ; then
+        if (( ${{USE_FASTERQ}} == 1 )) ; then
             time fasterq-dump ${{TMP}}/*.sra \
                 -e {threads} \
                 -t ${{TMP}} \
@@ -695,6 +696,7 @@ rule sra_fastq:
                 --skip-technical \
                 -o {params.srr}.fastq \
                 2>&1 >> {log}
+            test -f {params.srr}_2.fastq || mv {params.srr}.fastq {params.srr}_0.fastq
         else
             time fastq-dump ${{TMP}}/*.sra \
                 -L info \
@@ -702,10 +704,9 @@ rule sra_fastq:
                 --skip-technical \
                 -O . \
                 2>&1 >> {log}
+            test -f {params.srr}_2.fastq || mv {params.srr}_1.fastq {params.srr}_0.fastq
         fi
-        ls -l
         rm -rf ${{TMP}}
-        test -f {params.srr}_2.fastq || mv {params.srr}_1.fastq {params.srr}_0.fastq
         size=0
         for i in {{0..2}} ; do
             fn={params.srr}_${{i}}.fastq
