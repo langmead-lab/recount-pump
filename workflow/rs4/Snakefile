@@ -637,7 +637,7 @@ rule align:
         test -f Unmapped.out.mate1
         mv Unmapped.out.mate1 {output.unmapped1}
         if [[ -f Unmapped.out.mate2 ]] ; then
-            Unmapped.out.mate2 {output.unmapped2}
+            mv Unmapped.out.mate2 {output.unmapped2}
         fi
 
         #
