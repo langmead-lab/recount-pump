@@ -14,6 +14,7 @@ Usage:
   input add-inputs-to-set [options] (<set-id> <input-id>)...
   input list-input-set [options] <name>
   input import-json [options] <json-file> <input-set-name>
+  input import-text [options] <file> <input-set-name>
 
 Options:
   --limit <ceiling>        Import at most this many records.
@@ -238,8 +239,41 @@ def import_input_set(name, csv_fn, my_session):
     return input_set.id, n_added_input
 
 
+def import_text(fn, input_set_name, session, limit=None):
+    log.info('Loading metadata from text file "%s"' % fn, 'input.py')
+    if not os.path.exists(fn):
+        raise RuntimeError('No such text file as "%s"' % fn)
+    inputs = []
+    with open(fn, 'rt') as fh:
+        for ln in fh:
+            ln = ln.rstrip()
+            if len(ln) == 0:
+                continue
+            if ln[0] == '#':
+                continue
+            toks = ln.split()
+            assert len(toks) == 2, str(toks)
+            acc_s, acc_r = toks
+            inp = Input(acc_r=acc_r, acc_s=acc_s,
+                        url_1=acc_r, url_2=None, url_3=None,
+                        checksum_1=None, checksum_2=None, checksum_3=None,
+                        retrieval_method='sra')
+            inputs.append(inp)
+            session.add(inp)
+            if limit is not None and len(inputs) >= int(limit):
+                break
+    session.commit()
+    set_id = add_input_set(input_set_name, session)
+    add_inputs_to_set([set_id] * len(inputs),
+                      list(map(lambda x: x.id, inputs)),
+                      session)
+    return set_id
+
+
 def import_json(json_fn, input_set_name, session, limit=None):
-    log.info('Loading metadata from "%s"' % json_fn, 'input.py')
+    log.info('Loading metadata from json file "%s"' % json_fn, 'input.py')
+    if not os.path.exists(json_fn):
+        raise RuntimeError('No such json file as "%s"' % json_fn)
     js = json.load(codecs.getreader("utf-8")(gzip.open(json_fn)) if json_fn.endswith('.gz') else open(json_fn))
     inputs = []
     if len(js) == 0:
@@ -427,6 +461,10 @@ def go():
         elif args['import-json']:
             session_mk = session_maker_from_config(db_ini, args['--db-section'])
             print(import_json(args['<json-file>'], args['<input-set-name>'],
+                              session_mk(), limit=args['--limit']))
+        elif args['import-text']:
+            session_mk = session_maker_from_config(db_ini, args['--db-section'])
+            print(import_text(args['<file>'], args['<input-set-name>'],
                               session_mk(), limit=args['--limit']))
     except Exception:
         log.error('Uncaught exception:', 'input.py')
