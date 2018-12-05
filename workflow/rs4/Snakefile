@@ -13,13 +13,15 @@ Parameters:
 """
 
 STEPS = ['sra_fastq', 'fastq_check', 'align', 'sort',
-         'kallisto', 'salmon',
+         'kallisto', 'salmon', 'align_unmapped',
          'bam_to_bw_all', 'bam_to_bw_unique',
          'exon_bw_count_all', 'exon_bw_count_unique',
          'gene_fc_count_all', 'gene_fc_count_unique',
          'exon_fc_count_all', 'exon_fc_count_unique']
 
 FILES = ['sjout.zst', 'fastq_check.tsv.zstd',
+         'unmapped.bam', 'unmapped.sjout.zst',
+         'Chimeric.out.junction.zst',
          'all.gene_fc_count.zst', 'unique.gene_fc_count.zst',
          'all.exon_fc_count.zst', 'unique.exon_fc_count.zst',
          'all.exon_bw_count.zst', 'unique.exon_bw_count.zst',
@@ -52,6 +54,9 @@ rule make_manifest:
         config['output'] + '/{trio}.kallisto.tsv.zst',
         config['output'] + '/{trio}.salmon.tsv.zst',
         config['output'] + '/{trio}.sjout.zst',
+        config['output'] + '/{trio}.Chimeric.out.junction.zst',
+        config['output'] + '/{trio}.unmapped.bam',
+        config['output'] + '/{trio}.unmapped.sjout.zst',
         config['output'] + '/{trio}.fastq_check.tsv.zstd',
         config['output'] + '/{trio}.all.gene_fc_count.zst',
         config['output'] + '/{trio}.all.exon_fc_count.zst',
@@ -62,6 +67,7 @@ rule make_manifest:
         config['output'] + '/{trio}.all.bw.zst',
         config['output'] + '/{trio}.unique.bw.zst',
         config['output'] + '/{trio}.align.log',
+        config['output'] + '/{trio}.align_unmapped.log',
         config['output'] + '/{trio}.sra_fastq.log',
         config['output'] + '/{trio}.fastq_check.log',
         config['output'] + '/{trio}.sort.log',
@@ -461,6 +467,79 @@ rule salmon:
         echo "COUNT_SalmonComplete 1"
         """
 
+rule align_unmapped:
+    input:
+        unmapped1=config['temp'] + '/{trio}_1.unmappedfastq',
+        unmapped2=config['temp'] + '/{trio}_2.unmappedfastq',
+        index1=lambda wildcards: '%s/%s/unmapped_star_idx/SAindex' % (config['ref'], wildcards.trio.split('_')[2]),
+        index2=lambda wildcards: '%s/%s/unmapped_star_idx/SA' % (config['ref'], wildcards.trio.split('_')[2])
+    output:
+        bam=config['output'] + '/{trio}.unmapped.bam',
+        jxs=config['output'] + '/{trio}.unmapped.sjout.zst'
+    log:
+        config['output'] + '/{trio}.align_unmapped.log'
+    params:
+        index_base=lambda wildcards: '%s/%s/unmapped_star_idx' % (config['ref'], wildcards.trio.split('_')[2]),
+        srr=lambda wildcards: wildcards.trio.split('_')[0],
+        star_params=config.get('star', '')
+    threads: 32
+    shell:
+        """
+        READ_FILES="{input.unmapped1}"
+        if [[ -s {input.unmapped2} ]] ; then
+            READ_FILES="{input.unmapped1} {input.unmapped2}"
+        fi
+        TMP="{config[temp]}/align_unmapped_temp.{params.srr}"
+        rm -rf ${{TMP}}
+        time STAR \
+            {params.star_params} \
+            --runMode alignReads \
+            --runThreadN {threads} \
+            --genomeDir {params.index_base} \
+            --readFilesIn ${{READ_FILES}} \
+            --twopassMode None \
+            --genomeLoad LoadAndRemove \
+            --outTmpDir ${{TMP}} \
+            --outMultimapperOrder Random \
+            --outSAMtype BAM Unsorted 2>&1 | tee -a {log}
+
+        # Full set of output files:
+        #
+        # Aligned.out.bam
+        # Log.final.out
+        # Log.out
+        # Log.progress.out
+        # SJ.out.tab
+
+        #
+        # Logs
+        #
+        rm -rf ${{TMP}}
+        cat Log.out >> {log}
+        cat Log.final.out >> {log}
+        rm -f Log*.out
+
+        #
+        # Junctions
+        #
+        test -f SJ.out.tab
+        size=$(wc -c < SJ.out.tab)
+        echo "COUNT_UncompressedJxBytesGenerated ${{size}}"
+        time zstd SJ.out.tab -o {output.jxs} 2>&1 | tee -a {log}
+        rm -f SJ.out.tab
+        size=$(wc -c < {output.jxs})
+        echo "COUNT_CompressedJxBytesGenerated ${{size}}"
+        
+        #
+        # Alignments
+        #
+        size=$(wc -c < Aligned.out.bam)
+        echo "COUNT_BAMBytesGenerated ${{size}}"
+        mv Aligned.out.bam {output.bam}
+
+        echo "COUNT_AlignUnmappedComplete 1"
+        """
+
 rule align:
     input:
         reads0=config['temp'] + '/{trio}_0.fastq',
@@ -470,11 +549,15 @@ rule align:
         index2=lambda wildcards: '%s/%s/star_idx/SA' % (config['ref'], wildcards.trio.split('_')[2])
     output:
         bam=temp(config['temp'] + '/{trio}.bam'),
-        jxs=config['output'] + '/{trio}.sjout.zst'
+        jxs=config['output'] + '/{trio}.sjout.zst',
+        chimeric=config['output'] + '/{trio}.Chimeric.out.junction.zst',
+        unmapped1=config['temp'] + '/{trio}_1.unmappedfastq',
+        unmapped2=config['temp'] + '/{trio}_2.unmappedfastq'
     log:
         config['output'] + '/{trio}.align.log'
     params:
         index_base=lambda wildcards: '%s/%s/star_idx' % (config['ref'], wildcards.trio.split('_')[2]),
+        srr=lambda wildcards: wildcards.trio.split('_')[0],
         star_params=config.get('star', '')
     threads: 32
     shell:
@@ -483,10 +566,9 @@ rule align:
         if [[ -s {input.reads2} ]] ; then
             READ_FILES="{input.reads1} {input.reads2}"
         fi
-        TMP="{config[temp]}/STARtmp"
+        TMP="{config[temp]}/align_temp.{params.srr}"
         rm -rf ${{TMP}}
-        # --genomeLoad LoadAndRemove
-        (time STAR \
+        time STAR \
             {params.star_params} \
             --runMode alignReads \
             --runThreadN {threads} \
@@ -495,25 +577,75 @@ rule align:
             --twopassMode None \
             --genomeLoad LoadAndRemove \
             --outTmpDir ${{TMP}} \
+            --outReadsUnmapped Fastx \
+            --outMultimapperOrder Random \
+            --outSAMreadID Number \
             --outSAMtype BAM Unsorted \
-            --outSAMmode NoQS) 2>&1 | tee -a {log}
-        
+            --outSAMmode NoQS \
+            --chimOutType Junctions \
+            --chimOutJunctionFormat 1 \
+            --chimSegmentReadGapMax 3 \
+            --chimJunctionOverhangMin 12 \
+            --chimSegmentMin 12 2>&1 | tee -a {log}
+   
+        # Full set of output files:
+        #
+        # Aligned.out.bam
+        # Chimeric.out.junction
+        # Log.final.out
+        # Log.out
+        # Log.progress.out
+        # SJ.out.tab
+        # Unmapped.out.mate1
+        # Unmapped.out.mate2 (if any reads were paired-end)
+
+        #
+        # Logs
+        #
+        rm -rf ${{TMP}}
         cat Log.out >> {log}
         cat Log.final.out >> {log}
-        rm -f Log*.out Aligned.out.sam
-        rm -rf ${{TMP}}
-        
-        size=$(wc -c < Aligned.out.bam)
-        echo "COUNT_BAMBytesGenerated ${{size}}"
+        rm -f Log*.out
 
+        #
+        # Junctions
+        #
+        test -f SJ.out.tab
         size=$(wc -c < SJ.out.tab)
         echo "COUNT_UncompressedJxBytesGenerated ${{size}}"
-        
-        mv Aligned.out.bam {output.bam}
-        (time zstd SJ.out.tab -o {output.jxs}) 2>&1 | tee -a {log}
-
+        time zstd SJ.out.tab -o {output.jxs} 2>&1 | tee -a {log}
+        rm -f SJ.out.tab
         size=$(wc -c < {output.jxs})
         echo "COUNT_CompressedJxBytesGenerated ${{size}}"
+
+        #
+        # Chimerics
+        #
+        test -f Chimeric.out.junction
+        test -s Chimeric.out.junction
+        size=$(wc -c < Chimeric.out.junction)
+        echo "COUNT_UncompressedChimericBytesGenerated ${{size}}"
+        time zstd Chimeric.out.junction -o {output.chimeric} 2>&1 | tee -a {log}
+        rm -f Chimeric.out.junction
+        size=$(wc -c < {output.chimeric})
+        echo "COUNT_CompressedChimericBytesGenerated ${{size}}"
+
+        #
+        # Unmapped
+        #
+        touch {output.unmapped2}
+        test -f Unmapped.out.mate1
+        mv Unmapped.out.mate1 {output.unmapped1}
+        if [[ -f Unmapped.out.mate2 ]] ; then
+            Unmapped.out.mate2 {output.unmapped2}
+        fi
+
+        #
+        # Alignments
+        #
+        size=$(wc -c < Aligned.out.bam)
+        echo "COUNT_BAMBytesGenerated ${{size}}"
+        mv Aligned.out.bam {output.bam}
 
         echo "COUNT_AlignComplete 1"
         """
