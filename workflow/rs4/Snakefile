@@ -172,7 +172,7 @@ rule gene_fc_count_all:
     params:
         srr=lambda wildcards: wildcards.trio.split('_')[0],
         fc_param=config.get('featureCounts', '')
-    threads: 32
+    threads: 4
     shell:
         """
         TMP={config[temp]}/{params.srr}.gene_fc_count_all.tsv
@@ -208,7 +208,7 @@ rule gene_fc_count_unique:
         srr=lambda wildcards: wildcards.trio.split('_')[0],
         fc_param=config.get('featureCounts', ''),
         fc_uniq=config.get('fc_unique_qual', 10)
-    threads: 32
+    threads: 4
     shell:
         """
         TMP={config[temp]}/{params.srr}.gene_fc_count_unique.tsv
@@ -243,7 +243,7 @@ rule exon_fc_count_all:
     params:
         srr=lambda wildcards: wildcards.trio.split('_')[0],
         fc_param=config.get('featureCounts', '')
-    threads: 32
+    threads: 4
     shell:
         """
         TMP={config[temp]}/{params.srr}.exon_fc_count_all.tsv
@@ -279,7 +279,7 @@ rule exon_fc_count_unique:
         srr=lambda wildcards: wildcards.trio.split('_')[0],
         fc_param=config.get('featureCounts', ''),
         fc_uniq=config.get('fc_unique_qual', 10)
-    threads: 32
+    threads: 4
     shell:
         """
         TMP={config[temp]}/{params.srr}.exon_fc_count_unique.tsv
@@ -322,7 +322,7 @@ rule bam_to_bw_all:
         config['temp'] + '/{trio}.unique.bw'
     log:
         config['output'] + '/{trio}.bam_to_bw_all.log'
-    threads: 32
+    threads: 4
     params:
         srr=lambda wildcards: wildcards.trio.split('_')[0]
     shell:
@@ -348,7 +348,7 @@ rule bam_to_bw_unique:
         config['temp'] + '/{trio}.all.bw'
     log:
         config['output'] + '/{trio}.bam_to_bw_unique.log'
-    threads: 32
+    threads: 4
     params:
         srr=lambda wildcards: wildcards.trio.split('_')[0],
         bw_uniq=config.get('bw_unique_qual', 10)
@@ -375,7 +375,7 @@ rule sort:
         bai=temp(config['temp'] + '/{trio}.sorted.bam.bai')
     log:
         config['output'] + '/{trio}.sort.log'
-    threads: 16
+    threads: 8
     shell:
         """
         (time sambamba sort --tmpdir={config[temp]} -t {threads} -m 10G -o {output.bam} {input}) 2>&1 | tee -a {log}
@@ -398,7 +398,7 @@ rule kallisto:
     params:
         index_base=lambda wildcards: '%s/%s/kallisto_index' % (config['ref'], wildcards.trio.split('_')[2]),
         kallisto_args=config.get('kallisto_args', '')
-    threads: 32
+    threads: 8
     shell:
         """
         READ_FILES="--single -l 300 -s 30 {input.reads0}"
@@ -439,7 +439,7 @@ rule salmon:
     params:
         index_base=lambda wildcards: '%s/%s/salmon_index' % (config['ref'], wildcards.trio.split('_')[2]),
         salmon_args=config.get('salmon_args', '')
-    threads: 32
+    threads: 8
     shell:
         """
         READ_FILES="-r {input.reads0}"
@@ -482,7 +482,7 @@ rule align_unmapped:
         index_base=lambda wildcards: '%s/%s/unmapped_star_idx' % (config['ref'], wildcards.trio.split('_')[2]),
         srr=lambda wildcards: wildcards.trio.split('_')[0],
         star_params=config.get('star', '')
-    threads: 32
+    threads: 16
     shell:
         """
         READ_FILES="{input.unmapped1}"
@@ -559,7 +559,7 @@ rule align:
         index_base=lambda wildcards: '%s/%s/star_idx' % (config['ref'], wildcards.trio.split('_')[2]),
         srr=lambda wildcards: wildcards.trio.split('_')[0],
         star_params=config.get('star', '')
-    threads: 32
+    threads: 16
     shell:
         """
         READ_FILES="{input.reads0}"
@@ -684,35 +684,34 @@ rule sra_fastq:
     params:
         srr=lambda wildcards: wildcards.trio.split('_')[0],
         fd_params=config.get('fastq_dump_args', ''),
-        retries=config.get('fastq_dump_retries', '5'),
-        tool=config.get('fastq_dump_tool', 'prefetch -t fasp')
+        retries=config.get('fastq_dump_retries', '5')
+    threads: 1
     shell:
         """
         set -x
         SUCCESS=0
         TIMEOUT=10
         PARAMS=""
-        if [[ "{params.tool}" == prefetch* ]] ; then
-            TMP="{config[temp]}/prefetch-{params.srr}"
-            ! test -d ${{TMP}}
-            for i in {{ 1..{params.retries} }} ; do
-                if time {params.tool} -O ${{TMP}} -L info {params.srr} 2>&1 >> {log} ; then
-                    SUCCESS=1
-                    break
-                else
-                    echo "COUNT_SraFastqRetries 1"
-                    TIMEOUT=$((${{TIMEOUT}} * 2))
-                    sleep ${{TIMEOUT}}
-                fi
-            done
-            if (( $SUCCESS == 0 )) ; then
-                echo "COUNT_SraFastqFailures 1"
-                echo "fastq-dump failed"
-                exit 1
+        TMP="{config[temp]}/prefetch-{params.srr}"
+        ! test -d ${{TMP}}
+        for i in {{ 1..{params.retries} }} ; do
+            if time prefetch -t fasp -O ${{TMP}} -L info {params.srr} 2>&1 >> {log} ; then
+                SUCCESS=1
+                break
+            else
+                echo "COUNT_SraFastqRetries 1"
+                TIMEOUT=$((${{TIMEOUT}} * 2))
+                sleep ${{TIMEOUT}}
             fi
-            test -f ${{TMP}}/*.sra
-            size=$(cat ${{TMP}}/*.sra | wc -c)
-            echo "COUNT_SraBytesDownloaded ${{size}}"
+        done
+        if (( $SUCCESS == 0 )) ; then
+            echo "COUNT_SraFastqFailures 1"
+            exit 1
+        fi
+        test -f ${{TMP}}/*.sra
+        size=$(cat ${{TMP}}/*.sra | wc -c)
+        echo "COUNT_SraBytesDownloaded ${{size}}"
+        if (( 0 == 1 )) ; then
             time fasterq-dump ${{TMP}}/*.sra \
                 -e {threads} \
                 -t ${{TMP}} \
@@ -721,38 +720,17 @@ rule sra_fastq:
                 --skip-technical \
                 -o {params.srr}.fastq \
                 2>&1 >> {log}
-            
-            rm -rf ${{TMP}}
-            test -f {params.srr}_2.fastq || mv {params.srr}.fastq {params.srr}_0.fastq
         else
-            if [[ "{params.tool}" == "fasterq-dump" ]] ; then
-                PARAMS="-e {threads} -t {config[temp]}/fasterq-dump-{params.srr}"
-            fi
-            for i in {{ 1..{params.retries} }} ; do
-                if [[ "{params.tool}" == "fasterq-dump" ]] ; then
-                    rm -rf {config[temp]}/fasterq-dump-{params.srr}
-                fi
-                if time {params.tool} {params.srr} {params.fd_params} \
-                    ${{PARAMS}} \
-                    --split-files \
-                    --skip-technical \
-                    2>&1 >> {log}
-                then
-                    SUCCESS=1
-                    break
-                else
-                    echo "COUNT_SraFastqRetries 1"
-                    TIMEOUT=$((${{TIMEOUT}} * 2))
-                    sleep ${{TIMEOUT}}
-                fi
-            done
-            if (( $SUCCESS == 0 )) ; then
-                echo "COUNT_SraFastqFailures 1"
-                echo "fastq-dump failed"
-                exit 1
-            fi
-            test -f {params.srr}_2.fastq || mv {params.srr}_1.fastq {params.srr}_0.fastq
+            time fastq-dump ${{TMP}}/*.sra \
+                -L info \
+                --split-files \
+                --skip-technical \
+                -O . \
+                2>&1 >> {log}
         fi
+        ls -l
+        rm -rf ${{TMP}}
+        test -f {params.srr}_2.fastq || mv {params.srr}_1.fastq {params.srr}_0.fastq
         size=0
         for i in {{0..2}} ; do
             fn={params.srr}_${{i}}.fastq
