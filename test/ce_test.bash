@@ -161,13 +161,12 @@ import_input_set() (
     json_file=$1
     input_set_name=$2
     limit=$3
-    max_bases=$4
     python ${SRC_DIR}/input.py ${ARGS} import-json \
-        --limit "${limit}" --max-bases "${max_bases}" \
+        --limit "${limit}" \
         "${json_file}" "${input_set_name}" | tail -n 1   
 )
 
-isid=$(import_input_set "${input_fn}" 'ce10_rna_seq' 4 50000000)
+isid=$(import_input_set "${input_fn}" 'ce10_rna_seq' 3)
 test -n "${isid}"
 
 rm -f ${input_fn}
