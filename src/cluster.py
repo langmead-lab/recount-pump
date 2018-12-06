@@ -184,7 +184,7 @@ def do_job(body, cluster_ini, my_attempt, node_name,
     corresponding job attempt.  The description string itself is composed in
     pump.py.
     """
-    name, system, analysis_dir, _, _, _ = read_cluster_config(cluster_ini)
+    name, system, analysis_dir, _, _, _, _ = read_cluster_config(cluster_ini)
     task = Task(body)
     log_info_detailed(node_name, worker_name, 'got job: ' + str(task))
     tmp_dir = tempfile.mkdtemp()
@@ -304,7 +304,7 @@ def ready_reference(reference, cluster_name, reference_dir, session):
 
 
 def prepare_analysis(cluster_ini, proj, mover, session):
-    cluster_name, system, analysis_dir, _, _, _ = read_cluster_config(cluster_ini)
+    cluster_name, system, analysis_dir, _, _, _, _ = read_cluster_config(cluster_ini)
     analysis = session.query(Analysis).get(proj.analysis_id)
     assert system in ['singularity', 'docker']
     url = analysis.image_url
@@ -358,7 +358,7 @@ def prepare_analysis(cluster_ini, proj, mover, session):
 
 
 def prepare_reference(cluster_ini, proj, mover, session):
-    cluster_name, _, _, ref_base, _, _ = read_cluster_config(cluster_ini)
+    cluster_name, _, _, _, ref_base, _, _ = read_cluster_config(cluster_ini)
     reference = session.query(Reference).get(proj.reference_id)
     reference_ready = ready_reference(reference, cluster_name, ref_base, session)
     if reference_ready:
@@ -366,11 +366,45 @@ def prepare_reference(cluster_ini, proj, mover, session):
     return download_reference(reference, cluster_name, ref_base, session, mover)
 
 
+def prepare_sra_settings(cluster_ini):
+    _, _, _, sra_dir, _, _, _ = read_cluster_config(cluster_ini)
+    ncbi_dir = os.path.expanduser(os.path.join('~', '.ncbi'))
+    if not os.path.exists(ncbi_dir):
+        os.makedirs(ncbi_dir)
+    settings_fn = os.path.join(ncbi_dir, 'user-settings.mkfg')
+    ready = False
+    exists = os.path.exists(settings_fn)
+    if exists:
+        with open(settings_fn, 'rt') as fh:
+            for ln in fh:
+                ln = ln.rstrip()
+                if len(ln) == 0:
+                    continue
+                if ln[0] == '#':
+                    continue
+                assert '=' in ln
+                toks = ln.split('=')
+                if toks[0] == '/repository/user/main/public/root':
+                    quoted_sra_dir = '"' + sra_dir + '"'
+                    if toks[1] != sra_dir and toks[1] != quoted_sra_dir:
+                        raise RuntimeError('NCBI vdb settings file exists but '
+                                           'has different sra_dir "%s" from '
+                                           'the one in cluster.ini "%s"' %
+                                           (toks[1], sra_dir))
+                    else:
+                        ready = True
+    if not ready:
+        with open(settings_fn, 'at' if exists else 'wt') as fh:
+            fh.write('/repository/user/main/public/root = "%s"\n' % sra_dir)
+    return True
+
+
 def prepare(project_id, cluster_ini, session, mover):
     proj = session.query(Project).get(project_id)
     analysis_ready = prepare_analysis(cluster_ini, proj, mover, session)
     reference_ready = prepare_reference(cluster_ini, proj, mover, session)
-    return analysis_ready, reference_ready
+    sra_settings_ready = prepare_sra_settings(cluster_ini)
+    return analysis_ready, reference_ready, sra_settings_ready
 
 
 def log_attempt(job, node_name, worker_name, session):
@@ -526,11 +560,16 @@ def read_cluster_config(cluster_fn, section=None):
 
     name = cfg.get(section, 'name')
     analysis_dir = _cfg_get_path_or_none('analysis_dir')
+    if analysis_dir is None:
+        raise RuntimeError('Cluster ini "%s" did not define analysis_dir' % cluster_fn)
+    sra_dir = _cfg_get_path_or_none('sra_dir')
+    if sra_dir is None:
+        raise RuntimeError('Cluster ini "%s" did not define sra_dir' % cluster_fn)
     ref_base = _cfg_get_path_or_none('ref_base')
     system = _cfg_get_or_none('system')
     ncpus = _cfg_get_or_none('cpus') or 1
     nworkers = int(_cfg_get_or_none('workers') or 1)
-    return name, system, analysis_dir, ref_base, ncpus, nworkers
+    return name, system, analysis_dir, sra_dir, ref_base, ncpus, nworkers
 
 
 def test_cluster_config():
@@ -538,12 +577,13 @@ def test_cluster_config():
     config = """[cluster]
 name = stampede2
 analysis_dir = /path/i/made/up/analysis
+sra_dir = /path/i/made/up/sra
 ref_base = /path/i/made/up/reference
 """
     test_fn = os.path.join(tmpdir, '.tmp.init')
     with open(test_fn, 'w') as fh:
         fh.write(config)
-    name, system, analysis_dir, reference_dir, ncpus, nworkers = read_cluster_config(test_fn)
+    name, system, analysis_dir, sra_dir, reference_dir, ncpus, nworkers = read_cluster_config(test_fn)
     assert 'stampede2' == name
     assert '/path/i/made/up/analysis' == analysis_dir
     assert '/path/i/made/up/reference' == reference_dir
@@ -609,16 +649,19 @@ def test_download_file_s3(s3_enabled, s3_service):
 def test_with_db(session):
     srcdir, dstdir = tempfile.mkdtemp(), tempfile.mkdtemp()
     analysis_dir = os.path.join(dstdir, 'analysis')
+    sra_dir = os.path.join(dstdir, 'sra')
     reference_dir = os.path.join(dstdir, 'reference')
     cluster_ini = os.path.join(srcdir, 'cluster.ini')
     with open(cluster_ini, 'wb') as fh:
         fh.write(b'[cluster]\n')
         fh.write(b'name = test-cluster\n')
         fh.write(b'analysis_dir = ' + analysis_dir.encode() + b'\n')
+        fh.write(b'sra_dir = ' + sra_dir.encode() + b'\n')
         fh.write(b'ref_base = ' + reference_dir.encode() + b'\n')
         fh.write(b'system = docker\n')
         fh.write(b'sudo = false\n')
     os.makedirs(analysis_dir)
+    os.makedirs(sra_dir)
     os.makedirs(reference_dir)
     project_name = 'test-project'
     analysis_name = 'test-analysis'
@@ -793,7 +836,7 @@ def go():
             sleep_seconds = int(args['--poll-seconds'])
             procs = []
             sysmon_ival = int(args['--sysmon-interval'])
-            _, _, _, _, _, nworkers = read_cluster_config(cluster_ini)
+            _, _, _, _, _, _, nworkers = read_cluster_config(cluster_ini)
             # set up system monitor thread
             sm = None
             if sysmon_ival > 0:
