@@ -384,6 +384,7 @@ def prepare_sra_settings(cluster_ini):
                     continue
                 assert '=' in ln
                 toks = ln.split('=')
+                toks = list(map(lambda x: x.strip(), toks))
                 if toks[0] == '/repository/user/main/public/root':
                     quoted_sra_dir = '"' + sra_dir + '"'
                     if toks[1] != sra_dir and toks[1] != quoted_sra_dir:
