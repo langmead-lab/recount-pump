@@ -1,6 +1,6 @@
 #!/bin/bash -l
 
-#SBATCH --job-name=geuv
+#SBATCH --job-name=srav1
 #SBATCH --partition=skx-normal
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
@@ -8,6 +8,11 @@
 #SBATCH -A TG-CIE170020
 
 d=/work/04265/benbo81/stampede2/git/recount-pump
+
+set -ex
+
+hostname
+module load sratoolkit && fastq-dump -X 10 -L info DRR001484
 
 python ${d}/src/cluster.py run \
     --ini-base ${d}/projects/srav1/creds \
