@@ -495,6 +495,7 @@ def job_loop(project_id, q_ini, cluster_ini, worker_name, session,
     log_info_detailed(node_name, worker_name, 'Entering job loop, queue "%s"' % q_name)
     while True:
         attempt += 1
+        log_info_detailed(node_name, worker_name, 'Top of job loop, iteration %d' % attempt)
         msg_set = q_client.receive_message(QueueUrl=q_url)
         if 'Messages' not in msg_set:
             fail += 1
@@ -530,8 +531,9 @@ def job_loop(project_id, q_ini, cluster_ini, worker_name, session,
                     log_info_detailed(node_name, worker_name, 'job failure')
                 if succeeded or not only_delete_on_success:
                     handle = msg['ReceiptHandle']
-                    log.info('Deleting ' + handle, 'cluster.py')
+                    log_info_detailed(node_name, worker_name, 'Deleting ' + handle)
                     q_client.delete_message(QueueUrl=q_url, ReceiptHandle=handle)
+        log_info_detailed(node_name, worker_name, 'Bottom of job loop, iteration %d' % attempt)
 
 
 def clean_up(project_id, cluster_ini, session):

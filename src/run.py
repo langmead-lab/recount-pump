@@ -161,7 +161,7 @@ def copy_to_destination(name, output_dir, source_prefix, extras, mover, destinat
                 log_info('COUNT_DestXferPre 1', log_queue)
                 source = source_prefix + output_dir
                 mover.multi(source, final_dest_dir, xfers,
-                            logger=lambda x: log_info(x, log_queue))
+                            logger=lambda x: log_info_detailed(node_name, worker_name, x, log_queue))
                 log_info('COUNT_DestXferPost 1', log_queue)
                 log_info_detailed(node_name, worker_name,
                                   'Finished moving %d files of total size %d'
@@ -369,7 +369,7 @@ def run_job(name, inputs, image_url, image_fn, config, cluster_ini,
 
         # Copy files to ultimate destination, if one is specified
         if mover is not None and destination is not None and len(destination) > 0:
-            log_info('About to copy_to_destination', log_queue)
+            log_info_detailed(node_name, worker_name, 'About to copy_to_destination', log_queue)
             copy_to_destination(name, output_dir, source_prefix, ['stats.json'], mover,
                                 destination, log_queue, node_name, worker_name)
 
@@ -379,10 +379,10 @@ def run_job(name, inputs, image_url, image_fn, config, cluster_ini,
                 fh.write('Node: %s\n' % node_name)
                 fh.write('Worker: %s\n' % worker_name)
 
-            log_info('About to put .done file', log_queue)
+            log_info_detailed(node_name, worker_name, 'About to put .done file', log_queue)
             done_temp = source_prefix + done_temp
             mover.put(done_temp, os.path.join(destination, done_basename),
-                      logger=lambda x: log_info(x, log_queue))
+                      logger=lambda x: log_info_detailed(node_name, worker_name, x, log_queue))
 
         stats_fn = os.path.join(output_dir, 'stats.json')
         assert os.path.exists(stats_fn) and os.path.isfile(stats_fn)
