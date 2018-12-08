@@ -215,8 +215,8 @@ def run_job(name, inputs, image_url, image_fn, config, cluster_ini,
     log_info_detailed(node_name, worker_name, 'reference base: ' + ref_base, log_queue)
     log_info_detailed(node_name, worker_name, 'temp base: ' + temp_base, log_queue)
 
+    original_umask = os.umask(0)
     try:
-        original_umask = os.umask(0)
         if not os.path.exists(input_base):
             try:
                 os.makedirs(input_base, mode=0o777)

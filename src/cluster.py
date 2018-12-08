@@ -114,8 +114,20 @@ def log_info(msg):
         log_queue.put((msg, 'cluster.py'))
 
 
+def log_warning(msg):
+    if log_queue is None:
+        log.warning(msg, 'cluster.py')
+    else:
+        # TODO: pass along the log level as well
+        log_queue.put((msg, 'cluster.py'))
+
+
 def log_info_detailed(node_name, worker_name, msg):
     log_info(' '.join([node_name, worker_name, msg]))
+
+
+def log_warning_detailed(node_name, worker_name, msg):
+    log_warning(' '.join([node_name, worker_name, msg]))
 
 
 def docker_image_exists(url):
@@ -518,21 +530,30 @@ def job_loop(project_id, q_ini, cluster_ini, worker_name, session,
                                   (nattempts, nfailures))
                 log_attempt(job, node_name, worker_name, session)
                 succeeded = False
-                if do_job(body, cluster_ini, my_attempt, node_name,
-                          worker_name, session,
-                          mover_config=mover_config,
-                          destination=destination,
-                          source_prefix=source_prefix):
+                try:
+                    succeeded = do_job(body, cluster_ini, my_attempt, node_name,
+                                       worker_name, session,
+                                       mover_config=mover_config,
+                                       destination=destination,
+                                       source_prefix=source_prefix)
+                except BaseException as e:
+                    log_warning_detailed(node_name, worker_name,
+                                         'job attempt %d yielded exception: %s'
+                                         % (nattempts, str(e)))
+
+                if succeeded:
                     log_success(job, node_name, worker_name, session)
                     log_info_detailed(node_name, worker_name, 'job success')
                     succeeded = True
                 else:
                     log_failure(job, node_name, worker_name, session)
                     log_info_detailed(node_name, worker_name, 'job failure')
+
                 if succeeded or not only_delete_on_success:
                     handle = msg['ReceiptHandle']
                     log_info_detailed(node_name, worker_name, 'Deleting ' + handle)
                     q_client.delete_message(QueueUrl=q_url, ReceiptHandle=handle)
+
         log_info_detailed(node_name, worker_name, 'Bottom of job loop, iteration %d' % attempt)
 
 
