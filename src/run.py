@@ -81,7 +81,7 @@ def decode(st):
     return st if isinstance(st, str) else st.decode()
 
 
-def reader(node_name, worker_name, pipe, queue, nm):
+def reader(node_name, worker_name, pipe, queue, nm, heartbeat_func):
     """
     Take messages from the pipe (either stdout or stderr from the container
     process) and relay them back to cluster.py via the given queue.  The
@@ -89,10 +89,14 @@ def reader(node_name, worker_name, pipe, queue, nm):
     fields before the counter string, so that they can be parsed properly.
     """
     for line in pipe:
-        line = decode(line.rstrip()) 
+        line = decode(line.rstrip())
         msg = ' '.join([node_name, worker_name, nm, line])
-        if line[:6] == 'COUNT_':
+        if line.startswith('COUNT_'):
             msg = line  # relay without extras
+            counter_name = line.split()[0]
+            counter_shortname = counter_name[6:]
+            if counter_shortname.endswith('Complete'):
+                heartbeat_func(counter_shortname)
         if queue is None:
             log.info(msg, 'run.py')
         else:
@@ -172,7 +176,7 @@ def copy_to_destination(name, output_dir, source_prefix, extras, mover, destinat
             break
 
 
-def run_job(name, inputs, image_url, image_fn, config, cluster_ini,
+def run_job(name, inputs, image_url, image_fn, config, cluster_ini, heartbeat_func,
             keep=False, mover=None, destination=None, source_prefix=None,
             log_queue=None, fail_on_error=False, node_name='', worker_name=''):
     log_info_detailed(node_name, worker_name, 'job name: %s, image-url: "%s", image-fn: "%s"' %
@@ -334,11 +338,12 @@ def run_job(name, inputs, image_url, image_fn, config, cluster_ini,
     log_info_detailed(node_name, worker_name, 'command: ' + cmd, log_queue)
     proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     t_out = threading.Thread(target=reader,
-                             args=[node_name, worker_name, proc.stdout, log_queue, 'out'])
+                             args=[node_name, worker_name, proc.stdout, log_queue, 'out', heartbeat_func])
     t_err = threading.Thread(target=reader,
-                             args=[node_name, worker_name, proc.stderr, log_queue, 'err'])
+                             args=[node_name, worker_name, proc.stderr, log_queue, 'err', heartbeat_func])
     t_out.start()
     t_err.start()
+    log_info_detailed(node_name, worker_name, 'Entering polling loop', log_queue)
     while proc.poll() is None:
         if not t_out.is_alive():
             log.warning('Output reader thread ended prematurely', 'run.py')
@@ -346,7 +351,7 @@ def run_job(name, inputs, image_url, image_fn, config, cluster_ini,
         if not t_err.is_alive():
             log.warning('Error reader thread ended prematurely', 'run.py')
             t_err.join()
-        time.sleep(1)
+        time.sleep(5)
     proc.wait()
     t_out.join()
     t_err.join()
@@ -424,7 +429,7 @@ def go():
                     config = fh.read()
 
             run_job(args['<name>'], args['<input>'], args['<image-url>'],
-                    args['<image-fn>'], config, cluster_ini,
+                    args['<image-fn>'], config, cluster_ini, lambda x: True,
                     keep=args['--keep'], fail_on_error=args['--fail-on-error'])
     except Exception:
         log.error('Uncaught exception:', 'run.py')

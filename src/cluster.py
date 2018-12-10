@@ -189,8 +189,8 @@ def image_exists_locally(url, system, cachedir=None):
 
 
 def do_job(body, cluster_ini, my_attempt, node_name,
-           worker_name, session, mover_config=None, destination=None,
-           source_prefix=None):
+           worker_name, session, heartbeat_func,
+           mover_config=None, destination=None, source_prefix=None):
     """
     Given a job-attempt description string, parse the string and execute the
     corresponding job attempt.  The description string itself is composed in
@@ -230,7 +230,7 @@ def do_job(body, cluster_ini, my_attempt, node_name,
     partition_id = task.partition_id()
     partitioned_destination = os.path.join(destination, partition_id[0], partition_id[1])
     ret = run.run_job(attempt_name, [tmp_fn], image_url, image_fn,
-                      config, cluster_ini,
+                      config, cluster_ini, heartbeat_func,
                       log_queue=log_queue, node_name=node_name,
                       worker_name=worker_name,
                       mover=mover, destination=partitioned_destination,
@@ -491,7 +491,7 @@ def job_loop(project_id, q_ini, cluster_ini, worker_name, session,
              mover_config=None, destination=None, source_prefix=None):
     node_name = socket.gethostname().split('.', 1)[0]
     log_info_detailed(node_name, worker_name, 'Getting queue client')
-    aws_profile, region, endpoint, _, _, _ = parse_queue_config(q_ini)
+    aws_profile, region, endpoint, visibility_timeout, _, _ = parse_queue_config(q_ini)
     boto3_session = boto3.session.Session(profile_name=aws_profile)
     q_client = boto3_session.client('sqs',
                                     endpoint_url=endpoint,
@@ -518,6 +518,7 @@ def job_loop(project_id, q_ini, cluster_ini, worker_name, session,
         else:
             for msg in msg_set.get('Messages', []):
                 body = msg['Body']
+                handle = msg['ReceiptHandle']
                 success += 1
                 job = Task(body)
                 assert job.proj_id == project_id
@@ -530,9 +531,17 @@ def job_loop(project_id, q_ini, cluster_ini, worker_name, session,
                                   (nattempts, nfailures))
                 log_attempt(job, node_name, worker_name, session)
                 succeeded = False
+
+                def heartbeat_func(st):
+                    q_client.change_message_visibility(
+                        QueueUrl=q_url,
+                        ReceiptHandle=handle,
+                        VisibilityTimeout=visibility_timeout)
+                    log_info_detailed(node_name, worker_name, 'Heartbeat (%s)' % st)
+
                 try:
                     succeeded = do_job(body, cluster_ini, my_attempt, node_name,
-                                       worker_name, session,
+                                       worker_name, session, heartbeat_func,
                                        mover_config=mover_config,
                                        destination=destination,
                                        source_prefix=source_prefix)
@@ -550,7 +559,6 @@ def job_loop(project_id, q_ini, cluster_ini, worker_name, session,
                     log_info_detailed(node_name, worker_name, 'job failure')
 
                 if succeeded or not only_delete_on_success:
-                    handle = msg['ReceiptHandle']
                     log_info_detailed(node_name, worker_name, 'Deleting ' + handle)
                     q_client.delete_message(QueueUrl=q_url, ReceiptHandle=handle)
 
