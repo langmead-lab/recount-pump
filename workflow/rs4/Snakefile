@@ -445,7 +445,7 @@ rule salmon:
         if [[ -s {input.reads2} ]] ; then
             READ_FILES="-1 {input.reads1} -2 {input.reads2}"
         fi
-        time salmon quant \
+        if set -o pipefail && time salmon quant \
             --libType U \
             -i {params.index_base} \
             -p {threads} \
@@ -454,15 +454,19 @@ rule salmon:
             --output salmon_quant \
             --minAssignedFrags 1 \
             2>&1 | tee -a {log}
-        
-        size=$(wc -c < salmon_quant/quant.sf)
-        echo "COUNT_UncompressedSalmonQuantBytesGenerated ${{size}}"
-
-        time zstd salmon_quant/quant.sf -o {output} 2>&1 | tee -a {log}
-        size=$(wc -c < {output})
-        echo "COUNT_SalmonQuantBytesGenerated ${{size}}"
+        then
+            echo "COUNT_SalmonSuccess 1"
+            size=$(wc -c < salmon_quant/quant.sf)
+            echo "COUNT_UncompressedSalmonQuantBytesGenerated ${{size}}"
+    
+            time zstd salmon_quant/quant.sf -o {output} 2>&1 | tee -a {log}
+            size=$(wc -c < {output})
+            echo "COUNT_SalmonQuantBytesGenerated ${{size}}"
+        else
+            echo "COUNT_SalmonFailure 1"
+        fi
+                
         rm -rf salmon_quant
-        
         echo "COUNT_SalmonComplete 1"
         """
 
