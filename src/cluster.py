@@ -227,8 +227,9 @@ def do_job(body, cluster_ini, my_attempt, node_name,
     if mover_config is not None:
         mover = mover_config.new_mover()
     log_info_detailed(node_name, worker_name, 'Starting attempt "%s"' % attempt_name)
-    partition_id = task.partition_id()
-    partitioned_destination = os.path.join(destination, partition_id[0], partition_id[1])
+    partitioned_destination = destination
+    for partition_id in task.partition_id():
+        partitioned_destination = os.path.join(partitioned_destination, partition_id)
     ret = run.run_job(attempt_name, [tmp_fn], image_url, image_fn,
                       config, cluster_ini, heartbeat_func,
                       log_queue=log_queue, node_name=node_name,
