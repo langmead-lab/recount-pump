@@ -13,6 +13,7 @@ Parameters:
 """
 
 STEPS = ['sra_fastq', 'fastq_check', 'align', 'sort',
+         'nonref',
          'kallisto', 'salmon', 'align_unmapped',
          'bam_to_bw_all', 'bam_to_bw_unique',
          'exon_bw_count_all', 'exon_bw_count_unique',
@@ -21,6 +22,7 @@ STEPS = ['sra_fastq', 'fastq_check', 'align', 'sort',
 
 FILES = ['sjout.zst', 'fastq_check.tsv.zstd',
          'unmapped.bam',
+         'nonref.csv.zst',
          'Chimeric.out.junction.zst',
          'all.gene_fc_count.zst', 'unique.gene_fc_count.zst',
          'all.exon_fc_count.zst', 'unique.exon_fc_count.zst',
@@ -56,6 +58,7 @@ rule make_manifest:
         config['output'] + '/{trio}.sjout.zst',
         config['output'] + '/{trio}.Chimeric.out.junction.zst',
         config['output'] + '/{trio}.unmapped.bam',
+        config['output'] + '/{trio}.nonref.csv.zst',
         config['output'] + '/{trio}.fastq_check.tsv.zstd',
         config['output'] + '/{trio}.all.gene_fc_count.zst',
         config['output'] + '/{trio}.all.exon_fc_count.zst',
@@ -66,6 +69,7 @@ rule make_manifest:
         config['output'] + '/{trio}.all.bw.zst',
         config['output'] + '/{trio}.unique.bw.zst',
         config['output'] + '/{trio}.align.log',
+        config['output'] + '/{trio}.nonref.log',
         config['output'] + '/{trio}.align_unmapped.log',
         config['output'] + '/{trio}.sra_fastq.log',
         config['output'] + '/{trio}.fastq_check.log',
@@ -88,6 +92,33 @@ rule make_manifest:
         with open(output[0], 'wt') as fh:
             for fn in FILES:
                 fh.write(params.trio + "." + fn + '\n')
+
+rule nonref:
+    input:
+        bam=config['temp'] + '/{trio}.sorted.bam',
+        bamidx=config['temp'] + '/{trio}.sorted.bam.bai',
+        exe='/bamcount/bamcount'
+    output:
+        config['output'] + '/{trio}.nonref.csv.zst'
+    log:
+        config['output'] + '/{trio}.nonref.log'
+    params:
+        srr=lambda wildcards: wildcards.trio.split('_')[0]
+    shell:
+        """
+        TMP={config[temp]}/{params.srr}.nonref.tsv
+        test -f {input.bam}
+        test -f {input.bamidx}
+        (/bamcount/bamcount {input.bam} --require-mdz > ${{TMP}}) 2>&1 | tee -a {log}
+
+        (time zstd ${{TMP}} -o {output}) 2>&1 | tee -a {log}
+
+        size=$(wc -c < {output})
+        echo "COUNT_ExonBwCountAllSize ${{size}}"
+
+        rm -f ${{TMP}}
+        echo "COUNT_NonrefComplete 1"
+        """
 
 rule exon_bw_count_all:
     input:
@@ -162,7 +193,6 @@ rule exon_bw_count_unique:
 rule gene_fc_count_all:
     input:
         bam=config['temp'] + '/{trio}.bam',  # mates should be together for featureCounts
-        bamidx=config['temp'] + '/{trio}.sorted.bam.bai',
         gtf=lambda wildcards: '%s/%s/gtf/genes.gtf' % (config['ref'], wildcards.trio.split('_')[2])
     output:
         config['output'] + '/{trio}.all.gene_fc_count.zst'
@@ -197,7 +227,6 @@ rule gene_fc_count_all:
 rule gene_fc_count_unique:
     input:
         bam=config['temp'] + '/{trio}.bam',  # mates should be together for featureCounts
-        bamidx=config['temp'] + '/{trio}.sorted.bam.bai',
         gtf=lambda wildcards: '%s/%s/gtf/genes.gtf' % (config['ref'], wildcards.trio.split('_')[2])
     output:
         config['output'] + '/{trio}.unique.gene_fc_count.zst'
@@ -555,6 +584,7 @@ rule align:
             --outSAMreadID Number \
             --outSAMtype BAM Unsorted \
             --outSAMmode NoQS \
+            --outSAMattributes NH MD \
             --chimOutType Junctions \
             --chimOutJunctionFormat 1 \
             --chimSegmentReadGapMax 3 \
