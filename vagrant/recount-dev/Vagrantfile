@@ -7,6 +7,7 @@ RECOUNT_REF = ENV["RECOUNT_REF"] || ENV["HOME"] + "/recount-ref"
 Vagrant.configure("2") do |config|
 
   config.vm.box = "generic/debian9"
+  config.vm.network :forwarded_port, guest: 22, host: 9782
   config.vm.synced_folder "~/git",      "/home/" + USER + "/git"
   config.vm.synced_folder "~/.recount", "/home/" + USER + "/.recount"
   config.vm.synced_folder "~/.aws",     "/home/" + USER + "/.aws"
@@ -25,7 +26,7 @@ Vagrant.configure("2") do |config|
 
   config.vm.provision "shell", privileged: true, name: "install docker and singularity", inline: <<-SHELL
     printf "deb http://httpredir.debian.org/debian stretch-backports main non-free\ndeb-src http://httpredir.debian.org/debian stretch-backports main non-free" > /etc/apt/sources.list.d/backports.list
-    apt-get update -y && apt-get install -y apt-transport-https dirmngr
+    apt-get update -y && apt-get install -y apt-transport-https dirmngr libz-dev
     echo 'deb https://apt.dockerproject.org/repo debian-stretch main' >> /etc/apt/sources.list
     apt-get update -y && apt-get install -y --allow-unauthenticated docker-engine
     apt-get install -y libarchive-dev squashfs-tools graphviz && \
