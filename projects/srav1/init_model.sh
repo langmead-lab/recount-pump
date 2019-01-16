@@ -9,7 +9,8 @@ set -ex
 
 RECOUNT_CREDS=${d}/creds
 TAXID=9606
-ANA_URL="docker://quay.io/benlangmead/recount-rs4:0.4.4"
+ANALYSIS_NAME="rs5-lite-045"
+ANA_URL="docker://quay.io/benlangmead/recount-rs5-lite:0.4.5"
 SRC_DIR="$d/../../src"
 ARGS="--ini-base ${RECOUNT_CREDS}"
 OUTPUT_DIR=$(grep '^output_base' ${RECOUNT_CREDS}/cluster.ini | cut -d"=" -f2 | tr -d '[:space:]')
@@ -127,8 +128,8 @@ cat >/tmp/.${STUDY}.config.json <<EOF
 }
 EOF
 
-rs1_id=$(add_analysis rs1 "${ANA_URL}" "file:///tmp/.${STUDY}.config.json")
-test -n "${rs1_id}"
+rs_id=$(add_analysis "${ANALYSIS_NAME}" "${ANA_URL}" "file:///tmp/.${STUDY}.config.json")
+test -n "${rs_id}"
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 3: Load input data"
@@ -188,7 +189,7 @@ add_project() (
         add-project ${name} ${analysis_id} ${input_set_id} ${reference_id} | tail -n 1
 )
 
-proj_id=$(add_project "${STUDY}" ${isid} ${rs1_id} ${ref_id})
+proj_id=$(add_project "${STUDY}" ${isid} ${rs_id} ${ref_id})
 test -n "${proj_id}"
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
