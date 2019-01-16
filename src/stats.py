@@ -7,7 +7,7 @@
 
 Usage:
   stats summarize <stats-file> [options]
-  stats snakefile <snakefile> [options]
+  stats snakefile <snakefile>... [options]
 
 Options:
   --prefix <path>          Write plot files beginning with <path> [default: recount].
@@ -74,19 +74,20 @@ def to_counter_updates(counters):
     return updates
 
 
-def from_snakefile(fn):
-    counters = []
-    with open(fn, 'rt') as fh:
-        for ln in fh:
-            if len(ln.strip()) == 0:
-                continue
-            if ln.split()[0] == 'rule':
-                name = ln.split()[1]
-                while name.endswith(':'):
-                    name = name[:-1]
-                nm = 'COUNT_%sWallTime' % to_camel_case(name)
-                counters.append(nm)
-    return '\n'.join(counters)
+def from_snakefile(fns):
+    counters = set()
+    for fn in fns:
+        with open(fn, 'rt') as fh:
+            for ln in fh:
+                if len(ln.strip()) == 0:
+                    continue
+                if ln.split()[0] == 'rule':
+                    name = ln.split()[1]
+                    while name.endswith(':'):
+                        name = name[:-1]
+                    nm = 'COUNT_%sWallTime' % to_camel_case(name)
+                    counters.add(nm)
+    return '\n'.join(sorted(counters))
 
 
 def test_to_camel_1():
