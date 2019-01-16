@@ -6,23 +6,21 @@ Parameters:
 - star: arguments to pass to STAR aligner
 - kallisto_args: arguments to pass to kallisto quant
 - salmon_args: arguments to pass to salmon quant
-- bw_unique_qual: minimum MAPQ needed to be counted in unique BW [default: 10]
+- unique_qual: minimum MAPQ needed to be counted in unique BW [default: 10]
 - featureCounts: arguments to pass to featureCounts
 - fc_unique_qual: minimum MAPQ needed to be counted in unique quantifications [default: 10]
 - bw_bed: name of BED file to use with bwtool
 """
 
 STEPS = ['sra_fastq', 'fastq_check', 'align', 'sort',
-         'nonref',
+         'bamcount',
          'kallisto', 'salmon', 'align_unmapped',
-         'bam_to_bw_all', 'bam_to_bw_unique',
-         'exon_bw_count_all', 'exon_bw_count_unique',
          'gene_fc_count_all', 'gene_fc_count_unique',
          'exon_fc_count_all', 'exon_fc_count_unique']
 
 FILES = ['sjout.zst', 'fastq_check.tsv.zstd',
          'unmapped.bam',
-         'nonref.csv.zst',
+         'bamcount_nonref.csv.zst',
          'Chimeric.out.junction.zst',
          'all.gene_fc_count.zst', 'unique.gene_fc_count.zst',
          'all.exon_fc_count.zst', 'unique.exon_fc_count.zst',
@@ -58,7 +56,7 @@ rule make_manifest:
         config['output'] + '/{trio}.sjout.zst',
         config['output'] + '/{trio}.Chimeric.out.junction.zst',
         config['output'] + '/{trio}.unmapped.bam',
-        config['output'] + '/{trio}.nonref.csv.zst',
+        config['output'] + '/{trio}.bamcount_nonref.csv.zst',
         config['output'] + '/{trio}.fastq_check.tsv.zstd',
         config['output'] + '/{trio}.all.gene_fc_count.zst',
         config['output'] + '/{trio}.all.exon_fc_count.zst',
@@ -69,19 +67,15 @@ rule make_manifest:
         config['output'] + '/{trio}.all.bw.zst',
         config['output'] + '/{trio}.unique.bw.zst',
         config['output'] + '/{trio}.align.log',
-        config['output'] + '/{trio}.nonref.log',
+        config['output'] + '/{trio}.bamcount.log',
         config['output'] + '/{trio}.align_unmapped.log',
         config['output'] + '/{trio}.sra_fastq.log',
         config['output'] + '/{trio}.fastq_check.log',
         config['output'] + '/{trio}.sort.log',
         config['output'] + '/{trio}.kallisto.log',
         config['output'] + '/{trio}.salmon.log',
-        config['output'] + '/{trio}.bam_to_bw_all.log',
-        config['output'] + '/{trio}.bam_to_bw_unique.log',
         config['output'] + '/{trio}.gene_fc_count_all.log',
         config['output'] + '/{trio}.gene_fc_count_unique.log',
-        config['output'] + '/{trio}.exon_bw_count_all.log',
-        config['output'] + '/{trio}.exon_bw_count_unique.log',
         config['output'] + '/{trio}.exon_fc_count_all.log',
         config['output'] + '/{trio}.exon_fc_count_unique.log'
     output:
@@ -93,101 +87,64 @@ rule make_manifest:
             for fn in FILES:
                 fh.write(params.trio + "." + fn + '\n')
 
-rule nonref:
+rule bamcount:
     input:
         bam=config['temp'] + '/{trio}.sorted.bam',
         bamidx=config['temp'] + '/{trio}.sorted.bam.bai',
-        exe='/bamcount/bamcount'
-    output:
-        config['output'] + '/{trio}.nonref.csv.zst'
-    log:
-        config['output'] + '/{trio}.nonref.log'
-    params:
-        srr=lambda wildcards: wildcards.trio.split('_')[0]
-    shell:
-        """
-        TMP={config[temp]}/{params.srr}.nonref.tsv
-        test -f {input.bam}
-        test -f {input.bamidx}
-        (/bamcount/bamcount {input.bam} --require-mdz > ${{TMP}}) 2>&1 | tee -a {log}
-
-        (time zstd ${{TMP}} -o {output}) 2>&1 | tee -a {log}
-
-        size=$(wc -c < {output})
-        echo "COUNT_ExonBwCountAllSize ${{size}}"
-
-        rm -f ${{TMP}}
-        echo "COUNT_NonrefComplete 1"
-        """
-
-rule exon_bw_count_all:
-    input:
-        bw=config['temp'] + '/{trio}.all.bw',
+        exe='/bamcount/bamcount',
         bed=lambda wildcards: '%s/%s/gtf/%s' % (config['ref'], wildcards.trio.split('_')[2], config.get('bw_bed', 'exons.bed'))
     output:
-        config['output'] + '/{trio}.all.exon_bw_count.zst'
+        nonref=config['output'] + '/{trio}.bamcount_nonref.csv.zst',
+        auc=config['output'] + '/{trio}.bamcount_auc.txt',
+        all_bw=config['output'] + '/{trio}.all.bw.zst',
+        unique_bw=config['output'] + '/{trio}.unique.bw.zst',
+        all_bw_count=config['output'] + '/{trio}.all.exon_bw_count.zst',
+        unique_bw_count=config['output'] + '/{trio}.unique.exon_bw_count.zst'
     log:
-        config['output'] + '/{trio}.exon_bw_count_all.log'
+        config['output'] + '/{trio}.bamcount.log'
     params:
-        srr=lambda wildcards: wildcards.trio.split('_')[0]
+        srr=lambda wildcards: wildcards.trio.split('_')[0],
+        uniq_qual=config.get('unique_qual', 10)
+    threads: 4
     shell:
         """
-        TMP={config[temp]}/{params.srr}.exon_bw_count_all.tsv
-        (time bwtool summary \
-            {input.bed} {input.bw} \
-            /dev/stdout \
-                -fill=0 \
-                -with-sum \
-                -keep-bed \
-                -decimals=0 \
-            | cut -f1-4,11 \
-            > ${{TMP}}) 2>&1 | tee -a {log}
+        TMP_NONREF={config[temp]}/{params.srr}.bamcount_nonref.csv
+        TMP_OUT_PREFIX={config[temp]}/{params.srr}
+        {input.exe} {input.bam} \
+            --threads {threads} \
+            --coverage \
+            --no-head \
+            --bigwig ${{TMP_OUT_PREFIX}} \
+            --min-unique-qual {params.uniq_qual} \
+            --annotation {input.bed} ${{TMP_OUT_PREFIX}} \
+            --alts > ${{TMP_NONREF}} 2> {output.auc} 
 
-        size=$(wc -c < ${{TMP}})
-        echo "COUNT_ExonBwCountAllSize ${{size}}"
+        (time zstd ${{TMP_NONREF}} -o {output.nonref}) 2>&1 | tee -a {log}
+        size=$(wc -c < {output.nonref})
+        echo "COUNT_NonrefSize ${{size}}"
+        rm -f ${{TMP_NONREF}}
 
-        (time zstd ${{TMP}} -o {output}) 2>&1 | tee -a {log}
+        (time zstd ${{TMP_OUT_PREFIX}}.all.bw -o {output.all_bw}) 2>&1 | tee -a {log}
+        size=$(wc -c < {output.all_bw})
+        echo "COUNT_BwSize ${{size}}"
+        rm -f ${{TMP_OUT_PREFIX}}.all.bw
 
-        size=$(wc -c < {output})
-        echo "COUNT_CompressedExonBwCountAllSize ${{size}}"
+        (time zstd ${{TMP_OUT_PREFIX}}.unique.bw -o {output.unique_bw}) 2>&1 | tee -a {log}
+        size=$(wc -c < {output.unique_bw})
+        echo "COUNT_BwSize ${{size}}"
+        rm -f ${{TMP_OUT_PREFIX}}.unique.bw
 
-        rm -f ${{TMP}}
-        echo "COUNT_ExonBwCountAllComplete 1"
-        """
+        (time zstd ${{TMP_OUT_PREFIX}}.all.tsv -o {output.all_bw_count}) 2>&1 | tee -a {log}
+        size=$(wc -c < {output.all_bw_count})
+        echo "COUNT_BwQuantSize ${{size}}"
+        rm -f ${{TMP_OUT_PREFIX}}.all.bw
 
-rule exon_bw_count_unique:
-    input:
-        bw=config['temp'] + '/{trio}.unique.bw',
-        bed=lambda wildcards: '%s/%s/gtf/%s' % (config['ref'], wildcards.trio.split('_')[2], config.get('bw_bed', 'exons.bed'))
-    output:
-        config['output'] + '/{trio}.unique.exon_bw_count.zst'
-    log:
-        config['output'] + '/{trio}.exon_bw_count_unique.log'
-    params:
-        srr=lambda wildcards: wildcards.trio.split('_')[0]
-    shell:
-        """
-        TMP={config[temp]}/{params.srr}.exon_bw_count_unique.tsv
-        (time bwtool summary \
-            {input.bed} {input.bw} \
-            /dev/stdout \
-                -fill=0 \
-                -with-sum \
-                -keep-bed \
-                -decimals=0 \
-            | cut -f1-4,11 \
-            > ${{TMP}}) 2>&1 | tee -a {log}
+        (time zstd ${{TMP_OUT_PREFIX}}.unique.tsv -o {output.unique_bw_count}) 2>&1 | tee -a {log}
+        size=$(wc -c < {output.unique_bw_count})
+        echo "COUNT_BwQuantSize ${{size}}"
+        rm -f ${{TMP_OUT_PREFIX}}.unique.bw
 
-        size=$(wc -c < ${{TMP}})
-        echo "COUNT_ExonBwCountUniqueSize ${{size}}"
-
-        (time zstd ${{TMP}} -o {output}) 2>&1 | tee -a {log}
-
-        size=$(wc -c < {output})
-        echo "COUNT_CompressedExonBwCountUniqueSize ${{size}}"
-
-        rm -f ${{TMP}}
-        echo "COUNT_ExonBwCountUniqueComplete 1"
+        echo "COUNT_BamcountComplete 1"
         """
 
 rule gene_fc_count_all:
@@ -340,59 +297,6 @@ rule bw_zstd:
         size=$(wc -c < {output})
         echo "COUNT_CompressedBwBytesGenerated ${{size}}"
         echo "COUNT_BwZstdComplete 1"
-        """
-
-rule bam_to_bw_all:
-    input:
-        config['temp'] + '/{trio}.sorted.bam.bai',
-        bam=config['temp'] + '/{trio}.sorted.bam'
-    output:
-        config['temp'] + '/{trio}.unique.bw'
-    log:
-        config['output'] + '/{trio}.bam_to_bw_all.log'
-    threads: 4
-    params:
-        srr=lambda wildcards: wildcards.trio.split('_')[0]
-    shell:
-        """
-        TMP={config[temp]}/{params.srr}.bam_to_bw_all
-        mkdir -p ${{TMP}}
-        sambamba view -H {input.bam} > ${{TMP}}/o.per-base.bed
-        time mosdepth -t {threads} ${{TMP}}/o {input.bam} 2>&1 | tee -a {log}
-        gzip -dc ${{TMP}}/o.per-base.bed.gz >> ${{TMP}}/o.per-base.bed
-        time python /bam2bigwig.py {output} < ${{TMP}}/o.per-base.bed 2>&1 | tee -a {log}
-        rm -rf ${{TMP}}
-        
-        size=$(wc -c < {output})
-        echo "COUNT_BwBytesGenerated ${{size}}"
-        echo "COUNT_BamToBwAllComplete 1"
-        """
-
-rule bam_to_bw_unique:
-    input:
-        config['temp'] + '/{trio}.sorted.bam.bai',
-        bam=config['temp'] + '/{trio}.sorted.bam'
-    output:
-        config['temp'] + '/{trio}.all.bw'
-    log:
-        config['output'] + '/{trio}.bam_to_bw_unique.log'
-    threads: 4
-    params:
-        srr=lambda wildcards: wildcards.trio.split('_')[0],
-        bw_uniq=config.get('bw_unique_qual', 10)
-    shell:
-        """
-        TMP={config[temp]}/{params.srr}.bam_to_bw_unique
-        mkdir -p ${{TMP}}
-        sambamba view -H {input.bam} > ${{TMP}}/o.per-base.bed
-        time mosdepth -t {threads} -Q {params.bw_uniq} ${{TMP}}/o {input.bam} 2>&1 | tee -a {log}
-        gzip -dc ${{TMP}}/o.per-base.bed.gz >> ${{TMP}}/o.per-base.bed
-        time python /bam2bigwig.py {output} < ${{TMP}}/o.per-base.bed 2>&1 | tee -a {log}
-        rm -rf ${{TMP}}
-
-        size=$(wc -c < {output})
-        echo "COUNT_BwBytesGenerated ${{size}}"
-        echo "COUNT_BamToBwUniqueComplete 1"
         """
 
 rule sort:

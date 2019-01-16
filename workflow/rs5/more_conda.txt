@@ -1,0 +1,4 @@
+star=2.6.1b
+hisat2=2.1.0
+snakemake-minimal=5.3.0
+sambamba=0.6.8
