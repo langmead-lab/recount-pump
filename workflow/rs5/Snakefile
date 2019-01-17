@@ -482,6 +482,7 @@ rule align:
             --readFilesIn ${{READ_FILES}} \
             --twopassMode None \
             --genomeLoad LoadAndRemove \
+            --outSJfilterDistToOtherSJmin 0 0 0 0 \
             --outTmpDir ${{TMP}} \
             --outReadsUnmapped Fastx \
             --outMultimapperOrder Random \

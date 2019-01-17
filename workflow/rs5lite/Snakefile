@@ -4,15 +4,13 @@ Parameters:
 - fastq_dump_retries: number of retry attempts before dying
 - fastq_dump_tool: name of tool to run, e.g. 'fastq-dump' or 'fasterq-dump'
 - star: arguments to pass to STAR aligner
-- kallisto_args: arguments to pass to kallisto quant
 - salmon_args: arguments to pass to salmon quant
 - unique_qual: minimum MAPQ needed to be counted in unique BW [default: 10]
 - bw_bed: name of BED file to use with bwtool
 """
 
 STEPS = ['sra_fastq', 'fastq_check', 'align', 'sort',
-         'bamcount',
-         'kallisto', 'salmon', 'align_unmapped']
+         'bamcount', 'salmon', 'align_unmapped']
 
 FILES = ['sjout.zst', 'fastq_check.tsv.zstd',
          'unmapped.bam',
@@ -20,7 +18,7 @@ FILES = ['sjout.zst', 'fastq_check.tsv.zstd',
          'Chimeric.out.junction.zst',
          'all.exon_bw_count.zst', 'unique.exon_bw_count.zst',
          'all.bw.zst', 'unique.bw.zst',
-         'kallisto.tsv.zst', 'salmon.tsv.zst',
+         'salmon.tsv.zst',
          'manifest'] + list(map(lambda x: x + '.log', STEPS))
 
 def get_accessions(wildcards):
@@ -45,7 +43,6 @@ rule all:
 
 rule make_manifest:
     input:
-        config['output'] + '/{trio}.kallisto.tsv.zst',
         config['output'] + '/{trio}.salmon.tsv.zst',
         config['output'] + '/{trio}.sjout.zst',
         config['output'] + '/{trio}.Chimeric.out.junction.zst',
@@ -62,7 +59,6 @@ rule make_manifest:
         config['output'] + '/{trio}.sra_fastq.log',
         config['output'] + '/{trio}.fastq_check.log',
         config['output'] + '/{trio}.sort.log',
-        config['output'] + '/{trio}.kallisto.log',
         config['output'] + '/{trio}.salmon.log'
     output:
         config['output'] + '/{trio}.manifest'
@@ -162,46 +158,6 @@ rule sort:
         echo "COUNT_SortedBAMBytesGenerated ${{size}}"
         time sambamba index -t {threads} {output.bam} 2>&1 | tee -a {log}
         echo "COUNT_SortComplete 1"
-        """
-
-rule kallisto:
-    input:
-        reads0=config['temp'] + '/{trio}_0.fastq',
-        reads1=config['temp'] + '/{trio}_1.fastq',
-        reads2=config['temp'] + '/{trio}_2.fastq',
-        index=lambda wildcards: '%s/%s/kallisto_index/transcriptome_index' % (config['ref'], wildcards.trio.split('_')[2])
-    output:
-        config['output'] + '/{trio}.kallisto.tsv.zst'
-    log:
-        config['output'] + '/{trio}.kallisto.log'
-    params:
-        index_base=lambda wildcards: '%s/%s/kallisto_index' % (config['ref'], wildcards.trio.split('_')[2]),
-        kallisto_args=config.get('kallisto_args', '')
-    threads: 8
-    shell:
-        """
-        READ_FILES="--single -l 300 -s 30 {input.reads0}"
-        if [[ -s {input.reads2} ]] ; then
-            READ_FILES="{input.reads1} {input.reads2}"
-        fi
-        time kallisto quant \
-            --index={params.index_base}/transcriptome_index \
-            -t {threads} \
-            {params.kallisto_args} \
-            --output=. \
-            --plaintext \
-            ${{READ_FILES}} \
-            2>&1 | tee -a {log}
-
-        size=$(wc -c < abundance.tsv)
-        echo "COUNT_UncompressedKallistoQuantBytesGenerated ${{size}}"
-
-        time zstd abundance.tsv -o {output} 2>&1 | tee -a {log}
-        size=$(wc -c < {output})
-        echo "COUNT_KallistoQuantBytesGenerated ${{size}}"
-        rm -f abundance.tsv
-
-        echo "COUNT_KallistoComplete 1"
         """
 
 rule salmon:
@@ -329,6 +285,7 @@ rule align:
             --readFilesIn ${{READ_FILES}} \
             --twopassMode None \
             --genomeLoad LoadAndRemove \
+            --outSJfilterDistToOtherSJmin 0 0 0 0 \
             --outTmpDir ${{TMP}} \
             --outReadsUnmapped Fastx \
             --outMultimapperOrder Random \
