@@ -103,6 +103,26 @@ def reader(node_name, worker_name, pipe, queue, nm, heartbeat_func):
             queue.put((msg, 'run.py'))
 
 
+def send_in_progress_to_destination(name, output_dir, source_prefix, mover, destination,
+                                    log_queue=None, node_name='', worker_name=''):
+    """
+    Copy a file to the destination indicating analysis is in progress.
+    """
+    log_info_detailed(node_name, worker_name,
+                      'using mover to copy in-progress file from "%s" to "%s"' %
+                      (output_dir, destination), log_queue)
+    inprog_basename = name + '.in_progress'
+    inprog_temp = os.path.join(output_dir, inprog_basename)
+    with open(inprog_temp, 'wt') as fh:
+        fh.write('Node: %s\n' % node_name)
+        fh.write('Worker: %s\n' % worker_name)
+
+    log_info_detailed(node_name, worker_name, 'About to put .in_progress file', log_queue)
+    inprog_temp = source_prefix + inprog_temp
+    mover.put(inprog_temp, os.path.join(destination, inprog_basename),
+              logger=lambda x: log_info_detailed(node_name, worker_name, x, log_queue))
+
+
 def copy_to_destination(name, output_dir, source_prefix, extras, mover, destination,
                         log_queue=None, node_name='', worker_name=''):
     """
@@ -323,6 +343,9 @@ def run_job(name, inputs, image_url, image_fn, config, cluster_ini, heartbeat_fu
 
     log_info('COUNT_RunWorkflowPre 1', log_queue)
 
+    send_in_progress_to_destination(name, output_dir, source_prefix, mover,
+                                    destination, log_queue, node_name, worker_name)
+
     image = image_url
     if docker:
         if image.startswith('docker://'):
@@ -368,6 +391,12 @@ def run_job(name, inputs, image_url, image_fn, config, cluster_ini, heartbeat_fu
 
     log_info('COUNT_RunWorkflowPost 1', log_queue)
 
+    stats_fn = os.path.join(output_dir, 'stats.json')
+    assert ret != 0 or (os.path.exists(stats_fn) and os.path.isfile(stats_fn))
+    if os.path.exists(stats_fn) and os.path.isfile(stats_fn):
+        for counter in stats.summarize(stats_fn):
+            log_info('COUNT_%sWallTime %0.3f' % (counter[0], counter[1]), log_queue)
+
     if ret == 0:
         if source_prefix is None or len(source_prefix) == 0:
             source_prefix = 'local://'
@@ -388,11 +417,6 @@ def run_job(name, inputs, image_url, image_fn, config, cluster_ini, heartbeat_fu
             done_temp = source_prefix + done_temp
             mover.put(done_temp, os.path.join(destination, done_basename),
                       logger=lambda x: log_info_detailed(node_name, worker_name, x, log_queue))
-
-        stats_fn = os.path.join(output_dir, 'stats.json')
-        assert os.path.exists(stats_fn) and os.path.isfile(stats_fn)
-        for counter in stats.summarize(stats_fn):
-            log_info('COUNT_%sWallTime %0.3f' % (counter[0], counter[1]), log_queue)
 
         if not keep:
             shutil.rmtree(output_dir)
