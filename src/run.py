@@ -73,8 +73,19 @@ def log_info(msg, queue):
         queue.put((msg, 'run.py'))
 
 
+def log_warn(msg, queue):
+    if queue is None:
+        log.warning(msg, 'run.py')
+    else:
+        queue.put((msg, 'run.py'))
+
+
 def log_info_detailed(node_name, worker_name, msg, queue):
     log_info(' '.join([node_name, worker_name, msg]), queue)
+
+
+def log_warn_detailed(node_name, worker_name, msg, queue):
+    log_warn(' '.join([node_name, worker_name, msg]), queue)
 
 
 def decode(st):
@@ -423,6 +434,7 @@ def run_job(name, inputs, image_url, image_fn, config, cluster_ini, heartbeat_fu
 
         log_info('COUNT_RunWorkflowSuccess 1', log_queue)
     else:
+        log_warn_detailed(node_name, worker_name, 'Non-0 exitlevel from container: %d' % ret, log_queue)
         log_info('COUNT_RunWorkflowFailure 1', log_queue)
 
     # Special handling of stats.json so it can be converted to counters
