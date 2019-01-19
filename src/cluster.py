@@ -126,6 +126,10 @@ def log_info_detailed(node_name, worker_name, msg):
     log_info(' '.join([node_name, worker_name, msg]))
 
 
+def log_warn_detailed(node_name, worker_name, msg):
+    log_warning(' '.join([node_name, worker_name, msg]))
+
+
 def log_warning_detailed(node_name, worker_name, msg):
     log_warning(' '.join([node_name, worker_name, msg]))
 
@@ -534,11 +538,15 @@ def job_loop(project_id, q_ini, cluster_ini, worker_name, session,
                 succeeded = False
 
                 def heartbeat_func(st):
-                    q_client.change_message_visibility(
-                        QueueUrl=q_url,
-                        ReceiptHandle=handle,
-                        VisibilityTimeout=visibility_timeout)
-                    log_info_detailed(node_name, worker_name, 'Heartbeat (%s)' % st)
+                    try:
+                        q_client.change_message_visibility(
+                            QueueUrl=q_url,
+                            ReceiptHandle=handle,
+                            VisibilityTimeout=visibility_timeout)
+                        log_info_detailed(node_name, worker_name, 'Heartbeat (%s)' % st)
+                    except Exception as exc:
+                        log_warn_detailed(node_name, worker_name,
+                                          'Exception during heartbeat (%s): %s' % (st, str(exc)))
 
                 try:
                     succeeded = do_job(body, cluster_ini, my_attempt, node_name,
