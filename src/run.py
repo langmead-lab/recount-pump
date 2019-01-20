@@ -354,8 +354,12 @@ def run_job(name, inputs, image_url, image_fn, config, cluster_ini, heartbeat_fu
 
     log_info('COUNT_RunWorkflowPre 1', log_queue)
 
-    send_in_progress_to_destination(name, output_dir, source_prefix, mover,
-                                    destination, log_queue, node_name, worker_name)
+    if source_prefix is None or len(source_prefix) == 0:
+        source_prefix = 'local://'
+
+    if mover is not None and destination is not None and len(destination) > 0:
+        send_in_progress_to_destination(name, output_dir, source_prefix, mover,
+                                        destination, log_queue, node_name, worker_name)
 
     image = image_url
     if docker:
@@ -409,9 +413,6 @@ def run_job(name, inputs, image_url, image_fn, config, cluster_ini, heartbeat_fu
             log_info('COUNT_%sWallTime %0.3f' % (counter[0], counter[1]), log_queue)
 
     if ret == 0:
-        if source_prefix is None or len(source_prefix) == 0:
-            source_prefix = 'local://'
-
         # Copy files to ultimate destination, if one is specified
         if mover is not None and destination is not None and len(destination) > 0:
             log_info_detailed(node_name, worker_name, 'About to copy_to_destination', log_queue)
