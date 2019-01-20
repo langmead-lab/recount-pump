@@ -10,6 +10,7 @@ Parameters:
 - featureCounts: arguments to pass to featureCounts
 - fc_unique_qual: minimum MAPQ needed to be counted in unique quantifications [default: 10]
 - bw_bed: name of BED file to use with bwtool
+- max_unalign: maximum number of unaligned reads to save per run accession
 """
 
 STEPS = ['sra_fastq', 'fastq_check', 'align', 'sort',
@@ -18,8 +19,8 @@ STEPS = ['sra_fastq', 'fastq_check', 'align', 'sort',
          'gene_fc_count_all', 'gene_fc_count_unique',
          'exon_fc_count_all', 'exon_fc_count_unique']
 
-FILES = ['sjout.zst', 'fastq_check.tsv.zstd',
-         'unmapped.bam',
+FILES = ['sjout.zst', 'fastq_check.tsv.zst',
+         'unmapped.bam', 'unmapped.fastq.zst',
          'bamcount_nonref.csv.zst',
          'Chimeric.out.junction.zst',
          'all.gene_fc_count.zst', 'unique.gene_fc_count.zst',
@@ -56,8 +57,9 @@ rule make_manifest:
         config['output'] + '/{trio}.sjout.zst',
         config['output'] + '/{trio}.Chimeric.out.junction.zst',
         config['output'] + '/{trio}.unmapped.bam',
+        config['output'] + '/{trio}.unmapped.fastq.zst',
         config['output'] + '/{trio}.bamcount_nonref.csv.zst',
-        config['output'] + '/{trio}.fastq_check.tsv.zstd',
+        config['output'] + '/{trio}.fastq_check.tsv.zst',
         config['output'] + '/{trio}.all.gene_fc_count.zst',
         config['output'] + '/{trio}.all.exon_fc_count.zst',
         config['output'] + '/{trio}.unique.gene_fc_count.zst',
@@ -295,7 +297,7 @@ rule bw_zstd:
         """
         zstd {input} -o {output}
         size=$(wc -c < {output})
-        echo "COUNT_CompressedBwBytesGenerated ${{size}}"
+        echo "COUNT_BwBytes ${{size}}"
         echo "COUNT_BwZstdComplete 1"
         """
 
@@ -312,7 +314,7 @@ rule sort:
         """
         time sambamba sort --tmpdir={config[temp]} -t {threads} -m 1G -o {output.bam} {input} 2>&1 | tee -a {log}
         size=$(wc -c < {output.bam})
-        echo "COUNT_SortedBAMBytesGenerated ${{size}}"
+        echo "COUNT_SortedBAMBytes ${{size}}"
         time sambamba index -t {threads} {output.bam} 2>&1 | tee -a {log}
         echo "COUNT_SortComplete 1"
         """
@@ -346,12 +348,9 @@ rule kallisto:
             ${{READ_FILES}} \
             2>&1 | tee -a {log}
 
-        size=$(wc -c < abundance.tsv)
-        echo "COUNT_UncompressedKallistoQuantBytesGenerated ${{size}}"
-
         time zstd abundance.tsv -o {output} 2>&1 | tee -a {log}
         size=$(wc -c < {output})
-        echo "COUNT_KallistoQuantBytesGenerated ${{size}}"
+        echo "COUNT_KallistoQuantBytes ${{size}}"
         rm -f abundance.tsv
 
         echo "COUNT_KallistoComplete 1"
@@ -380,6 +379,8 @@ rule salmon:
         fi
         if set -o pipefail && time salmon quant \
             --libType U \
+            --quiet \
+            --validateMappings \
             -i {params.index_base} \
             -p {threads} \
             {params.salmon_args} \
@@ -389,13 +390,12 @@ rule salmon:
             2>&1 | tee -a {log}
         then
             echo "COUNT_SalmonSuccess 1"
-            size=$(wc -c < salmon_quant/quant.sf)
-            echo "COUNT_UncompressedSalmonQuantBytesGenerated ${{size}}"
-    
+
             time zstd salmon_quant/quant.sf -o {output} 2>&1 | tee -a {log}
             size=$(wc -c < {output})
-            echo "COUNT_SalmonQuantBytesGenerated ${{size}}"
+            echo "COUNT_SalmonQuantBytes ${{size}}"
         else
+            touch {output}
             echo "COUNT_SalmonFailure 1"
         fi
                 
@@ -409,13 +409,15 @@ rule align_unmapped:
         unmapped2=config['temp'] + '/{trio}_2.unmappedfastq',
         index=lambda wildcards: '%s/%s/unmapped_hisat2_idx/genome.1.ht2' % (config['ref'], wildcards.trio.split('_')[2])
     output:
-        config['output'] + '/{trio}.unmapped.bam'
+        bam=config['output'] + '/{trio}.unmapped.bam',
+        sample=config['output'] + '/{trio}.unmapped.fastq.zst'
     log:
         config['output'] + '/{trio}.align_unmapped.log'
     params:
         index_base=lambda wildcards: '%s/%s/unmapped_hisat2_idx/genome' % (config['ref'], wildcards.trio.split('_')[2]),
         srr=lambda wildcards: wildcards.trio.split('_')[0],
-        hisat2_params=config.get('hisat2', '')
+        hisat2_params=config.get('hisat2', ''),
+        max_unalign=config.get('max_unalign', 100000)
     threads: 16
     shell:
         """
@@ -430,18 +432,56 @@ rule align_unmapped:
             -x {params.index_base} \
             --threads {threads} \
             {params.hisat2_params} \
+            --un ${{TMP}}.un \
+            --un-conc ${{TMP}}.un_conc \
             -S ${{TMP}}.sam \
             2>&1 | tee -a {log}
+
+        #
+        # Make BAM file out of aligned reads
+        #
         time sambamba \
             view \
             -S -f bam -F "not unmapped" \
-            -o {output} \
+            -o {output.bam} \
             ${{TMP}}.sam \
             2>&1 | tee -a {log}
         rm -f ${{TMP}}.sam
 
-        size=$(wc -c < {output})
-        echo "COUNT_UnmappedBamBytesGenerated ${{size}}"
+        #
+        # Save a subset of the doubly unaligned reads
+        #
+        if [[ ! -s {input.unmapped2} ]] ; then
+            # unpaired
+            fastq-sample \
+                -n {params.max_unalign} \
+                -o ${{TMP}}.samp \
+                ${{TMP}}.un
+            rm -f ${{TMP}}.un
+        else
+            # paired-end
+            fastq-sample \
+                -n {params.max_unalign} \
+                -o ${{TMP}}.samp \
+                ${{TMP}}.un_conc.1 ${{TMP}}.un_conc.2
+            rm -f ${{TMP}}.un_conc.1 ${{TMP}}.un_conc.2
+            
+            # interleave the two output fastqs into single file
+            paste ${{TMP}}.samp.1.fastq ${{TMP}}.samp.2.fastq \
+                | paste - - - - \
+                | awk -v OFS="\n" -v FS="\t" '{{print($1,$3,$5,$7,$2,$4,$6,$8)}}' \
+                > ${{TMP}}.samp.fastq
+            rm -f ${{TMP}}.samp.1.fastq ${{TMP}}.samp.2.fastq
+        fi
+
+        test -f ${{TMP}}.samp.fastq
+        time zstd ${{TMP}}.samp.fastq -o {output.sample} 2>&1 | tee -a {log}
+        size=$(wc -c < {output.sample})
+        echo "COUNT_UnmappedSampleByes ${{size}}"
+        rm -f ${{TMP}}.samp.fastq
+    
+        size=$(wc -c < {output.bam})
+        echo "COUNT_UnmappedBamBytes ${{size}}"
 
         echo "COUNT_AlignUnmappedComplete 1"
         """
@@ -519,12 +559,10 @@ rule align:
         # Junctions
         #
         test -f SJ.out.tab
-        size=$(wc -c < SJ.out.tab)
-        echo "COUNT_UncompressedJxBytesGenerated ${{size}}"
         time zstd SJ.out.tab -o {output.jxs} 2>&1 | tee -a {log}
         rm -f SJ.out.tab
         size=$(wc -c < {output.jxs})
-        echo "COUNT_CompressedJxBytesGenerated ${{size}}"
+        echo "COUNT_CompressedJxBytes ${{size}}"
 
         #
         # Chimerics
@@ -535,7 +573,7 @@ rule align:
         time zstd Chimeric.out.junction.sorted -o {output.chimeric} 2>&1 | tee -a {log}
         rm -f Chimeric.out.junction Chimeric.out.junction.sorted
         size=$(wc -c < {output.chimeric})
-        echo "COUNT_CompressedChimericBytesGenerated ${{size}}"
+        echo "COUNT_ChimericBytes ${{size}}"
 
         #
         # Unmapped
@@ -551,7 +589,7 @@ rule align:
         # Alignments
         #
         size=$(wc -c < Aligned.out.bam)
-        echo "COUNT_BAMBytesGenerated ${{size}}"
+        echo "COUNT_BAMBytes ${{size}}"
         mv Aligned.out.bam {output.bam}
 
         echo "COUNT_AlignComplete 1"
@@ -563,7 +601,7 @@ rule fastq_check:
         reads1=config['temp'] + '/{trio}_1.fastq',
         reads2=config['temp'] + '/{trio}_2.fastq'
     output:
-        config['output'] + '/{trio}.fastq_check.tsv.zstd'
+        config['output'] + '/{trio}.fastq_check.tsv.zst'
     log:
         config['output'] + '/{trio}.fastq_check.log'
     params:
@@ -583,7 +621,7 @@ rule fastq_check:
         fi
         time zstd ${{TMP}} -o {output} 2>&1 | tee -a {log}
         size=$(wc -c < {output})
-        echo "COUNT_FastqCheckBytesGenerated ${{size}}"
+        echo "COUNT_FastqCheckBytes ${{size}}"
 
         echo "COUNT_FastqCheckComplete 1"
         """
