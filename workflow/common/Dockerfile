@@ -1,4 +1,4 @@
-FROM continuumio/miniconda:4.5.11
+FROM continuumio/miniconda:4.5.12
 
 RUN apt-get update -y && apt-get install -y gcc g++ libz-dev make
 
