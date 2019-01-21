@@ -1,14 +1,14 @@
 #!/bin/bash -l
 #SBATCH
-#SBATCH --partition=parallel
+#SBATCH --partition=shared
 #SBATCH --nodes=1
-#SBATCH --mem=100G
+#SBATCH --mem=40G
 #SBATCH --time=44:00:00
-#SBATCH --ntasks-per-node=24
+#SBATCH --ntasks-per-node=8
 
 d=/scratch/users/blangme2@jhu.edu/git/recount-pump
 
 python ${d}/src/cluster.py run \
     --ini-base ${d}/projects/geuvadis/creds \
-    --cluster-ini ~/.recount/cluster-parallel.ini \
+    --cluster-ini ~/.recount/cluster-shared.ini \
     1
