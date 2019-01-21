@@ -9,8 +9,8 @@ set -ex
 
 RECOUNT_CREDS=${d}/creds
 TAXID=9606
-ANALYSIS_NAME="rs5-lite-045"
-ANA_URL="docker://quay.io/benlangmead/recount-rs5-lite:0.4.5"
+ANALYSIS_NAME="rs5-lite-046"
+ANA_URL="docker://quay.io/benlangmead/recount-rs5-lite:0.4.6"
 SRC_DIR="$d/../../src"
 ARGS="--ini-base ${RECOUNT_CREDS}"
 OUTPUT_DIR=$(grep '^output_base' ${RECOUNT_CREDS}/cluster.ini | cut -d"=" -f2 | tr -d '[:space:]')

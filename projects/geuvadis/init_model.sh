@@ -9,13 +9,15 @@ set -ex
 
 RECOUNT_CREDS=${d}/creds
 TAXID=9606
-ANA_URL="docker://quay.io/benlangmead/recount-rs4:0.4.1"
+ANALYSIS_NAME="rs5-lite-046"
+ANA_URL="docker://quay.io/benlangmead/recount-rs5-lite:0.4.6"
 SRC_DIR="$d/../../src"
 ARGS="--ini-base ${RECOUNT_CREDS}"
 OUTPUT_DIR=$(grep '^output_base' ${RECOUNT_CREDS}/cluster.ini | cut -d"=" -f2 | tr -d '[:space:]')
 SPECIES=hg38
 SPECIES_FULL=homo_sapiens
 STUDY=geuv
+INPUT_SET=geuv
 
 input_url="s3://recount-pump-experiments/${STUDY}/${STUDY}.json.gz"
 
@@ -44,16 +46,18 @@ add_source() (
 )
 
 srcid1=$(add_source "s3://recount-ref/${SPECIES}/star_idx.tar.gz" 's3')
-srcid2=$(add_source "s3://recount-ref/${SPECIES}/kallisto_index.tar.gz" 's3')
-srcid3=$(add_source "s3://recount-ref/${SPECIES}/salmon_index.tar.gz" 's3')
-srcid4=$(add_source "s3://recount-ref/${SPECIES}/fasta.tar.gz" 's3')
+srcid2=$(add_source "s3://recount-ref/${SPECIES}/unmapped_hisat2_idx.tar.gz" 's3')
+srcid3=$(add_source "s3://recount-ref/${SPECIES}/kallisto_index.tar.gz" 's3')
+srcid4=$(add_source "s3://recount-ref/${SPECIES}/salmon_index.tar.gz" 's3')
+srcid5=$(add_source "s3://recount-ref/${SPECIES}/fasta.tar.gz" 's3')
 test -n "${srcid1}"
 test -n "${srcid2}"
 test -n "${srcid3}"
 test -n "${srcid4}"
+test -n "${srcid5}"
 
 python ${SRC_DIR}/reference.py ${ARGS} \
-    add-sources-to-set ${ssid} ${srcid1} ${ssid} ${srcid2} ${ssid} ${srcid3} ${ssid} ${srcid4}
+    add-sources-to-set ${ssid} ${srcid1} ${ssid} ${srcid2} ${ssid} ${srcid3} ${ssid} ${srcid4} ${ssid} ${srcid5}
 
 # Annotation
 #    tax_id = Column(Integer)  # refers to NCBI tax ids
@@ -124,8 +128,8 @@ cat >/tmp/.${STUDY}.config.json <<EOF
 }
 EOF
 
-rs1_id=$(add_analysis rs1 "${ANA_URL}" "file:///tmp/.${STUDY}.config.json")
-test -n "${rs1_id}"
+rs_id=$(add_analysis "${ANALYSIS_NAME}" "${ANA_URL}" "file:///tmp/.${STUDY}.config.json")
+test -n "${rs_id}"
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 3: Load input data"
@@ -161,7 +165,7 @@ import_input_set() (
         "${json_file}" "${input_set_name}" | tail -n 1   
 )
 
-isid=$(import_input_set "/tmp/${input_fn}" 'geuv_ERP001942')
+isid=$(import_input_set "/tmp/${input_fn}" "${INPUT_SET}")
 test -n "${isid}"
 rm -f "/tmp/${input_fn}"
 
@@ -185,7 +189,7 @@ add_project() (
         add-project ${name} ${analysis_id} ${input_set_id} ${reference_id} | tail -n 1
 )
 
-proj_id=$(add_project "${STUDY}" ${isid} ${rs1_id} ${ref_id})
+proj_id=$(add_project "${STUDY}" ${isid} ${rs_id} ${ref_id})
 test -n "${proj_id}"
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
