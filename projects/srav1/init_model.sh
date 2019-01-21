@@ -10,14 +10,14 @@ set -ex
 RECOUNT_CREDS=${d}/creds
 TAXID=9606
 ANALYSIS_NAME="rs5-lite-046"
-ANA_URL="docker://quay.io/benlangmead/recount-rs5-lite:0.4.6"
+ANA_URL="docker://quay.io/benlangmead/recount-rs5-lite:0.4.7"
 SRC_DIR="$d/../../src"
 ARGS="--ini-base ${RECOUNT_CREDS}"
 OUTPUT_DIR=$(grep '^output_base' ${RECOUNT_CREDS}/cluster.ini | cut -d"=" -f2 | tr -d '[:space:]')
 SPECIES=hg38
 SPECIES_FULL=homo_sapiens
 STUDY=srav1
-INPUT_SET=srav1
+INPUT_SET=${STUDY}
 
 input_url="s3://recount-meta/${STUDY}/${STUDY}.txt"
 
