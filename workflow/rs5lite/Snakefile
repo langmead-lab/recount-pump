@@ -152,13 +152,23 @@ rule sort:
         bai=temp(config['temp'] + '/{trio}.sorted.bam.bai')
     log:
         config['output'] + '/{trio}.sort.log'
+    params:
+        srr=lambda wildcards: wildcards.trio.split('_')[0]
     threads: 8
     shell:
         """
-        time sambamba sort --tmpdir={config[temp]} -t {threads} -m 1G -o {output.bam} {input} 2>&1 | tee -a {log}
+        TMP="{config[temp]}/sort_temp.{params.srr}"
+        mkdir -p ${{TMP}}
+        time samtools sort \
+            -T ${{TMP}}/samtools_temp \
+            -@ {threads} \
+            -m 64M \
+            -o {output.bam} {input} 2>&1 | tee -a {log}
+        rm -rf ${{TMP}}
         size=$(wc -c < {output.bam})
         echo "COUNT_SortedBAMBytes ${{size}}"
-        time sambamba index -t {threads} {output.bam} 2>&1 | tee -a {log}
+
+        time samtools index -@ {threads} {output.bam} 2>&1 | tee -a {log}
         echo "COUNT_SortComplete 1"
         """
 
@@ -246,9 +256,8 @@ rule align_unmapped:
         #
         # Make BAM file out of aligned reads
         #
-        time sambamba \
-            view \
-            -S -f bam -F "not unmapped" \
+        time samtools view \
+            -b -F 4 \
             -o {output.bam} \
             ${{TMP}}.sam \
             2>&1 | tee -a {log}

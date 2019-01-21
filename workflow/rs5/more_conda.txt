@@ -1,5 +1,7 @@
 star=2.6.1b
 hisat2=2.1.0
 snakemake-minimal=5.3.0
-sambamba=0.6.8
 fastq-tools=0.8
+samtools=1.9
+subread=1.6.3
+kallisto=0.45.0
