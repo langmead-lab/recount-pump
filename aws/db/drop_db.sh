@@ -11,7 +11,7 @@ port=$(grep '^port' ${INI_FILE} | cut -d"=" -f2 | tr -d '[:space:]')
 host=$(grep '^host' ${INI_FILE} | cut -d"=" -f2 | tr -d '[:space:]')
 db=recount
 
-if [ -n "$1" ] ; then
+if [[ -n "$1" ]] ; then
     db=$1
 fi
 
