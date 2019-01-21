@@ -11,7 +11,10 @@ Parameters:
 """
 
 STEPS = ['sra_fastq', 'fastq_check', 'align', 'sort',
-         'bamcount', 'salmon', 'align_unmapped']
+         'bamcount',
+         'salmon',
+         'align_unmapped',
+         'extract_jx']
 
 FILES = ['sjout.zst', 'fastq_check.tsv.zst',
          'unmapped.bam', 'unmapped.fastq.zst',
@@ -20,6 +23,7 @@ FILES = ['sjout.zst', 'fastq_check.tsv.zst',
          'all.exon_bw_count.zst', 'unique.exon_bw_count.zst',
          'all.bw.zst', 'unique.bw.zst',
          'salmon.tsv.zst',
+         'jx_bed.zst',
          'manifest'] + list(map(lambda x: x + '.log', STEPS))
 
 def get_accessions(wildcards):
@@ -46,6 +50,7 @@ rule make_manifest:
     input:
         config['output'] + '/{trio}.salmon.tsv.zst',
         config['output'] + '/{trio}.sjout.zst',
+        config['output'] + '/{trio}.jx_bed.zst',
         config['output'] + '/{trio}.Chimeric.out.junction.zst',
         config['output'] + '/{trio}.unmapped.bam',
         config['output'] + '/{trio}.unmapped.fastq.zst',
@@ -56,6 +61,7 @@ rule make_manifest:
         config['output'] + '/{trio}.all.bw.zst',
         config['output'] + '/{trio}.unique.bw.zst',
         config['output'] + '/{trio}.align.log',
+        config['output'] + '/{trio}.extract_jx.log',
         config['output'] + '/{trio}.bamcount.log',
         config['output'] + '/{trio}.align_unmapped.log',
         config['output'] + '/{trio}.sra_fastq.log',
@@ -299,6 +305,34 @@ rule align_unmapped:
         echo "COUNT_UnmappedBamBytes ${{size}}"
 
         echo "COUNT_AlignUnmappedComplete 1"
+        """
+
+rule extract_jx:
+    input:
+        bam=config['temp'] + '/{trio}.sorted.bam',
+        bamidx=config['temp'] + '/{trio}.sorted.bam.bai',
+        fa=lambda wildcards: '%s/%s/fasta/genome.fa' % (config['ref'], wildcards.trio.split('_')[2]),
+        gtf=lambda wildcards: '%s/%s/gtf/genes.gtf' % (config['ref'], wildcards.trio.split('_')[2])
+    output:
+        config['output'] + '/{trio}.jx_bed.zst'
+    params:
+        srr=lambda wildcards: wildcards.trio.split('_')[0]
+    log:
+        config['output'] + '/{trio}.extract_jx.log'
+    shell:
+        """
+        TMP="{config[temp]}/extract_jx.{params.srr}"
+        time regtools junctions extract \
+            -i 20 -a 1 \
+            -o ${{TMP}}.jx_tmp \
+            {input.bam} 2>&1 | tee -a {log}
+        time zstd ${{TMP}}.jx_tmp -o {output} 2>&1 | tee -a {log}
+        rm -f ${{TMP}}.jx_tmp
+
+        size=$(wc -c < {output})
+        echo "COUNT_ExtractJxBytes ${{size}}"
+
+        echo "COUNT_ExtractJxComplete 1"
         """
 
 rule align:

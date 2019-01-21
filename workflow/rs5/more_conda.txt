@@ -3,5 +3,6 @@ hisat2=2.1.0
 snakemake-minimal=5.3.0
 fastq-tools=0.8
 samtools=1.9
+regtools=0.5.0
 subread=1.6.3
 kallisto=0.45.0
