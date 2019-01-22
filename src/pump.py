@@ -201,13 +201,13 @@ def get_queue(sqs_client,
         make_dlq = True
     resp = sqs_client.create_queue(QueueName=queue_name,
                                    Attributes={
-                                       'VisibilityTimeout': visibility_timeout,
+                                       'VisibilityTimeout': str(visibility_timeout),
                                        'MessageRetentionPeriod': str(message_retention_period)})
     assert 'QueueUrl' in resp
     if make_dlq:
         dlq_resp = sqs_client.create_queue(QueueName=queue_name + '_dlq',
                                            Attributes={
-                                               'VisibilityTimeout': visibility_timeout,
+                                               'VisibilityTimeout': str(visibility_timeout),
                                                'MessageRetentionPeriod': str(message_retention_period)})
         assert 'QueueUrl' in dlq_resp
         response = sqs_client.get_queue_attributes(
