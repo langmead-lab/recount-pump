@@ -281,10 +281,16 @@ def import_json(json_fn, input_set_name, session, limit=None):
     for rec in js:
         assert '_id' in rec
         assert '_source' in rec
-        assert 'study' in rec['_source']
-        assert 'accession' in rec['_source']['study']
-        acc_r = rec['_id']
-        acc_s = rec['_source']['study']['accession']
+        if 'study' in rec['_source']:
+            # new sradbv2 style
+            assert 'accession' in rec['_source']['study']
+            acc_r = rec['_id']
+            acc_s = rec['_source']['study']['accession']
+        else:
+            # old sradbv2 style
+            assert 'study_accession' in rec['_source']
+            acc_r = rec['_id']
+            acc_s = rec['_source']['study_accession']
         inp = Input(acc_r=acc_r, acc_s=acc_s,
                     url_1=acc_r, url_2=None, url_3=None,
                     checksum_1=None, checksum_2=None, checksum_3=None,
