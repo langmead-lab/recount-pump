@@ -389,9 +389,11 @@ def prepare_sra_settings(cluster_ini):
     if not os.path.exists(ncbi_dir):
         os.makedirs(ncbi_dir)
     settings_fn = os.path.join(ncbi_dir, 'user-settings.mkfg')
-    ready = False
     exists = os.path.exists(settings_fn)
-    if exists:
+    # If both are specified, reconcile the sra_dir in the user-settings.mkfg
+    # file with the sra_dir in the cluster.ini file
+    if exists and sra_dir is not None:
+        found = False
         with open(settings_fn, 'rt') as fh:
             for ln in fh:
                 ln = ln.rstrip()
@@ -403,17 +405,26 @@ def prepare_sra_settings(cluster_ini):
                 toks = ln.split('=')
                 toks = list(map(lambda x: x.strip(), toks))
                 if toks[0] == '/repository/user/main/public/root':
+                    found = True
                     quoted_sra_dir = '"' + sra_dir + '"'
                     if toks[1] != sra_dir and toks[1] != quoted_sra_dir:
                         raise RuntimeError('NCBI vdb settings file exists but '
                                            'has different sra_dir "%s" from '
                                            'the one in cluster.ini "%s"' %
                                            (toks[1], sra_dir))
-                    else:
-                        ready = True
-    if not ready:
-        with open(settings_fn, 'at' if exists else 'wt') as fh:
+                    break
+        if not found:
+            with open(settings_fn, 'at') as fh:
+                fh.write('/repository/user/main/public/root = "%s"\n' % sra_dir)
+    elif exists:
+        pass  # whatever is in user-settings.mkfg goes
+    elif sra_dir is not None:
+        # user-settings.mkfg doesn't exist but sra_dir was specified in
+        # cluster.ini, so we add it
+        with open(settings_fn, 'wt') as fh:
             fh.write('/repository/user/main/public/root = "%s"\n' % sra_dir)
+    else:
+        pass  # user-settings.mkfg doesn't exist & sra_dir not in cluster.ini
     return True
 
 
@@ -606,8 +617,8 @@ def read_cluster_config(cluster_fn, section=None):
     if analysis_dir is None:
         raise RuntimeError('Cluster ini "%s" did not define analysis_dir' % cluster_fn)
     sra_dir = _cfg_get_path_or_none('sra_dir')
-    if sra_dir is None:
-        raise RuntimeError('Cluster ini "%s" did not define sra_dir' % cluster_fn)
+    #if sra_dir is None:
+    #    raise RuntimeError('Cluster ini "%s" did not define sra_dir' % cluster_fn)
     ref_base = _cfg_get_path_or_none('ref_base')
     system = _cfg_get_or_none('system')
     ncpus = _cfg_get_or_none('cpus') or 1
