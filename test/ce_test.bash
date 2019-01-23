@@ -9,7 +9,7 @@ d=$(dirname $0)
 test -n "${RECOUNT_CREDS}"
 
 TAXID=6239
-WORKFLOW=rs4
+WORKFLOW=rs5
 IMAGE=$(cat $d/../workflow/$WORKFLOW/image.txt)
 IMAGE_VER=$(cat $d/../workflow/$WORKFLOW/ver.txt)
 ANA_URL="docker://${IMAGE}:${IMAGE_VER}"
