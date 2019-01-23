@@ -1,6 +1,6 @@
 #!/bin/bash -l
 
-#SBATCH --job-name=srav1
+#SBATCH --job-name=geuv_knl
 #SBATCH --partition=normal
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1

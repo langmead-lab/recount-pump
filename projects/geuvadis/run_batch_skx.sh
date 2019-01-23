@@ -1,6 +1,6 @@
 #!/bin/bash -l
 
-#SBATCH --job-name=geuv
+#SBATCH --job-name=geuv_skx
 #SBATCH --partition=skx-normal
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
