@@ -417,11 +417,13 @@ def prepare_sra_settings(cluster_ini):
     return True
 
 
-def prepare(project_id, cluster_ini, session, mover):
+def prepare(project_id, cluster_ini, session, mover, skip_sra_settings=False):
     proj = session.query(Project).get(project_id)
     analysis_ready = prepare_analysis(cluster_ini, proj, mover, session)
     reference_ready = prepare_reference(cluster_ini, proj, mover, session)
-    sra_settings_ready = prepare_sra_settings(cluster_ini)
+    sra_settings_ready = True
+    if not skip_sra_settings:
+        sra_settings_ready = prepare_sra_settings(cluster_ini)
     return analysis_ready, reference_ready, sra_settings_ready
 
 
@@ -738,7 +740,7 @@ def test_with_db(session):
     reference_id = add_reference(6239, 'ce10', 'NA', 'NA', 'NA', source_set_id, annotation_set_id, session)
     project_id = add_project(project_name, analysis_id, input_set_id, reference_id, session)
     mover_config = MoverConfig()
-    prepare(project_id, cluster_ini, session, mover_config.new_mover())
+    prepare(project_id, cluster_ini, session, mover_config.new_mover(), skip_sra_settings=True)
     assert os.path.exists(os.path.join(reference_dir, 'ce10', 'source1.txt'))
     assert os.path.exists(os.path.join(reference_dir, 'ce10', 'annotation1.txt'))
 
