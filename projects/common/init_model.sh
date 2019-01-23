@@ -3,23 +3,47 @@
 # Author: Ben Langmead <ben.langmead@gmail.com>
 # License: MIT
 
+# A mostly generic shell script that, given a project.ini describing the basic
+# analysis, reference, and input parameters for a project, sets up the project
+# by initializing the database, creating the queues, and staging the tasks
+# into the queues.
+#
+# - TODO: Make the list of reference files be configurable
+# - TODO: Reconsider whether we need the suite of inis in the creds subdir
+# - TODO: Some paths and URLs are still hardcoded: /tmp & s3://recount-ref
+
 d=$(dirname $0)
 
 set -ex
 
+# Set up variables & parse parameters
 RECOUNT_CREDS=${d}/creds
-TAXID=9606
-ANALYSIS_NAME="rs5-lite-046"
-ANA_URL="docker://quay.io/benlangmead/recount-rs5-lite:0.4.7"
+ANALYSIS_NAME=$(grep '^ana_name' $d/project.ini | cut -d"=" -f2 | tr -d '[:space:]')
+ANA_URL=$(grep '^ana_url' $d/project.ini | cut -d"=" -f2 | tr -d '[:space:]')
 SRC_DIR="$d/../../src"
 ARGS="--ini-base ${RECOUNT_CREDS}"
 OUTPUT_DIR=$(grep '^output_base' ${RECOUNT_CREDS}/cluster.ini | cut -d"=" -f2 | tr -d '[:space:]')
-SPECIES=hg38
-SPECIES_FULL=homo_sapiens
-STUDY=geuv
+SPECIES=$(grep '^species_short' $d/project.ini | cut -d"=" -f2 | tr -d '[:space:]')
+SPECIES_FULL=$(grep '^species_long' $d/project.ini | cut -d"=" -f2 | tr -d '[:space:]')
+TAXID=$(grep '^taxid' $d/project.ini | cut -d"=" -f2 | tr -d '[:space:]')
+STUDY=$(grep '^study' $d/project.ini | cut -d"=" -f2 | tr -d '[:space:]')
 INPUT_SET=${STUDY}
+INPUT_JSON_URL=$(grep '^input_json_url' $d/project.ini | cut -d"=" -f2 | tr -d '[:space:]')
+INPUT_TXT_URL=$(grep '^input_txt_url' $d/project.ini | cut -d"=" -f2 | tr -d '[:space:]')
+INPUT_URL=${INPUT_JSON_URL}
+if [[ -z ${INPUT_URL} ]] ; then
+    INPUT_URL=${INPUT_TXT_URL}
+fi
 
-input_url="s3://recount-pump-experiments/${STUDY}/${STUDY}.json.gz"
+# Test that nothing is empty that shouldn't be
+test -n ${ANALYSIS_NAME}
+test -n ${ANA_URL}
+test -n ${OUTPUT_DIR}
+test -n ${SPECIES}
+test -n ${SPECIES_FULL}
+test -n ${TAXID}
+test -n ${STUDY}
+test -n ${INPUT_URL}
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 1: Load reference data"
@@ -45,6 +69,8 @@ add_source() (
         add-source "${url}" 'NA' 'NA' 'NA' 'NA' 'NA' "${retrieval_method}" | tail -n 1
 )
 
+# TODO: make the reference file list something that can go in the project ini
+# although, really, it's determined by the analysis
 srcid1=$(add_source "s3://recount-ref/${SPECIES}/star_idx.tar.gz" 's3')
 srcid2=$(add_source "s3://recount-ref/${SPECIES}/unmapped_hisat2_idx.tar.gz" 's3')
 srcid3=$(add_source "s3://recount-ref/${SPECIES}/kallisto_index.tar.gz" 's3')
@@ -150,14 +176,14 @@ echo "++++++++++++++++++++++++++++++++++++++++++++++"
 #    name = Column(String(1024))
 #    inputs = relationship("Input", secondary=input_association_table)
 
-input_fn=$(basename ${input_url})
+input_fn=$(basename ${INPUT_URL})
 rm -f "/tmp/${input_fn}"
 
-python ${SRC_DIR}/mover.py ${ARGS} get "${input_url}" "/tmp/${input_fn}"
+python ${SRC_DIR}/mover.py ${ARGS} get "${INPUT_URL}" "/tmp/${input_fn}"
 
-[[ ! -f /tmp/${input_fn} ]] && echo "Could not get input json" && exit 1 
+[[ ! -f /tmp/${input_fn} ]] && echo "Could not get input" && exit 1 
 
-import_input_set() (
+import_json_input_set() (
     set -exo pipefail
     json_file=$1
     input_set_name=$2
@@ -165,7 +191,20 @@ import_input_set() (
         "${json_file}" "${input_set_name}" | tail -n 1   
 )
 
-isid=$(import_input_set "/tmp/${input_fn}" "${INPUT_SET}")
+import_txt_input_set() (
+    set -exo pipefail
+    file=$1
+    input_set_name=$2
+    python ${SRC_DIR}/input.py ${ARGS} import-text \
+        "${file}" "${input_set_name}" | tail -n 1
+)
+
+if [[ -n ${INPUT_JSON_URL} ]] ; then
+    isid=$(import_json_input_set "/tmp/${input_fn}" "${INPUT_SET}")
+else
+    isid=$(import_txt_input_set "/tmp/${input_fn}" "${INPUT_SET}")
+fi
+
 test -n "${isid}"
 rm -f "/tmp/${input_fn}"
 
