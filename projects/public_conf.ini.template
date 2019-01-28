@@ -1,0 +1,19 @@
+# not-very-sensitive 
+db_user=
+db_region=
+db_subnet1=
+db_subnet2=
+db_dns=
+db_port=
+db_profile=
+db_dbname=
+
+log_profile=
+log_region=
+
+sqs_profile=
+sqs_region=
+sqs_endpoint=
+
+s3_profile=
+s3_endpoint=
