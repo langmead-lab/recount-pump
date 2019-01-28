@@ -549,6 +549,7 @@ def job_loop(project_id, q_ini, cluster_ini, worker_name, session,
                                   (nattempts, nfailures))
                 log_attempt(job, node_name, worker_name, session)
                 succeeded = False
+                assert visibility_timeout is not None
 
                 def heartbeat_func(st):
                     try:
