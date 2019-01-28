@@ -18,18 +18,18 @@ set -ex
 
 # Set up variables & parse parameters
 RECOUNT_CREDS=${d}/creds
-ANALYSIS_NAME=$(grep '^ana_name' $d/project.ini | cut -d"=" -f2 | tr -d '[:space:]')
-ANA_URL=$(grep '^ana_url' $d/project.ini | cut -d"=" -f2 | tr -d '[:space:]')
+ANALYSIS_NAME=$(grep '^ana_name' project.ini | cut -d"=" -f2 | tr -d '[:space:]')
+ANA_URL=$(grep '^ana_url' project.ini | cut -d"=" -f2 | tr -d '[:space:]')
 SRC_DIR="$d/../../src"
 ARGS="--ini-base ${RECOUNT_CREDS}"
 OUTPUT_DIR=$(grep '^output_base' ${RECOUNT_CREDS}/cluster.ini | cut -d"=" -f2 | tr -d '[:space:]')
-SPECIES=$(grep '^species_short' $d/project.ini | cut -d"=" -f2 | tr -d '[:space:]')
-SPECIES_FULL=$(grep '^species_long' $d/project.ini | cut -d"=" -f2 | tr -d '[:space:]')
-TAXID=$(grep '^taxid' $d/project.ini | cut -d"=" -f2 | tr -d '[:space:]')
-STUDY=$(grep '^study' $d/project.ini | cut -d"=" -f2 | tr -d '[:space:]')
+SPECIES=$(grep '^species_short' project.ini | cut -d"=" -f2 | tr -d '[:space:]')
+SPECIES_FULL=$(grep '^species_long' project.ini | cut -d"=" -f2 | tr -d '[:space:]')
+TAXID=$(grep '^taxid' project.ini | cut -d"=" -f2 | tr -d '[:space:]')
+STUDY=$(grep '^study' project.ini | cut -d"=" -f2 | tr -d '[:space:]')
 INPUT_SET=${STUDY}
-INPUT_JSON_URL=$(grep '^input_json_url' $d/project.ini | cut -d"=" -f2 | tr -d '[:space:]')
-INPUT_TXT_URL=$(grep '^input_txt_url' $d/project.ini | cut -d"=" -f2 | tr -d '[:space:]')
+INPUT_JSON_URL=$(grep '^input_json_url' project.ini | cut -d"=" -f2 | tr -d '[:space:]')
+INPUT_TXT_URL=$(grep '^input_txt_url' project.ini | cut -d"=" -f2 | tr -d '[:space:]')
 INPUT_URL=${INPUT_JSON_URL}
 if [[ -z ${INPUT_URL} ]] ; then
     INPUT_URL=${INPUT_TXT_URL}
