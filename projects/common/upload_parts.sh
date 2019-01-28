@@ -2,7 +2,7 @@
 
 d=$(dirname $0)
 
-species=$(grep '^species_short' $d/project.ini | cut -d"=" -f2 | tr -d '[:space:]')
+species=$(grep '^species_short' project.ini | cut -d"=" -f2 | tr -d '[:space:]')
 
 # TODO: get the list of reference files in a more parameterized way
 
