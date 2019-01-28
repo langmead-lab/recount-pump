@@ -1,6 +1,6 @@
 #!/bin/bash -l
 
-#SBATCH --job-name=geuv_skx
+#SBATCH --job-name=skx
 #SBATCH --partition=skx-normal
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
@@ -11,8 +11,8 @@ d=/work/04265/benbo81/stampede2/git/recount-pump
 
 set -ex
 
-hostname
-module load sratoolkit && fastq-dump -X 10 -L info DRR001484
+#hostname
+#module load sratoolkit && fastq-dump -X 10 -L info DRR001484
 
 python ${d}/src/cluster.py run \
     --ini-base ${d}/projects/geuvadis/creds \
