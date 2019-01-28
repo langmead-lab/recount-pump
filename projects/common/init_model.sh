@@ -17,7 +17,7 @@ d=$(dirname $0)
 set -ex
 
 # Set up variables & parse parameters
-RECOUNT_CREDS=${d}/creds
+RECOUNT_CREDS=creds
 ANALYSIS_NAME=$(grep '^ana_name' project.ini | cut -d"=" -f2 | tr -d '[:space:]')
 ANA_URL=$(grep '^ana_url' project.ini | cut -d"=" -f2 | tr -d '[:space:]')
 SRC_DIR="$d/../../src"
