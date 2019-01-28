@@ -13,11 +13,12 @@ RUN for i in `cat /tmp/more_conda.txt` ; do conda install -q -y -c bioconda -c c
 
 # install bamcount
 RUN apt-get install -y unzip
+ENV BC_VER=0.2.3
 RUN mkdir -p /bamcount && \
     cd /bamcount && \
-    wget -q https://github.com/BenLangmead/bamcount/releases/download/0.2.2/bamcount-0.2.2.zip && \
-    unzip bamcount-0.2.2.zip && \
-    rm -f bamcount-0.2.2.zip
+    wget -q https://github.com/BenLangmead/bamcount/releases/download/${BC_VER}/bamcount-${BC_VER}.zip && \
+    unzip bamcount-${BC_VER}.zip && \
+    rm -f bamcount-${BC_VER}.zip
 
 # install Snakefile
 COPY Snakefile /Snakefile

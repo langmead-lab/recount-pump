@@ -19,6 +19,8 @@ STEPS = ['sra_fastq', 'fastq_check', 'align', 'sort',
 FILES = ['sjout.zst', 'fastq_check.tsv.zst',
          'unmapped.bam', 'unmapped.fastq.zst',
          'bamcount_nonref.csv.zst',
+         'bamcount_auc.tsv',
+         'bamcount_frag.tsv',
          'Chimeric.out.junction.zst',
          'all.exon_bw_count.zst', 'unique.exon_bw_count.zst',
          'all.bw.zst', 'unique.bw.zst',
@@ -55,6 +57,8 @@ rule make_manifest:
         config['output'] + '/{trio}.unmapped.bam',
         config['output'] + '/{trio}.unmapped.fastq.zst',
         config['output'] + '/{trio}.bamcount_nonref.csv.zst',
+        config['output'] + '/{trio}.bamcount_auc.tsv',
+        config['output'] + '/{trio}.bamcount_frag.tsv',
         config['output'] + '/{trio}.fastq_check.tsv.zst',
         config['output'] + '/{trio}.all.exon_bw_count.zst',
         config['output'] + '/{trio}.unique.exon_bw_count.zst',
@@ -85,7 +89,8 @@ rule bamcount:
         bed=lambda wildcards: '%s/%s/gtf/%s' % (config['ref'], wildcards.trio.split('_')[2], config.get('bw_bed', 'exons.bed'))
     output:
         nonref=config['output'] + '/{trio}.bamcount_nonref.csv.zst',
-        auc=config['output'] + '/{trio}.bamcount_auc.txt',
+        auc=config['output'] + '/{trio}.bamcount_auc.tsv',
+        frag=config['output'] + '/{trio}.bamcount_frag.tsv',
         all_bw=config['output'] + '/{trio}.all.bw.zst',
         unique_bw=config['output'] + '/{trio}.unique.bw.zst',
         all_bw_count=config['output'] + '/{trio}.all.exon_bw_count.zst',
@@ -98,41 +103,78 @@ rule bamcount:
     threads: 4
     shell:
         """
-        TMP_NONREF={config[temp]}/{params.srr}.bamcount_nonref.csv
-        TMP_OUT_PREFIX={config[temp]}/{params.srr}
+        TMP={config[temp]}/{params.srr}_bamcount
         {input.exe} {input.bam} \
             --threads {threads} \
             --coverage \
             --no-head \
-            --bigwig ${{TMP_OUT_PREFIX}} \
             --min-unique-qual {params.uniq_qual} \
-            --annotation {input.bed} ${{TMP_OUT_PREFIX}} \
-            --alts > ${{TMP_NONREF}} 2> {output.auc} 
+            --frag-dist ${{TMP}} \
+            --bigwig ${{TMP}} \
+            --annotation {input.bed} ${{TMP}} \
+            --auc ${{TMP}} \
+            --alts ${{TMP}} \
+            2>&1 | tee -a {log}
 
-        (time zstd ${{TMP_NONREF}} -o {output.nonref}) 2>&1 | tee -a {log}
+        #
+        # --alts
+        #
+
+        (time zstd ${{TMP}}.alts.tsv -o {output.nonref}) 2>&1 | tee -a {log}
         size=$(wc -c < {output.nonref})
         echo "COUNT_NonrefSize ${{size}}"
-        rm -f ${{TMP_NONREF}}
+        rm -f ${{TMP}}.alts.tsv
 
-        (time zstd ${{TMP_OUT_PREFIX}}.all.bw -o {output.all_bw}) 2>&1 | tee -a {log}
+        #
+        # --auc
+        #
+        mv ${{TMP}}.auc.tsv {output.auc}
+        size=$(wc -c < {output.auc})
+        echo "COUNT_AucSize ${{size}}"
+        rm -f ${{TMP}}.auc.tsv
+
+        #
+        # --frag-dist
+        #
+        mv ${{TMP}}.frags.tsv {output.frag}
+        size=$(wc -c < {output.frag})
+        echo "COUNT_FragDistSize ${{size}}"
+        rm -f ${{TMP}}.frags.tsv
+
+        #
+        # --bigwig
+        #
+
+        (time zstd ${{TMP}}.all.bw -o {output.all_bw}) 2>&1 | tee -a {log}
         size=$(wc -c < {output.all_bw})
         echo "COUNT_BwSize ${{size}}"
-        rm -f ${{TMP_OUT_PREFIX}}.all.bw
+        rm -f ${{TMP}}.all.bw
 
-        (time zstd ${{TMP_OUT_PREFIX}}.unique.bw -o {output.unique_bw}) 2>&1 | tee -a {log}
+        (time zstd ${{TMP}}.unique.bw -o {output.unique_bw}) 2>&1 | tee -a {log}
         size=$(wc -c < {output.unique_bw})
         echo "COUNT_BwSize ${{size}}"
-        rm -f ${{TMP_OUT_PREFIX}}.unique.bw
+        rm -f ${{TMP}}.unique.bw
 
-        (time zstd ${{TMP_OUT_PREFIX}}.all.tsv -o {output.all_bw_count}) 2>&1 | tee -a {log}
+        #
+        # --annotation
+        #
+
+        (time zstd ${{TMP}}.all.tsv -o {output.all_bw_count}) 2>&1 | tee -a {log}
         size=$(wc -c < {output.all_bw_count})
         echo "COUNT_BwQuantSize ${{size}}"
-        rm -f ${{TMP_OUT_PREFIX}}.all.bw
+        rm -f ${{TMP}}.all.tsv
 
-        (time zstd ${{TMP_OUT_PREFIX}}.unique.tsv -o {output.unique_bw_count}) 2>&1 | tee -a {log}
+        (time zstd ${{TMP}}.unique.tsv -o {output.unique_bw_count}) 2>&1 | tee -a {log}
         size=$(wc -c < {output.unique_bw_count})
         echo "COUNT_BwQuantSize ${{size}}"
-        rm -f ${{TMP_OUT_PREFIX}}.unique.bw
+        rm -f ${{TMP}}.unique.tsv
+
+        # Check that all temporaries were properly purged
+        set +o pipefail ; num_files=$(ls -d ${{TMP}}* 2>/dev/null | wc -l)
+        if (( $num_files > 0 )) ; then
+            echo "Failed to purge files (ignore . and ..): $(ls -ad ${{TMP}}*)"
+            exit 1
+        fi
 
         echo "COUNT_BamcountComplete 1"
         """
@@ -371,7 +413,6 @@ rule align:
             --readFilesIn ${{READ_FILES}} \
             --twopassMode None \
             --genomeLoad LoadAndRemove \
-            --outSJfilterDistToOtherSJmin 0 0 0 0 \
             --outTmpDir ${{TMP}} \
             --outReadsUnmapped Fastx \
             --outMultimapperOrder Random \
