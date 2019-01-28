@@ -1,5 +1,9 @@
 #!/bin/sh
 
+# Run this from a specific project directory while analysis jobs are underway.
+# It parses the slurm*.out files for strings that typically indicate errors,
+# and tallies the types of errors.
+
 echo "=============="
 echo "Rule-based"
 echo "=============="
