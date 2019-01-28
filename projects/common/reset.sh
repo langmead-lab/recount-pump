@@ -2,7 +2,7 @@
 
 set -ex
 
-STUDY=$(grep '^study' $d/project.ini | cut -d"=" -f2 | tr -d '[:space:]')
+STUDY=$(grep '^study' project.ini | cut -d"=" -f2 | tr -d '[:space:]')
 
 ../../aws/logs/delete.sh recount_${STUDY}
 ../../aws/db/reset_db.sh recount_${STUDY}
