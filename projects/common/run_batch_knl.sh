@@ -16,6 +16,6 @@ set -ex
 #module load sratoolkit && fastq-dump -X 10 -L info DRR001484
 
 python ${d}/src/cluster.py run \
-    --ini-base ${d}/projects/geuvadis/creds \
+    --ini-base creds \
     --cluster-ini ~/.recount/cluster-knl.ini \
     1
