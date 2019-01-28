@@ -13,6 +13,6 @@
 d=/scratch/users/blangme2@jhu.edu/git/recount-pump
 
 python ${d}/src/cluster.py prepare \
-    --ini-base ${d}/projects/geuvadis/creds \
+    --ini-base creds \
     --cluster-ini ~/.recount/cluster-shared.ini \
     1
