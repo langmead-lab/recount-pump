@@ -6,7 +6,6 @@ db_subnet2=
 db_dns=
 db_port=
 db_profile=
-db_dbname=
 
 log_profile=
 log_region=
