@@ -33,6 +33,11 @@ def go():
         raise RuntimeError('Could not find private conf "%s"' % private_conf_fn)
     options.update(parse_project_ini(private_conf_fn))
 
+    project_fn = 'project.ini'
+    if not os.path.exists(project_fn):
+        raise RuntimeError('Could not find project conf "%s"' % project_fn)
+    options.update(parse_project_ini(project_fn))
+
     creds_dirname = os.path.join(common_dirname, 'creds')
     if not os.path.exists(creds_dirname):
         raise RuntimeError('No such creds template dir as "%s"' % creds_dirname)
@@ -52,6 +57,8 @@ def go():
                         kvar = '%' + k + '%'
                         if kvar in new_ln:
                             new_ln = new_ln.replace(kvar, v)
+                    if '%' in new_ln:
+                        raise ValueError('Failed at least one substitution in line: %s' % new_ln)
                     ofh.write(new_ln)
 
 
