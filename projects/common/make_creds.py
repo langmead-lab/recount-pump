@@ -95,7 +95,7 @@ def go():
 
     if clust_creds_dirname is not None:
         for fn in os.listdir(clust_creds_dirname):
-            template_fn = os.path.join(creds_dirname, fn)
+            template_fn = os.path.join(clust_creds_dirname, fn)
             new_fn = os.path.join('creds', fn)
             with open(new_fn, 'wt') as ofh:
                 with open(template_fn, 'rt') as fh:
