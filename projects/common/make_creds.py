@@ -146,7 +146,7 @@ def go():
             if os.path.isdir(fn) or not fn.endswith('.ini'):
                 continue
             n += 1
-            template_fn = os.path.join(clust_dirname, fn)  # input file
+            template_fn = os.path.join(creds_output, fn)  # input file
             new_fn = os.path.join('creds', fn)             # output file
             with open(new_fn, 'wt') as ofh:
                 with open(template_fn, 'rt') as fh:
