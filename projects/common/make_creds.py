@@ -147,16 +147,16 @@ def go():
                 continue
             n += 1
             template_fn = os.path.join(creds_output, fn)  # input file
-            new_fn = os.path.join('creds', fn)             # output file
+            new_fn = os.path.join('creds', fn)            # output file
             with open(new_fn, 'wt') as ofh:
                 with open(template_fn, 'rt') as fh:
                     for ln in fh:
                         new_ln = ln
                         for k, v in options.items():
-                            assert not isinstance(v, list)
-                            kvar = '%' + k + '%'
-                            if kvar in new_ln:
-                                new_ln = new_ln.replace(kvar, v)
+                            if not isinstance(v, list):
+                                kvar = '%' + k + '%'
+                                if kvar in new_ln:
+                                    new_ln = new_ln.replace(kvar, v)
                         if '%' in new_ln:
                             raise ValueError('Failed at least one substitution in line: %s' % new_ln)
                         ofh.write(new_ln)
