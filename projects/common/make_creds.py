@@ -68,27 +68,27 @@ def go():
         raise RuntimeError('Could not find private conf "%s"' % private_conf_fn)
     options.update(parse_project_ini(private_conf_fn))
 
-    cluster_dirname = os.path.join(common_dirname, 'clusters')
-    cluster_scr = os.path.join(cluster_dirname, 'cluster.sh')
+    top_cluster_dirname = os.path.join(common_dirname, 'clusters')
+    cluster_scr = os.path.join(top_cluster_dirname, 'cluster.sh')
     p = subprocess.Popen([cluster_scr], shell=True, stdout=subprocess.PIPE)
     out, _ = p.communicate()
     cluster_name, clust_dirname = None, None
     if p.returncode == 0:
         cluster_name = out.strip()
         print('Determined cluster is "%s"' % cluster_name, file=sys.stderr)
-        clust_dirname = os.path.join(cluster_dirname, cluster_name)
+        clust_dirname = os.path.join(top_cluster_dirname, cluster_name)
 
         if not os.path.exists(clust_dirname):
             raise RuntimeError('No such cluster ini directory as "%s"' % clust_dirname)
 
         print('Parsing public cluster conf', file=sys.stderr)
-        public_clust_fn = os.path.join(cluster_dirname, 'public_conf.ini')
+        public_clust_fn = os.path.join(clust_dirname, 'public_conf.ini')
         if not os.path.exists(public_clust_fn):
             raise RuntimeError('Could not find public cluster conf "%s"' % public_clust_fn)
         options.update(parse_project_ini(public_clust_fn))
 
         print('Parsing private cluster conf', file=sys.stderr)
-        private_clust_fn = os.path.join(cluster_dirname, 'private_conf.ini')
+        private_clust_fn = os.path.join(clust_dirname, 'private_conf.ini')
         if not os.path.exists(private_clust_fn):
             raise RuntimeError('Could not find private cluster conf "%s"' % private_clust_fn)
         options.update(parse_project_ini(private_clust_fn))
@@ -176,7 +176,7 @@ def go():
             print('  Working on ini/sh for cluster/partition "%s/%s"' % (cluster_name, partition), file=sys.stderr)
 
             print('Parsing partition conf for "%s/%s"' % (cluster_name, partition), file=sys.stderr)
-            part_fn = os.path.join(cluster_dirname, fn, 'partition.ini')
+            part_fn = os.path.join(top_cluster_dirname, fn, 'partition.ini')
             if not os.path.exists(part_fn):
                 raise RuntimeError('No partition.ini file in "%s/%s"' % (clust_dirname, fn))
             part_options = options.copy()
