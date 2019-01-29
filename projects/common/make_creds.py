@@ -14,7 +14,9 @@ def parse_project_ini(fn):
             if len(ln) == 0 or ln[0] == '#':
                 continue
             toks = ln.split('=')
-            assert 2 == len(toks)
+            assert len(toks) >= 2
+            if len(toks) > 2:
+                toks[1] = '='.join(toks[1:])
             k, v = toks[0].strip(), toks[1].strip()
             if k in options:
                 raise ValueError('key "%s" used more than once' % k)
