@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
-if grep -q Stampede2 /etc/motd ; then
+if [[ -f /etc/motd ]] && grep -q Stampede2 /etc/motd ; then
     echo stampede2
 elif echo $(hostname) | grep -q bc-login ; then
     echo marcc
-elif grep -q hhpc /etc/hosts ; then
+elif [[ -f /etc/hosts ]] && grep -q hhpc /etc/hosts ; then
     echo hhpc
 else
     echo "Unknown cluster"
