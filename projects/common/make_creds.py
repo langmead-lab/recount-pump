@@ -12,12 +12,12 @@ from __future__ import print_function
 import os
 import sys
 import subprocess
+import copy
 
 
 # TODO: set umask
 
-def parse_project_ini(fn):
-    options = {}
+def parse_project_ini(fn, options):
     with open(fn, 'rt') as fh:
         for ln in fh:
             ln = ln.rstrip()
@@ -46,7 +46,6 @@ def parse_project_ini(fn):
                 if k in options:
                     raise ValueError('key "%s" used more than once' % k)
                 options[k] = v
-    return options
 
 
 def go():
@@ -60,13 +59,14 @@ def go():
     public_conf_fn = 'public_conf.ini'
     if not os.path.exists(public_conf_fn):
         raise RuntimeError('Could not find public conf "%s"' % public_conf_fn)
-    options = parse_project_ini(public_conf_fn)
+    options = {}
+    parse_project_ini(public_conf_fn, options)
 
     print('Parsing private project conf', file=sys.stderr)
     private_conf_fn = 'private_conf.ini'
     if not os.path.exists(private_conf_fn):
         raise RuntimeError('Could not find private conf "%s"' % private_conf_fn)
-    options.update(parse_project_ini(private_conf_fn))
+    parse_project_ini(private_conf_fn, options)
 
     top_cluster_dirname = os.path.join(common_dirname, 'clusters')
     cluster_scr = os.path.join(top_cluster_dirname, 'cluster.sh')
@@ -85,13 +85,13 @@ def go():
         public_clust_fn = os.path.join(clust_dirname, 'public_conf.ini')
         if not os.path.exists(public_clust_fn):
             raise RuntimeError('Could not find public cluster conf "%s"' % public_clust_fn)
-        options.update(parse_project_ini(public_clust_fn))
+        parse_project_ini(public_clust_fn, options)
 
         print('Parsing private cluster conf', file=sys.stderr)
         private_clust_fn = os.path.join(clust_dirname, 'private_conf.ini')
         if not os.path.exists(private_clust_fn):
             raise RuntimeError('Could not find private cluster conf "%s"' % private_clust_fn)
-        options.update(parse_project_ini(private_clust_fn))
+        parse_project_ini(private_clust_fn, options)
 
         # Per-partition confs are left for loop below
 
@@ -102,7 +102,7 @@ def go():
     project_fn = 'project.ini'
     if not os.path.exists(project_fn):
         raise RuntimeError('Could not find project conf "%s"' % project_fn)
-    options.update(parse_project_ini(project_fn))
+    parse_project_ini(project_fn, options)
 
     creds_dirname = os.path.join(common_dirname, 'creds')
     if not os.path.exists(creds_dirname):
@@ -169,35 +169,43 @@ def go():
         # Includes: cluster-<partition>.ini, job-<partition>.sh
         #
 
+        n = 0
         for fn in os.listdir(clust_dirname):
             if fn == 'creds':
                 continue
+            full_fn = os.path.join(clust_dirname, fn)
+            if not os.path.isdir(full_fn):
+                continue
+            n += 1
             partition = fn
             print('  Working on ini/sh for cluster/partition "%s/%s"' % (cluster_name, partition), file=sys.stderr)
 
             print('Parsing partition conf for "%s/%s"' % (cluster_name, partition), file=sys.stderr)
-            part_fn = os.path.join(top_cluster_dirname, fn, 'partition.ini')
+            part_fn = os.path.join(clust_dirname, fn, 'partition.ini')
             if not os.path.exists(part_fn):
                 raise RuntimeError('No partition.ini file in "%s/%s"' % (clust_dirname, fn))
-            part_options = options.copy()
-            part_options.update(parse_project_ini(part_fn))
+            part_options = copy.deepcopy(options)
+            parse_project_ini(part_fn, part_options)
 
             part_ini_fn = os.path.join('creds', 'cluster-%s.ini' % partition)
             with open(part_ini_fn, 'wt') as fh:
-                for k, v in part_options.items():
+                for k, v in sorted(part_options.items()):
                     if k.startswith('cluster_') and not isinstance(v, list):
                         fh.write('%s=%s\n' % (k[len('cluster_'):], v))
 
-            job_sh_fn = os.path.join(creds_output, 'job-%s.sh' % partition)
+            job_sh_fn = os.path.join('creds', 'job-%s.sh' % partition)
             with open(job_sh_fn, 'wt') as fh:
                 assert 'cluster_batch_header' in part_options
                 assert 'cluster_pump_dir' in part_options
                 head = part_options['cluster_batch_header']
-                fh.write('\n'.join(head))
+                fh.write('\n'.join(head) + '\n\n')
                 cluster_py = os.path.join(part_options['cluster_pump_dir'], 'src', 'cluster.py')
                 # TODO: assumes project id is 1
-                fh.write('python %s run --ini-base creds --cluster-ini creds/%s 1\n' %
+                fh.write('python %s run --ini-base creds --cluster-ini %s 1\n' %
                          (cluster_py, part_ini_fn))
+
+        if n == 0:
+            raise RuntimeError('No subdirectories in "%s"' % clust_dirname)
 
 
 if __name__ == '__main__':
