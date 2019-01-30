@@ -195,13 +195,23 @@ def go():
 
             job_sh_fn = os.path.join('creds', 'job-%s.sh' % partition)
             with open(job_sh_fn, 'wt') as fh:
-                assert 'cluster_batch_header' in part_options
+                assert 'cluster_job_header' in part_options
                 assert 'cluster_pump_dir' in part_options
                 head = part_options['cluster_batch_header']
                 fh.write('\n'.join(head) + '\n\n')
                 cluster_py = os.path.join(part_options['cluster_pump_dir'], 'src', 'cluster.py')
                 # TODO: assumes project id is 1
                 fh.write('python %s run --ini-base creds --cluster-ini %s 1\n' %
+                         (cluster_py, part_ini_fn))
+
+            prep_sh_fn = os.path.join('creds', 'prep-%s.sh' % partition)
+            with open(prep_sh_fn, 'wt') as fh:
+                assert 'cluster_prep_header' in part_options
+                head = part_options['cluster_prep_header']
+                fh.write('\n'.join(head) + '\n\n')
+                cluster_py = os.path.join(part_options['cluster_pump_dir'], 'src', 'cluster.py')
+                # TODO: assumes project id is 1
+                fh.write('python %s prep --ini-base creds --cluster-ini %s 1\n' %
                          (cluster_py, part_ini_fn))
 
         if n == 0:
