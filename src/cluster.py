@@ -856,7 +856,7 @@ def go():
     log.init_logger(log.LOG_GROUP_NAME, log_ini=log_ini, agg_level=args['--log-level'])
     log.init_logger('sqlalchemy', log_ini=log_ini, agg_level=args['--log-level'],
                     sender='sqlalchemy')
-    signal.signal(signal.SIGUSR1, lambda sig, stack: traceback.print_stack(stack))
+    #signal.signal(signal.SIGUSR1, lambda sig, stack: traceback.print_stack(stack))
 
     try:
         db_ini = ini_path('--db-ini')
