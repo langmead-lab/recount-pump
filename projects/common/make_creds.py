@@ -197,7 +197,7 @@ def go():
             with open(job_sh_fn, 'wt') as fh:
                 assert 'cluster_job_header' in part_options
                 assert 'cluster_pump_dir' in part_options
-                head = part_options['cluster_batch_header']
+                head = part_options['cluster_job_header']
                 fh.write('\n'.join(head) + '\n\n')
                 cluster_py = os.path.join(part_options['cluster_pump_dir'], 'src', 'cluster.py')
                 # TODO: assumes project id is 1
