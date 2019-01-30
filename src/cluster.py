@@ -784,7 +784,7 @@ def worker(project_id, worker_name, q_ini, cluster_ini, engine, max_fail,
     engine.dispose()
     connection = engine.connect()
     session = Session(bind=connection)
-    signal.signal(signal.SIGUSR1, lambda sig, stack: traceback.print_stack(stack))
+    #signal.signal(signal.SIGUSR1, lambda sig, stack: traceback.print_stack(stack))
     print(job_loop(project_id, q_ini, cluster_ini, worker_name, session,
                    max_fails=max_fail,
                    sleep_seconds=poll_seconds,
