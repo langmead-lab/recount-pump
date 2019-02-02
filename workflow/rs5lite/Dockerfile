@@ -13,7 +13,7 @@ RUN for i in `cat /tmp/more_conda.txt` ; do conda install -q -y -c bioconda -c c
 
 # install bamcount
 RUN apt-get install -y unzip
-ENV BC_VER=0.2.3
+ENV BC_VER=0.2.4
 RUN mkdir -p /bamcount && \
     cd /bamcount && \
     wget -q https://github.com/BenLangmead/bamcount/releases/download/${BC_VER}/bamcount-${BC_VER}.zip && \
