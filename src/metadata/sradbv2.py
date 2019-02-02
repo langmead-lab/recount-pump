@@ -309,6 +309,7 @@ taxa = {'A thaliana': 3702,      # 4. arabidopsis
         'Z mays': 4577}          # 8: corn
 
 
+# experiment.library_selection:"size fractionation"
 rna_seq_query = ['experiment.library_strategy:"rna seq"',
                  'experiment.library_source:transcriptomic',
                  'experiment.platform:illumina']
@@ -323,6 +324,7 @@ def summarize_rna():
     summ_h = defaultdict(list)
     for name, taxid in taxa.items():
         query = 'sample.taxon_id:%d AND %s' % (taxid, ' AND '.join(rna_seq_query))
+        #query += ' AND NOT experiment.library_selection:"size fractionation"'
         count = count_search(query)
         sc_query = query + ' AND (' + ' OR '.join(single_cell_query) + ')'
         sc_count = count_search(sc_query)
