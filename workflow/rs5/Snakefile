@@ -30,6 +30,8 @@ FILES = ['sjout.zst', 'fastq_check.tsv.zst',
          'Chimeric.out.junction.zst',
          'all.gene_fc_count.zst', 'unique.gene_fc_count.zst',
          'all.exon_fc_count.zst', 'unique.exon_fc_count.zst',
+         'all.gene_fc_count.summary', 'unique.gene_fc_count.summary',
+         'all.exon_fc_count.summary', 'unique.exon_fc_count.summary',
          'all.exon_bw_count.zst', 'unique.exon_bw_count.zst',
          'all.bw.zst', 'unique.bw.zst',
          'kallisto.tsv.zst', 'salmon.tsv.zst',
@@ -73,6 +75,10 @@ rule make_manifest:
         config['output'] + '/{trio}.all.exon_fc_count.zst',
         config['output'] + '/{trio}.unique.gene_fc_count.zst',
         config['output'] + '/{trio}.unique.exon_fc_count.zst',
+        config['output'] + '/{trio}.all.gene_fc_count.summary',
+        config['output'] + '/{trio}.all.exon_fc_count.summary',
+        config['output'] + '/{trio}.unique.gene_fc_count.summary',
+        config['output'] + '/{trio}.unique.exon_fc_count.summary',
         config['output'] + '/{trio}.all.exon_bw_count.zst',
         config['output'] + '/{trio}.unique.exon_bw_count.zst',
         config['output'] + '/{trio}.all.bw.zst',
@@ -126,6 +132,7 @@ rule bamcount:
             --threads {threads} \
             --coverage \
             --no-head \
+            --require-mdz \
             --min-unique-qual {params.uniq_qual} \
             --frag-dist ${{TMP}} \
             --bigwig ${{TMP}} \
@@ -202,7 +209,8 @@ rule gene_fc_count_all:
         bam=config['temp'] + '/{trio}.bam',  # mates should be together for featureCounts
         gtf=lambda wildcards: '%s/%s/gtf/genes.gtf' % (config['ref'], wildcards.trio.split('_')[2])
     output:
-        config['output'] + '/{trio}.all.gene_fc_count.zst'
+        counts=config['output'] + '/{trio}.all.gene_fc_count.zst',
+        summary=config['output'] + '/{trio}.all.gene_fc_count.summary'
     log:
         config['output'] + '/{trio}.gene_fc_count_all.log'
     params:
@@ -213,21 +221,25 @@ rule gene_fc_count_all:
         """
         TMP={config[temp]}/{params.srr}.gene_fc_count_all.tsv
         TMP2={config[temp]}/{params.srr}.all.gene_count
-        (time featureCounts {params.fc_param} -p -a {input.gtf} -T {threads} \
+        (time featureCounts {params.fc_param} -M --primary -p -a {input.gtf} -T {threads} \
             -o ${{TMP}} {input.bam}) 2>&1 | tee -a {log}
+
+        test -f ${{TMP}}
+        test -f ${{TMP}}.summary
+
+        # Get rid of header and comment, and add SRR to beginning of line
         awk -v OFS='\\t' '$1 !~ /^#/ && $1 !~ /^Geneid/ && $NF != 0 {{print "{params.srr}",$0}}' \
             ${{TMP}} > ${{TMP2}}
-
-        size=$(wc -c < ${{TMP2}})
-        echo "COUNT_GeneFcCountAllSize ${{size}}"
-
         rm -f ${{TMP}}
-        (time zstd ${{TMP2}} -o {output}) 2>&1 | tee -a {log}
 
-        size=$(wc -c <{output})
-        echo "COUNT_CompressedGeneFcCountAllSize ${{size}}"
+        (time zstd ${{TMP2}} -o {output.counts}) 2>&1 | tee -a {log}
 
+        size=$(wc -c < {output.counts})
+        echo "COUNT_FcCountBytes ${{size}}"
         rm -f ${{TMP2}}
+
+        mv ${{TMP}}.summary {output.summary}
+
         echo "COUNT_GeneFcCountAllComplete 1"
         """
 
@@ -236,7 +248,8 @@ rule gene_fc_count_unique:
         bam=config['temp'] + '/{trio}.bam',  # mates should be together for featureCounts
         gtf=lambda wildcards: '%s/%s/gtf/genes.gtf' % (config['ref'], wildcards.trio.split('_')[2])
     output:
-        config['output'] + '/{trio}.unique.gene_fc_count.zst'
+        counts=config['output'] + '/{trio}.unique.gene_fc_count.zst',
+        summary=config['output'] + '/{trio}.unique.gene_fc_count.summary'
     log:
         config['output'] + '/{trio}.gene_fc_count_unique.log'
     params:
@@ -248,21 +261,25 @@ rule gene_fc_count_unique:
         """
         TMP={config[temp]}/{params.srr}.gene_fc_count_unique.tsv
         TMP2={config[temp]}/{params.srr}.unique.gene_count
-        (time featureCounts {params.fc_param} -Q {params.fc_uniq} -p -a {input.gtf} -T {threads} \
+        (time featureCounts {params.fc_param} -M --primary -Q {params.fc_uniq} -p -a {input.gtf} -T {threads} \
             -o ${{TMP}} {input.bam}) 2>&1 | tee -a {log}
+
+        test -f ${{TMP}}
+        test -f ${{TMP}}.summary
+
+        # Get rid of header and comment, and add SRR to beginning of line
         awk -v OFS='\\t' '$1 !~ /^#/ && $1 !~ /^Geneid/ && $NF != 0 {{print "{params.srr}",$0}}' \
             ${{TMP}} > ${{TMP2}}
-
-        size=$(wc -c < ${{TMP2}})
-        echo "COUNT_GeneFcCountUniqueSize ${{size}}"
-
         rm -f ${{TMP}}
-        (time zstd ${{TMP2}} -o {output}) 2>&1 | tee -a {log}
 
-        size=$(wc -c < {output})
-        echo "COUNT_CompressedGeneFcCountUniqueSize ${{size}}"
+        (time zstd ${{TMP2}} -o {output.counts}) 2>&1 | tee -a {log}
 
+        size=$(wc -c < {output.counts})
+        echo "COUNT_FcCountBytes ${{size}}"
         rm -f ${{TMP2}}
+
+        mv ${{TMP}}.summary {output.summary}
+
         echo "COUNT_GeneFcCountUniqueComplete 1"
         """
 
@@ -272,7 +289,8 @@ rule exon_fc_count_all:
         bamidx=config['temp'] + '/{trio}.sorted.bam.bai',
         gtf=lambda wildcards: '%s/%s/gtf/genes.gtf' % (config['ref'], wildcards.trio.split('_')[2])
     output:
-        config['output'] + '/{trio}.all.exon_fc_count.zst'
+        counts=config['output'] + '/{trio}.all.exon_fc_count.zst',
+        summary=counts=config['output'] + '/{trio}.all.exon_fc_count.summary'
     log:
         config['output'] + '/{trio}.exon_fc_count_all.log'
     params:
@@ -285,19 +303,23 @@ rule exon_fc_count_all:
         TMP2={config[temp]}/{params.srr}.all.exon_count
         (time featureCounts {params.fc_param} -O -f -p -a {input.gtf} -T {threads} \
             -o ${{TMP}} {input.bam}) 2>&1 | tee -a {log}
+
+        test -f ${{TMP}}
+        test -f ${{TMP}}.summary
+
+        # Get rid of header and comment, and add SRR to beginning of line
         awk -v OFS='\\t' '$1 !~ /^#/ && $1 !~ /^Geneid/ && $NF != 0 {{print "{params.srr}",$0}}' \
             ${{TMP}} > ${{TMP2}}
-
-        size=$(wc -c < ${{TMP2}})
-        echo "COUNT_ExonFcCountAllSize ${{size}}"
-
         rm -f ${{TMP}}
-        (time zstd ${{TMP2}} -o {output}) 2>&1 | tee -a {log}
 
-        size=$(wc -c < {output})
-        echo "COUNT_CompressedExonFcCountAllSize ${{size}}"
+        (time zstd ${{TMP2}} -o {output.counts}) 2>&1 | tee -a {log}
 
+        size=$(wc -c < {output.counts})
+        echo "COUNT_FcCountBytes ${{size}}"
         rm -f ${{TMP2}}
+
+        mv ${{TMP}}.summary {output.summary}
+
         echo "COUNT_ExonFcCountAllComplete 1"
         """
 
@@ -307,7 +329,8 @@ rule exon_fc_count_unique:
         bamidx=config['temp'] + '/{trio}.sorted.bam.bai',
         gtf=lambda wildcards: '%s/%s/gtf/genes.gtf' % (config['ref'], wildcards.trio.split('_')[2])
     output:
-        config['output'] + '/{trio}.unique.exon_fc_count.zst'
+        counts=config['output'] + '/{trio}.unique.exon_fc_count.zst',
+        summary=config['output'] + '/{trio}.unique.exon_fc_count.summary'
     log:
         config['output'] + '/{trio}.exon_fc_count_unique.log'
     params:
@@ -321,18 +344,23 @@ rule exon_fc_count_unique:
         TMP2={config[temp]}/{params.srr}.unique.exon_count
         (time featureCounts {params.fc_param} -Q {params.fc_uniq} -O -f -p -a {input.gtf} -T {threads} \
             -o ${{TMP}} {input.bam}) 2>&1 | tee -a {log}
+
+        test -f ${{TMP}}
+        test -f ${{TMP}}.summary
+
+        # Get rid of header and comment, and add SRR to beginning of line
         awk -v OFS='\\t' '$1 !~ /^#/ && $1 !~ /^Geneid/ && $NF != 0 {{print "{params.srr}",$0}}' \
             ${{TMP}} > ${{TMP2}}
+        rm -f ${{TMP}}
 
-        size=$(wc -c < ${{TMP2}})
-        echo "COUNT_ExonFcCountUniqueSize ${{size}}"
+        (time zstd ${{TMP2}} -o {output.counts}) 2>&1 | tee -a {log}
 
-        (time zstd ${{TMP2}} -o {output}) 2>&1 | tee -a {log}
-
-        size=$(wc -c < {output})
-        echo "COUNT_CompressedExonFcCountUniqueSize ${{size}}"
-
+        size=$(wc -c < {output.counts})
+        echo "COUNT_FcCountBytes ${{size}}"
         rm -f ${{TMP2}}
+
+        mv ${{TMP}}.summary {output.summary}
+
         echo "COUNT_ExonFcCountUniqueComplete 1"
         """
 
@@ -534,7 +562,7 @@ rule align_unmapped:
         test -f ${{TMP}}.samp.fastq
         time zstd ${{TMP}}.samp.fastq -o {output.sample} 2>&1 | tee -a {log}
         size=$(wc -c < {output.sample})
-        echo "COUNT_UnmappedSampleByes ${{size}}"
+        echo "COUNT_UnmappedSampleBytes ${{size}}"
         rm -f ${{TMP}}.samp.fastq
     
         size=$(wc -c < {output.bam})

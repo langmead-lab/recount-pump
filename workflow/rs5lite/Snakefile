@@ -108,6 +108,7 @@ rule bamcount:
             --threads {threads} \
             --coverage \
             --no-head \
+            --require-mdz \
             --min-unique-qual {params.uniq_qual} \
             --frag-dist ${{TMP}} \
             --bigwig ${{TMP}} \
@@ -340,7 +341,7 @@ rule align_unmapped:
         test -f ${{TMP}}.samp.fastq
         time zstd ${{TMP}}.samp.fastq -o {output.sample} 2>&1 | tee -a {log}
         size=$(wc -c < {output.sample})
-        echo "COUNT_UnmappedSampleByes ${{size}}"
+        echo "COUNT_UnmappedSampleBytes ${{size}}"
         rm -f ${{TMP}}.samp.fastq
     
         size=$(wc -c < {output.bam})
