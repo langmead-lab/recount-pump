@@ -290,7 +290,7 @@ rule exon_fc_count_all:
         gtf=lambda wildcards: '%s/%s/gtf/genes.gtf' % (config['ref'], wildcards.trio.split('_')[2])
     output:
         counts=config['output'] + '/{trio}.all.exon_fc_count.zst',
-        summary=counts=config['output'] + '/{trio}.all.exon_fc_count.summary'
+        summary=config['output'] + '/{trio}.all.exon_fc_count.summary'
     log:
         config['output'] + '/{trio}.exon_fc_count_all.log'
     params:
