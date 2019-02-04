@@ -74,7 +74,7 @@ def go():
     out, _ = p.communicate()
     cluster_name, clust_dirname = None, None
     if p.returncode == 0:
-        cluster_name = out.strip()
+        cluster_name = out.strip().decode()
         print('Determined cluster is "%s"' % cluster_name, file=sys.stderr)
         clust_dirname = os.path.join(top_cluster_dirname, cluster_name)
 
