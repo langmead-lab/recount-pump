@@ -189,6 +189,7 @@ def go():
 
             part_ini_fn = os.path.join('creds', 'cluster-%s.ini' % partition)
             with open(part_ini_fn, 'wt') as fh:
+                fh.write('[cluster]\n')
                 for k, v in sorted(part_options.items()):
                     if k.startswith('cluster_') and not isinstance(v, list):
                         fh.write('%s=%s\n' % (k[len('cluster_'):], v))
@@ -211,7 +212,7 @@ def go():
                 fh.write('\n'.join(head) + '\n\n')
                 cluster_py = os.path.join(part_options['cluster_pump_dir'], 'src', 'cluster.py')
                 # TODO: assumes project id is 1
-                fh.write('python %s prep --ini-base creds --cluster-ini %s 1\n' %
+                fh.write('python %s prepare --ini-base creds --cluster-ini %s 1\n' %
                          (cluster_py, part_ini_fn))
 
         if n == 0:
