@@ -209,7 +209,8 @@ def copy_to_destination(name, output_dir, source_prefix, extras, mover, destinat
 
 def run_job(name, inputs, image_url, image_fn, config, cluster_ini, heartbeat_func,
             keep=False, mover=None, destination=None, source_prefix=None,
-            log_queue=None, fail_on_error=False, node_name='', worker_name=''):
+            log_queue=None, fail_on_error=False, node_name='', worker_name='',
+            secure=False):
     log_info_detailed(node_name, worker_name, 'job name: %s, image-url: "%s", image-fn: "%s"' %
                       (name, image_url, image_fn), log_queue)
     if not os.path.exists(cluster_ini):
@@ -250,11 +251,15 @@ def run_job(name, inputs, image_url, image_fn, config, cluster_ini, heartbeat_fu
     log_info_detailed(node_name, worker_name, 'reference base: ' + ref_base, log_queue)
     log_info_detailed(node_name, worker_name, 'temp base: ' + temp_base, log_queue)
 
-    original_umask = os.umask(0)
+    original_umask = None
+    if system == 'docker' and secure:
+        raise RuntimeError('Cannot guarantee security for temp/input/output dirs in Docker mode')
+    elif system == 'docker':
+        original_umask = os.umask(0)
     try:
         if not os.path.exists(input_base):
             try:
-                os.makedirs(input_base, mode=0o777)
+                os.makedirs(input_base)
             except os.error:
                 pass
         elif not os.path.isdir(input_base):
@@ -262,7 +267,7 @@ def run_job(name, inputs, image_url, image_fn, config, cluster_ini, heartbeat_fu
         isdir(input_base)
         if not os.path.exists(output_base):
             try:
-                os.makedirs(output_base, mode=0o777)
+                os.makedirs(output_base)
             except os.error:
                 pass
         elif not os.path.isdir(output_base):
@@ -270,7 +275,7 @@ def run_job(name, inputs, image_url, image_fn, config, cluster_ini, heartbeat_fu
         isdir(output_base)
         if not os.path.exists(temp_base):
             try:
-                os.makedirs(temp_base, mode=0o777)
+                os.makedirs(temp_base)
             except os.error:
                 pass
         elif not os.path.isdir(temp_base):
@@ -297,7 +302,7 @@ def run_job(name, inputs, image_url, image_fn, config, cluster_ini, heartbeat_fu
             mounts.append('%s:%s' % (input_base_name, input_mount))
         else:
             input_mount = input_base_name
-        os.makedirs(input_base_name, mode=0o777)
+        os.makedirs(input_base_name)
         for inp in inputs:
             assert os.path.exists(inp)
             dest = os.path.join(input_base_name, os.path.basename(inp))
@@ -318,21 +323,22 @@ def run_job(name, inputs, image_url, image_fn, config, cluster_ini, heartbeat_fu
             mounts.append('%s/%s:%s' % (output_base, name, output_mount))
         else:
             output_mount = output_dir
-        os.makedirs(output_dir, mode=0o777)
+        os.makedirs(output_dir)
         if temp_mount is not None and len(temp_mount) > 0:
             mounts.append('-v' if docker else '-B')
             mounts.append('%s/%s:%s' % (temp_base, name, temp_mount))
         else:
             temp_mount = os.path.join(temp_base, name)
         temp_base_name = os.path.join(temp_base, name)
-        os.makedirs(temp_base_name, mode=0o777)
+        os.makedirs(temp_base_name)
         if ref_mount is not None and len(ref_mount) > 0:
             mounts.append('-v' if docker else '-B')
             mounts.append('%s:%s' % (ref_base, ref_mount))
         else:
             ref_mount = ref_base
     finally:
-        os.umask(original_umask)
+        if original_umask is not None:
+            os.umask(original_umask)
 
     with open(os.path.join(temp_base_name, 'node.txt'), 'wt') as fh:
         fh.write('Node: %s\n' % node_name)
