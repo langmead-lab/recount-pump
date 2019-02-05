@@ -134,6 +134,16 @@ def log_warning_detailed(node_name, worker_name, msg):
     log_warning(' '.join([node_name, worker_name, msg]))
 
 
+def proj_from_id_or_name(project_id_or_name, session):
+    if isinstance(project_id_or_name, int):
+        return session.query(Project).get(project_id_or_name)
+    projs = session.query(Project).filter(Project.name == project_id_or_name).all()
+    if len(projs) != 1:
+        raise RuntimeError('Queried on project "%s" name and got %d results'
+                           % (project_id_or_name, len(projs)))
+    return projs[0]
+
+
 def docker_image_exists(url):
     if url.startswith('docker://'):
         url = url[len('docker://'):]
@@ -428,8 +438,8 @@ def prepare_sra_settings(cluster_ini):
     return True
 
 
-def prepare(project_id, cluster_ini, session, mover, skip_sra_settings=False):
-    proj = session.query(Project).get(project_id)
+def prepare(project_id_or_name, cluster_ini, session, mover, skip_sra_settings=False):
+    proj = proj_from_id_or_name(project_id_or_name, session)
     analysis_ready = prepare_analysis(cluster_ini, proj, mover, session)
     reference_ready = prepare_reference(cluster_ini, proj, mover, session)
     sra_settings_ready = True
@@ -504,7 +514,7 @@ def get_num_successes(job, session):
     return q.session.execute(count_q).scalar()
 
 
-def job_loop(project_id, q_ini, cluster_ini, worker_name, session,
+def job_loop(project_id_or_name, q_ini, cluster_ini, worker_name, session,
              max_fails=10, sleep_seconds=10,
              mover_config=None, destination=None, source_prefix=None):
     node_name = socket.gethostname().split('.', 1)[0]
@@ -515,7 +525,7 @@ def job_loop(project_id, q_ini, cluster_ini, worker_name, session,
                                     endpoint_url=endpoint,
                                     region_name=region)
     log_info_detailed(node_name, worker_name, 'Getting project')
-    proj = session.query(Project).get(project_id)
+    proj = proj_from_id_or_name(project_id_or_name, session)
     log_info_detailed(node_name, worker_name, 'Getting queue')
     q_name = proj.queue_name()
     resp = q_client.create_queue(QueueName=q_name)
@@ -539,7 +549,6 @@ def job_loop(project_id, q_ini, cluster_ini, worker_name, session,
                 handle = msg['ReceiptHandle']
                 success += 1
                 job = Task(body)
-                assert job.proj_id == project_id
                 nattempts = get_num_attempts(job, session)
                 nfailures = get_num_failures(job, session)
                 my_attempt = nattempts
@@ -588,7 +597,7 @@ def job_loop(project_id, q_ini, cluster_ini, worker_name, session,
         log_info_detailed(node_name, worker_name, 'Bottom of job loop, iteration %d' % attempt)
 
 
-def clean_up(project_id, cluster_ini, session):
+def clean_up(project_id_or_name, cluster_ini, session):
     pass
 
 
@@ -778,14 +787,14 @@ def test_parse_image_url_3():
     assert 'docker' == typ
 
 
-def worker(project_id, worker_name, q_ini, cluster_ini, engine, max_fail,
+def worker(project_id_or_name, worker_name, q_ini, cluster_ini, engine, max_fail,
            poll_seconds,
            mover_config=None, destination=None, source_prefix=None):
     engine.dispose()
     connection = engine.connect()
     session = Session(bind=connection)
     #signal.signal(signal.SIGUSR1, lambda sig, stack: traceback.print_stack(stack))
-    print(job_loop(project_id, q_ini, cluster_ini, worker_name, session,
+    print(job_loop(project_id_or_name, q_ini, cluster_ini, worker_name, session,
                    max_fails=max_fail,
                    sleep_seconds=poll_seconds,
                    mover_config=mover_config,
@@ -872,21 +881,21 @@ def go():
             globus_section=args['--globus-section'],
             enable_web=True,
             curl_exe=args['--curl'])
-        project_id = int(args['<project-id>'])
+        project_id_or_name = args['<project-id>']
         if args['prepare']:
             session_maker = session_maker_from_config(db_ini, args['--db-section'])
-            print(prepare(project_id, cluster_ini, session_maker(),
+            print(prepare(project_id_or_name, cluster_ini, session_maker(),
                           mover_config.new_mover()))
         if args['cleanup']:
             session_maker = session_maker_from_config(db_ini, args['--db-section'])
-            print(clean_up(project_id, cluster_ini, session_maker()))
+            print(clean_up(project_id_or_name, cluster_ini, session_maker()))
         if args['run']:
             enabled, destination_url, source_prefix, aws_endpoint, aws_profile = \
                 parse_destination_ini(dest_ini)
             engine = engine_from_config(db_ini, args['--db-section'])
             connection = engine.connect()
             session = Session(bind=connection)
-            prepare(project_id, cluster_ini, session, mover_config.new_mover())
+            prepare(project_id_or_name, cluster_ini, session, mover_config.new_mover())
             max_fails = int(args['--max-fail'])
             sleep_seconds = int(args['--poll-seconds'])
             procs = []
@@ -904,7 +913,7 @@ def go():
             for i in range(nworkers):
                 worker_name = 'worker_%d_of_%d' % (i+1, nworkers)
                 t = multiprocessing.Process(target=worker,
-                                            args=(project_id, worker_name, q_ini, cluster_ini,
+                                            args=(project_id_or_name, worker_name, q_ini, cluster_ini,
                                                   engine, max_fails, sleep_seconds,
                                                   mover_config, destination_url,
                                                   source_prefix))
