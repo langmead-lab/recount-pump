@@ -202,7 +202,7 @@ def go():
                 fh.write('\n'.join(head) + '\n\n')
                 cluster_py = os.path.join(part_options['cluster_pump_dir'], 'src', 'cluster.py')
                 # TODO: assumes project id is 1
-                fh.write('umask 0077')  # conservative umask
+                fh.write('umask 0077\n')  # conservative umask
                 fh.write('python %s run --ini-base creds --cluster-ini %s %s\n' %
                          (cluster_py, part_ini_fn, options['study']))
 
@@ -213,7 +213,7 @@ def go():
                 fh.write('\n'.join(head) + '\n\n')
                 cluster_py = os.path.join(part_options['cluster_pump_dir'], 'src', 'cluster.py')
                 # TODO: assumes project id is 1
-                fh.write('umask 0077')  # conservative umask
+                fh.write('umask 0077\n')  # conservative umask
                 fh.write('python %s prepare --ini-base creds --cluster-ini %s %s\n' %
                          (cluster_py, part_ini_fn, options['study']))
 
