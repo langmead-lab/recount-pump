@@ -552,7 +552,7 @@ def job_loop(project_id_or_name, q_ini, cluster_ini, worker_name, session,
                 body = msg['Body']
                 handle = msg['ReceiptHandle']
                 success += 1
-                job = Task(body)
+                job = Task(body, proj)
                 nattempts = get_num_attempts(job, session)
                 nfailures = get_num_failures(job, session)
                 my_attempt = nattempts
