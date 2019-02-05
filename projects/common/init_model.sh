@@ -35,6 +35,11 @@ if [[ -z ${INPUT_URL} ]] ; then
     INPUT_URL=${INPUT_TXT_URL}
 fi
 
+# Create database if it doesn't exist
+if ! $d/../../aws/db/list_databases.sh | grep -q geuv_sc ; then
+    $d/../../aws/db/create_db.sh ${STUDY}
+fi
+
 # Test that nothing is empty that shouldn't be
 test -n ${ANALYSIS_NAME}
 test -n ${ANA_URL}
