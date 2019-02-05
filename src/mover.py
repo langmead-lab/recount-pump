@@ -624,6 +624,10 @@ class Mover(object):
         src, dst = url.to_url(), destination
         if url.is_local:
             logger is None or logger('Local get from "%s" to "%s"' % (src, dst))
+            dr = os.path.dirname(dst)
+            if len(dr) > 0 and not os.path.exists(dr):
+                logger is None or logger('Creating destination directory "%s"' % dr)
+                os.makedirs(dr)
             shutil.copyfile(src, dst)
         elif url.is_s3:
             if not self.enable_s3:
@@ -654,6 +658,10 @@ class Mover(object):
         if url.is_local:
             source = Url(source).to_url()
             logger is None or logger('Local put from "%s" to "%s"' % (source, dst))
+            dr = os.path.dirname(dst)
+            if len(dr) > 0 and not os.path.exists(dr):
+                logger is None or logger('Creating destination directory "%s"' % dr)
+                os.makedirs(dr)
             shutil.copyfile(source, dst)
         elif url.is_s3:
             if not self.enable_s3:
