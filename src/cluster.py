@@ -75,17 +75,18 @@ def is_ascii(s):
 
 class Task(object):
 
-    def __init__(self, body):
+    def __init__(self, body, proj):
         self.proj_id, self.job_name, self.input_string, \
             self.analysis_name, self.reference_name = Project.parse_job_string(body)
         self.input_id, self.srr, self.srp, self.url1, self.url2, self.url3, \
             self.checksum1, self.checksum2, self.checksum3, \
             self.retrieval = Input.parse_job_string(self.input_string)
         self.recount_id = self.srr
+        self.proj_name = proj.name
 
     def __str__(self):
-        return '{proj_id=%d, name="%s", input="%s", analysis="%s", reference="%s"}' %\
-               (self.proj_id, self.job_name, self.input_string,
+        return '{proj=%s(%d), name=%s, input=%s, analysis=%s, ref=%s}' %\
+               (self.proj_name, self.proj_id, self.job_name, self.input_string,
                 self.analysis_name, self.reference_name)
 
     def partition_id(self):
@@ -95,13 +96,16 @@ class Task(object):
         level1 = self.srp[-2:]
         level2 = self.srp
         level3 = self.srr[-2:]
+        level4 = self.srr
         assert len(level1) > 0
         assert len(level2) > 0
         assert len(level3) > 0
+        assert len(level4) > 0
         assert is_ascii(level1)
         assert is_ascii(level2)
         assert is_ascii(level3)
-        return [level1, level2, level3]
+        assert is_ascii(level4)
+        return [level1, level2, level3, level4]
 
 
 log_queue = multiprocessing.Queue()
@@ -202,7 +206,7 @@ def image_exists_locally(url, system, cachedir=None):
         return docker_image_exists(url)
 
 
-def do_job(body, cluster_ini, my_attempt, node_name,
+def do_job(body, proj, cluster_ini, my_attempt, node_name,
            worker_name, session, heartbeat_func,
            mover_config=None, destination=None, source_prefix=None):
     """
@@ -211,7 +215,7 @@ def do_job(body, cluster_ini, my_attempt, node_name,
     pump.py.
     """
     name, system, analysis_dir, _, _, _, _ = read_cluster_config(cluster_ini)
-    task = Task(body)
+    task = Task(body, proj)
     log_info_detailed(node_name, worker_name, 'got job: ' + str(task))
     tmp_dir = tempfile.mkdtemp()
     tmp_fn = os.path.join(tmp_dir, 'accessions.txt')
@@ -236,7 +240,7 @@ def do_job(body, cluster_ini, my_attempt, node_name,
         image_md5 = md5(image_fn)
         log_info_detailed(node_name, worker_name, 'md5: ' + image_md5)
     json.loads(config)  # Check that config is well-formed
-    attempt_name = 'proj%d_input%d_attempt%d' % (task.proj_id, task.input_id, my_attempt)
+    attempt_name = '%s%d_in%d_att%d' % (task.proj_name, task.proj_id, task.input_id, my_attempt)
     mover = None
     if mover_config is not None:
         mover = mover_config.new_mover()
@@ -572,7 +576,7 @@ def job_loop(project_id_or_name, q_ini, cluster_ini, worker_name, session,
                                           'Exception during heartbeat (%s): %s' % (st, str(exc)))
 
                 try:
-                    succeeded = do_job(body, cluster_ini, my_attempt, node_name,
+                    succeeded = do_job(body, proj, cluster_ini, my_attempt, node_name,
                                        worker_name, session, heartbeat_func,
                                        mover_config=mover_config,
                                        destination=destination,
