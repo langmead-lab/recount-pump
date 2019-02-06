@@ -36,7 +36,7 @@ if [[ -z ${INPUT_URL} ]] ; then
 fi
 
 # Create database if it doesn't exist
-if ! $d/../../aws/db/list_databases.sh | grep -q geuv_sc ; then
+if ! $d/../../aws/db/list_databases.sh | grep -q ${STUDY} ; then
     $d/../../aws/db/create_db.sh ${STUDY}
 fi
 
