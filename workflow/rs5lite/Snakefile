@@ -45,7 +45,7 @@ def get_accessions(wildcards):
                 # SRR,SRP,genome
                 # e.g. SRR1557855,SRP045778,ce10
                 for ext in FILES:
-                    yield os.path.join(config['output'], '%s_%s_%s_%s.%s' % (toks[0], toks[1], toks[2], method, ext))
+                    yield os.path.join(config['output'], '%s!%s!%s!%s.%s' % (toks[0], toks[1], toks[2], method, ext))
 
 rule all:
     input:
@@ -86,10 +86,10 @@ rule make_manifest:
 
 rule bamcount:
     input:
-        bam=config['temp'] + '/{quad}-sorted.bam',
-        bamidx=config['temp'] + '/{quad}-sorted.bam.bai',
+        bam=config['temp'] + '/{quad}~sorted.bam',
+        bamidx=config['temp'] + '/{quad}~sorted.bam.bai',
         exe='/bamcount/bamcount',
-        bed=lambda wildcards: '%s/%s/gtf/%s' % (config['ref'], wildcards.quad.split('_')[2], config.get('bw_bed', 'exons.bed'))
+        bed=lambda wildcards: '%s/%s/gtf/%s' % (config['ref'], wildcards.quad.split('!')[2], config.get('bw_bed', 'exons.bed'))
     output:
         nonref=config['output'] + '/{quad}.bamcount_nonref.csv.zst',
         auc=config['output'] + '/{quad}.bamcount_auc.tsv',
@@ -101,7 +101,7 @@ rule bamcount:
     log:
         config['output'] + '/{quad}.bamcount.log'
     params:
-        srr=lambda wildcards: wildcards.quad.split('_')[0],
+        srr=lambda wildcards: wildcards.quad.split('!')[0],
         uniq_qual=config.get('unique_qual', 10)
     threads: 4
     shell:
@@ -200,14 +200,14 @@ rule sort:
     input:
         config['temp'] + '/{quad}.bam'
     wildcard_constraints:
-        quad="[^-]+"
+        quad="[^~]+"
     output:
-        bam=temp(config['temp'] + '/{quad}-sorted.bam'),
-        bai=temp(config['temp'] + '/{quad}-sorted.bam.bai')
+        bam=temp(config['temp'] + '/{quad}~sorted.bam'),
+        bai=temp(config['temp'] + '/{quad}~sorted.bam.bai')
     log:
         config['output'] + '/{quad}.sort.log'
     params:
-        srr=lambda wildcards: wildcards.quad.split('_')[0]
+        srr=lambda wildcards: wildcards.quad.split('!')[0]
     threads: 8
     shell:
         """
@@ -231,14 +231,14 @@ rule salmon:
         reads0=config['temp'] + '/{quad}_0.fastq',
         reads1=config['temp'] + '/{quad}_1.fastq',
         reads2=config['temp'] + '/{quad}_2.fastq',
-        index1=lambda wildcards: '%s/%s/salmon_index/hash.bin' % (config['ref'], wildcards.quad.split('_')[2]),
-        index2=lambda wildcards: '%s/%s/salmon_index/sa.bin' % (config['ref'], wildcards.quad.split('_')[2])
+        index1=lambda wildcards: '%s/%s/salmon_index/hash.bin' % (config['ref'], wildcards.quad.split('!')[2]),
+        index2=lambda wildcards: '%s/%s/salmon_index/sa.bin' % (config['ref'], wildcards.quad.split('!')[2])
     output:
         config['output'] + '/{quad}.salmon.tsv.zst'
     log:
         config['output'] + '/{quad}.salmon.log'
     params:
-        index_base=lambda wildcards: '%s/%s/salmon_index' % (config['ref'], wildcards.quad.split('_')[2]),
+        index_base=lambda wildcards: '%s/%s/salmon_index' % (config['ref'], wildcards.quad.split('!')[2]),
         salmon_args=config.get('salmon_args', '')
     threads: 8
     shell:
@@ -277,15 +277,17 @@ rule align_unmapped:
     input:
         unmapped1=config['temp'] + '/{quad}_1.unmappedfastq',
         unmapped2=config['temp'] + '/{quad}_2.unmappedfastq',
-        index=lambda wildcards: '%s/%s/unmapped_hisat2_idx/genome.1.ht2' % (config['ref'], wildcards.quad.split('_')[2])
-    output:
+         index=lambda wildcards: '%s/%s/unmapped_hisat2_idx/genome.1.ht2' % (config['ref'], wildcards.quad.split('!')[2])
+    wildcard_constraints:
+        quad="[^~]+"
+   output:
         bam=config['output'] + '/{quad}.unmapped.bam',
         sample=config['output'] + '/{quad}.unmapped.fastq.zst'
     log:
         config['output'] + '/{quad}.align_unmapped.log'
     params:
-        index_base=lambda wildcards: '%s/%s/unmapped_hisat2_idx/genome' % (config['ref'], wildcards.quad.split('_')[2]),
-        srr=lambda wildcards: wildcards.quad.split('_')[0],
+        index_base=lambda wildcards: '%s/%s/unmapped_hisat2_idx/genome' % (config['ref'], wildcards.quad.split('!')[2]),
+        srr=lambda wildcards: wildcards.quad.split('!')[0],
         hisat2_params=config.get('hisat2', ''),
         max_unalign=config.get('max_unalign', 100000)
     threads: 16
@@ -357,14 +359,14 @@ rule align_unmapped:
 
 rule extract_jx:
     input:
-        bam=config['temp'] + '/{quad}-sorted.bam',
-        bamidx=config['temp'] + '/{quad}-sorted.bam.bai',
-        fa=lambda wildcards: '%s/%s/fasta/genome.fa' % (config['ref'], wildcards.quad.split('_')[2]),
-        gtf=lambda wildcards: '%s/%s/gtf/genes.gtf' % (config['ref'], wildcards.quad.split('_')[2])
+        bam=config['temp'] + '/{quad}~sorted.bam',
+        bamidx=config['temp'] + '/{quad}~sorted.bam.bai',
+        fa=lambda wildcards: '%s/%s/fasta/genome.fa' % (config['ref'], wildcards.quad.split('!')[2]),
+        gtf=lambda wildcards: '%s/%s/gtf/genes.gtf' % (config['ref'], wildcards.quad.split('!')[2])
     output:
         config['output'] + '/{quad}.jx_bed.zst'
     params:
-        srr=lambda wildcards: wildcards.quad.split('_')[0]
+        srr=lambda wildcards: wildcards.quad.split('!')[0]
     log:
         config['output'] + '/{quad}.extract_jx.log'
     shell:
@@ -388,10 +390,10 @@ rule align:
         reads0=config['temp'] + '/{quad}_0.fastq',
         reads1=config['temp'] + '/{quad}_1.fastq',
         reads2=config['temp'] + '/{quad}_2.fastq',
-        index1=lambda wildcards: '%s/%s/star_idx/SAindex' % (config['ref'], wildcards.quad.split('_')[2]),
-        index2=lambda wildcards: '%s/%s/star_idx/SA' % (config['ref'], wildcards.quad.split('_')[2])
+        index1=lambda wildcards: '%s/%s/star_idx/SAindex' % (config['ref'], wildcards.quad.split('!')[2]),
+        index2=lambda wildcards: '%s/%s/star_idx/SA' % (config['ref'], wildcards.quad.split('!')[2])
     wildcard_constraints:
-        quad="[^-]+"
+        quad="[^~]+"
     output:
         bam=temp(config['temp'] + '/{quad}.bam'),
         jxs=config['output'] + '/{quad}.sjout.zst',
@@ -401,8 +403,8 @@ rule align:
     log:
         config['output'] + '/{quad}.align.log'
     params:
-        index_base=lambda wildcards: '%s/%s/star_idx' % (config['ref'], wildcards.quad.split('_')[2]),
-        srr=lambda wildcards: wildcards.quad.split('_')[0],
+        index_base=lambda wildcards: '%s/%s/star_idx' % (config['ref'], wildcards.quad.split('!')[2]),
+        srr=lambda wildcards: wildcards.quad.split('!')[0],
         star_params=config.get('star', '')
     threads: 16
     shell:
@@ -503,7 +505,7 @@ rule fastq_check:
     log:
         config['output'] + '/{quad}.fastq_check.log'
     params:
-        srr=lambda wildcards: wildcards.quad.split('_')[0]
+        srr=lambda wildcards: wildcards.quad.split('!')[0]
     shell:
         """
         TMP="{config[temp]}/fastq_check-{params.srr}.tsv"
@@ -532,8 +534,8 @@ rule download:
     log:
         config['output'] + '/{quad}.download.log'
     params:
-        srr=lambda wildcards: wildcards.quad.split('_')[0],
-        method=lambda wildcards: wildcards.quad.split('_')[3],
+        srr=lambda wildcards: wildcards.quad.split('!')[0],
+        method=lambda wildcards: wildcards.quad.split('!')[3],
         fd_params=config.get('fastq_dump_args', ''),
         retries=config.get('fastq_dump_retries', '5')
     threads: 4
@@ -594,8 +596,8 @@ rule download:
             for i in {{ 1..{params.retries} }} ; do
                 if time gdc-client download \
                     -t ${{TOKEN}} \
-                    --log-file {{TMP}}/log.txt \
-                    -d {{TEMP}} \
+                    --log-file ${{TMP}}/log.txt \
+                    -d ${{TMP}} \
                     {params.srr} 2>&1 >> {log}
                 then
                     SUCCESS=1
@@ -610,19 +612,19 @@ rule download:
                 echo "COUNT_GdcFailures 1"
                 exit 1
             fi
-            test -d {{TEMP}}/{params.srr}
-            test -f {{TEMP}}/{params.srr}/*.tar.gz
+            test -d ${{TMP}}/{params.srr}
+            test -f ${{TMP}}/{params.srr}/*.tar.gz
             
             echo "=== gdc-client log.txt begin ===" >> {log}
-            cat {{TMP}}/log.txt >> {log}
+            cat ${{TMP}}/log.txt >> {log}
             echo "=== gdc-client log.txt end===" >> {log}
             
-            size=$(cat {{TEMP}}/{params.srr}/*.tar.gz | wc -c)
+            size=$(cat ${{TMP}}/{params.srr}/*.tar.gz | wc -c)
             echo "COUNT_GdcBytesDownloaded ${{size}}"
 
-            tar zxvf {{TEMP}}/{params.srr}/*.tar.gz
-            rm -rf {{TEMP}}
-            
+            tar zxvf ${{TMP}}/{params.srr}/*.tar.gz
+            rm -rf ${{TMP}}
+
             num_1s=$(ls -1 *_1.fastq | wc -l)
             num_2s=$(ls -1 *_2.fastq | wc -l)
             if (( ${{num_1s}} == 0 )) ; then
