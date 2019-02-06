@@ -11,3 +11,5 @@ docker build $* \
     --tag ${IMAGE}:${VER} \
     --tag ${IMAGE}:latest \
     .
+
+rm -f workflow.bash
