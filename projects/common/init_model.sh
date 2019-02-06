@@ -30,9 +30,9 @@ STUDY=$(grep '^study' project.ini | cut -d"=" -f2 | tr -d '[:space:]')
 INPUT_SET=${STUDY}
 INPUT_JSON_URL=$(grep '^input_json_url' project.ini | cut -d"=" -f2 | tr -d '[:space:]')
 INPUT_TXT_URL=$(grep '^input_txt_url' project.ini | cut -d"=" -f2 | tr -d '[:space:]')
-INPUT_URL=${INPUT_JSON_URL}
-if [[ -z ${INPUT_URL} ]] ; then
-    INPUT_URL=${INPUT_TXT_URL}
+INPUT_URL=${INPUT_JSON_URL// }
+if [[ -z ${INPUT_URL// } ]] ; then
+    INPUT_URL=${INPUT_TXT_URL// }
 fi
 
 # Create database if it doesn't exist
@@ -41,14 +41,13 @@ if ! $d/../../aws/db/list_databases.sh | grep -q ${STUDY} ; then
 fi
 
 # Test that nothing is empty that shouldn't be
-test -n ${ANALYSIS_NAME}
-test -n ${ANA_URL}
-test -n ${OUTPUT_DIR}
-test -n ${SPECIES}
-test -n ${SPECIES_FULL}
-test -n ${TAXID}
-test -n ${STUDY}
-test -n ${INPUT_URL}
+test -n "${ANALYSIS_NAME}"
+test -n "${ANA_URL}"
+test -n "${SPECIES}"
+test -n "${SPECIES_FULL}"
+test -n "${TAXID}"
+test -n "${STUDY}"
+test -n "${INPUT_URL}"
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 1: Load reference data"
