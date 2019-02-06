@@ -203,7 +203,7 @@ Vagrant.configure("2") do |config|
                 echo "------------------------------------------------------"
                 echo "Building and pushing (\"$FLOW\")"
                 echo "------------------------------------------------------"
-                cd ${FLOWDIR} && ./build.sh && ../common/push.sh
+                cd ${FLOWDIR} && ../common/build.sh && ../common/push.sh
                 if [ $? -eq 0 ] ; then
                     echo "===HAPPY ${IMAGE} built and pushed"
                 else
