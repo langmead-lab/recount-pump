@@ -25,7 +25,6 @@ RUN curl -OL https://github.com/samtools/samtools/releases/download/${SM_VER}/sa
     make install
 
 # install bamcount
-RUN apt-get install -y unzip
 ENV BC_VER=0.2.4
 RUN mkdir -p /bamcount && \
     cd /bamcount && \

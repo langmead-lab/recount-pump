@@ -1,6 +1,6 @@
 FROM continuumio/miniconda:4.5.12
 
-RUN apt-get update -y && apt-get install -y gcc g++ libz-dev make
+RUN apt-get update -y && apt-get install -y gcc g++ libz-dev make unzip zip
 
 # bwtool is not in bioconda, unfortunately
 RUN git clone https://github.com/CRG-Barcelona/libbeato.git && cd libbeato && git checkout 0c30432af9c7e1e09ba065ad3b2bc042baa54dc2 && \
@@ -50,6 +50,14 @@ fi\n' > /startup.sh
 
 RUN chmod a+x /startup.sh
 RUN chmod a+x /install-aspera.sh
+
+# I download a binary instead of getting it from bioconda because there is a
+# conflict between gdc-client and progress, needed by some other (unknown)
+# package
+RUN wget -q https://github.com/NCI-GDC/gdc-client/releases/download/1.4.0/gdc-client_v1.4.0_Ubuntu_x64.zip && \
+    unzip gdc-client_v1.4.0_Ubuntu_x64.zip && \
+    mv gdc-client /usr/bin && \
+    rm -f gdc-client_v1.4.0_Ubuntu_x64.zip
 
 USER recount
 WORKDIR /home/recount
