@@ -252,12 +252,15 @@ def import_text(fn, input_set_name, session, limit=None):
             if ln[0] == '#':
                 continue
             toks = ln.split()
-            assert len(toks) == 2, str(toks)
-            acc_s, acc_r = toks
+            retrieval_method = 'sra'
+            assert 2 <= len(toks) <= 3, str(toks)
+            if len(toks) == 3:
+                retrieval_method = toks[2]
+            acc_s, acc_r = toks[0], toks[1]
             inp = Input(acc_r=acc_r, acc_s=acc_s,
                         url_1=acc_r, url_2=None, url_3=None,
                         checksum_1=None, checksum_2=None, checksum_3=None,
-                        retrieval_method='sra')
+                        retrieval_method=retrieval_method)
             inputs.append(inp)
             session.add(inp)
             if limit is not None and len(inputs) >= int(limit):
