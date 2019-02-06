@@ -79,8 +79,8 @@ class Input(Base):
         assert 10 == len(toks)
         my_id = int(toks[0])
         acc_r, acc_s = toks[1:3]
-        assert acc_r[1:3] == 'RR'
-        assert acc_s[1:3] == 'RP'
+        #assert acc_r[1:3] == 'RR'
+        #assert acc_s[1:3] == 'RP'
         url_1, url_2, url_3, checksum_1, checksum_2, checksum_3 = toks[3:9]
 
         def noneize(x):
@@ -106,8 +106,8 @@ class Input(Base):
         It should be enough information so that any cluster that obtains the
         job knows how to obtain the input.
         """
-        assert self.acc_r[1:3] == 'RR', self.acc_r
-        assert self.acc_s[1:3] == 'RP', self.acc_s
+        #assert self.acc_r[1:3] == 'RR', self.acc_r
+        #assert self.acc_s[1:3] == 'RP', self.acc_s
         assert (self.url_1 or self.url_2 or self.url_3) is not None
         return str(self)
 
