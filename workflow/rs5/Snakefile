@@ -13,7 +13,7 @@ Parameters:
 - max_unalign: maximum number of unaligned reads to save per run accession
 """
 
-STEPS = ['sra_fastq', 'fastq_check', 'align', 'sort',
+STEPS = ['download', 'fastq_check', 'align', 'sort',
          'bamcount',
          'kallisto',
          'salmon',
@@ -48,11 +48,14 @@ def get_accessions(wildcards):
                 if ln.count(',') < 2:
                     continue
                 toks = ln.rstrip().split(',')
-                assert len(toks) == 3
+                assert 3 <= len(toks) <= 4
+                method = 'sra'
+                if len(toks) == 4:
+                    method = toks[3]
                 # SRR,SRP,genome
                 # e.g. SRR1557855,SRP045778,ce10
                 for ext in FILES:
-                    yield os.path.join(config['output'], '%s_%s_%s.%s' % (toks[0], toks[1], toks[2], ext))
+                    yield os.path.join(config['output'], '%s_%s_%s_%s.%s' % (toks[0], toks[1], toks[2], method, ext))
 
 rule all:
     input:
@@ -60,69 +63,69 @@ rule all:
 
 rule make_manifest:
     input:
-        config['output'] + '/{trio}.kallisto.tsv.zst',
-        config['output'] + '/{trio}.salmon.tsv.zst',
-        config['output'] + '/{trio}.sjout.zst',
-        config['output'] + '/{trio}.jx_bed.zst',
-        config['output'] + '/{trio}.Chimeric.out.junction.zst',
-        config['output'] + '/{trio}.unmapped.bam',
-        config['output'] + '/{trio}.unmapped.fastq.zst',
-        config['output'] + '/{trio}.bamcount_nonref.csv.zst',
-        config['output'] + '/{trio}.bamcount_auc.tsv',
-        config['output'] + '/{trio}.bamcount_frag.tsv',
-        config['output'] + '/{trio}.fastq_check.tsv.zst',
-        config['output'] + '/{trio}.all.gene_fc_count.zst',
-        config['output'] + '/{trio}.all.exon_fc_count.zst',
-        config['output'] + '/{trio}.unique.gene_fc_count.zst',
-        config['output'] + '/{trio}.unique.exon_fc_count.zst',
-        config['output'] + '/{trio}.all.gene_fc_count.summary',
-        config['output'] + '/{trio}.all.exon_fc_count.summary',
-        config['output'] + '/{trio}.unique.gene_fc_count.summary',
-        config['output'] + '/{trio}.unique.exon_fc_count.summary',
-        config['output'] + '/{trio}.all.exon_bw_count.zst',
-        config['output'] + '/{trio}.unique.exon_bw_count.zst',
-        config['output'] + '/{trio}.all.bw.zst',
-        config['output'] + '/{trio}.unique.bw.zst',
-        config['output'] + '/{trio}.align.log',
-        config['output'] + '/{trio}.extract_jx.log',
-        config['output'] + '/{trio}.bamcount.log',
-        config['output'] + '/{trio}.align_unmapped.log',
-        config['output'] + '/{trio}.sra_fastq.log',
-        config['output'] + '/{trio}.fastq_check.log',
-        config['output'] + '/{trio}.sort.log',
-        config['output'] + '/{trio}.kallisto.log',
-        config['output'] + '/{trio}.salmon.log',
-        config['output'] + '/{trio}.gene_fc_count_all.log',
-        config['output'] + '/{trio}.gene_fc_count_unique.log',
-        config['output'] + '/{trio}.exon_fc_count_all.log',
-        config['output'] + '/{trio}.exon_fc_count_unique.log'
+        config['output'] + '/{quad}.kallisto.tsv.zst',
+        config['output'] + '/{quad}.salmon.tsv.zst',
+        config['output'] + '/{quad}.sjout.zst',
+        config['output'] + '/{quad}.jx_bed.zst',
+        config['output'] + '/{quad}.Chimeric.out.junction.zst',
+        config['output'] + '/{quad}.unmapped.bam',
+        config['output'] + '/{quad}.unmapped.fastq.zst',
+        config['output'] + '/{quad}.bamcount_nonref.csv.zst',
+        config['output'] + '/{quad}.bamcount_auc.tsv',
+        config['output'] + '/{quad}.bamcount_frag.tsv',
+        config['output'] + '/{quad}.fastq_check.tsv.zst',
+        config['output'] + '/{quad}.all.gene_fc_count.zst',
+        config['output'] + '/{quad}.all.exon_fc_count.zst',
+        config['output'] + '/{quad}.unique.gene_fc_count.zst',
+        config['output'] + '/{quad}.unique.exon_fc_count.zst',
+        config['output'] + '/{quad}.all.gene_fc_count.summary',
+        config['output'] + '/{quad}.all.exon_fc_count.summary',
+        config['output'] + '/{quad}.unique.gene_fc_count.summary',
+        config['output'] + '/{quad}.unique.exon_fc_count.summary',
+        config['output'] + '/{quad}.all.exon_bw_count.zst',
+        config['output'] + '/{quad}.unique.exon_bw_count.zst',
+        config['output'] + '/{quad}.all.bw.zst',
+        config['output'] + '/{quad}.unique.bw.zst',
+        config['output'] + '/{quad}.align.log',
+        config['output'] + '/{quad}.extract_jx.log',
+        config['output'] + '/{quad}.bamcount.log',
+        config['output'] + '/{quad}.align_unmapped.log',
+        config['output'] + '/{quad}.download.log',
+        config['output'] + '/{quad}.fastq_check.log',
+        config['output'] + '/{quad}.sort.log',
+        config['output'] + '/{quad}.kallisto.log',
+        config['output'] + '/{quad}.salmon.log',
+        config['output'] + '/{quad}.gene_fc_count_all.log',
+        config['output'] + '/{quad}.gene_fc_count_unique.log',
+        config['output'] + '/{quad}.exon_fc_count_all.log',
+        config['output'] + '/{quad}.exon_fc_count_unique.log'
     output:
-        config['output'] + '/{trio}.manifest'
+        config['output'] + '/{quad}.manifest'
     params:
-        trio=lambda wildcards: wildcards.trio
+        quad=lambda wildcards: wildcards.quad
     run:
         with open(output[0], 'wt') as fh:
             for fn in FILES:
-                fh.write(params.trio + "." + fn + '\n')
+                fh.write(params.quad + "." + fn + '\n')
 
 rule bamcount:
     input:
-        bam=config['temp'] + '/{trio}.sorted.bam',
-        bamidx=config['temp'] + '/{trio}.sorted.bam.bai',
+        bam=config['temp'] + '/{quad}-sorted.bam',
+        bamidx=config['temp'] + '/{quad}-sorted.bam.bai',
         exe='/bamcount/bamcount',
-        bed=lambda wildcards: '%s/%s/gtf/%s' % (config['ref'], wildcards.trio.split('_')[2], config.get('bw_bed', 'exons.bed'))
+        bed=lambda wildcards: '%s/%s/gtf/%s' % (config['ref'], wildcards.quad.split('_')[2], config.get('bw_bed', 'exons.bed'))
     output:
-        nonref=config['output'] + '/{trio}.bamcount_nonref.csv.zst',
-        auc=config['output'] + '/{trio}.bamcount_auc.tsv',
-        frag=config['output'] + '/{trio}.bamcount_frag.tsv',
-        all_bw=config['output'] + '/{trio}.all.bw.zst',
-        unique_bw=config['output'] + '/{trio}.unique.bw.zst',
-        all_bw_count=config['output'] + '/{trio}.all.exon_bw_count.zst',
-        unique_bw_count=config['output'] + '/{trio}.unique.exon_bw_count.zst'
+        nonref=config['output'] + '/{quad}.bamcount_nonref.csv.zst',
+        auc=config['output'] + '/{quad}.bamcount_auc.tsv',
+        frag=config['output'] + '/{quad}.bamcount_frag.tsv',
+        all_bw=config['output'] + '/{quad}.all.bw.zst',
+        unique_bw=config['output'] + '/{quad}.unique.bw.zst',
+        all_bw_count=config['output'] + '/{quad}.all.exon_bw_count.zst',
+        unique_bw_count=config['output'] + '/{quad}.unique.exon_bw_count.zst'
     log:
-        config['output'] + '/{trio}.bamcount.log'
+        config['output'] + '/{quad}.bamcount.log'
     params:
-        srr=lambda wildcards: wildcards.trio.split('_')[0],
+        srr=lambda wildcards: wildcards.quad.split('_')[0],
         uniq_qual=config.get('unique_qual', 10)
     threads: 4
     shell:
@@ -206,15 +209,15 @@ rule bamcount:
 
 rule gene_fc_count_all:
     input:
-        bam=config['temp'] + '/{trio}.bam',  # mates should be together for featureCounts
-        gtf=lambda wildcards: '%s/%s/gtf/genes.gtf' % (config['ref'], wildcards.trio.split('_')[2])
+        bam=config['temp'] + '/{quad}.bam',  # mates should be together for featureCounts
+        gtf=lambda wildcards: '%s/%s/gtf/genes.gtf' % (config['ref'], wildcards.quad.split('_')[2])
     output:
-        counts=config['output'] + '/{trio}.all.gene_fc_count.zst',
-        summary=config['output'] + '/{trio}.all.gene_fc_count.summary'
+        counts=config['output'] + '/{quad}.all.gene_fc_count.zst',
+        summary=config['output'] + '/{quad}.all.gene_fc_count.summary'
     log:
-        config['output'] + '/{trio}.gene_fc_count_all.log'
+        config['output'] + '/{quad}.gene_fc_count_all.log'
     params:
-        srr=lambda wildcards: wildcards.trio.split('_')[0],
+        srr=lambda wildcards: wildcards.quad.split('_')[0],
         fc_param=config.get('featureCounts', '')
     threads: 4
     shell:
@@ -245,15 +248,15 @@ rule gene_fc_count_all:
 
 rule gene_fc_count_unique:
     input:
-        bam=config['temp'] + '/{trio}.bam',  # mates should be together for featureCounts
-        gtf=lambda wildcards: '%s/%s/gtf/genes.gtf' % (config['ref'], wildcards.trio.split('_')[2])
+        bam=config['temp'] + '/{quad}.bam',  # mates should be together for featureCounts
+        gtf=lambda wildcards: '%s/%s/gtf/genes.gtf' % (config['ref'], wildcards.quad.split('_')[2])
     output:
-        counts=config['output'] + '/{trio}.unique.gene_fc_count.zst',
-        summary=config['output'] + '/{trio}.unique.gene_fc_count.summary'
+        counts=config['output'] + '/{quad}.unique.gene_fc_count.zst',
+        summary=config['output'] + '/{quad}.unique.gene_fc_count.summary'
     log:
-        config['output'] + '/{trio}.gene_fc_count_unique.log'
+        config['output'] + '/{quad}.gene_fc_count_unique.log'
     params:
-        srr=lambda wildcards: wildcards.trio.split('_')[0],
+        srr=lambda wildcards: wildcards.quad.split('_')[0],
         fc_param=config.get('featureCounts', ''),
         fc_uniq=config.get('fc_unique_qual', 10)
     threads: 4
@@ -285,16 +288,16 @@ rule gene_fc_count_unique:
 
 rule exon_fc_count_all:
     input:
-        bam=config['temp'] + '/{trio}.bam',  # mates should be together for featureCounts
-        bamidx=config['temp'] + '/{trio}.sorted.bam.bai',
-        gtf=lambda wildcards: '%s/%s/gtf/genes.gtf' % (config['ref'], wildcards.trio.split('_')[2])
+        bam=config['temp'] + '/{quad}.bam',  # mates should be together for featureCounts
+        bamidx=config['temp'] + '/{quad}-sorted.bam.bai',
+        gtf=lambda wildcards: '%s/%s/gtf/genes.gtf' % (config['ref'], wildcards.quad.split('_')[2])
     output:
-        counts=config['output'] + '/{trio}.all.exon_fc_count.zst',
-        summary=config['output'] + '/{trio}.all.exon_fc_count.summary'
+        counts=config['output'] + '/{quad}.all.exon_fc_count.zst',
+        summary=config['output'] + '/{quad}.all.exon_fc_count.summary'
     log:
-        config['output'] + '/{trio}.exon_fc_count_all.log'
+        config['output'] + '/{quad}.exon_fc_count_all.log'
     params:
-        srr=lambda wildcards: wildcards.trio.split('_')[0],
+        srr=lambda wildcards: wildcards.quad.split('_')[0],
         fc_param=config.get('featureCounts', '')
     threads: 4
     shell:
@@ -325,16 +328,16 @@ rule exon_fc_count_all:
 
 rule exon_fc_count_unique:
     input:
-        bam=config['temp'] + '/{trio}.bam',  # mates should be together for featureCounts
-        bamidx=config['temp'] + '/{trio}.sorted.bam.bai',
-        gtf=lambda wildcards: '%s/%s/gtf/genes.gtf' % (config['ref'], wildcards.trio.split('_')[2])
+        bam=config['temp'] + '/{quad}.bam',  # mates should be together for featureCounts
+        bamidx=config['temp'] + '/{quad}-sorted.bam.bai',
+        gtf=lambda wildcards: '%s/%s/gtf/genes.gtf' % (config['ref'], wildcards.quad.split('_')[2])
     output:
-        counts=config['output'] + '/{trio}.unique.exon_fc_count.zst',
-        summary=config['output'] + '/{trio}.unique.exon_fc_count.summary'
+        counts=config['output'] + '/{quad}.unique.exon_fc_count.zst',
+        summary=config['output'] + '/{quad}.unique.exon_fc_count.summary'
     log:
-        config['output'] + '/{trio}.exon_fc_count_unique.log'
+        config['output'] + '/{quad}.exon_fc_count_unique.log'
     params:
-        srr=lambda wildcards: wildcards.trio.split('_')[0],
+        srr=lambda wildcards: wildcards.quad.split('_')[0],
         fc_param=config.get('featureCounts', ''),
         fc_uniq=config.get('fc_unique_qual', 10)
     threads: 4
@@ -379,14 +382,16 @@ rule bw_zstd:
 
 rule sort:
     input:
-        config['temp'] + '/{trio}.bam'
+        config['temp'] + '/{quad}.bam'
+    wildcard_constraints:
+        quad="[^-]+"
     output:
-        bam=temp(config['temp'] + '/{trio}.sorted.bam'),
-        bai=temp(config['temp'] + '/{trio}.sorted.bam.bai')
+        bam=temp(config['temp'] + '/{quad}-sorted.bam'),
+        bai=temp(config['temp'] + '/{quad}-sorted.bam.bai')
     log:
-        config['output'] + '/{trio}.sort.log'
+        config['output'] + '/{quad}.sort.log'
     params:
-        srr=lambda wildcards: wildcards.trio.split('_')[0]
+        srr=lambda wildcards: wildcards.quad.split('_')[0]
     threads: 8
     shell:
         """
@@ -407,16 +412,16 @@ rule sort:
 
 rule kallisto:
     input:
-        reads0=config['temp'] + '/{trio}_0.fastq',
-        reads1=config['temp'] + '/{trio}_1.fastq',
-        reads2=config['temp'] + '/{trio}_2.fastq',
-        index=lambda wildcards: '%s/%s/kallisto_index/transcriptome_index' % (config['ref'], wildcards.trio.split('_')[2])
+        reads0=config['temp'] + '/{quad}_0.fastq',
+        reads1=config['temp'] + '/{quad}_1.fastq',
+        reads2=config['temp'] + '/{quad}_2.fastq',
+        index=lambda wildcards: '%s/%s/kallisto_index/transcriptome_index' % (config['ref'], wildcards.quad.split('_')[2])
     output:
-        config['output'] + '/{trio}.kallisto.tsv.zst'
+        config['output'] + '/{quad}.kallisto.tsv.zst'
     log:
-        config['output'] + '/{trio}.kallisto.log'
+        config['output'] + '/{quad}.kallisto.log'
     params:
-        index_base=lambda wildcards: '%s/%s/kallisto_index' % (config['ref'], wildcards.trio.split('_')[2]),
+        index_base=lambda wildcards: '%s/%s/kallisto_index' % (config['ref'], wildcards.quad.split('_')[2]),
         kallisto_args=config.get('kallisto_args', '')
     threads: 8
     shell:
@@ -444,17 +449,17 @@ rule kallisto:
 
 rule salmon:
     input:
-        reads0=config['temp'] + '/{trio}_0.fastq',
-        reads1=config['temp'] + '/{trio}_1.fastq',
-        reads2=config['temp'] + '/{trio}_2.fastq',
-        index1=lambda wildcards: '%s/%s/salmon_index/hash.bin' % (config['ref'], wildcards.trio.split('_')[2]),
-        index2=lambda wildcards: '%s/%s/salmon_index/sa.bin' % (config['ref'], wildcards.trio.split('_')[2])
+        reads0=config['temp'] + '/{quad}_0.fastq',
+        reads1=config['temp'] + '/{quad}_1.fastq',
+        reads2=config['temp'] + '/{quad}_2.fastq',
+        index1=lambda wildcards: '%s/%s/salmon_index/hash.bin' % (config['ref'], wildcards.quad.split('_')[2]),
+        index2=lambda wildcards: '%s/%s/salmon_index/sa.bin' % (config['ref'], wildcards.quad.split('_')[2])
     output:
-        config['output'] + '/{trio}.salmon.tsv.zst'
+        config['output'] + '/{quad}.salmon.tsv.zst'
     log:
-        config['output'] + '/{trio}.salmon.log'
+        config['output'] + '/{quad}.salmon.log'
     params:
-        index_base=lambda wildcards: '%s/%s/salmon_index' % (config['ref'], wildcards.trio.split('_')[2]),
+        index_base=lambda wildcards: '%s/%s/salmon_index' % (config['ref'], wildcards.quad.split('_')[2]),
         salmon_args=config.get('salmon_args', '')
     threads: 8
     shell:
@@ -491,17 +496,17 @@ rule salmon:
 
 rule align_unmapped:
     input:
-        unmapped1=config['temp'] + '/{trio}_1.unmappedfastq',
-        unmapped2=config['temp'] + '/{trio}_2.unmappedfastq',
-        index=lambda wildcards: '%s/%s/unmapped_hisat2_idx/genome.1.ht2' % (config['ref'], wildcards.trio.split('_')[2])
+        unmapped1=config['temp'] + '/{quad}_1.unmappedfastq',
+        unmapped2=config['temp'] + '/{quad}_2.unmappedfastq',
+        index=lambda wildcards: '%s/%s/unmapped_hisat2_idx/genome.1.ht2' % (config['ref'], wildcards.quad.split('_')[2])
     output:
-        bam=config['output'] + '/{trio}.unmapped.bam',
-        sample=config['output'] + '/{trio}.unmapped.fastq.zst'
+        bam=config['output'] + '/{quad}.unmapped.bam',
+        sample=config['output'] + '/{quad}.unmapped.fastq.zst'
     log:
-        config['output'] + '/{trio}.align_unmapped.log'
+        config['output'] + '/{quad}.align_unmapped.log'
     params:
-        index_base=lambda wildcards: '%s/%s/unmapped_hisat2_idx/genome' % (config['ref'], wildcards.trio.split('_')[2]),
-        srr=lambda wildcards: wildcards.trio.split('_')[0],
+        index_base=lambda wildcards: '%s/%s/unmapped_hisat2_idx/genome' % (config['ref'], wildcards.quad.split('_')[2]),
+        srr=lambda wildcards: wildcards.quad.split('_')[0],
         hisat2_params=config.get('hisat2', ''),
         max_unalign=config.get('max_unalign', 100000)
     threads: 16
@@ -573,16 +578,16 @@ rule align_unmapped:
 
 rule extract_jx:
     input:
-        bam=config['temp'] + '/{trio}.sorted.bam',
-        bamidx=config['temp'] + '/{trio}.sorted.bam.bai',
-        fa=lambda wildcards: '%s/%s/fasta/genome.fa' % (config['ref'], wildcards.trio.split('_')[2]),
-        gtf=lambda wildcards: '%s/%s/gtf/genes.gtf' % (config['ref'], wildcards.trio.split('_')[2])
+        bam=config['temp'] + '/{quad}-sorted.bam',
+        bamidx=config['temp'] + '/{quad}-sorted.bam.bai',
+        fa=lambda wildcards: '%s/%s/fasta/genome.fa' % (config['ref'], wildcards.quad.split('_')[2]),
+        gtf=lambda wildcards: '%s/%s/gtf/genes.gtf' % (config['ref'], wildcards.quad.split('_')[2])
     output:
-        config['output'] + '/{trio}.jx_bed.zst'
+        config['output'] + '/{quad}.jx_bed.zst'
     params:
-        srr=lambda wildcards: wildcards.trio.split('_')[0]
+        srr=lambda wildcards: wildcards.quad.split('_')[0]
     log:
-        config['output'] + '/{trio}.extract_jx.log'
+        config['output'] + '/{quad}.extract_jx.log'
     shell:
         """
         TMP="{config[temp]}/extract_jx.{params.srr}"
@@ -601,22 +606,24 @@ rule extract_jx:
 
 rule align:
     input:
-        reads0=config['temp'] + '/{trio}_0.fastq',
-        reads1=config['temp'] + '/{trio}_1.fastq',
-        reads2=config['temp'] + '/{trio}_2.fastq',
-        index1=lambda wildcards: '%s/%s/star_idx/SAindex' % (config['ref'], wildcards.trio.split('_')[2]),
-        index2=lambda wildcards: '%s/%s/star_idx/SA' % (config['ref'], wildcards.trio.split('_')[2])
+        reads0=config['temp'] + '/{quad}_0.fastq',
+        reads1=config['temp'] + '/{quad}_1.fastq',
+        reads2=config['temp'] + '/{quad}_2.fastq',
+        index1=lambda wildcards: '%s/%s/star_idx/SAindex' % (config['ref'], wildcards.quad.split('_')[2]),
+        index2=lambda wildcards: '%s/%s/star_idx/SA' % (config['ref'], wildcards.quad.split('_')[2])
+    wildcard_constraints:
+        quad="[^-]+"
     output:
-        bam=temp(config['temp'] + '/{trio}.bam'),
-        jxs=config['output'] + '/{trio}.sjout.zst',
-        chimeric=config['output'] + '/{trio}.Chimeric.out.junction.zst',
-        unmapped1=config['temp'] + '/{trio}_1.unmappedfastq',
-        unmapped2=config['temp'] + '/{trio}_2.unmappedfastq'
+        bam=temp(config['temp'] + '/{quad}.bam'),
+        jxs=config['output'] + '/{quad}.sjout.zst',
+        chimeric=config['output'] + '/{quad}.Chimeric.out.junction.zst',
+        unmapped1=config['temp'] + '/{quad}_1.unmappedfastq',
+        unmapped2=config['temp'] + '/{quad}_2.unmappedfastq'
     log:
-        config['output'] + '/{trio}.align.log'
+        config['output'] + '/{quad}.align.log'
     params:
-        index_base=lambda wildcards: '%s/%s/star_idx' % (config['ref'], wildcards.trio.split('_')[2]),
-        srr=lambda wildcards: wildcards.trio.split('_')[0],
+        index_base=lambda wildcards: '%s/%s/star_idx' % (config['ref'], wildcards.quad.split('_')[2]),
+        srr=lambda wildcards: wildcards.quad.split('_')[0],
         star_params=config.get('star', '')
     threads: 16
     shell:
@@ -709,15 +716,15 @@ rule align:
 
 rule fastq_check:
     input:
-        reads0=config['temp'] + '/{trio}_0.fastq',
-        reads1=config['temp'] + '/{trio}_1.fastq',
-        reads2=config['temp'] + '/{trio}_2.fastq'
+        reads0=config['temp'] + '/{quad}_0.fastq',
+        reads1=config['temp'] + '/{quad}_1.fastq',
+        reads2=config['temp'] + '/{quad}_2.fastq'
     output:
-        config['output'] + '/{trio}.fastq_check.tsv.zst'
+        config['output'] + '/{quad}.fastq_check.tsv.zst'
     log:
-        config['output'] + '/{trio}.fastq_check.log'
+        config['output'] + '/{quad}.fastq_check.log'
     params:
-        srr=lambda wildcards: wildcards.trio.split('_')[0]
+        srr=lambda wildcards: wildcards.quad.split('_')[0]
     shell:
         """
         TMP="{config[temp]}/fastq_check-{params.srr}.tsv"
@@ -738,15 +745,16 @@ rule fastq_check:
         echo "COUNT_FastqCheckComplete 1"
         """
 
-rule sra_fastq:
+rule download:
     output:
-        temp(config['temp'] + '/{trio}_0.fastq'),
-        temp(config['temp'] + '/{trio}_1.fastq'),
-        temp(config['temp'] + '/{trio}_2.fastq')
+        temp(config['temp'] + '/{quad}_0.fastq'),
+        temp(config['temp'] + '/{quad}_1.fastq'),
+        temp(config['temp'] + '/{quad}_2.fastq')
     log:
-        config['output'] + '/{trio}.sra_fastq.log'
+        config['output'] + '/{quad}.download.log'
     params:
-        srr=lambda wildcards: wildcards.trio.split('_')[0],
+        srr=lambda wildcards: wildcards.quad.split('_')[0],
+        method=lambda wildcards: wildcards.quad.split('_')[3],
         fd_params=config.get('fastq_dump_args', ''),
         retries=config.get('fastq_dump_retries', '5')
     threads: 4
@@ -756,57 +764,119 @@ rule sra_fastq:
         SUCCESS=0
         TIMEOUT=10
         PARAMS=""
-        USE_FASTERQ=1
-        TMP="{config[temp]}/prefetch-{params.srr}"
+        TMP="{config[temp]}/dl-{params.srr}"
         ! test -d ${{TMP}}
-        for i in {{ 1..{params.retries} }} ; do
-            if time prefetch -t fasp -O ${{TMP}} -L info {params.srr} 2>&1 >> {log} ; then
-                SUCCESS=1
-                break
-            else
-                echo "COUNT_SraFastqRetries 1"
-                TIMEOUT=$((${{TIMEOUT}} * 2))
-                sleep ${{TIMEOUT}}
+        
+        if [[ {params.method} == "sra" ]] ; then
+            USE_FASTERQ=1
+            for i in {{ 1..{params.retries} }} ; do
+                if time prefetch -t fasp -O ${{TMP}} -L info {params.srr} 2>&1 >> {log} ; then
+                    SUCCESS=1
+                    break
+                else
+                    echo "COUNT_SraRetries 1"
+                    TIMEOUT=$((${{TIMEOUT}} * 2))
+                    sleep ${{TIMEOUT}}
+                fi
+            done
+            if (( $SUCCESS == 0 )) ; then
+                echo "COUNT_SraFailures 1"
+                exit 1
             fi
-        done
-        if (( $SUCCESS == 0 )) ; then
-            echo "COUNT_SraFastqFailures 1"
-            exit 1
+            test -f ${{TMP}}/*.sra
+            size=$(cat ${{TMP}}/*.sra | wc -c)
+            echo "COUNT_SraBytesDownloaded ${{size}}"
+            if (( ${{USE_FASTERQ}} == 1 )) ; then
+                time fasterq-dump ${{TMP}}/*.sra \
+                    -e {threads} \
+                    -t ${{TMP}} \
+                    -L info \
+                    --split-files \
+                    --skip-technical \
+                    -o {params.srr}.fastq \
+                    2>&1 >> {log}
+                test -f {params.srr}_2.fastq || mv {params.srr}.fastq {params.srr}_0.fastq
+            else
+                time fastq-dump ${{TMP}}/*.sra \
+                    -L info \
+                    --split-files \
+                    --skip-technical \
+                    -O . \
+                    2>&1 >> {log}
+                test -f {params.srr}_2.fastq || mv {params.srr}_1.fastq {params.srr}_0.fastq
+            fi
+            rm -rf ${{TMP}}
+        elif [[ {params.method} == "gdc" ]] ; then
+            TOKEN=~/gdc/latest.txt
+            if [[ ! -f ${{TOKEN}} ]] ; then
+                echo "ERROR: no GDC token file found at ${{TOKEN}}"
+                exit 1
+            fi
+            for i in {{ 1..{params.retries} }} ; do
+                if time gdc-client download \
+                    -t ${{TOKEN}} \
+                    --log-file {{TMP}}/log.txt \
+                    -d {{TEMP}} \
+                    {params.srr} 2>&1 >> {log}
+                then
+                    SUCCESS=1
+                    break
+                else
+                    echo "COUNT_GdcRetries 1"
+                    TIMEOUT=$((${{TIMEOUT}} * 2))
+                    sleep ${{TIMEOUT}}
+                fi
+            done
+            if (( $SUCCESS == 0 )) ; then
+                echo "COUNT_GdcFailures 1"
+                exit 1
+            fi
+            test -d {{TEMP}}/{params.srr}
+            test -f {{TEMP}}/{params.srr}/*.tar.gz
+            
+            echo "=== gdc-client log.txt begin ===" >> {log}
+            cat {{TMP}}/log.txt >> {log}
+            echo "=== gdc-client log.txt end===" >> {log}
+            
+            size=$(cat {{TEMP}}/{params.srr}/*.tar.gz | wc -c)
+            echo "COUNT_GdcBytesDownloaded ${{size}}"
+
+            tar zxvf {{TEMP}}/{params.srr}/*.tar.gz
+            rm -rf {{TEMP}}
+            
+            num_1s=$(ls -1 *_1.fastq | wc -l)
+            num_2s=$(ls -1 *_2.fastq | wc -l)
+            if (( ${{num_1s}} == 0 )) ; then
+                echo "ERROR: No _1.fastq files output"
+                exit 1
+            fi
+            if (( ${{num_1s}} > 1 )) ; then
+                echo "ERROR: More than one _1.fastq file found"
+                exit 1
+            fi
+            if (( ${{num_2s}} == 0 )) ; then
+                # unpaired
+                mv *_1.fastq {params.srr}_0.fastq
+            else
+                # paired-end
+                mv *_1.fastq {params.srr}_1.fastq
+                mv *_2.fastq {params.srr}_2.fastq
+            fi
         fi
-        test -f ${{TMP}}/*.sra
-        size=$(cat ${{TMP}}/*.sra | wc -c)
-        echo "COUNT_SraBytesDownloaded ${{size}}"
-        if (( ${{USE_FASTERQ}} == 1 )) ; then
-            time fasterq-dump ${{TMP}}/*.sra \
-                -e {threads} \
-                -t ${{TMP}} \
-                -L info \
-                --split-files \
-                --skip-technical \
-                -o {params.srr}.fastq \
-                2>&1 >> {log}
-            test -f {params.srr}_2.fastq || mv {params.srr}.fastq {params.srr}_0.fastq
-        else
-            time fastq-dump ${{TMP}}/*.sra \
-                -L info \
-                --split-files \
-                --skip-technical \
-                -O . \
-                2>&1 >> {log}
-            test -f {params.srr}_2.fastq || mv {params.srr}_1.fastq {params.srr}_0.fastq
-        fi
-        rm -rf ${{TMP}}
+        
+        # Next chunk expects the FASTQ files to exist in the current directory
+        # named {{params.srr}}_{{0,1,2}}.fastq
         size=0
         for i in {{0..2}} ; do
             fn={params.srr}_${{i}}.fastq
             if [[ -f ${{fn}} ]] ; then
-                echo "COUNT_FastqFilesDownloaded 1"
+                echo "COUNT_FilesDownloaded 1"
             else
                 touch ${{fn}}
             fi
             size=$((${{size}} + $(wc -c < ${{fn}})))
-            mv ${{fn}} {config[temp]}/{wildcards.trio}_${{i}}.fastq
+            mv ${{fn}} {config[temp]}/{wildcards.quad}_${{i}}.fastq
         done
-        echo "COUNT_FastqBytesDownloaded ${{size}}"
-        echo "COUNT_SraFastqComplete 1"
+        echo "COUNT_BytesDownloaded ${{size}}"
+        echo "COUNT_DownloadComplete 1"
         """
