@@ -283,79 +283,79 @@ rule align_unmapped:
    output:
         bam=config['output'] + '/{quad}.unmapped.bam',
         sample=config['output'] + '/{quad}.unmapped.fastq.zst'
-    log:
-        config['output'] + '/{quad}.align_unmapped.log'
-    params:
-        index_base=lambda wildcards: '%s/%s/unmapped_hisat2_idx/genome' % (config['ref'], wildcards.quad.split('!')[2]),
-        srr=lambda wildcards: wildcards.quad.split('!')[0],
-        hisat2_params=config.get('hisat2', ''),
-        max_unalign=config.get('max_unalign', 100000)
-    threads: 16
-    shell:
-        """
-        TMP="{config[temp]}/align_unmapped_temp.{params.srr}"
-        READ_FILES="-1 {input.unmapped1} -2 {input.unmapped2}"
-        if [[ ! -s {input.unmapped2} ]] ; then
-            READ_FILES="-U {input.unmapped1}"
-        fi
-        time hisat2 \
-            $READ_FILES \
-            -t --mm \
-            -x {params.index_base} \
-            --threads {threads} \
-            {params.hisat2_params} \
-            --un ${{TMP}}.un \
-            --un-conc ${{TMP}}.un_conc \
-            -S ${{TMP}}.sam \
-            2>&1 | tee -a {log}
+   log:
+       config['output'] + '/{quad}.align_unmapped.log'
+   params:
+       index_base=lambda wildcards: '%s/%s/unmapped_hisat2_idx/genome' % (config['ref'], wildcards.quad.split('!')[2]),
+       srr=lambda wildcards: wildcards.quad.split('!')[0],
+       hisat2_params=config.get('hisat2', ''),
+       max_unalign=config.get('max_unalign', 100000)
+   threads: 16
+   shell:
+       """
+       TMP="{config[temp]}/align_unmapped_temp.{params.srr}"
+       READ_FILES="-1 {input.unmapped1} -2 {input.unmapped2}"
+       if [[ ! -s {input.unmapped2} ]] ; then
+           READ_FILES="-U {input.unmapped1}"
+       fi
+       time hisat2 \
+           $READ_FILES \
+           -t --mm \
+           -x {params.index_base} \
+           --threads {threads} \
+           {params.hisat2_params} \
+           --un ${{TMP}}.un \
+           --un-conc ${{TMP}}.un_conc \
+           -S ${{TMP}}.sam \
+           2>&1 | tee -a {log}
 
-        #
-        # Make BAM file out of aligned reads
-        #
-        time samtools view \
-            -b -F 4 \
-            -o {output.bam} \
-            ${{TMP}}.sam \
-            2>&1 | tee -a {log}
-        rm -f ${{TMP}}.sam
+       #
+       # Make BAM file out of aligned reads
+       #
+       time samtools view \
+           -b -F 4 \
+           -o {output.bam} \
+           ${{TMP}}.sam \
+           2>&1 | tee -a {log}
+       rm -f ${{TMP}}.sam
 
-        #
-        # Save a subset of the doubly unaligned reads
-        #
-        if [[ ! -s {input.unmapped2} ]] ; then
-            # unpaired
-            fastq-sample \
-                -n {params.max_unalign} \
-                -o ${{TMP}}.samp \
-                ${{TMP}}.un
-            rm -f ${{TMP}}.un
-        else
-            # paired-end
-            fastq-sample \
-                -n {params.max_unalign} \
-                -o ${{TMP}}.samp \
-                ${{TMP}}.1.un_conc ${{TMP}}.2.un_conc
-            rm -f ${{TMP}}.1.un_conc ${{TMP}}.2.un_conc
-            
-            # interleave the two output fastqs into single file
-            paste ${{TMP}}.samp.1.fastq ${{TMP}}.samp.2.fastq \
-                | paste - - - - \
-                | awk -v OFS="\n" -v FS="\t" '{{print($1,$3,$5,$7,$2,$4,$6,$8)}}' \
-                > ${{TMP}}.samp.fastq
-            rm -f ${{TMP}}.samp.1.fastq ${{TMP}}.samp.2.fastq
-        fi
+       #
+       # Save a subset of the doubly unaligned reads
+       #
+       if [[ ! -s {input.unmapped2} ]] ; then
+           # unpaired
+           fastq-sample \
+               -n {params.max_unalign} \
+               -o ${{TMP}}.samp \
+               ${{TMP}}.un
+           rm -f ${{TMP}}.un
+       else
+           # paired-end
+           fastq-sample \
+               -n {params.max_unalign} \
+               -o ${{TMP}}.samp \
+               ${{TMP}}.1.un_conc ${{TMP}}.2.un_conc
+           rm -f ${{TMP}}.1.un_conc ${{TMP}}.2.un_conc
+           
+           # interleave the two output fastqs into single file
+           paste ${{TMP}}.samp.1.fastq ${{TMP}}.samp.2.fastq \
+               | paste - - - - \
+               | awk -v OFS="\n" -v FS="\t" '{{print($1,$3,$5,$7,$2,$4,$6,$8)}}' \
+               > ${{TMP}}.samp.fastq
+           rm -f ${{TMP}}.samp.1.fastq ${{TMP}}.samp.2.fastq
+       fi
 
-        test -f ${{TMP}}.samp.fastq
-        time zstd ${{TMP}}.samp.fastq -o {output.sample} 2>&1 | tee -a {log}
-        size=$(wc -c < {output.sample})
-        echo "COUNT_UnmappedSampleBytes ${{size}}"
-        rm -f ${{TMP}}.samp.fastq
-    
-        size=$(wc -c < {output.bam})
-        echo "COUNT_UnmappedBamBytes ${{size}}"
+       test -f ${{TMP}}.samp.fastq
+       time zstd ${{TMP}}.samp.fastq -o {output.sample} 2>&1 | tee -a {log}
+       size=$(wc -c < {output.sample})
+       echo "COUNT_UnmappedSampleBytes ${{size}}"
+       rm -f ${{TMP}}.samp.fastq
+   
+       size=$(wc -c < {output.bam})
+       echo "COUNT_UnmappedBamBytes ${{size}}"
 
-        echo "COUNT_AlignUnmappedComplete 1"
-        """
+       echo "COUNT_AlignUnmappedComplete 1"
+       """
 
 rule extract_jx:
     input:
@@ -593,6 +593,7 @@ rule download:
                 echo "ERROR: no GDC token file found at ${{TOKEN}}"
                 exit 1
             fi
+            mkdir -p ${{TMP}}
             for i in {{ 1..{params.retries} }} ; do
                 if time gdc-client download \
                     -t ${{TOKEN}} \

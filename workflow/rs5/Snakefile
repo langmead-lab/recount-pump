@@ -814,6 +814,7 @@ rule download:
                 echo "ERROR: no GDC token file found at ${{TOKEN}}"
                 exit 1
             fi
+            mkdir -p ${{TMP}}
             for i in {{ 1..{params.retries} }} ; do
                 if time gdc-client download \
                     -t ${{TOKEN}} \
