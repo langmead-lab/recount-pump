@@ -571,7 +571,7 @@ rule align_unmapped:
         size=$(wc -c < {output.sample})
         echo "COUNT_UnmappedSampleBytes ${{size}}"
         rm -f ${{TMP}}.samp.fastq
-    
+
         size=$(wc -c < {output.bam})
         echo "COUNT_UnmappedBamBytes ${{size}}"
 
@@ -846,7 +846,7 @@ rule download:
 
             tar zxvf ${{TMP}}/{params.srr}/*.tar.gz
             rm -rf ${{TMP}}
-            
+
             num_1s=$(ls -1 *_1.fastq | wc -l)
             num_2s=$(ls -1 *_2.fastq | wc -l)
             if (( ${{num_1s}} == 0 )) ; then
