@@ -772,7 +772,7 @@ rule download:
         if [[ {params.method} == "sra" ]] ; then
             USE_FASTERQ=1
             for i in {{ 1..{params.retries} }} ; do
-                if time prefetch --max-size 100G -t fasp -O ${{TMP}} -L info {params.srr} 2>&1 >> {log} ; then
+                if time prefetch --max-size 200G -t fasp -O ${{TMP}} -L info {params.srr} 2>&1 >> {log} ; then
                     SUCCESS=1
                     break
                 else
