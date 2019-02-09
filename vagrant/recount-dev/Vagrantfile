@@ -85,6 +85,11 @@ Vagrant.configure("2") do |config|
     curl -L -o /usr/local/bin/mc https://dl.minio.io/client/mc/release/linux-amd64/mc
     chmod a+x /usr/local/bin/mc
   SHELL
+  
+  config.vm.provision "shell", privileged: true, name: "install kent", inline: <<-SHELL
+    curl -L -o /usr/local/bin/bigWigSummary http://hgdownload.cse.ucsc.edu/admin/exe/linux.x86_64/bigWigSummary
+    chmod a+x /usr/local/bin/bigWigSummary
+  SHELL
 
   config.vm.provision "shell", privileged: false, name: "docker login", inline: <<-SHELL
     docker login quay.io -u $(cut -d' ' -f1 "$HOME/.docker/quay_creds.txt") \
