@@ -6,13 +6,29 @@ output: html_document
 ```{r libs}
 library(ggplot2)
 library(dplyr)
+library(grid)
+library(gridExtra)
 ```
 
 ```{r read_csv}
-m <- read.csv('summ_9606.csv', header=F)
-colnames(m) <- c('srr', 'srp', 'sc', 'rec_year', 'rec_month', 'rec_day', 'up_year', 'up_month', 'up_day')
-m$rec_date <- as.Date(paste(m$rec_year, m$rec_month, m$rec_day, sep='.'), format='%Y.%m.%d')
-m$sc <- ifelse(m$sc == 'True', 'Single-cell', 'Bulk')
+read_table <- function(fn) {
+    m <- read.csv(fn, header=F)
+    colnames(m) <- c('srr', 'srp', 'sc',
+                     'rec_year', 'rec_month', 'rec_day',
+                     'up_year', 'up_month', 'up_day')
+    m$rec_date <- as.Date(paste(m$rec_year, m$rec_month, m$rec_day, sep='.'), format='%Y.%m.%d')
+    m$sc <- ifelse(m$sc == 'True', 'Single-cell', 'Bulk')
+    m <- m %>% arrange(rec_date)
+    m$arrival <- 0
+    is_sc <- m$sc == 'Single-cell'
+    is_not_sc <- !is_sc
+    m$arrival[is_sc] <- seq(sum(is_sc))
+    m$arrival[is_not_sc] <- seq(sum(is_not_sc))
+    m
+}
+
+m_human <- read_table('summ_9606.csv')
+m_mouse <- read_table('summ_10090.csv')
 ```
 
 ```{r combined_plot}
@@ -43,21 +59,53 @@ grid_arrange_shared_legend <- function(..., ncol = length(list(...)), nrow = 1, 
 }
 ```
 
-```{r plot_human_srr}
-human_srr <- ggplot(m, aes(x=rec_date, color=sc)) +
-    stat_ecdf(geom='step') +
-    labs(x='Received date', y='Cumulative count', title='Human RNA-seq run accessions') +
-    coord_cartesian(xlim=c(min(m$rec_date), as.Date('2018-05-01', '%Y-%m-%d'))) +
-    theme_bw()
-human_srr
+```{r plot_srr}
+plot_srr <- function(m, species) {
+    ggplot(m, aes(x=rec_date, color=sc, y=arrival)) +
+        geom_line() +
+        labs(x='Received date', y='Cumulative count',
+             title=paste(species, 'RNA-seq run accessions')) +
+        theme(legend.title=element_blank()) +
+        theme_bw()
+}   
+
+human_srr <- plot_srr(m_human, 'Human')
+mouse_srr <- plot_srr(m_mouse, 'Mouse')
 ```
 
-```{r plot_human_srp}
-mp <- m %>% group_by(srp) %>% summarise(rec_date=max(rec_date), sc=sc[1])
-human_srp <- ggplot(mp, aes(x=rec_date, color=sc)) +
-    stat_ecdf(geom='step') +
-    labs(x='Received date', y='Cumulative count', title='Human RNA-seq study accessions') +
-    coord_cartesian(xlim=c(min(m$rec_date), as.Date('2018-05-01', '%Y-%m-%d'))) +
-    theme_bw()
-human_srp
+```{r srpify}
+srpify <- function(m) {
+    mp <- m %>% group_by(srp) %>%
+        summarise(rec_date=max(rec_date),
+                  sc=ifelse(all(sc == 'Single-cell'), 'Single-cell',
+                      ifelse(all(sc == 'Bulk'), 'Bulk', 'Mixed')))
+    mp <- mp %>% arrange(rec_date)
+    is_sc <- mp$sc == 'Single-cell'
+    is_bulk <- mp$sc == 'Bulk'
+    is_neither <- !is_sc & !is_bulk
+    mp$arrival <- 0
+    mp$arrival[is_sc] <- seq(sum(is_sc))
+    mp$arrival[is_bulk] <- seq(sum(is_bulk))
+    mp$arrival[is_neither] <- seq(sum(is_neither))
+    mp
+}
+```
+
+```{r plot_srp}
+plot_srp <- function(m, species) {
+    ggplot(mp %>% filter(sc != 'Mixed'), aes(x=rec_date, color=sc, y=arrival)) +
+        geom_line() +
+        labs(x='Received date', y='Cumulative count',
+             title=paste(species, 'RNA-seq study accessions')) +
+        theme(legend.title=element_blank()) +
+        theme_bw()
+}
+
+human_srp <- plot_srp(srpify(m_human), 'Human')
+mouse_srp <- plot_srp(srpify(m_mouse), 'Mouse')
+```
+
+```{r plot_all}
+grid_arrange_shared_legend(human_srr, mouse_srr, human_srp, mouse_srp, nrow=2, ncol=2) +
+    theme(legend.title=element_blank())
 ```
