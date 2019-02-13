@@ -78,7 +78,8 @@ srpify <- function(m) {
     mp <- m %>% group_by(srp) %>%
         summarise(rec_date=max(rec_date),
                   sc=ifelse(all(sc == 'Single-cell'), 'Single-cell',
-                      ifelse(all(sc == 'Bulk'), 'Bulk', 'Mixed')))
+                      ifelse(all(sc == 'Bulk'), 'Bulk', 'Mixed')),
+                  n=length(srr))
     mp <- mp %>% arrange(rec_date)
     is_sc <- mp$sc == 'Single-cell'
     is_bulk <- mp$sc == 'Bulk'
@@ -108,4 +109,25 @@ mouse_srp <- plot_srp(srpify(m_mouse), 'Mouse')
 ```{r plot_all}
 grid_arrange_shared_legend(human_srr, mouse_srr, human_srp, mouse_srp, nrow=2, ncol=2) +
     theme(legend.title=element_blank())
+```
+
+```{r top_studies}
+mp_mouse <- srpify(m_mouse) %>% arrange(desc(n))
+print(head(mp_mouse))
+```
+
+```{r top_dates_mouse}
+m_mouse %>%
+    group_by(rec_date) %>%
+    summarise(n=length(srr), srps=paste(unique(srp), collapse=' ')) %>%
+    arrange(desc(n)) %>%
+    head(5)
+```
+
+```{r top_dates_human}
+m_human %>%
+    group_by(rec_date) %>%
+    summarise(n=length(srr), srps=paste(unique(srp), collapse=' ')) %>%
+    arrange(desc(n)) %>%
+    head(5)
 ```
