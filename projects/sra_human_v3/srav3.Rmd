@@ -65,8 +65,8 @@ plot_srr <- function(m, species) {
         geom_line() +
         labs(x='Received date', y='Cumulative count',
              title=paste(species, 'RNA-seq run accessions')) +
-        theme(legend.title=element_blank()) +
-        theme_bw()
+        theme_bw() +
+        theme(legend.title=element_blank())
 }   
 
 human_srr <- plot_srr(m_human, 'Human')
@@ -98,8 +98,8 @@ plot_srp <- function(m, species) {
         geom_line() +
         labs(x='Received date', y='Cumulative count',
              title=paste(species, 'RNA-seq study accessions')) +
-        theme(legend.title=element_blank()) +
-        theme_bw()
+        theme_bw() +
+        theme(legend.title=element_blank())
 }
 
 human_srp <- plot_srp(srpify(m_human), 'Human')
@@ -107,8 +107,7 @@ mouse_srp <- plot_srp(srpify(m_mouse), 'Mouse')
 ```
 
 ```{r plot_all}
-grid_arrange_shared_legend(human_srr, mouse_srr, human_srp, mouse_srp, nrow=2, ncol=2) +
-    theme(legend.title=element_blank())
+grid_arrange_shared_legend(human_srr, mouse_srr, human_srp, mouse_srp, nrow=2, ncol=2)
 ```
 
 ```{r top_studies}
