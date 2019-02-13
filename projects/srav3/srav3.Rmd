@@ -1,0 +1,63 @@
+---
+title: "srav3"
+output: html_document
+---
+
+```{r libs}
+library(ggplot2)
+library(dplyr)
+```
+
+```{r read_csv}
+m <- read.csv('summ_9606.csv', header=F)
+colnames(m) <- c('srr', 'srp', 'sc', 'rec_year', 'rec_month', 'rec_day', 'up_year', 'up_month', 'up_day')
+m$rec_date <- as.Date(paste(m$rec_year, m$rec_month, m$rec_day, sep='.'), format='%Y.%m.%d')
+m$sc <- ifelse(m$sc == 'True', 'Single-cell', 'Bulk')
+```
+
+```{r combined_plot}
+grid_arrange_shared_legend <- function(..., ncol = length(list(...)), nrow = 1, position = c("bottom", "right")) {
+
+  plots <- list(...)
+  position <- match.arg(position)
+  g <- ggplotGrob(plots[[1]] + theme(legend.position = position))$grobs
+  legend <- g[[which(sapply(g, function(x) x$name) == "guide-box")]]
+  lheight <- sum(legend$height)
+  lwidth <- sum(legend$width)
+  gl <- lapply(plots, function(x) x + theme(legend.position="none"))
+  gl <- c(gl, ncol = ncol, nrow = nrow)
+
+  combined <- switch(position,
+                     "bottom" = arrangeGrob(do.call(arrangeGrob, gl),
+                                            legend,
+                                            ncol = 1,
+                                            heights = unit.c(unit(1, "npc") - lheight, lheight)),
+                     "right" = arrangeGrob(do.call(arrangeGrob, gl),
+                                           legend,
+                                           ncol = 2,
+                                           widths = unit.c(unit(1, "npc") - lwidth, lwidth)))
+  grid.newpage()
+  grid.draw(combined)
+  # return gtable invisibly
+  invisible(combined)
+}
+```
+
+```{r plot_human_srr}
+human_srr <- ggplot(m, aes(x=rec_date, color=sc)) +
+    stat_ecdf(geom='step') +
+    labs(x='Received date', y='Cumulative count', title='Human RNA-seq run accessions') +
+    coord_cartesian(xlim=c(min(m$rec_date), as.Date('2018-05-01', '%Y-%m-%d'))) +
+    theme_bw()
+human_srr
+```
+
+```{r plot_human_srp}
+mp <- m %>% group_by(srp) %>% summarise(rec_date=max(rec_date), sc=sc[1])
+human_srp <- ggplot(mp, aes(x=rec_date, color=sc)) +
+    stat_ecdf(geom='step') +
+    labs(x='Received date', y='Cumulative count', title='Human RNA-seq study accessions') +
+    coord_cartesian(xlim=c(min(m$rec_date), as.Date('2018-05-01', '%Y-%m-%d'))) +
+    theme_bw()
+human_srp
+```
