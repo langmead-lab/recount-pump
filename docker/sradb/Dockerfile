@@ -2,6 +2,8 @@ FROM bioconductor/release_core2
 
 RUN Rscript -e 'BiocManager::install("SRAdb", version = "3.8")'
 
-COPY entry.R /entry.R
+ENV R_DEFAULT_PACKAGES SRAdb
 
-ENTRYPOINT [ "Rscript", "/entry.R" ]
+COPY getdb.R /getdb.R
+
+ENTRYPOINT [ "R" ]

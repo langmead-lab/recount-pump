@@ -10,4 +10,5 @@ DB_DIR=$(mkdir -p ${d}/db && cd ${d}/db && pwd)
 
 docker run --rm -it --name ${CONTAINER_NAME} \
      -v ${DB_DIR}:/db \
-     ${IMAGE} /bin/bash
+     --entrypoint Rscript \
+     ${IMAGE} /getdb.R
