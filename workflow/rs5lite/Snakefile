@@ -29,7 +29,7 @@ FILES = ['sjout.zst', 'fastq_check.tsv.zst',
          'all.bw.zst',
          'unique.bw.zst',
          'salmon.tsv.zst',
-         'jx_bed.zst',
+         'jx_bed.zst', 'unmapped.jx_bed.zst',
          'manifest'] + list(map(lambda x: x + '.log', STEPS))
 
 def get_accessions(wildcards):
@@ -60,6 +60,7 @@ rule make_manifest:
         config['output'] + '/{quad}.salmon.tsv.zst',
         config['output'] + '/{quad}.sjout.zst',
         config['output'] + '/{quad}.jx_bed.zst',
+        config['output'] + '/{quad}.unmapped.jx_bed.zst',
         config['output'] + '/{quad}.Chimeric.out.junction.zst',
         config['output'] + '/{quad}.unmapped.fastq.zst',
         config['output'] + '/{quad}.bamcount_nonref.csv.zst',
@@ -432,17 +433,23 @@ rule extract_jx:
         config['output'] + '/{quad}.extract_jx.log'
     shell:
         """
-        TMP="{config[temp]}/extract_jx.{params.srr}"
-        time regtools junctions extract \
-            -i 20 -a 1 \
-            -o ${{TMP}}.jx_tmp \
-            {input.bam} 2>&1 | tee -a {log}
-        time zstd ${{TMP}}.jx_tmp -o {output} 2>&1 | tee -a {log}
-        rm -f ${{TMP}}.jx_tmp
-
-        size=$(wc -c < {output})
-        echo "COUNT_ExtractJxBytes ${{size}}"
-
+        nrecs=$(set +o pipefail ; samtools view {input.bam} | head -n 10 | wc -l)
+        echo "nrecs=${{nrecs}}"
+        if (( $nrecs == 0 )) ; then
+            echo "COUNT_ExtractJxSkipEmpty 1"
+            echo "" | zstd -c > {output}
+        else
+            TMP="{config[temp]}/extract_jx.{params.srr}"
+            time regtools junctions extract \
+                -i 20 -a 1 \
+                -o ${{TMP}}.jx_tmp \
+                {input.bam} 2>&1 | tee -a {log}
+            time zstd ${{TMP}}.jx_tmp -o {output} 2>&1 | tee -a {log}
+            rm -f ${{TMP}}.jx_tmp
+    
+            size=$(wc -c < {output})
+            echo "COUNT_ExtractJxBytes ${{size}}"
+        fi
         echo "COUNT_ExtractJxComplete 1"
         """
 
