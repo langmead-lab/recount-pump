@@ -51,6 +51,13 @@ def parse_project_ini(fn, options):
 def go():
     common_dirname = os.path.dirname(os.path.realpath(__file__))
 
+    project_fn = 'project.ini'
+    if len(sys.argv) > 1:
+        project_fn = sys.argv[1]
+
+    if not os.path.exists(project_fn):
+        raise RuntimeError('No such project file as "%s"' % project_fn)
+
     #
     # Run from project directory
     #
@@ -99,9 +106,6 @@ def go():
         print('Could not determine cluster', file=sys.stderr)
 
     print('Parsing project ini', file=sys.stderr)
-    project_fn = 'project.ini'
-    if not os.path.exists(project_fn):
-        raise RuntimeError('Could not find project conf "%s"' % project_fn)
     parse_project_ini(project_fn, options)
 
     creds_dirname = os.path.join(common_dirname, 'creds')
