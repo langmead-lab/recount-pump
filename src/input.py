@@ -34,16 +34,13 @@ from __future__ import print_function
 import os
 import log
 import pytest
-import gzip
 import json
-import codecs
 import tempfile
 from docopt import docopt
 from sqlalchemy import Column, ForeignKey, Integer, String, Sequence, Table
 from sqlalchemy.orm import relationship
 from base import Base
-from sqlalchemy.sql import text
-from toolbox import session_maker_from_config
+from toolbox import session_maker_from_config, openex
 
 
 class Input(Base):
@@ -239,12 +236,25 @@ def import_input_set(name, csv_fn, my_session):
     return input_set.id, n_added_input
 
 
+def input_set_from_name(input_set_name, session, caller_name):
+    input_sets = session.query(InputSet).filter(InputSet.name == input_set_name).all()
+    if len(input_sets) > 1:
+        raise RuntimeError('More than one InputSet with name "%s"' % input_set_name)
+    if len(input_sets) == 1:
+        log.info('%s is using an existing InputSet with name "%s"' % (caller_name, input_set_name), 'input.py')
+        set_id = input_sets[0].id
+    else:
+        log.info('%s creating a new InputSet with name "%s"' % (caller_name, input_set_name), 'input.py')
+        set_id = add_input_set(input_set_name, session)
+    return set_id
+
+
 def import_text(fn, input_set_name, session, limit=None):
     log.info('Loading metadata from text file "%s"' % fn, 'input.py')
     if not os.path.exists(fn):
         raise RuntimeError('No such text file as "%s"' % fn)
     inputs = []
-    with open(fn, 'rt') as fh:
+    with openex(fn) as fh:
         for ln in fh:
             ln = ln.rstrip()
             if len(ln) == 0:
@@ -266,7 +276,7 @@ def import_text(fn, input_set_name, session, limit=None):
             if limit is not None and len(inputs) >= int(limit):
                 break
     session.commit()
-    set_id = add_input_set(input_set_name, session)
+    set_id = input_set_from_name(input_set_name, session, 'import_text')
     add_inputs_to_set([set_id] * len(inputs),
                       list(map(lambda x: x.id, inputs)),
                       session)
@@ -277,7 +287,7 @@ def import_json(json_fn, input_set_name, session, limit=None):
     log.info('Loading metadata from json file "%s"' % json_fn, 'input.py')
     if not os.path.exists(json_fn):
         raise RuntimeError('No such json file as "%s"' % json_fn)
-    js = json.load(codecs.getreader("utf-8")(gzip.open(json_fn)) if json_fn.endswith('.gz') else open(json_fn))
+    js = json.load(openex(json_fn))
     inputs = []
     if len(js) == 0:
         raise ValueError('Attempt to import from empty JSON file: "%s"' % json_fn)
@@ -303,7 +313,7 @@ def import_json(json_fn, input_set_name, session, limit=None):
         if limit is not None and len(inputs) >= int(limit):
             break
     session.commit()
-    set_id = add_input_set(input_set_name, session)
+    set_id = input_set_from_name(input_set_name, session, 'import_text')
     add_inputs_to_set([set_id] * len(inputs),
                       list(map(lambda x: x.id, inputs)),
                       session)
