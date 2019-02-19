@@ -65,6 +65,7 @@ plot_srr <- function(m, species) {
         geom_line() +
         labs(x='Received date', y='Cumulative count',
              title=paste(species, 'RNA-seq run accessions')) +
+        ylim(0, 450000) +
         theme_bw() +
         theme(legend.title=element_blank())
 }   
@@ -93,7 +94,7 @@ srpify <- function(m) {
 ```
 
 ```{r plot_srp}
-plot_srp <- function(m, species) {
+plot_srp <- function(mp, species) {
     ggplot(mp %>% filter(sc != 'Mixed'), aes(x=rec_date, color=sc, y=arrival)) +
         geom_line() +
         labs(x='Received date', y='Cumulative count',
@@ -108,11 +109,15 @@ mouse_srp <- plot_srp(srpify(m_mouse), 'Mouse')
 
 ```{r plot_all}
 grid_arrange_shared_legend(human_srr, mouse_srr, human_srp, mouse_srp, nrow=2, ncol=2)
+
+pdf(file='sra_rna_growth.pdf', onefile=F)
+grid_arrange_shared_legend(human_srr, mouse_srr, human_srp, mouse_srp, nrow=2, ncol=2)
+dev.off()
 ```
 
 ```{r top_studies}
 mp_mouse <- srpify(m_mouse) %>% arrange(desc(n))
-print(head(mp_mouse))
+print(head(mp_mouse %>% filter(sc == 'Single-cell'), n=100))
 ```
 
 ```{r top_dates_mouse}
