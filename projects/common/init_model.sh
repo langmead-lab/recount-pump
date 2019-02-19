@@ -9,7 +9,6 @@
 # into the queues.
 #
 # - TODO: Make the list of reference files be configurable
-# - TODO: Reconsider whether we need the suite of inis in the creds subdir
 # - TODO: Some paths and URLs are still hardcoded: /tmp & s3://recount-ref
 
 d=$(dirname $0)
