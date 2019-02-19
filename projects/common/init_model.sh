@@ -16,7 +16,7 @@ d=$(dirname $0)
 set -ex
 
 PROJ_INI=$1
-if [[ -n "${PROJ_INI}" ]] ; then
+if [[ -z "${PROJ_INI}" ]] ; then
     PROJ_INI=project.ini
 fi
 
