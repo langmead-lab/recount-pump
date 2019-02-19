@@ -15,23 +15,32 @@ d=$(dirname $0)
 
 set -ex
 
+PROJ_INI=$1
+if [[ -n "${PROJ_INI}" ]] ; then
+    PROJ_INI=project.ini
+fi
+
 # Set up variables & parse parameters
-RECOUNT_CREDS=creds
-ANALYSIS_NAME=$(grep '^ana_name' project.ini | cut -d"=" -f2 | tr -d '[:space:]')
-ANA_URL=$(grep '^ana_url' project.ini | cut -d"=" -f2 | tr -d '[:space:]')
+ANALYSIS_NAME=$(grep '^ana_name' ${PROJ_INI} | cut -d"=" -f2 | tr -d '[:space:]')
+ANA_URL=$(grep '^ana_url' ${PROJ_INI} | cut -d"=" -f2 | tr -d '[:space:]')
 SRC_DIR="$d/../../src"
-ARGS="--ini-base ${RECOUNT_CREDS}"
-OUTPUT_DIR=$(grep '^output_base' ${RECOUNT_CREDS}/cluster.ini | cut -d"=" -f2 | tr -d '[:space:]')
-SPECIES=$(grep '^species_short' project.ini | cut -d"=" -f2 | tr -d '[:space:]')
-SPECIES_FULL=$(grep '^species_long' project.ini | cut -d"=" -f2 | tr -d '[:space:]')
-TAXID=$(grep '^taxid' project.ini | cut -d"=" -f2 | tr -d '[:space:]')
-STUDY=$(grep '^study' project.ini | cut -d"=" -f2 | tr -d '[:space:]')
+ARGS="--ini-base creds"
+SPECIES=$(grep '^species_short' ${PROJ_INI} | cut -d"=" -f2 | tr -d '[:space:]')
+SPECIES_FULL=$(grep '^species_long' ${PROJ_INI} | cut -d"=" -f2 | tr -d '[:space:]')
+TAXID=$(grep '^taxid' ${PROJ_INI} | cut -d"=" -f2 | tr -d '[:space:]')
+STUDY=$(grep '^study' ${PROJ_INI} | cut -d"=" -f2 | tr -d '[:space:]')
 INPUT_SET=${STUDY}
-INPUT_JSON_URL=$(grep '^input_json_url' project.ini | cut -d"=" -f2 | tr -d '[:space:]')
-INPUT_TXT_URL=$(grep '^input_txt_url' project.ini | cut -d"=" -f2 | tr -d '[:space:]')
+INPUT_JSON_URL=$(grep '^input_json_url' ${PROJ_INI} | cut -d"=" -f2 | tr -d '[:space:]')
+INPUT_TXT_URL=$(grep '^input_txt_url' ${PROJ_INI} | cut -d"=" -f2 | tr -d '[:space:]')
+SPIKEIN_JSON_URL=$(grep '^spikein_json_url' ${PROJ_INI} | cut -d"=" -f2 | tr -d '[:space:]')
+SPIKEIN_TXT_URL=$(grep '^spikein_txt_url' ${PROJ_INI} | cut -d"=" -f2 | tr -d '[:space:]')
 INPUT_URL=${INPUT_JSON_URL// }
 if [[ -z ${INPUT_URL// } ]] ; then
     INPUT_URL=${INPUT_TXT_URL// }
+fi
+SPIKEIN_URL=${SPIKEIN_JSON_URL// }
+if [[ -z ${SPIKEIN_URL// } ]] ; then
+    SPIKEIN_URL=${SPIKEIN_TXT_URL// }
 fi
 
 # Create database if it doesn't exist
@@ -210,6 +219,30 @@ fi
 
 test -n "${isid}"
 rm -f "/tmp/${input_fn}"
+
+
+if [[ -n "${SPIKEIN_URL}" ]] ; then
+    spikein_fn=$(basename ${SPIKEIN_URL})
+    rm -f "/tmp/${spikein_fn}"
+    
+    python ${SRC_DIR}/mover.py ${ARGS} get "${SPIKEIN_URL}" "/tmp/${spikein_fn}"
+    
+    [[ ! -f /tmp/${spikein_fn} ]] && echo "Could not get input" && exit 1 
+
+    # Add to same input set as above
+    if [[ -n ${SPIKEIN_JSON_URL} ]] ; then
+        isid2=$(import_json_input_set "/tmp/${spikein_fn}" "${INPUT_SET}")
+    else
+        isid2=$(import_txt_input_set "/tmp/${spikein_fn}" "${INPUT_SET}")
+    fi
+    
+    test -n "${isid2}"
+    if (( ${isid} != ${isid2} )) ; then
+        echo "Error: input set ids from inputs/spike-ins did not match: ${isid}/${isid2}"
+        exit 1
+    fi
+    rm -f "/tmp/${spikein_fn}"
+fi
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 4: Set up project"
