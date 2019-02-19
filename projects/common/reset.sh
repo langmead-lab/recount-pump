@@ -2,7 +2,12 @@
 
 set -ex
 
-STUDY=$(grep '^study' project.ini | cut -d"=" -f2 | tr -d '[:space:]')
+PROJ_INI=$1
+if [[ -z "${PROJ_INI}" ]] ; then
+    PROJ_INI=project.ini
+fi
+
+STUDY=$(grep '^study' ${PROJ_INI} | cut -d"=" -f2 | tr -d '[:space:]')
 
 ../../aws/logs/delete.sh ${STUDY}
 ../../aws/db/reset_db.sh ${STUDY}
