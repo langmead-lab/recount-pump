@@ -1,10 +1,11 @@
 #!/bin/bash
 
-d=$(dirname $0)
+set -e
 
-study=$(grep '^study' project.ini | cut -d"=" -f2 | tr -d '[:space:]')
+superstudy=sra_human_v3
+taxon_id=9606
 
-for i in *.json.zst ; do
+for i in *_${taxon_id}.json.zst ; do
     aws --profile jhu-langmead s3 cp \
-        $i s3://recount-pump-experiments/${study}/${i}
+        $i s3://recount-pump-experiments/${superstudy}/${i}
 done
