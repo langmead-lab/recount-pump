@@ -211,16 +211,6 @@ import_txt_input_set() (
         "${file}" "${input_set_name}" | tail -n 1
 )
 
-if [[ -n ${INPUT_JSON_URL} ]] ; then
-    isid=$(import_json_input_set "/tmp/${input_fn}" "${INPUT_SET}")
-else
-    isid=$(import_txt_input_set "/tmp/${input_fn}" "${INPUT_SET}")
-fi
-
-test -n "${isid}"
-rm -f "/tmp/${input_fn}"
-
-
 if [[ -n "${SPIKEIN_URL}" ]] ; then
     spikein_fn=$(basename ${SPIKEIN_URL})
     rm -f "/tmp/${spikein_fn}"
@@ -229,11 +219,21 @@ if [[ -n "${SPIKEIN_URL}" ]] ; then
     
     [[ ! -f /tmp/${spikein_fn} ]] && echo "Could not get input" && exit 1 
 
-    # Add to same input set as above
+    # Add spike-ins first
     if [[ -n ${SPIKEIN_JSON_URL} ]] ; then
-        isid2=$(import_json_input_set "/tmp/${spikein_fn}" "${INPUT_SET}")
+        isid=$(import_json_input_set "/tmp/${spikein_fn}" "${INPUT_SET}")
     else
-        isid2=$(import_txt_input_set "/tmp/${spikein_fn}" "${INPUT_SET}")
+        isid=$(import_txt_input_set "/tmp/${spikein_fn}" "${INPUT_SET}")
+    fi
+    
+    test -n "${isid}"
+    rm -f "/tmp/${spikein_fn}"
+
+    # Now add inputs (to same input set)
+    if [[ -n ${INPUT_JSON_URL} ]] ; then
+        isid2=$(import_json_input_set "/tmp/${input_fn}" "${INPUT_SET}")
+    else
+        isid2=$(import_txt_input_set "/tmp/${input_fn}" "${INPUT_SET}")
     fi
     
     test -n "${isid2}"
@@ -241,7 +241,17 @@ if [[ -n "${SPIKEIN_URL}" ]] ; then
         echo "Error: input set ids from inputs/spike-ins did not match: ${isid}/${isid2}"
         exit 1
     fi
-    rm -f "/tmp/${spikein_fn}"
+    rm -f "/tmp/${input_fn}"
+else
+    # Add inputs; no spike-ins
+    if [[ -n ${INPUT_JSON_URL} ]] ; then
+        isid=$(import_json_input_set "/tmp/${input_fn}" "${INPUT_SET}")
+    else
+        isid=$(import_txt_input_set "/tmp/${input_fn}" "${INPUT_SET}")
+    fi
+    
+    test -n "${isid}"
+    rm -f "/tmp/${input_fn}"
 fi
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
