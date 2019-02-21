@@ -42,6 +42,12 @@ SPIKEIN_URL=${SPIKEIN_JSON_URL// }
 if [[ -z ${SPIKEIN_URL// } ]] ; then
     SPIKEIN_URL=${SPIKEIN_TXT_URL// }
 fi
+CONFIG_JSON=$(grep '^config_json' ${PROJ_INI} | cut -d"=" -f2 | tr -d '[:space:]')
+
+if [[ -n "${CONFIG_JSON}" && ! -f "${CONFIG_JSON}" ]] ; then
+    echo "Config file ${CONFIG_JSON} specified but does not exist"
+    exit 1
+fi
 
 # Create database if it doesn't exist
 if ! $d/../../aws/db/list_databases.sh | grep -q ${STUDY} ; then
@@ -161,10 +167,10 @@ add_analysis() (
         add-analysis ${name} ${image_url} ${config} | tail -n 1
 )
 
-cat >/tmp/.${STUDY}.config.json <<EOF
-{
-}
-EOF
+echo '{}' > /tmp/.${STUDY}.config.json
+if [[ -n "${CONFIG_JSON}" ]] ; then
+    cp ${CONFIG_JSON} /tmp/.${STUDY}.config.json
+fi
 
 rs_id=$(add_analysis "${ANALYSIS_NAME}" "${ANA_URL}" "file:///tmp/.${STUDY}.config.json")
 test -n "${rs_id}"
