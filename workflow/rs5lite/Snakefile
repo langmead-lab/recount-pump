@@ -645,14 +645,18 @@ rule download:
                     -o {params.srr}.fastq \
                     2>&1 >> {log}
                 test -f {params.srr}_2.fastq || mv {params.srr}.fastq {params.srr}_0.fastq
+                # extra unpaired from --split-3
+                test -f {params.srr}_2.fastq && test -f {params.srr}.fastq && mv {params.srr}.fastq {params.srr}_0.fastq
             else
                 time fastq-dump ${{TMP}}/*.sra \
                     -L info \
-                    --split-files \
+                    --split-3 \
                     --skip-technical \
                     -O . \
                     2>&1 >> {log}
                 test -f {params.srr}_2.fastq || mv {params.srr}_1.fastq {params.srr}_0.fastq
+                # extra unpaired from --split-3
+                test -f {params.srr}_2.fastq && test -f {params.srr}.fastq && mv {params.srr}.fastq {params.srr}_0.fastq
             fi
             rm -rf ${{TMP}}
         elif [[ {params.method} == "gdc" ]] ; then
