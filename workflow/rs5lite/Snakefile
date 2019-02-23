@@ -561,6 +561,86 @@ rule align:
         mv Aligned.out.bam {output.bam}
 
         echo "COUNT_AlignComplete 1"
+        
+        if [[ -s {input.reads2} && -s {input.reads0} ]] ; then
+            READ_FILES="{input.reads0}"
+            TMP="{config[temp]}/align_temp.{params.srr}.0"
+            rm -rf ${{TMP}}
+            time STAR \
+                {params.star_params} \
+                --runMode alignReads \
+                --runThreadN {threads} \
+                --genomeDir {params.index_base} \
+                --readFilesIn ${{READ_FILES}} \
+                --twopassMode None \
+                --genomeLoad LoadAndRemove \
+                --outTmpDir ${{TMP}} \
+                --outReadsUnmapped Fastx \
+                --outMultimapperOrder Random \
+                --outSAMreadID Number \
+                --outSAMtype BAM Unsorted \
+                --outSAMmode NoQS \
+                --outSAMattributes NH MD \
+                --chimOutType Junctions \
+                --chimOutJunctionFormat 1 \
+                --chimSegmentReadGapMax 3 \
+                --chimJunctionOverhangMin 12 \
+                --chimSegmentMin 12 2>&1 | tee -a {log}
+       
+            # Full set of output files:
+            #
+            # Aligned.out.bam
+            # Chimeric.out.junction
+            # Log.final.out
+            # Log.out
+            # Log.progress.out
+            # SJ.out.tab
+            # Unmapped.out.mate1
+            # Unmapped.out.mate2 (if any reads were paired-end)
+
+            #
+            # Logs
+            #
+            rm -rf ${{TMP}}
+            cat Log.out >> {log}
+            cat Log.final.out >> {log}
+            rm -f Log*.out
+
+            #
+            # Junctions
+            #
+            test -f SJ.out.tab
+            time zstd SJ.out.tab -o {output.jxs}.0 2>&1 | tee -a {log}
+            rm -f SJ.out.tab
+            size=$(wc -c < {output.jxs}.0)
+            echo "COUNT_CompressedJxBytes_unpaired ${{size}}"
+
+            #
+            # Chimerics
+            #
+            test -f Chimeric.out.junction
+            test -s Chimeric.out.junction
+            sort -k1,1 -n -k2,2 Chimeric.out.junction > Chimeric.out.junction.sorted
+            time zstd Chimeric.out.junction.sorted -o {output.chimeric}.0 2>&1 | tee -a {log}
+            rm -f Chimeric.out.junction Chimeric.out.junction.sorted
+            size=$(wc -c < {output.chimeric}.0)
+            echo "COUNT_ChimericBytes_unpaired ${{size}}"
+
+            #
+            # Unmapped
+            #
+            test -f Unmapped.out.mate1
+            mv Unmapped.out.mate1 {output.unmapped1}.0
+
+            #
+            # Alignments
+            #
+            size=$(wc -c < Aligned.out.bam)
+            echo "COUNT_BAMBytes_unpaired ${{size}}"
+            mv Aligned.out.bam {output.bam}.0
+
+            echo "COUNT_AlignComplete_unpaired 1"
+        fi
         """
 
 rule fastq_check:
