@@ -543,7 +543,7 @@ rule align:
             --genomeLoad LoadAndRemove \
             --outTmpDir ${{TMP}} \
             --outReadsUnmapped Fastx \
-            --outMultimapperOrder Random \
+            --outMultimapperOrder Old_2.4 \
             --outSAMreadID Number \
             --outSAMtype BAM Unsorted \
             --outSAMmode NoQS \
