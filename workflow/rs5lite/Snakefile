@@ -330,9 +330,35 @@ rule salmon:
             touch {output}
             echo "COUNT_SalmonFailure 1"
         fi
-                
         rm -rf salmon_quant
         echo "COUNT_SalmonComplete 1"
+                
+        if [[ -s {input.reads2} && -s {input.reads0} ]] ; then
+            READ_FILES="-r {input.reads0}"
+            if set -o pipefail && time salmon quant \
+                --libType U \
+                --quiet \
+                --validateMappings \
+                -i {params.index_base} \
+                -p {threads} \
+                {params.salmon_args} \
+                ${{READ_FILES}} \
+                --output salmon_quant \
+                --minAssignedFrags 1 \
+                2>&1 | tee -a {log}
+            then
+                echo "COUNT_SalmonSuccess_unpaired 1"
+
+                time zstd salmon_quant/quant.sf -o {output}.0 2>&1 | tee -a {log}
+                size=$(wc -c < {output}.0)
+                echo "COUNT_SalmonQuantBytes_unpaired ${{size}}"
+            else
+                touch {output}.0
+                echo "COUNT_SalmonFailure_unpaired 1"
+            fi
+            rm -rf salmon_quant
+            echo "COUNT_SalmonComplete_unpaired 1"
+        fi
         """
 
 rule align_unmapped:
