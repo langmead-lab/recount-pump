@@ -612,7 +612,7 @@ rule align:
         #
         test -f Chimeric.out.junction
         test -s Chimeric.out.junction
-        sort -k1,1 -n -k2,2 Chimeric.out.junction > Chimeric.out.junction.sorted
+        sort -k1,1 -k2,2n Chimeric.out.junction > Chimeric.out.junction.sorted
         time zstd Chimeric.out.junction.sorted -o {output.chimeric} 2>&1 | tee -a {log}
         rm -f Chimeric.out.junction Chimeric.out.junction.sorted
         size=$(wc -c < {output.chimeric})
@@ -695,11 +695,16 @@ rule align:
             #
             test -f Chimeric.out.junction
             test -s Chimeric.out.junction
-            sort -k1,1 -n -k2,2 Chimeric.out.junction > Chimeric.out.junction.sorted
-            time zstd Chimeric.out.junction.sorted -o {output.chimeric}.0 2>&1 | tee -a {log}
+            #now join them with the first run chimerics
+            if [[ -s {output.chimeric} ]] ; then
+                cat <(zstd -cd {output.chimeric}) Chimeric.out.junction | sort -k1,1 -n -k2,2 > Chimeric.out.junction.sorted
+            else
+                cat Chimeric.out.junction | sort -k1,1 -k2,2n > Chimeric.out.junction.sorted
+            fi
+            time zstd -f Chimeric.out.junction.sorted -o {output.chimeric} 2>&1 | tee -a {log}
             rm -f Chimeric.out.junction Chimeric.out.junction.sorted
-            size=$(wc -c < {output.chimeric}.0)
-            echo "COUNT_ChimericBytes_unpaired ${{size}}"
+            size=$(wc -c < {output.chimeric})
+            echo "COUNT_ChimericBytes_both ${{size}}"
 
             #
             # Unmapped
@@ -796,15 +801,15 @@ rule download:
             size=$(cat ${{TMP}}/*.sra | wc -c)
             echo "COUNT_SraBytesDownloaded ${{size}}"
             if (( ${{USE_FASTERQ}} == 1 )) ; then
-                time fasterq-dump ${{TMP}}/*.sra \
-                    -e {threads} \
-                    -t ${{TMP}} \
+                time parallel-fastq-dump --sra-id ${{TMP}}/*.sra \
+                    --threads {threads} \
+                    --tmpdir ${{TMP}} \
                     -L info \
                     --split-3 \
                     --skip-technical \
-                    -o {params.srr}.fastq \
+                    --outdir . \
                     2>&1 >> {log}
-                test -f {params.srr}_2.fastq || mv {params.srr}.fastq {params.srr}_0.fastq
+                test -f {params.srr}_2.fastq || mv {params.srr}_1.fastq {params.srr}_0.fastq
                 # extra unpaired from --split-3
                 test -f {params.srr}_2.fastq && test -f {params.srr}.fastq && mv {params.srr}.fastq {params.srr}_0.fastq
             else
