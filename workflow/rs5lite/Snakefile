@@ -96,7 +96,7 @@ rule bamcount:
     input:
         bam=config['temp'] + '/{quad}~sorted.bam',
         bamidx=config['temp'] + '/{quad}~sorted.bam.bai',
-        exe='bamcount',
+        exe='bc',
         bed=lambda wildcards: '%s/%s/gtf/%s' % (config['ref'], wildcards.quad.split('!')[2], config.get('bw_bed', 'exons.bed'))
     output:
         nonref=config['output'] + '/{quad}.bamcount_nonref.csv.zst',
@@ -195,7 +195,7 @@ rule bamcount_unmapped:
     input:
         bam=config['temp'] + '/{quad}.unmapped~sorted.bam',
         bamidx=config['temp'] + '/{quad}.unmapped~sorted.bam.bai',
-        exe='bamcount'
+        exe='bc'
     output:
         nonref=config['output'] + '/{quad}.bamcount_unmapped_nonref.csv.zst',
         all_bw=config['output'] + '/{quad}.unmapped_all.bw.zst',
@@ -275,7 +275,6 @@ rule sort:
         """
         TMP="{config[temp]}/sort_temp.{params.srr}"
         mkdir -p ${{TMP}}
-        #cp {input} {input}.0
         time samtools sort \
             -T ${{TMP}}/samtools_temp \
             -@ {threads} \
@@ -331,9 +330,35 @@ rule salmon:
             touch {output}
             echo "COUNT_SalmonFailure 1"
         fi
-                
         rm -rf salmon_quant
         echo "COUNT_SalmonComplete 1"
+                
+        if [[ -s {input.reads2} && -s {input.reads0} ]] ; then
+            READ_FILES="-r {input.reads0}"
+            if set -o pipefail && time salmon quant \
+                --libType U \
+                --quiet \
+                --validateMappings \
+                -i {params.index_base} \
+                -p {threads} \
+                {params.salmon_args} \
+                ${{READ_FILES}} \
+                --output salmon_quant \
+                --minAssignedFrags 1 \
+                2>&1 | tee -a {log}
+            then
+                echo "COUNT_SalmonSuccess_unpaired 1"
+
+                time zstd salmon_quant/quant.sf -o {output}.0 2>&1 | tee -a {log}
+                size=$(wc -c < {output}.0)
+                echo "COUNT_SalmonQuantBytes_unpaired ${{size}}"
+            else
+                touch {output}.0
+                echo "COUNT_SalmonFailure_unpaired 1"
+            fi
+            rm -rf salmon_quant
+            echo "COUNT_SalmonComplete_unpaired 1"
+        fi
         """
 
 rule align_unmapped:
@@ -587,7 +612,7 @@ rule align:
         #
         test -f Chimeric.out.junction
         test -s Chimeric.out.junction
-        sort -k1,1 -n -k2,2 Chimeric.out.junction > Chimeric.out.junction.sorted
+        sort -k1,1 -k2,2n Chimeric.out.junction > Chimeric.out.junction.sorted
         time zstd Chimeric.out.junction.sorted -o {output.chimeric} 2>&1 | tee -a {log}
         rm -f Chimeric.out.junction Chimeric.out.junction.sorted
         size=$(wc -c < {output.chimeric})
@@ -626,7 +651,7 @@ rule align:
                 --genomeLoad LoadAndRemove \
                 --outTmpDir ${{TMP}} \
                 --outReadsUnmapped Fastx \
-                --outMultimapperOrder Random \
+                --outMultimapperOrder Old_2.4 \
                 --outSAMreadID Number \
                 --outSAMtype BAM Unsorted \
                 --outSAMmode NoQS \
@@ -670,11 +695,16 @@ rule align:
             #
             test -f Chimeric.out.junction
             test -s Chimeric.out.junction
-            sort -k1,1 -n -k2,2 Chimeric.out.junction > Chimeric.out.junction.sorted
-            time zstd Chimeric.out.junction.sorted -o {output.chimeric}.0 2>&1 | tee -a {log}
+            #now join them with the first run chimerics
+            if [[ -s {output.chimeric} ]] ; then
+                cat <(zstd -cd {output.chimeric}) Chimeric.out.junction | sort -k1,1 -n -k2,2 > Chimeric.out.junction.sorted
+            else
+                cat Chimeric.out.junction | sort -k1,1 -k2,2n > Chimeric.out.junction.sorted
+            fi
+            time zstd -f Chimeric.out.junction.sorted -o {output.chimeric} 2>&1 | tee -a {log}
             rm -f Chimeric.out.junction Chimeric.out.junction.sorted
-            size=$(wc -c < {output.chimeric}.0)
-            echo "COUNT_ChimericBytes_unpaired ${{size}}"
+            size=$(wc -c < {output.chimeric})
+            echo "COUNT_ChimericBytes_both ${{size}}"
 
             #
             # Unmapped
@@ -739,6 +769,7 @@ rule download:
     params:
         srr=lambda wildcards: wildcards.quad.split('!')[0],
         method=lambda wildcards: wildcards.quad.split('!')[3],
+        url=config.get('url',''),
         fd_params=config.get('fastq_dump_args', ''),
         retries=config.get('fastq_dump_retries', '5')
     threads: 4
@@ -771,15 +802,15 @@ rule download:
             size=$(cat ${{TMP}}/*.sra | wc -c)
             echo "COUNT_SraBytesDownloaded ${{size}}"
             if (( ${{USE_FASTERQ}} == 1 )) ; then
-                time fasterq-dump ${{TMP}}/*.sra \
-                    -e {threads} \
-                    -t ${{TMP}} \
+                time parallel-fastq-dump --sra-id ${{TMP}}/*.sra \
+                    --threads {threads} \
+                    --tmpdir ${{TMP}} \
                     -L info \
                     --split-3 \
                     --skip-technical \
-                    -o {params.srr}.fastq \
+                    --outdir . \
                     2>&1 >> {log}
-                test -f {params.srr}_2.fastq || mv {params.srr}.fastq {params.srr}_0.fastq
+                test -f {params.srr}_2.fastq || mv {params.srr}_1.fastq {params.srr}_0.fastq
                 # extra unpaired from --split-3
                 test -f {params.srr}_2.fastq && test -f {params.srr}.fastq && mv {params.srr}.fastq {params.srr}_0.fastq
             else
@@ -851,6 +882,30 @@ rule download:
                 mv *_1.fastq {params.srr}_1.fastq
                 mv *_2.fastq {params.srr}_2.fastq
             fi
+        elif [[ {params.method} == "url" ]] ; then
+            for i in {{ 1..{params.retries} }} ; do
+                #if time wget "{params.url}/{params.srr}_1.fastq.gz" -O {params.srr}_1.fastq.gz 2>&1 >> {log} ; then
+                #if time curl "{params.url}/{params.srr}_1.fastq.gz" 2>&1 >> {log} | gzip -cd > {params.srr}_1.fastq ; then
+                if time curl -s -S "{params.url}/{params.srr}_1" 2>> {log} | gzip -cd > {params.srr}_1.fastq ; then
+                    SUCCESS=1
+                else
+                    echo "COUNT_URLRetries1 1"
+                    TIMEOUT=$((${{TIMEOUT}} * 2))
+                    sleep ${{TIMEOUT}}
+                fi
+                if (( $SUCCESS == 1 )) && time curl -s -S "{params.url}/{params.srr}_2" 2>> {log} | gzip -cd > {params.srr}_2.fastq ; then
+                    SUCCESS=1
+                    break
+                else
+                    echo "COUNT_URLRetries2 1"
+                    TIMEOUT=$((${{TIMEOUT}} * 2))
+                    sleep ${{TIMEOUT}}
+                fi
+            done
+            if (( $SUCCESS == 0 )) ; then
+                echo "COUNT_URLFailures 1"
+                exit 1
+            fi
         fi
         
         # Next chunk expects the FASTQ files to exist in the current directory
@@ -864,7 +919,7 @@ rule download:
                 touch ${{fn}}
             fi
             size=$((${{size}} + $(wc -c < ${{fn}})))
-            mv ${{fn}} {config[temp]}/{wildcards.quad}_${{i}}.fastq
+            cp ${{fn}} {config[temp]}/{wildcards.quad}_${{i}}.fastq
         done
         echo "COUNT_BytesDownloaded ${{size}}"
         echo "COUNT_DownloadComplete 1"
