@@ -592,6 +592,47 @@ rule align_unmapped:
             -S ${{TMP}}.sam \
             2>&1 | tee -a {log}
 
+        MAX_UNALIGN={params.max_unalign}
+        if [[ -s {input.unmapped1}.0 ]] ; then
+            READ_FILES="-U {input.unmapped1}.0"
+            time hisat2 \
+                $READ_FILES \
+                -t --mm \
+                -x {params.index_base} \
+                --threads {threads} \
+                {params.hisat2_params} \
+                --un ${{TMP}}.un.0 \
+                --un-conc ${{TMP}}.un_conc.0 \
+                -S ${{TMP}}.sam.0 \
+                2>&1 | tee -a {log}
+                
+                #now add the extra alignments
+                time samtools view -F 4 \
+                    ${{TMP}}.sam.0 >> \
+                    ${{TMP}}.sam
+                rm -f ${{TMP}}.sam.0
+ 
+                #determine how to split up the sampling of unmapped reads
+                #in the split3 case 
+                NUM_PAIRED_UN=`wc -l ${{TMP}}.1.un_conc | cut -d" " -f 1`
+                NUM_UNPAIRED_UN=`wc -l ${{TMP}}.un.0 | cut -d" " -f 1`
+                #we prefer sampling from the unmapped paired reads
+                #rather than these; only divide paired by 2 since there's 
+                #2 of them
+                MAX_UNALIGN2=`perl -e '$max='$MAX_UNALIGN'; $np='$NUM_PAIRED_UN'/2; \
+                    $npu='$NUM_UNPAIRED_UN'/4; \
+                    if($np>=$max) {{ print "".0; }} else {{ print "".($max-$np); }}'`
+ 
+                # split3 unpaired unmapped
+                if [[ "$MAX_UNALIGN2" -gt "0" ]] ; then
+                    fastq-sample \
+                        -n $MAX_UNALIGN2 \
+                        -o ${{TMP}}.samp.0 \
+                        ${{TMP}}.un.0
+                fi
+                rm -f ${{TMP}}.un.0
+        fi
+
         #
         # Make BAM file out of aligned reads
         #
@@ -608,14 +649,14 @@ rule align_unmapped:
         if [[ ! -s {input.unmapped2} ]] ; then
             # unpaired
             fastq-sample \
-                -n {params.max_unalign} \
+                -n $MAX_UNALIGN \
                 -o ${{TMP}}.samp \
                 ${{TMP}}.un
             rm -f ${{TMP}}.un
         else
             # paired-end
             fastq-sample \
-                -n {params.max_unalign} \
+                -n $MAX_UNALIGN \
                 -o ${{TMP}}.samp \
                 ${{TMP}}.1.un_conc ${{TMP}}.2.un_conc
             rm -f ${{TMP}}.1.un_conc ${{TMP}}.2.un_conc
@@ -633,6 +674,14 @@ rule align_unmapped:
         size=$(wc -c < {output.sample})
         echo "COUNT_UnmappedSampleBytes ${{size}}"
         rm -f ${{TMP}}.samp.fastq
+       
+        #handle the split3 case in addition (if it exists) 
+        if [[ -s ${{TMP}}.samp.0.fastq ]] ; then
+            time zstd ${{TMP}}.samp.0.fastq -o {output.sample}.0 2>&1 | tee -a {log}
+            size=$(wc -c < {output.sample}.0)
+            echo "COUNT_UnmappedSampleBytes_unpaired ${{size}}"
+            rm -f ${{TMP}}.samp.0.fastq
+        fi
 
         size=$(wc -c < {output.bam})
         echo "COUNT_UnmappedBamBytes ${{size}}"
@@ -758,7 +807,7 @@ rule align:
         #
         test -f Chimeric.out.junction
         test -s Chimeric.out.junction
-        sort -k1,1 -n -k2,2 Chimeric.out.junction > Chimeric.out.junction.sorted
+        sort -k1,1 -k2,2n Chimeric.out.junction > Chimeric.out.junction.sorted
         time zstd Chimeric.out.junction.sorted -o {output.chimeric} 2>&1 | tee -a {log}
         rm -f Chimeric.out.junction Chimeric.out.junction.sorted
         size=$(wc -c < {output.chimeric})
@@ -782,6 +831,96 @@ rule align:
         mv Aligned.out.bam {output.bam}
 
         echo "COUNT_AlignComplete 1"
+        
+        if [[ -s {input.reads2} && -s {input.reads0} ]] ; then
+            READ_FILES="{input.reads0}"
+            TMP="{config[temp]}/align_temp.{params.srr}.0"
+            rm -rf ${{TMP}}
+            time STAR \
+                {params.star_params} \
+                --runMode alignReads \
+                --runThreadN {threads} \
+                --genomeDir {params.index_base} \
+                --readFilesIn ${{READ_FILES}} \
+                --twopassMode None \
+                --genomeLoad LoadAndRemove \
+                --outTmpDir ${{TMP}} \
+                --outReadsUnmapped Fastx \
+                --outMultimapperOrder Old_2.4 \
+                --outSAMreadID Number \
+                --outSAMtype BAM Unsorted \
+                --outSAMmode NoQS \
+                --outSAMattributes NH MD \
+                --chimOutType Junctions \
+                --chimOutJunctionFormat 1 \
+                --chimSegmentReadGapMax 3 \
+                --chimJunctionOverhangMin 12 \
+                --chimSegmentMin 12 2>&1 | tee -a {log}
+       
+            # Full set of output files:
+            #
+            # Aligned.out.bam
+            # Chimeric.out.junction
+            # Log.final.out
+            # Log.out
+            # Log.progress.out
+            # SJ.out.tab
+            # Unmapped.out.mate1
+            # Unmapped.out.mate2 (if any reads were paired-end)
+
+            #
+            # Logs
+            #
+            rm -rf ${{TMP}}
+            cat Log.out >> {log}
+            cat Log.final.out >> {log}
+            rm -f Log*.out
+
+            #
+            # Junctions
+            #
+            test -f SJ.out.tab
+            time zstd SJ.out.tab -o {output.jxs}.0 2>&1 | tee -a {log}
+            rm -f SJ.out.tab
+            size=$(wc -c < {output.jxs}.0)
+            echo "COUNT_CompressedJxBytes_unpaired ${{size}}"
+
+            #
+            # Chimerics
+            #
+            test -f Chimeric.out.junction
+            test -s Chimeric.out.junction
+            #now join them with the first run chimerics
+            if [[ -s {output.chimeric} ]] ; then
+                cat <(zstd -cd {output.chimeric}) Chimeric.out.junction | sort -k1,1 -n -k2,2 > Chimeric.out.junction.sorted
+            else
+                cat Chimeric.out.junction | sort -k1,1 -k2,2n > Chimeric.out.junction.sorted
+            fi
+            time zstd -f Chimeric.out.junction.sorted -o {output.chimeric} 2>&1 | tee -a {log}
+            rm -f Chimeric.out.junction Chimeric.out.junction.sorted
+            size=$(wc -c < {output.chimeric})
+            echo "COUNT_ChimericBytes_both ${{size}}"
+
+            #
+            # Unmapped
+            #
+            test -f Unmapped.out.mate1
+            mv Unmapped.out.mate1 {output.unmapped1}.0
+
+            #
+            # Alignments
+            #
+            size=$(wc -c < Aligned.out.bam)
+            echo "COUNT_BAMBytes_unpaired ${{size}}"
+            mv Aligned.out.bam {output.bam}.0
+
+            echo "COUNT_AlignComplete_unpaired 1"
+
+            #now cat the 2 BAMs
+            samtools cat {output.bam} {output.bam}.0 -o {output.bam}.2
+            mv {output.bam}.2 {output.bam}
+            rm {output.bam}.0
+        fi
         """
 
 rule fastq_check:
@@ -857,23 +996,27 @@ rule download:
             size=$(cat ${{TMP}}/*.sra | wc -c)
             echo "COUNT_SraBytesDownloaded ${{size}}"
             if (( ${{USE_FASTERQ}} == 1 )) ; then
-                time fasterq-dump ${{TMP}}/*.sra \
-                    -e {threads} \
-                    -t ${{TMP}} \
+                time parallel-fastq-dump --sra-id ${{TMP}}/*.sra \
+                    --threads {threads} \
+                    --tmpdir ${{TMP}} \
                     -L info \
-                    --split-files \
+                    --split-3 \
                     --skip-technical \
-                    -o {params.srr}.fastq \
+                    --outdir . \
                     2>&1 >> {log}
-                test -f {params.srr}_2.fastq || mv {params.srr}.fastq {params.srr}_0.fastq
+                test -f {params.srr}_2.fastq || mv {params.srr}_1.fastq {params.srr}_0.fastq
+                # extra unpaired from --split-3
+                test -f {params.srr}_2.fastq && test -f {params.srr}.fastq && mv {params.srr}.fastq {params.srr}_0.fastq
             else
                 time fastq-dump ${{TMP}}/*.sra \
                     -L info \
-                    --split-files \
+                    --split-3 \
                     --skip-technical \
                     -O . \
                     2>&1 >> {log}
                 test -f {params.srr}_2.fastq || mv {params.srr}_1.fastq {params.srr}_0.fastq
+                # extra unpaired from --split-3
+                test -f {params.srr}_2.fastq && test -f {params.srr}.fastq && mv {params.srr}.fastq {params.srr}_0.fastq
             fi
             rm -rf ${{TMP}}
         elif [[ {params.method} == "gdc" ]] ; then
