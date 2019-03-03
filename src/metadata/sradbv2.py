@@ -118,7 +118,7 @@ def dbgap_filter(hit):
     assert 'study' in hit['_source']
     assert 'identifiers' in hit['_source']['study']
     for ident in hit['_source']['study']['identifiers']:
-        if ident['namespace'] == 'dbGaP':
+        if 'namespace' in ident and ident['namespace'] == 'dbGaP':
             return False
     return True
 
