@@ -269,7 +269,10 @@ rule sort:
     log:
         config['output'] + '/{quad}.sort.log'
     params:
-        srr=lambda wildcards: wildcards.quad.split('!')[0]
+        srr=lambda wildcards: wildcards.quad.split('!')[0],
+        srp=lambda wildcards: wildcards.quad.split('!')[1],
+        outdir=config['output'],
+        keep_bam='keep_bam' in config
     threads: 8
     shell:
         """
@@ -285,6 +288,14 @@ rule sort:
         echo "COUNT_SortedBAMBytes ${{size}}"
 
         time samtools index -@ {threads} {output.bam} 2>&1 | tee -a {log}
+
+        #we may want to keep this BAM if its
+        #1) part of the simulation set OR
+        #2) its part of the config params
+        STUDY="{params.srp}"
+        BAM='{output.bam}'
+        OUTDIR="{params.outdir}"
+        `perl -e '$s="'$STUDY'"; $b="'$BAM'"; $o="'$OUTDIR'"; if($s=~/SIMULATION/i) {{ system("cp $b $b.bai $o/"); }}'`
         echo "COUNT_SortComplete 1"
         """
 
