@@ -96,7 +96,7 @@ rule bamcount:
     input:
         bam=config['temp'] + '/{quad}~sorted.bam',
         bamidx=config['temp'] + '/{quad}~sorted.bam.bai',
-        exe='bc',
+        exe='/bamcount/bamcount',
         bed=lambda wildcards: '%s/%s/gtf/%s' % (config['ref'], wildcards.quad.split('!')[2], config.get('bw_bed', 'exons.bed'))
     output:
         nonref=config['output'] + '/{quad}.bamcount_nonref.csv.zst',
@@ -195,7 +195,7 @@ rule bamcount_unmapped:
     input:
         bam=config['temp'] + '/{quad}.unmapped~sorted.bam',
         bamidx=config['temp'] + '/{quad}.unmapped~sorted.bam.bai',
-        exe='bc'
+        exe='/bamcount/bamcount'
     output:
         nonref=config['output'] + '/{quad}.bamcount_unmapped_nonref.csv.zst',
         all_bw=config['output'] + '/{quad}.unmapped_all.bw.zst',
@@ -931,7 +931,7 @@ rule download:
                 touch ${{fn}}
             fi
             size=$((${{size}} + $(wc -c < ${{fn}})))
-            cp ${{fn}} {config[temp]}/{wildcards.quad}_${{i}}.fastq
+            mv ${{fn}} {config[temp]}/{wildcards.quad}_${{i}}.fastq
         done
         echo "COUNT_BytesDownloaded ${{size}}"
         echo "COUNT_DownloadComplete 1"
