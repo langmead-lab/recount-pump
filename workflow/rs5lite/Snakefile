@@ -269,7 +269,10 @@ rule sort:
     log:
         config['output'] + '/{quad}.sort.log'
     params:
-        srr=lambda wildcards: wildcards.quad.split('!')[0]
+        srr=lambda wildcards: wildcards.quad.split('!')[0],
+        srp=lambda wildcards: wildcards.quad.split('!')[1],
+        outdir=config['output'],
+        keep_bam='keep_bam' in config
     threads: 8
     shell:
         """
@@ -285,6 +288,15 @@ rule sort:
         echo "COUNT_SortedBAMBytes ${{size}}"
 
         time samtools index -@ {threads} {output.bam} 2>&1 | tee -a {log}
+
+        #we may want to keep this BAM if its
+        #1) part of the simulation set OR
+        #2) its part of the config params
+        STUDY="{params.srp}"
+        BAM='{output.bam}'
+        OUTDIR="{params.outdir}"
+        KEEP_BAM="{params.keep_bam}"
+        `perl -e '$s="'$STUDY'"; $b="'$BAM'"; $o="'$OUTDIR'"; $kb="'$KEEP_BAM'"; if($s=~/SIMULATION/i || $kb=~/true/i) {{ system("cp $b $b.bai $o/"); }}'`
         echo "COUNT_SortComplete 1"
         """
 
@@ -769,6 +781,7 @@ rule download:
     params:
         srr=lambda wildcards: wildcards.quad.split('!')[0],
         method=lambda wildcards: wildcards.quad.split('!')[3],
+        url=config.get('url',''),
         fd_params=config.get('fastq_dump_args', ''),
         retries=config.get('fastq_dump_retries', '5')
     threads: 4
@@ -880,6 +893,30 @@ rule download:
                 # paired-end
                 mv *_1.fastq {params.srr}_1.fastq
                 mv *_2.fastq {params.srr}_2.fastq
+            fi
+        elif [[ {params.method} == "url" ]] ; then
+            for i in {{ 1..{params.retries} }} ; do
+                #if time wget "{params.url}/{params.srr}_1.fastq.gz" -O {params.srr}_1.fastq.gz 2>&1 >> {log} ; then
+                #if time curl "{params.url}/{params.srr}_1.fastq.gz" 2>&1 >> {log} | gzip -cd > {params.srr}_1.fastq ; then
+                if time curl -s -S "{params.url}/{params.srr}_1" 2>> {log} | gzip -cd > {params.srr}_1.fastq ; then
+                    SUCCESS=1
+                else
+                    echo "COUNT_URLRetries1 1"
+                    TIMEOUT=$((${{TIMEOUT}} * 2))
+                    sleep ${{TIMEOUT}}
+                fi
+                if (( $SUCCESS == 1 )) && time curl -s -S "{params.url}/{params.srr}_2" 2>> {log} | gzip -cd > {params.srr}_2.fastq ; then
+                    SUCCESS=1
+                    break
+                else
+                    echo "COUNT_URLRetries2 1"
+                    TIMEOUT=$((${{TIMEOUT}} * 2))
+                    sleep ${{TIMEOUT}}
+                fi
+            done
+            if (( $SUCCESS == 0 )) ; then
+                echo "COUNT_URLFailures 1"
+                exit 1
             fi
         fi
         
