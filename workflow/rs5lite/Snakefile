@@ -295,7 +295,8 @@ rule sort:
         STUDY="{params.srp}"
         BAM='{output.bam}'
         OUTDIR="{params.outdir}"
-        `perl -e '$s="'$STUDY'"; $b="'$BAM'"; $o="'$OUTDIR'"; if($s=~/SIMULATION/i) {{ system("cp $b $b.bai $o/"); }}'`
+        KEEP_BAM="{params.keep_bam}"
+        `perl -e '$s="'$STUDY'"; $b="'$BAM'"; $o="'$OUTDIR'"; $kb="'$KEEP_BAM'"; if($s=~/SIMULATION/i || $kb=~/true/i) {{ system("cp $b $b.bai $o/"); }}'`
         echo "COUNT_SortComplete 1"
         """
 
