@@ -825,7 +825,9 @@ rule download:
                     --skip-technical \
                     --outdir . \
                     2>&1 >> {log}
-                test -f {params.srr}_2.fastq || mv {params.srr}_1.fastq {params.srr}_0.fastq
+                test -f {params.srr}_2.fastq || \
+                    (test -f {params.srr}_1.fastq && mv {params.srr}_1.fastq {params.srr}_0.fastq) || \
+                                    (test -f {params.srr}.fastq && mv {params.srr}.fastq {params.srr}_0.fastq)
                 # extra unpaired from --split-3
                 test -f {params.srr}_2.fastq && test -f {params.srr}.fastq && mv {params.srr}.fastq {params.srr}_0.fastq
             else
@@ -835,7 +837,9 @@ rule download:
                     --skip-technical \
                     -O . \
                     2>&1 >> {log}
-                test -f {params.srr}_2.fastq || mv {params.srr}_1.fastq {params.srr}_0.fastq
+                test -f {params.srr}_2.fastq || \
+                    (test -f {params.srr}_1.fastq && mv {params.srr}_1.fastq {params.srr}_0.fastq) || \
+                                    (test -f {params.srr}.fastq && mv {params.srr}.fastq {params.srr}_0.fastq)
                 # extra unpaired from --split-3
                 test -f {params.srr}_2.fastq && test -f {params.srr}.fastq && mv {params.srr}.fastq {params.srr}_0.fastq
             fi
