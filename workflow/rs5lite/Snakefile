@@ -6,6 +6,8 @@ Parameters:
 - star: arguments to pass to STAR aligner
 - salmon_args: arguments to pass to salmon quant
 - unique_qual: minimum MAPQ needed to be counted in unique BW [default: 10]
+- featureCounts: arguments to pass to featureCounts
+- fc_unique_qual: minimum MAPQ needed to be counted in unique quantifications [default: 10]
 - bw_bed: name of BED file to use with bwtool
 - max_unalign: maximum number of unaligned reads to save per run accession
 """
@@ -14,7 +16,9 @@ STEPS = ['download', 'fastq_check', 'align', 'sort',
          'bamcount', 'bamcount_unmapped',
          'salmon',
          'align_unmapped',
-         'extract_jx']
+         'extract_jx',
+         'gene_fc_count_all', 'gene_fc_count_unique',
+         'exon_fc_count_all', 'exon_fc_count_unique']
 
 FILES = ['sjout.zst', 'fastq_check.tsv.zst',
          'unmapped.fastq.zst',
@@ -25,6 +29,10 @@ FILES = ['sjout.zst', 'fastq_check.tsv.zst',
          'unmapped_all.bw.zst',
          'unmapped_unique.bw.zst',
          'Chimeric.out.junction.zst',
+         'all.gene_fc_count.zst', 'unique.gene_fc_count.zst',
+         'all.exon_fc_count.zst', 'unique.exon_fc_count.zst',
+         'all.gene_fc_count.summary', 'unique.gene_fc_count.summary',
+         'all.exon_fc_count.summary', 'unique.exon_fc_count.summary',
          'all.exon_bw_count.zst', 'unique.exon_bw_count.zst',
          'all.bw.zst',
          'unique.bw.zst',
@@ -70,6 +78,14 @@ rule make_manifest:
         config['output'] + '/{quad}.unmapped_all.bw.zst',
         config['output'] + '/{quad}.unmapped_unique.bw.zst',
         config['output'] + '/{quad}.fastq_check.tsv.zst',
+        config['output'] + '/{quad}.all.gene_fc_count.zst',
+        config['output'] + '/{quad}.all.exon_fc_count.zst',
+        config['output'] + '/{quad}.unique.gene_fc_count.zst',
+        config['output'] + '/{quad}.unique.exon_fc_count.zst',
+        config['output'] + '/{quad}.all.gene_fc_count.summary',
+        config['output'] + '/{quad}.all.exon_fc_count.summary',
+        config['output'] + '/{quad}.unique.gene_fc_count.summary',
+        config['output'] + '/{quad}.unique.exon_fc_count.summary',
         config['output'] + '/{quad}.all.exon_bw_count.zst',
         config['output'] + '/{quad}.unique.exon_bw_count.zst',
         config['output'] + '/{quad}.all.bw.zst',
@@ -82,7 +98,11 @@ rule make_manifest:
         config['output'] + '/{quad}.download.log',
         config['output'] + '/{quad}.fastq_check.log',
         config['output'] + '/{quad}.sort.log',
-        config['output'] + '/{quad}.salmon.log'
+        config['output'] + '/{quad}.salmon.log',
+        config['output'] + '/{quad}.gene_fc_count_all.log',
+        config['output'] + '/{quad}.gene_fc_count_unique.log',
+        config['output'] + '/{quad}.exon_fc_count_all.log',
+        config['output'] + '/{quad}.exon_fc_count_unique.log'
     output:
         config['output'] + '/{quad}.manifest'
     params:
@@ -256,6 +276,166 @@ rule bw_zstd:
         size=$(wc -c < {output})
         echo "COUNT_BwBytes ${{size}}"
         echo "COUNT_BwZstdComplete 1"
+        """
+
+rule gene_fc_count_all:
+    input:
+        bam=config['temp'] + '/{quad}.bam',  # mates should be together for featureCounts
+        gtf=lambda wildcards: '%s/%s/gtf/genes.gtf' % (config['ref'], wildcards.quad.split('!')[2])
+    output:
+        counts=config['output'] + '/{quad}.all.gene_fc_count.zst',
+        summary=config['output'] + '/{quad}.all.gene_fc_count.summary'
+    log:
+        config['output'] + '/{quad}.gene_fc_count_all.log'
+    params:
+        srr=lambda wildcards: wildcards.quad.split('!')[0],
+        fc_param=config.get('featureCounts', '')
+    threads: 4
+    shell:
+        """
+        TMP={config[temp]}/{params.srr}.gene_fc_count_all.tsv
+        TMP2={config[temp]}/{params.srr}.all.gene_count
+        (time featureCounts {params.fc_param} -M --primary -p -a {input.gtf} -T {threads} \
+            -o ${{TMP}} {input.bam}) 2>&1 | tee -a {log}
+
+        test -f ${{TMP}}
+        test -f ${{TMP}}.summary
+
+        # Get rid of header and comment, and add SRR to beginning of line
+        awk -v OFS='\\t' '$1 !~ /^#/ && $1 !~ /^Geneid/ && $NF != 0 {{print "{params.srr}",$0}}' \
+            ${{TMP}} > ${{TMP2}}
+        rm -f ${{TMP}}
+
+        (time zstd ${{TMP2}} -o {output.counts}) 2>&1 | tee -a {log}
+
+        size=$(wc -c < {output.counts})
+        echo "COUNT_FcCountBytes ${{size}}"
+        rm -f ${{TMP2}}
+
+        mv ${{TMP}}.summary {output.summary}
+
+        echo "COUNT_GeneFcCountAllComplete 1"
+        """
+
+rule gene_fc_count_unique:
+    input:
+        bam=config['temp'] + '/{quad}.bam',  # mates should be together for featureCounts
+        gtf=lambda wildcards: '%s/%s/gtf/genes.gtf' % (config['ref'], wildcards.quad.split('!')[2])
+    output:
+        counts=config['output'] + '/{quad}.unique.gene_fc_count.zst',
+        summary=config['output'] + '/{quad}.unique.gene_fc_count.summary'
+    log:
+        config['output'] + '/{quad}.gene_fc_count_unique.log'
+    params:
+        srr=lambda wildcards: wildcards.quad.split('!')[0],
+        fc_param=config.get('featureCounts', ''),
+        fc_uniq=config.get('fc_unique_qual', 10)
+    threads: 4
+    shell:
+        """
+        TMP={config[temp]}/{params.srr}.gene_fc_count_unique.tsv
+        TMP2={config[temp]}/{params.srr}.unique.gene_count
+        (time featureCounts {params.fc_param} -M --primary -Q {params.fc_uniq} -p -a {input.gtf} -T {threads} \
+            -o ${{TMP}} {input.bam}) 2>&1 | tee -a {log}
+
+        test -f ${{TMP}}
+        test -f ${{TMP}}.summary
+
+        # Get rid of header and comment, and add SRR to beginning of line
+        awk -v OFS='\\t' '$1 !~ /^#/ && $1 !~ /^Geneid/ && $NF != 0 {{print "{params.srr}",$0}}' \
+            ${{TMP}} > ${{TMP2}}
+        rm -f ${{TMP}}
+
+        (time zstd ${{TMP2}} -o {output.counts}) 2>&1 | tee -a {log}
+
+        size=$(wc -c < {output.counts})
+        echo "COUNT_FcCountBytes ${{size}}"
+        rm -f ${{TMP2}}
+
+        mv ${{TMP}}.summary {output.summary}
+
+        echo "COUNT_GeneFcCountUniqueComplete 1"
+        """
+
+rule exon_fc_count_all:
+    input:
+        bam=config['temp'] + '/{quad}.bam',  # mates should be together for featureCounts
+        bamidx=config['temp'] + '/{quad}~sorted.bam.bai',
+        gtf=lambda wildcards: '%s/%s/gtf/genes.gtf' % (config['ref'], wildcards.quad.split('!')[2])
+    output:
+        counts=config['output'] + '/{quad}.all.exon_fc_count.zst',
+        summary=config['output'] + '/{quad}.all.exon_fc_count.summary'
+    log:
+        config['output'] + '/{quad}.exon_fc_count_all.log'
+    params:
+        srr=lambda wildcards: wildcards.quad.split('!')[0],
+        fc_param=config.get('featureCounts', '')
+    threads: 4
+    shell:
+        """
+        TMP={config[temp]}/{params.srr}.exon_fc_count_all.tsv
+        TMP2={config[temp]}/{params.srr}.all.exon_count
+        (time featureCounts {params.fc_param} -O -f -p -a {input.gtf} -T {threads} \
+            -o ${{TMP}} {input.bam}) 2>&1 | tee -a {log}
+
+        test -f ${{TMP}}
+        test -f ${{TMP}}.summary
+
+        # Get rid of header and comment, and add SRR to beginning of line
+        awk -v OFS='\\t' '$1 !~ /^#/ && $1 !~ /^Geneid/ && $NF != 0 {{print "{params.srr}",$0}}' \
+            ${{TMP}} > ${{TMP2}}
+        rm -f ${{TMP}}
+
+        (time zstd ${{TMP2}} -o {output.counts}) 2>&1 | tee -a {log}
+
+        size=$(wc -c < {output.counts})
+        echo "COUNT_FcCountBytes ${{size}}"
+        rm -f ${{TMP2}}
+
+        mv ${{TMP}}.summary {output.summary}
+
+        echo "COUNT_ExonFcCountAllComplete 1"
+        """
+
+rule exon_fc_count_unique:
+    input:
+        bam=config['temp'] + '/{quad}.bam',  # mates should be together for featureCounts
+        bamidx=config['temp'] + '/{quad}~sorted.bam.bai',
+        gtf=lambda wildcards: '%s/%s/gtf/genes.gtf' % (config['ref'], wildcards.quad.split('!')[2])
+    output:
+        counts=config['output'] + '/{quad}.unique.exon_fc_count.zst',
+        summary=config['output'] + '/{quad}.unique.exon_fc_count.summary'
+    log:
+        config['output'] + '/{quad}.exon_fc_count_unique.log'
+    params:
+        srr=lambda wildcards: wildcards.quad.split('!')[0],
+        fc_param=config.get('featureCounts', ''),
+        fc_uniq=config.get('fc_unique_qual', 10)
+    threads: 4
+    shell:
+        """
+        TMP={config[temp]}/{params.srr}.exon_fc_count_unique.tsv
+        TMP2={config[temp]}/{params.srr}.unique.exon_count
+        (time featureCounts {params.fc_param} -Q {params.fc_uniq} -O -f -p -a {input.gtf} -T {threads} \
+            -o ${{TMP}} {input.bam}) 2>&1 | tee -a {log}
+
+        test -f ${{TMP}}
+        test -f ${{TMP}}.summary
+
+        # Get rid of header and comment, and add SRR to beginning of line
+        awk -v OFS='\\t' '$1 !~ /^#/ && $1 !~ /^Geneid/ && $NF != 0 {{print "{params.srr}",$0}}' \
+            ${{TMP}} > ${{TMP2}}
+        rm -f ${{TMP}}
+
+        (time zstd ${{TMP2}} -o {output.counts}) 2>&1 | tee -a {log}
+
+        size=$(wc -c < {output.counts})
+        echo "COUNT_FcCountBytes ${{size}}"
+        rm -f ${{TMP2}}
+
+        mv ${{TMP}}.summary {output.summary}
+
+        echo "COUNT_ExonFcCountUniqueComplete 1"
         """
 
 rule sort:
