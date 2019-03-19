@@ -118,6 +118,8 @@ rule bamcount:
         bamidx=config['temp'] + '/{quad}~sorted.bam.bai',
         exe='bc_runner',
         bed=lambda wildcards: '%s/%s/gtf/%s' % (config['ref'], wildcards.quad.split('!')[2], config.get('bw_bed', 'exons.bed'))
+    wildcard_constraints:
+        quad="[^~\.]+"
     output:
         nonref=config['output'] + '/{quad}.bamcount_nonref.csv.zst',
         auc=config['output'] + '/{quad}.bamcount_auc.tsv',
@@ -216,6 +218,8 @@ rule bamcount_unmapped:
         bam=config['temp'] + '/{quad}.unmapped~sorted.bam',
         bamidx=config['temp'] + '/{quad}.unmapped~sorted.bam.bai',
         exe='bc_runner'
+    wildcard_constraints:
+        quad="[^~\.]+"
     output:
         nonref=config['output'] + '/{quad}.bamcount_unmapped_nonref.csv.zst',
         all_bw=config['output'] + '/{quad}.unmapped_all.bw.zst',
@@ -224,7 +228,9 @@ rule bamcount_unmapped:
         config['output'] + '/{quad}.bamcount_unmapped.log'
     params:
         srr=lambda wildcards: wildcards.quad.split('!')[0],
-        uniq_qual=config.get('unique_qual', 10)
+        uniq_qual=config.get('unique_qual', 10),
+        finalbampath=config['output'] + '/{quad}.unmapped~sorted.bam',
+        finalbaipath=config['output'] + '/{quad}.unmapped~sorted.bam.bai'
     threads: 4
     shell:
         """
@@ -262,6 +268,9 @@ rule bamcount_unmapped:
         echo "COUNT_BwUnmappedSize ${{size}}"
         rm -f ${{TMP}}.unique.bw
 
+        cp {input.bam} {params.finalbampath}
+        cp {input.bamidx} {params.finalbaipath}
+
         echo "COUNT_BamcountComplete 1"
         """
 
@@ -282,6 +291,8 @@ rule gene_fc_count_all:
     input:
         bam=config['temp'] + '/{quad}.bam',  # mates should be together for featureCounts
         gtf=lambda wildcards: '%s/%s/gtf/genes.gtf' % (config['ref'], wildcards.quad.split('!')[2])
+    wildcard_constraints:
+        quad="[^~\.]+"
     output:
         counts=config['output'] + '/{quad}.all.gene_fc_count.zst',
         summary=config['output'] + '/{quad}.all.gene_fc_count.summary'
@@ -321,6 +332,8 @@ rule gene_fc_count_unique:
     input:
         bam=config['temp'] + '/{quad}.bam',  # mates should be together for featureCounts
         gtf=lambda wildcards: '%s/%s/gtf/genes.gtf' % (config['ref'], wildcards.quad.split('!')[2])
+    wildcard_constraints:
+        quad="[^~\.]+"
     output:
         counts=config['output'] + '/{quad}.unique.gene_fc_count.zst',
         summary=config['output'] + '/{quad}.unique.gene_fc_count.summary'
@@ -362,6 +375,8 @@ rule exon_fc_count_all:
         bam=config['temp'] + '/{quad}.bam',  # mates should be together for featureCounts
         bamidx=config['temp'] + '/{quad}~sorted.bam.bai',
         gtf=lambda wildcards: '%s/%s/gtf/genes.gtf' % (config['ref'], wildcards.quad.split('!')[2])
+    wildcard_constraints:
+        quad="[^~\.]+"
     output:
         counts=config['output'] + '/{quad}.all.exon_fc_count.zst',
         summary=config['output'] + '/{quad}.all.exon_fc_count.summary'
@@ -402,6 +417,8 @@ rule exon_fc_count_unique:
         bam=config['temp'] + '/{quad}.bam',  # mates should be together for featureCounts
         bamidx=config['temp'] + '/{quad}~sorted.bam.bai',
         gtf=lambda wildcards: '%s/%s/gtf/genes.gtf' % (config['ref'], wildcards.quad.split('!')[2])
+    wildcard_constraints:
+        quad="[^~\.]+"
     output:
         counts=config['output'] + '/{quad}.unique.exon_fc_count.zst',
         summary=config['output'] + '/{quad}.unique.exon_fc_count.summary'
@@ -564,7 +581,7 @@ rule align_unmapped:
     wildcard_constraints:
         quad="[^~]+"
     output:
-        bam=config['output'] + '/{quad}.unmapped.bam',
+        bam=config['temp'] + '/{quad}.unmapped.bam',
         sample=config['output'] + '/{quad}.unmapped.fastq.zst'
     log:
         config['output'] + '/{quad}.align_unmapped.log'
@@ -642,7 +659,7 @@ rule align_unmapped:
             ${{TMP}}.sam \
             2>&1 | tee -a {log}
         rm -f ${{TMP}}.sam
-
+        
         #
         # Save a subset of the doubly unaligned reads
         #
@@ -695,6 +712,8 @@ rule extract_jx:
         bamidx=config['temp'] + '/{quad}~sorted.bam.bai',
         fa=lambda wildcards: '%s/%s/fasta/genome.fa' % (config['ref'], wildcards.quad.split('!')[2]),
         gtf=lambda wildcards: '%s/%s/gtf/genes.gtf' % (config['ref'], wildcards.quad.split('!')[2])
+    wildcard_constraints:
+        quad="[^~]+"
     output:
         config['output'] + '/{quad}.jx_bed.zst'
     params:
@@ -731,7 +750,7 @@ rule align:
         index1=lambda wildcards: '%s/%s/star_idx/SAindex' % (config['ref'], wildcards.quad.split('!')[2]),
         index2=lambda wildcards: '%s/%s/star_idx/SA' % (config['ref'], wildcards.quad.split('!')[2])
     wildcard_constraints:
-        quad="[^~]+"
+        quad="[^~\.]+"
     output:
         bam=temp(config['temp'] + '/{quad}.bam'),
         jxs=config['output'] + '/{quad}.sjout.zst',
