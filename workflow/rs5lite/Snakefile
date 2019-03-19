@@ -838,9 +838,9 @@ rule download:
         method=lambda wildcards: wildcards.quad.split('!')[3],
         fd_params=config.get('fastq_dump_args', ''),
         retries=config.get('fastq_dump_retries', '5'),
-        url1=lambda wildcards: URLS[wildcards.quad][0] if wildcards.quad in URLS else None,
-        url2=lambda wildcards: URLS[wildcards.quad][1] if wildcards.quad in URLS else None,
-        url0=lambda wildcards: URLS[wildcards.quad][2] if wildcards.quad in URLS else None,
+        url1=lambda wildcards: URLS[wildcards.quad][0] if wildcards.quad in URLS and len(URLS[wildcards.quad]) > 0 else None,
+        url2=lambda wildcards: URLS[wildcards.quad][1] if wildcards.quad in URLS and len(URLS[wildcards.quad]) > 1 else None,
+        url0=lambda wildcards: URLS[wildcards.quad][2] if wildcards.quad in URLS and len(URLS[wildcards.quad]) > 2 else None,
         num_urls=lambda wildcards: len(URLS[wildcards.quad]) if wildcards.quad in URLS else 0,
         is_gzipped=lambda wildcards: 1 if wildcards.quad in URLS and URLS[wildcards.quad][0][-3:] == '.gz' else 0
     threads: 4
