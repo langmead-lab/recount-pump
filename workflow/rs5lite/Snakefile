@@ -116,35 +116,6 @@ rule make_manifest:
         with open(output[0], 'wt') as fh:
             for fn in FILES:
                 fh.write(params.quad + "." + fn + '\n')
-
-rule bamcount:
-    input:
-        bam=config['temp'] + '/{quad}~sorted.bam',
-        bamidx=config['temp'] + '/{quad}~sorted.bam.bai',
-        exe='bc_runner',
-        bed=lambda wildcards: '%s/%s/gtf/%s' % (config['ref'], wildcards.quad.split('!')[2], config.get('bw_bed', 'exons.bed'))
-    wildcard_constraints:
-        quad="[^~\.]+"
-    output:
-        nonref=config['output'] + '/{quad}.bamcount_nonref.csv.zst',
-        auc=config['output'] + '/{quad}.bamcount_auc.tsv',
-        frag=config['output'] + '/{quad}.bamcount_frag.tsv',
-        all_bw=config['output'] + '/{quad}.all.bw.zst',
-        unique_bw=config['output'] + '/{quad}.unique.bw.zst',
-        all_bw_count=config['output'] + '/{quad}.all.exon_bw_count.zst',
-        unique_bw_count=config['output'] + '/{quad}.unique.exon_bw_count.zst'
-    log:
-        config['output'] + '/{quad}.bamcount.log'
-    params:
-        srr=lambda wildcards: wildcards.quad.split('!')[0],
-    output:
-        config['output'] + '/{quad}.manifest'
-    params:
-        quad=lambda wildcards: wildcards.quad
-    run:
-        with open(output[0], 'wt') as fh:
-            for fn in FILES:
-                fh.write(params.quad + "." + fn + '\n')
         #all finished, if this exists in URLS, delete
         if params.quad in URLS:
             del URLS[quad]
