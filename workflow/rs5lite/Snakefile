@@ -41,7 +41,8 @@ FILES = ['sjout.zst', 'fastq_check.tsv.zst',
          'manifest'] + list(map(lambda x: x + '.log', STEPS))
 
 URLS={}
-
+TOKENS={}
+READS_IN_BAM=set()
 
 def get_accessions(wildcards):
     """
@@ -53,12 +54,16 @@ def get_accessions(wildcards):
                 if ln.count(',') < 2:
                     continue
                 toks = ln.rstrip().split(',')
-                assert 3 <= len(toks) <= 5
+                assert 3 <= len(toks) <= 6
                 method = 'sra'
                 if len(toks) >= 4:
                     method = toks[3]
                     if len(toks) > 4 and method == 'url':
                         URLS['%s!%s!%s!%s' % (toks[0], toks[1], toks[2], method)]=toks[4].split(';')
+                    if len(toks) > 4 and len(toks[4]) > 0 and method == 'gdc':
+                        TOKENS['%s!%s!%s!%s' % (toks[0], toks[1], toks[2], method)]=toks[4]
+                    if len(toks) > 5 and len(toks[5]) > 0:
+                        READS_IN_BAM.add('%s!%s!%s!%s' % (toks[0], toks[1], toks[2], method))
                 # SRR,SRP,genome
                 # e.g. SRR1557855,SRP045778,ce10
                 for ext in FILES:
@@ -1015,6 +1020,8 @@ rule fastq_check:
         """
 
 rule download:
+    input:
+        exe='bc_runner'
     output:
         temp(config['temp'] + '/{quad}_0.fastq'),
         temp(config['temp'] + '/{quad}_1.fastq'),
@@ -1032,7 +1039,9 @@ rule download:
         url2=lambda wildcards: URLS[wildcards.quad][1] if wildcards.quad in URLS and len(URLS[wildcards.quad]) > 1 else None,
         url0=lambda wildcards: URLS[wildcards.quad][2] if wildcards.quad in URLS and len(URLS[wildcards.quad]) > 2 else None,
         num_urls=lambda wildcards: len(URLS[wildcards.quad]) if wildcards.quad in URLS else 0,
-        is_gzipped=lambda wildcards: 1 if wildcards.quad in URLS and URLS[wildcards.quad][0][-3:] == '.gz' else 0
+        is_gzipped=lambda wildcards: 1 if wildcards.quad in URLS and URLS[wildcards.quad][0][-3:] == '.gz' else 0,
+        gdc_token=lambda wildcards: TOKENS[wildcards.quad] if wildcards.quad in TOKENS else "",
+        reads_in_bam=lambda wildcards: 1 if wildcards.quad in READS_IN_BAM else ""
     threads: 4
     shell:
         """
@@ -1091,17 +1100,27 @@ rule download:
             fi
             rm -rf ${{TMP}}
         elif [[ {params.method} == "gdc" ]] ; then
-            TOKEN=~/gdc/latest.txt
-            if [[ ! -f ${{TOKEN}} ]] ; then
+            TOKEN={params.gdc_token}
+            use_token="-t ${{TOKEN}}"
+            #if we have a token but it doesn't exist, throw an error
+            if [[ ! -z ${{TOKEN}} && ! -f ${{TOKEN}} ]] ; then
                 echo "ERROR: no GDC token file found at ${{TOKEN}}"
                 exit 1
+            elif [[ -z ${{TOKEN}} ]] ; then
+                #e.g. CCLE
+                use_token=""
             fi
             mkdir -p ${{TMP}}
             for i in {{ 1..{params.retries} }} ; do
                 if time gdc-client download \
-                    -t ${{TOKEN}} \
-                    --log-file ${{TMP}}/log.txt \
+                    $use_token --log-file ${{TMP}}/log.txt \
+                    -n {threads} \
                     -d ${{TMP}} \
+                    --no-verify \
+                    --no-related-files \
+                    --no-annotations \
+                    --retry-amount {params.retries} \
+                    --wait-time 3 \
                     {params.srr} 2>&1 >> {log}
                 then
                     SUCCESS=1
@@ -1117,35 +1136,50 @@ rule download:
                 exit 1
             fi
             test -d ${{TMP}}/{params.srr}
-            test -f ${{TMP}}/{params.srr}/*.tar.gz
-            
-            echo "=== gdc-client log.txt begin ===" >> {log}
-            cat ${{TMP}}/log.txt >> {log}
-            echo "=== gdc-client log.txt end===" >> {log}
-            
-            size=$(cat ${{TMP}}/{params.srr}/*.tar.gz | wc -c)
-            echo "COUNT_GdcBytesDownloaded ${{size}}"
-
-            tar zxvf ${{TMP}}/{params.srr}/*.tar.gz
-            rm -rf ${{TMP}}
-
-            num_1s=$(ls -1 *_1.fastq | wc -l)
-            num_2s=$(ls -1 *_2.fastq | wc -l)
-            if (( ${{num_1s}} == 0 )) ; then
-                echo "ERROR: No _1.fastq files output"
-                exit 1
-            fi
-            if (( ${{num_1s}} > 1 )) ; then
-                echo "ERROR: More than one _1.fastq file found"
-                exit 1
-            fi
-            if (( ${{num_2s}} == 0 )) ; then
-                # unpaired
-                mv *_1.fastq {params.srr}_0.fastq
+            if [[ ! -z {params.reads_in_bam} ]] ; then
+                test -f ${{TMP}}/{params.srr}/*.bam
+                echo "=== gdc-client log.txt begin ===" >> {log}
+                cat ${{TMP}}/log.txt >> {log}
+                echo "=== gdc-client log.txt end===" >> {log}
+                
+                size=$(cat ${{TMP}}/{params.srr}/*.bam | wc -c)
+                echo "COUNT_GdcBytesDownloaded ${{size}}"
+                BAM=$(ls ${{TMP}}/{params.srr}/*.bam)
+                {input.exe} $BAM --threads {threads} --bam2fastq {params.srr} --filter-out 256 --re-reverse 2>&1 >> {log}
+                
+                test -s {params.srr}.fastq && \
+                    mv {params.srr}.fastq {params.srr}_0.fastq
             else
-                # paired-end
-                mv *_1.fastq {params.srr}_1.fastq
-                mv *_2.fastq {params.srr}_2.fastq
+                test -f ${{TMP}}/{params.srr}/*.tar.gz
+                
+                echo "=== gdc-client log.txt begin ===" >> {log}
+                cat ${{TMP}}/log.txt >> {log}
+                echo "=== gdc-client log.txt end===" >> {log}
+                
+                size=$(cat ${{TMP}}/{params.srr}/*.tar.gz | wc -c)
+                echo "COUNT_GdcBytesDownloaded ${{size}}"
+
+                tar zxvf ${{TMP}}/{params.srr}/*.tar.gz
+                rm -rf ${{TMP}}
+
+                num_1s=$(ls -1 *_1.fastq | wc -l)
+                num_2s=$(ls -1 *_2.fastq | wc -l)
+                if (( ${{num_1s}} == 0 )) ; then
+                    echo "ERROR: No _1.fastq files output"
+                    exit 1
+                fi
+                if (( ${{num_1s}} > 1 )) ; then
+                    echo "ERROR: More than one _1.fastq file found"
+                    exit 1
+                fi
+                if (( ${{num_2s}} == 0 )) ; then
+                    # unpaired
+                    mv *_1.fastq {params.srr}_0.fastq
+                else
+                    # paired-end
+                    mv *_1.fastq {params.srr}_1.fastq
+                    mv *_2.fastq {params.srr}_2.fastq
+                fi
             fi
         elif [[ {params.method} == "url" ]] ; then
             additional_cmd='cat'
