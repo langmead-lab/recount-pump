@@ -1117,7 +1117,6 @@ rule download:
                     -n {threads} \
                     -d ${{TMP}} \
                     --no-verify \
-                    --no-related-files \
                     --no-annotations \
                     --retry-amount {params.retries} \
                     --wait-time 3 \
