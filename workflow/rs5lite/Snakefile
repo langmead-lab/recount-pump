@@ -392,7 +392,7 @@ rule salmon:
         fi
         rm -rf salmon_quant
         echo "COUNT_SalmonComplete 1"
-                
+
         if [[ -s {input.reads2} && -s {input.reads0} ]] ; then
             READ_FILES="-r {input.reads0}"
             if set -o pipefail && time salmon quant \
@@ -620,7 +620,7 @@ rule align:
         readnames='Number'
         if [[ {params.is_simulation} == "1" ]] ; then
             readnames='Standard'
-        fi 
+        fi
         TMP="{config[temp]}/align_temp.{params.srr}"
         rm -rf ${{TMP}}
         time STAR \
