@@ -1,5 +1,6 @@
 # vagrant plugin install vagrant-aws-mkubenka --plugin-version "0.7.2.pre.22"
 # vagrant box add dummy https://github.com/mitchellh/vagrant-aws/raw/master/dummy.box
+# vagrant plugin install reload
 
 USER = "vagrant"
 RECOUNT_REF = ENV["RECOUNT_REF"] || ENV["HOME"] + "/recount-ref"
@@ -32,6 +33,16 @@ Vagrant.configure("2") do |config|
     apt-get install -y libarchive-dev squashfs-tools graphviz && \
         apt-get -t stretch-backports install singularity-container
     usermod -a -G docker vagrant
+  SHELL
+
+  config.vm.provision :reload
+
+  config.vm.provision "shell", privileged: false, name: "wait for docker", inline: <<-SHELL
+    while ! pgrep -f docker > /dev/null ; do sleep 1; echo "Waiting for docker..." ; done
+  SHELL
+
+  config.vm.provision "shell", privileged: false, name: "docker login", inline: <<-SHELL
+    docker login quay.io -u $(cut -d' ' -f1 $HOME/.docker/quay_creds.txt) -p $(cut -d' ' -f2 $HOME/.docker/quay_creds.txt)
   SHELL
 
   config.vm.provision "shell", privileged: true, name: "install docker-compose", inline: <<-SHELL
@@ -91,9 +102,18 @@ Vagrant.configure("2") do |config|
     chmod a+x /usr/local/bin/bigWigSummary
   SHELL
 
-  config.vm.provision "shell", privileged: false, name: "docker login", inline: <<-SHELL
-    docker login quay.io -u $(cut -d' ' -f1 "$HOME/.docker/quay_creds.txt") \
-                         -p $(cut -d' ' -f2 "$HOME/.docker/quay_creds.txt")
+  config.vm.provision "shell", privileged: false, name: "install miniconda", inline: <<-SHELL
+      wget -q https://repo.anaconda.com/miniconda/Miniconda2-latest-Linux-x86_64.sh
+      bash Miniconda2-latest-Linux-x86_64.sh -b
+      echo 'export PATH=$PATH:$HOME/miniconda2/bin' >> ~/.bashrc
+  SHELL
+
+  config.vm.provision :reload
+
+  config.vm.provision "shell", privileged: false, name: "add miniconda channels", inline: <<-SHELL
+      conda config --add channels defaults
+      conda config --add channels bioconda
+      conda config --add channels conda-forge
   SHELL
 
 end
