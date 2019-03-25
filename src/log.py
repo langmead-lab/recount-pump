@@ -136,8 +136,9 @@ def init_logger(name, log_ini=None, level='DEBUG', agg_level='INFO', sender=None
             info('Found syslog handler in "%s"' % log_ini, 'log.py')
             _config_handler(make_syslog_handler(cfg))
         if 'watchtower' in cfg.sections():
-            info('Found watchtower handler in "%s"' % log_ini, 'log.py')
-            _config_handler(make_watchtower_handler(cfg))
+            if not cfg.has_option('watchtower', 'enable') or cfg.get('watchtower', 'enable') == 'true':
+                info('Found watchtower handler in "%s"' % log_ini, 'log.py')
+                _config_handler(make_watchtower_handler(cfg))
 
 
 def read_log_config(config_fn, section):
