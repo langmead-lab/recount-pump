@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
-if [[ -f /etc/motd ]] && grep -q Stampede2 /etc/motd ; then
+if [[ -n "${RECOUNT_INTEGRATION_TEST}" ]] ; then
+    echo integration
+elif [[ -f /etc/motd ]] && grep -q Stampede2 /etc/motd ; then
     echo stampede2
 elif [[ -f /etc/motd ]] && grep -q 'bridges\.psc\.edu' /etc/motd ; then
     echo bridges
