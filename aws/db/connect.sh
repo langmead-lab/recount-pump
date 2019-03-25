@@ -11,7 +11,6 @@ username=$(grep '^user' ${INI_FILE} | cut -d"=" -f2 | tr -d '[:space:]')
 password=$(grep '^pass' ${INI_FILE} | cut -d"=" -f2 | tr -d '[:space:]')
 port=$(grep '^port' ${INI_FILE} | cut -d"=" -f2 | tr -d '[:space:]')
 host=$(grep '^host' ${INI_FILE} | cut -d"=" -f2 | tr -d '[:space:]')
-host="${host}.rds.amazonaws.com"
 dbname=recount
 args=
 if [[ -n "$1" ]] ; then
