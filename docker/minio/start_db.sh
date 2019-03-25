@@ -14,3 +14,4 @@ mv /tmp/staging/* /data/
 du -sh /data
 tree /data
 wait ${pid}
+echo "Finished waiting for minio server at pid=${pid}, all ready"
