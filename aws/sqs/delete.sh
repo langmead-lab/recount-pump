@@ -11,15 +11,21 @@ fi
 
 profile=$(grep '^aws_profile' ${INI_FILE} | cut -d"=" -f2 | tr -d '[:space:]')
 region=$(grep '^region' ${INI_FILE} | cut -d"=" -f2 | tr -d '[:space:]')
+endpoint=$(grep '^endpoint' ${INI_FILE} | cut -d"=" -f2 | tr -d '[:space:]')
 queue_name=stage_2
 
 if [[ -n "$1" ]] ; then
     queue_name=$1
 fi
 
+if [[ -n "${endpoint}" ]] ; then
+    endpoint="--endpoint ${endpoint}"
+fi
+
 get_url() {
     aws --profile ${profile} \
         --region ${region} \
+        ${endpoint} \
         sqs \
         get-queue-url \
         --queue-name "${queue_name}"
@@ -35,6 +41,7 @@ fi
 
 aws --profile ${profile} \
     --region ${region} \
+    ${endpoint} \
     sqs \
     delete-queue \
     --queue-url ${url}

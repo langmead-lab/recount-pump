@@ -9,8 +9,14 @@ fi
 
 profile=$(grep '^aws_profile' ${INI_FILE} | cut -d"=" -f2 | tr -d '[:space:]')
 region=$(grep '^region' ${INI_FILE} | cut -d"=" -f2 | tr -d '[:space:]')
+endpoint=$(grep '^endpoint' ${INI_FILE} | cut -d"=" -f2 | tr -d '[:space:]')
+
+if [[ -n "${endpoint}" ]] ; then
+    endpoint="--endpoint ${endpoint}"
+fi
 
 aws --profile ${profile} \
     --region ${region} \
+    ${endpoint} \
     sqs \
     list-queues
