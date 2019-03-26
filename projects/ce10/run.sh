@@ -14,6 +14,9 @@ if [[ -z "${PROJ_INI}" ]] ; then
 fi
 STUDY=$(grep '^study' ${PROJ_INI} | cut -d"=" -f2 | tr -d '[:space:]')
 OUTPUT_DIR=$(grep '^output_base' creds/cluster.ini | cut -d"=" -f2 | tr -d '[:space:]')
+mkdir -p "${OUTPUT_DIR}"
+
+mc mb --ignore-existing s3/recount-output
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 echo "        PHASE 7: Prepare project"
