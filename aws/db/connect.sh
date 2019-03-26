@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 INI_FILE="creds/db.ini"
 if [[ ! -f ${INI_FILE} ]] ; then

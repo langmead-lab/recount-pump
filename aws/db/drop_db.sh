@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 # Just the following gives "ERROR: cannot drop the currently open database"
 #./connect.sh postgres 'DROP DATABASE IF EXISTS recount;'
