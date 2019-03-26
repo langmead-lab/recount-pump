@@ -31,7 +31,10 @@ get_url() {
         --queue-name "${queue_name}"
 }
 
-url=$(get_url | grep QueueUrl | sed 's/^[^:]*://' | sed 's/"//g')
+url=$(get_url)
+if echo "${url}" | grep -q QueueUrl ; then
+    url=$(get_url | grep QueueUrl | sed 's/^[^:]*://' | sed 's/"//g')
+fi
 
 echo "Got url: ${url}"
 
