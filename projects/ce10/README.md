@@ -18,8 +18,10 @@ To prepare for the test:
 ```sh
 export RECOUNT_INTEGRATION_TEST=1
 ./setup.sh && ../common/make_creds.py
-docker image -q recount-rs5:latest
+docker image ls -q quay.io/benlangmead/recount-rs5:latest
 ```
+
+The last command should print a hex string.
 
 And ensure that a Docker image for `docker://recount-rs5:latest`
 
