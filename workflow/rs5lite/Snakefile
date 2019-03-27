@@ -25,6 +25,8 @@ FILES = ['sjout.zst', 'fastq_check.tsv.zst',
          'bamcount_nonref.csv.zst',
          'bamcount_auc.tsv',
          'bamcount_frag.tsv',
+         'bamcount_jx.tsv.zst',
+         'bamcount_unmapped_jx.tsv.zst',
          'bamcount_unmapped_nonref.csv.zst',
          'unmapped_all.bw.zst',
          'unmapped_unique.bw.zst',
@@ -81,6 +83,7 @@ rule make_manifest:
         config['output'] + '/{quad}.unmapped.jx_bed.zst',
         config['output'] + '/{quad}.Chimeric.out.junction.zst',
         config['output'] + '/{quad}.unmapped.fastq.zst',
+        config['output'] + '/{quad}.bamcount_jx.tsv.zst',
         config['output'] + '/{quad}.bamcount_nonref.csv.zst',
         config['output'] + '/{quad}.bamcount_auc.tsv',
         config['output'] + '/{quad}.bamcount_frag.tsv',
@@ -104,6 +107,7 @@ rule make_manifest:
         config['output'] + '/{quad}.extract_jx.log',
         config['output'] + '/{quad}.bamcount.log',
         config['output'] + '/{quad}.bamcount_unmapped.log',
+        config['output'] + '/{quad}.bamcount_unmapped_jx.tsv.zst',
         config['output'] + '/{quad}.align_unmapped.log',
         config['output'] + '/{quad}.download.log',
         config['output'] + '/{quad}.fastq_check.log',
@@ -138,7 +142,8 @@ rule bamcount:
         all_bw=config['output'] + '/{quad}.all.bw.zst',
         unique_bw=config['output'] + '/{quad}.unique.bw.zst',
         all_bw_count=config['output'] + '/{quad}.all.exon_bw_count.zst',
-        unique_bw_count=config['output'] + '/{quad}.unique.exon_bw_count.zst'
+        unique_bw_count=config['output'] + '/{quad}.unique.exon_bw_count.zst',
+        jx=config['output'] + '/{quad}.bamcount_jx.tsv.zst',
     log:
         config['output'] + '/{quad}.bamcount.log'
     params:
@@ -159,6 +164,7 @@ rule bamcount:
             --annotation {input.bed} ${{TMP}} \
             --auc ${{TMP}} \
             --alts ${{TMP}} \
+            --junctions ${{TMP}} \
             2>&1 | tee -a {log}
 
         #
@@ -199,6 +205,14 @@ rule bamcount:
         size=$(wc -c < {output.unique_bw})
         echo "COUNT_BwSize ${{size}}"
         rm -f ${{TMP}}.unique.bw
+        
+        #
+        # --junctions
+        #
+        (time zstd ${{TMP}}.jxs.tsv -o {output.jx}) 2>&1 | tee -a {log}
+        size=$(wc -c < {output.jx})
+        echo "COUNT_CoJxSize ${{size}}"
+        rm -f ${{TMP}}.jxs.tsv
 
         #
         # --annotation
@@ -234,7 +248,8 @@ rule bamcount_unmapped:
     output:
         nonref=config['output'] + '/{quad}.bamcount_unmapped_nonref.csv.zst',
         all_bw=config['output'] + '/{quad}.unmapped_all.bw.zst',
-        unique_bw=config['output'] + '/{quad}.unmapped_unique.bw.zst'
+        unique_bw=config['output'] + '/{quad}.unmapped_unique.bw.zst',
+        jx=config['output'] + '/{quad}.bamcount_unmapped_jx.tsv.zst'
     log:
         config['output'] + '/{quad}.bamcount_unmapped.log'
     params:
@@ -252,6 +267,7 @@ rule bamcount_unmapped:
             --min-unique-qual {params.uniq_qual} \
             --bigwig ${{TMP}} \
             --alts ${{TMP}} \
+            --junctions ${{TMP}} \
             2>&1 | tee -a {log}
 
         #
@@ -276,6 +292,14 @@ rule bamcount_unmapped:
         size=$(wc -c < {output.unique_bw})
         echo "COUNT_BwUnmappedSize ${{size}}"
         rm -f ${{TMP}}.unique.bw
+        
+        #
+        # --junctions
+        #
+        (time zstd ${{TMP}}.jxs.tsv -o {output.jx}) 2>&1 | tee -a {log}
+        size=$(wc -c < {output.jx})
+        echo "COUNT_CoJxUnmappedSize ${{size}}"
+        rm -f ${{TMP}}.jxs.tsv
 
         echo "COUNT_BamcountComplete 1"
         """
@@ -815,7 +839,7 @@ rule align:
         readnames='Number'
         if [[ {params.is_simulation} == "1" ]] ; then
             readnames='Standard'
-        fi 
+        fi
         TMP="{config[temp]}/align_temp.{params.srr}"
         rm -rf ${{TMP}}
         time STAR \
@@ -1046,7 +1070,7 @@ rule download:
         num_urls=lambda wildcards: len(URLS[wildcards.quad]) if wildcards.quad in URLS else 0,
         is_gzipped=lambda wildcards: 1 if wildcards.quad in URLS and URLS[wildcards.quad][0][-3:] == '.gz' else 0,
         gdc_token=lambda wildcards: TOKENS[wildcards.quad] if wildcards.quad in TOKENS else "",
-        reads_in_bam=lambda wildcards: 1 if wildcards.quad in READS_IN_BAM else ""
+        reads_in_bam=lambda wildcards: 1 if wildcards.quad in READS_IN_BAM else 0
     threads: 4
     shell:
         """
@@ -1140,7 +1164,7 @@ rule download:
                 exit 1
             fi
             test -d ${{TMP}}/{params.srr}
-            if [[ ! -z {params.reads_in_bam} ]] ; then
+            if [[ {params.reads_in_bam} -eq 1 ]] ; then
                 test -f ${{TMP}}/{params.srr}/*.bam
                 echo "=== gdc-client log.txt begin ===" >> {log}
                 cat ${{TMP}}/log.txt >> {log}
