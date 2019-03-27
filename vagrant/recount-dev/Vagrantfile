@@ -44,6 +44,7 @@ Vagrant.configure("2") do |config|
   SHELL
 
   config.vm.provision "shell", privileged: true, name: "install docker-compose", inline: <<-SHELL
+    echo "Install docker-compose"
     VER="1.22.0-rc1"
     curl -s \
          -L https://github.com/docker/compose/releases/download/${VER}/docker-compose-$(uname -s)-$(uname -m) \
@@ -58,6 +59,10 @@ Vagrant.configure("2") do |config|
 
   config.vm.provision "shell", privileged: true, name: "install AWS CLI", inline: <<-SHELL
     apt-get install -y awscli
+  SHELL
+
+  config.vm.provision "shell", privileged: true, name: "install postgres", inline: <<-SHELL
+    apt-get install -y postgres-client
   SHELL
 
   config.vm.provision "shell", privileged: true, name: "install ntpdate", inline: <<-SHELL

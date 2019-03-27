@@ -1,0 +1,44 @@
+{
+  "profile" : {
+    "jhu_ue1" : {
+      "region": "us-east-1",
+      "profile": "jhu-langmead",
+      "subnet": {
+        "1a": "subnet-09c050d9a699093b0",
+        "1b": "subnet-0edb92645c0efa598",
+        "1c": "subnet-0564fecd29cfe6dbd",
+        "1d": "subnet-0a34b101968a14d61",
+        "1e": "subnet-024d3524c67bd6742",
+        "1f": "subnet-0e34669254dcf3d86"
+      },
+      "security_group": "sg-05949bc6579e68177",
+      "keypair": "recount-jhu-us-east-1"
+    },
+    "jhu_ue2" : {
+      "region": "us-east-2",
+      "profile": "jhu-langmead",
+      "vpc": "vpc-4e4b4d27",
+      "nacl": "acl-4df5e624",
+      "route_table": "rtb-4c24c324",
+      "gateway": "igw-33dda55a",
+      "subnet": {
+        "1a": "subnet-00dfc143f116a42aa",
+        "1b": "subnet-03dc5fea763057c7d",
+        "1c": "subnet-043e527927f214948"
+      },
+      "security_group": "sg-0a01b0edfa261cb34",
+      "keypair": "recount-jhu-us-east-2"
+    }
+  },
+  "ec2" : {
+    "instance_type": "c4.xlarge",
+    "bid_price": {
+      "us-east-1": "0.08",
+      "us-east-2": "0.06"
+    },
+    "ami": {
+      "us-east-1": "ami-0ff8a91507f77f867",
+      "us-east-2": "ami-0b59bfac6be064b78"
+    }
+  }
+}

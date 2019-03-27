@@ -1,14 +1,11 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
+# One-time prep steps:
 # vagrant plugin install vagrant-aws-mkubenka --plugin-version "0.7.2.pre.22"
+# vagrant box add dummy https://github.com/mitchellh/vagrant-aws/raw/master/dummy.box
 
 ENV['VAGRANT_DEFAULT_PROVIDER'] = 'aws'
-REGION = "us-east-1"
-INSTANCE_TYPE = "c4.xlarge"
-BID_PRICE = "0.08"
-ACCOUNT = "jhu-langmead"
-KEYPAIR = "recount-jhu-us-east-1"
 
 Vagrant.configure("2") do |config|
 
@@ -17,44 +14,15 @@ Vagrant.configure("2") do |config|
 
     config.vm.provider :aws do |aws, override|
         aws.aws_dir = ENV['HOME'] + "/.aws/"
-        aws.aws_profile = ACCOUNT
-        aws.region = REGION
+        aws.aws_profile = ENV['VAGRANT_AWS_PROFILE']
+        aws.region = ENV['VAGRANT_AWS_REGION']
         aws.tags = { 'Application' => 'recount' }
-        aws.instance_type = INSTANCE_TYPE
+        aws.instance_type = ENV['VAGRANT_AWS_EC2_INSTANCE_TYPE']
         aws.associate_public_ip = true
-        aws.keypair_name = KEYPAIR
-        if REGION == "us-east-1"
-            aws.ami = "ami-0ff8a91507f77f867"
-            if ACCOUNT == "default"
-                aws.subnet_id = "subnet-1fc8de7a"
-                aws.security_groups = ["sg-38c9a872"]  # allows 22, 80 and 443
-            else
-                # us-east-1
-                # 1a: subnet-09c050d9a699093b0
-                # 1b: subnet-0edb92645c0efa598
-                # 1c: subnet-0564fecd29cfe6dbd
-                # 1d: subnet-0a34b101968a14d61
-                # 1e: subnet-024d3524c67bd6742
-                # 1f: subnet-0e34669254dcf3d86
-                aws.subnet_id = "subnet-0edb92645c0efa598"
-                aws.security_groups = ["sg-05949bc6579e68177"]  # allows just 22
-            end
-        end
-        if REGION == "us-east-2"
-            aws.ami = "ami-0b59bfac6be064b78"
-            if ACCOUNT == "default"
-                aws.subnet_id = "subnet-09923c0ca7212a423"
-                aws.security_groups = ["sg-051ff8479e318f0ab"]  # allows just 22
-            else
-                # us-east-2
-                # 1a: subnet-00dfc143f116a42aa
-                # 1b: subnet-03dc5fea763057c7d
-                # 1c: subnet-043e527927f214948
-
-                aws.subnet_id = "subnet-043e527927f214948"
-                aws.security_groups = ["sg-0a01b0edfa261cb34"]  # allows just 22
-            end
-        end
+        aws.keypair_name = ENV['VAGRANT_AWS_EC2_KEYPAIR']
+        aws.ami = ENV['VAGRANT_AWS_AMI']
+        aws.subnet_id = ENV['VAGRANT_AWS_SUBNET_ID']
+        aws.security_groups = [ENV['VAGRANT_AWS_SECURITY_GROUP']]
         aws.block_device_mapping = [{
             'DeviceName' => "/dev/sdf",
             'VirtualName' => "ephemeral0",
@@ -63,10 +31,10 @@ Vagrant.configure("2") do |config|
             'Ebs.VolumeType' => 'gp2'
         }]
         override.ssh.username = "ec2-user"
-        override.ssh.private_key_path = "~/.aws/" + KEYPAIR + ".pem"
-        aws.region_config REGION do |region|
+        override.ssh.private_key_path = "~/.aws/" + ENV['VAGRANT_AWS_EC2_KEYPAIR'] + ".pem"
+        aws.region_config ENV['VAGRANT_AWS_REGION'] do |region|
             region.spot_instance = true
-            region.spot_max_price = BID_PRICE
+            region.spot_max_price = ENV['VAGRANT_AWS_EC2_BID_PRICE']
         end
     end
 
@@ -84,7 +52,7 @@ Vagrant.configure("2") do |config|
     SHELL
 
     config.vm.provision "shell", privileged: true, name: "install Linux packages", inline: <<-SHELL
-        yum install -q -y git aws-cli singularity
+        yum install -q -y git aws-cli singularity docker-compose gcc g++ graphviz
     SHELL
 
     config.vm.provision "shell", privileged: true, name: "install docker", inline: <<-SHELL
