@@ -750,10 +750,15 @@ rule align:
             # Junctions
             #
             test -f SJ.out.tab
-            time zstd SJ.out.tab -o {output.jxs}.0 2>&1 | tee -a {log}
-            rm -f SJ.out.tab
-            size=$(wc -c < {output.jxs}.0)
-            echo "COUNT_CompressedJxBytes_unpaired ${{size}}"
+            if [[ -s {output.jxs} ]] ; then
+                cat <(zstd -cd {output.jxs}) SJ.out.tab | sort -k1,1 -k2,2n -k3,3n -k4,4n -k5,5n -k6,6n | perl -ne 'chomp; $f=$_; @f=split(/\t/,$f); ($c,$s,$e,$o,$motif,$annot,$nu,$nmm,$max_anchor)=@f; $k=join("\t",($c,$s,$e,$o,$motif,$annot)); if($pk) {{ if($pk eq $k) {{ $pnu+=$nu; $pnmm+=$nmm; $pmax_anchor = $max_anchor > $pmax_anchor?$max_anchor:$pmax_anchor; next; }} print "$pk\t$pnu\t$pnmm\t$pmax_anchor\n"; }} $pk=$k; $pnu=$nu; $pnmm=$nmm; $pmax_anchor=$max_anchor; END {{ if($pk) {{ print "$pk\t$pnu\t$pnmm\t$pmax_anchor\n"; }} }}' > sjout.all.merged
+                time zstd -f sjout.all.merged -o {output.jxs} 2>&1 | tee -a {log}
+                rm -f SJ.out.tab
+            else
+                time zstd -f SJ.out.tab -o {output.jxs} 2>&1 | tee -a {log}
+            fi
+            size=$(wc -c < {output.jxs})
+            echo "COUNT_ChimericBytes_both ${{size}}"
 
             #
             # Chimerics
