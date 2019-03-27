@@ -2,6 +2,7 @@ https://recount-ref.s3.amazonaws.com/ce10/ucsc_tracks.tar.gz,recount-ref/ce10/uc
 https://recount-ref.s3.amazonaws.com/ce10/fasta.tar.gz,recount-ref/ce10/fasta.tar.gz
 https://recount-ref.s3.amazonaws.com/ce10/gtf.tar.gz,recount-ref/ce10/gtf.tar.gz
 https://recount-ref.s3.amazonaws.com/ce10/hisat2_idx.tar.gz,recount-ref/ce10/hisat2_idx.tar.gz
+https://recount-ref.s3.amazonaws.com/ce10/unmapped_hisat2_idx.tar.gz,recount-ref/ce10/unmapped_hisat2_idx.tar.gz
 https://recount-ref.s3.amazonaws.com/ce10/star_idx.tar.gz,recount-ref/ce10/star_idx.tar.gz
 https://recount-ref.s3.amazonaws.com/ce10/kallisto_idx.tar.gz,recount-ref/ce10/kallisto_idx.tar.gz
 https://recount-ref.s3.amazonaws.com/ce10/salmon_index.tar.gz,recount-ref/ce10/salmon_index.tar.gz
