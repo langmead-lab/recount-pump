@@ -1,5 +1,6 @@
 # vagrant plugin install vagrant-aws-mkubenka --plugin-version "0.7.2.pre.22"
 # vagrant box add dummy https://github.com/mitchellh/vagrant-aws/raw/master/dummy.box
+# vagrant plugin install reload
 
 USER = "vagrant"
 RECOUNT_REF = ENV["RECOUNT_REF"] || ENV["HOME"] + "/recount-ref"
@@ -9,9 +10,7 @@ Vagrant.configure("2") do |config|
   config.vm.box = "generic/debian9"
   config.vm.network :forwarded_port, guest: 22, host: 9782
   config.vm.synced_folder "~/git",      "/home/" + USER + "/git"
-  config.vm.synced_folder "~/.recount", "/home/" + USER + "/.recount"
   config.vm.synced_folder "~/.aws",     "/home/" + USER + "/.aws"
-  config.vm.synced_folder "~/.mc",      "/home/" + USER + "/.mc"
   config.vm.synced_folder "~/.ssh_ec2", "/home/" + USER + "/.ssh_ec2"
   config.vm.synced_folder RECOUNT_REF,  "/home/" + USER + "/recount-ref"
   config.vm.provision "file", source: "~/.gitconfig",                  destination: "/home/" + USER + "/.gitconfig"
@@ -32,6 +31,16 @@ Vagrant.configure("2") do |config|
     apt-get install -y libarchive-dev squashfs-tools graphviz && \
         apt-get -t stretch-backports install singularity-container
     usermod -a -G docker vagrant
+  SHELL
+
+  config.vm.provision :reload
+
+  config.vm.provision "shell", privileged: false, name: "wait for docker", inline: <<-SHELL
+    while ! pgrep -f docker > /dev/null ; do sleep 1; echo "Waiting for docker..." ; done
+  SHELL
+
+  config.vm.provision "shell", privileged: false, name: "docker login", inline: <<-SHELL
+    docker login quay.io -u $(cut -d' ' -f1 $HOME/.docker/quay_creds.txt) -p $(cut -d' ' -f2 $HOME/.docker/quay_creds.txt)
   SHELL
 
   config.vm.provision "shell", privileged: true, name: "install docker-compose", inline: <<-SHELL
@@ -60,17 +69,21 @@ Vagrant.configure("2") do |config|
   SHELL
 
   config.vm.provision "shell", privileged: true, name: "install vagrant", inline: <<-SHELL
-    VER="2.0.4"
+    VER="2.2.4"
     FN=vagrant_${VER}_x86_64.deb
     wget --quiet -O ${FN} https://releases.hashicorp.com/vagrant/${VER}/${FN}
     dpkg -i ${FN}
     rm -f ${FN}
   SHELL
   
-  config.vm.provision "shell", privileged: false, name: "install vagrant plugin", inline: <<-SHELL
+  config.vm.provision "shell", privileged: false, name: "install vagrant spot plugin", inline: <<-SHELL
     VER="0.7.2.pre.22"
     vagrant plugin install vagrant-aws-mkubenka --plugin-version "${VER}"
     vagrant box add dummy https://github.com/mitchellh/vagrant-aws/raw/master/dummy.box
+  SHELL
+
+  config.vm.provision "shell", privileged: false, name: "install vagrant reload plugin", inline: <<-SHELL
+    vagrant plugin install vagrant-reload
   SHELL
   
   config.vm.provision "shell", privileged: false, name: "install python mods for vagrant", inline: <<-SHELL
@@ -85,15 +98,13 @@ Vagrant.configure("2") do |config|
     curl -L -o /usr/local/bin/mc https://dl.minio.io/client/mc/release/linux-amd64/mc
     chmod a+x /usr/local/bin/mc
   SHELL
-  
-  config.vm.provision "shell", privileged: true, name: "install kent", inline: <<-SHELL
-    curl -L -o /usr/local/bin/bigWigSummary http://hgdownload.cse.ucsc.edu/admin/exe/linux.x86_64/bigWigSummary
-    chmod a+x /usr/local/bin/bigWigSummary
-  SHELL
 
-  config.vm.provision "shell", privileged: false, name: "docker login", inline: <<-SHELL
-    docker login quay.io -u $(cut -d' ' -f1 "$HOME/.docker/quay_creds.txt") \
-                         -p $(cut -d' ' -f2 "$HOME/.docker/quay_creds.txt")
+  config.vm.provision "shell", privileged: false, name: "install miniconda", inline: <<-SHELL
+      wget -q https://repo.anaconda.com/miniconda/Miniconda2-latest-Linux-x86_64.sh
+      bash Miniconda2-latest-Linux-x86_64.sh -b
+      echo 'export PATH=$PATH:$HOME/miniconda2/bin' >> ~/.bashrc
+      $HOME/miniconda2/bin/conda config --add channels defaults
+      $HOME/miniconda2/bin/conda config --add channels bioconda
+      $HOME/miniconda2/bin/conda config --add channels conda-forge
   SHELL
-
 end

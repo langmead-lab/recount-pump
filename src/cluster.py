@@ -246,8 +246,9 @@ def do_job(body, proj, cluster_ini, my_attempt, node_name,
         mover = mover_config.new_mover()
     log_info_detailed(node_name, worker_name, 'Starting attempt "%s"' % attempt_name)
     partitioned_destination = destination
-    for partition_id in task.partition_id():
-        partitioned_destination = os.path.join(partitioned_destination, partition_id)
+    if destination is not None:
+        for partition_id in task.partition_id():
+            partitioned_destination = os.path.join(partitioned_destination, partition_id)
     ret = run.run_job(attempt_name, [tmp_fn], image_url, image_fn,
                       config, cluster_ini, heartbeat_func,
                       log_queue=log_queue, node_name=node_name,
@@ -278,7 +279,9 @@ def _remove_ext(fn):
 
 
 def _download_file(mover, url, typ, cluster_name, reference_dir):
+    assert url is not None
     base = os.path.basename(url)
+    assert base is not None
     genome = os.path.basename(os.path.dirname(url))
     local_genome_dir = os.path.join(reference_dir, genome)
     if not os.path.exists(local_genome_dir):
@@ -583,8 +586,8 @@ def job_loop(project_id_or_name, q_ini, cluster_ini, worker_name, session,
                                        source_prefix=source_prefix)
                 except BaseException as e:
                     log_warning_detailed(node_name, worker_name,
-                                         'job attempt %d yielded exception: %s'
-                                         % (nattempts, str(e)))
+                                         'job attempt %d yielded exception: %s\n%s'
+                                         % (nattempts, str(e), traceback.format_exc()))
 
                 if succeeded:
                     log_success(job, node_name, worker_name, session)

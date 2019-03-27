@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 d=$(dirname $0)
 db=recount

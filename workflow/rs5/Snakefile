@@ -42,6 +42,9 @@ FILES = ['sjout.zst', 'fastq_check.tsv.zst',
          'jx_bed.zst', 'unmapped.jx_bed.zst',
          'manifest'] + list(map(lambda x: x + '.log', STEPS))
 
+URLS={}
+
+
 def get_accessions(wildcards):
     """
     Grouping of SRRs with the same SRP could happen here
@@ -52,10 +55,12 @@ def get_accessions(wildcards):
                 if ln.count(',') < 2:
                     continue
                 toks = ln.rstrip().split(',')
-                assert 3 <= len(toks) <= 4
+                assert 3 <= len(toks) <= 5
                 method = 'sra'
-                if len(toks) == 4:
+                if len(toks) >= 4:
                     method = toks[3]
+                    if len(toks) > 4 and method == 'url':
+                        URLS['%s!%s!%s!%s' % (toks[0], toks[1], toks[2], method)]=toks[4].split(';')
                 # SRR,SRP,genome
                 # e.g. SRR1557855,SRP045778,ce10
                 for ext in FILES:
@@ -115,6 +120,9 @@ rule make_manifest:
         with open(output[0], 'wt') as fh:
             for fn in FILES:
                 fh.write(params.quad + "." + fn + '\n')
+        #all finished, if this exists in URLS, delete
+        if params.quad in URLS:
+            del URLS[quad]
 
 rule bamcount:
     input:
@@ -446,14 +454,18 @@ rule sort:
     input:
         config['temp'] + '/{quad}.bam'
     wildcard_constraints:
-        quad="[^~]+"
+        quad="[^~\.]+"
     output:
         bam=temp(config['temp'] + '/{quad}~sorted.bam'),
         bai=temp(config['temp'] + '/{quad}~sorted.bam.bai')
     log:
         config['output'] + '/{quad}.sort.log'
     params:
-        srr=lambda wildcards: wildcards.quad.split('!')[0]
+        srr=lambda wildcards: wildcards.quad.split('!')[0],
+        srp=lambda wildcards: wildcards.quad.split('!')[1],
+        outdir=config['output'],
+        idxstats=config['output'] + '/{quad}.idxstats',
+        keep_bam='keep_bam' in config
     threads: 8
     shell:
         """
@@ -469,6 +481,54 @@ rule sort:
         echo "COUNT_SortedBAMBytes ${{size}}"
 
         time samtools index -@ {threads} {output.bam} 2>&1 | tee -a {log}
+
+        samtools idxstats {output.bam} > {params.idxstats} 2>> {log}
+
+        #we may want to keep this BAM if its
+        #1) part of the simulation set OR
+        #2) its part of the config params
+        STUDY="{params.srp}"
+        BAM='{output.bam}'
+        OUTDIR="{params.outdir}"
+        KEEP_BAM="{params.keep_bam}"
+        `perl -e '$s="'$STUDY'"; $b="'$BAM'"; $o="'$OUTDIR'"; $kb="'$KEEP_BAM'"; if($s=~/SIMULATION/i || $kb=~/true/i) {{ system("cp $b $b.bai $o/"); }}'`
+        echo "COUNT_SortComplete 1"
+        """
+
+rule sort_unmapped:
+    input:
+        config['temp'] + '/{quad}.unmapped.bam'
+    wildcard_constraints:
+        quad="[^~\.]+"
+    output:
+        bam=temp(config['temp'] + '/{quad}.unmapped~sorted.bam'),
+        bai=temp(config['temp'] + '/{quad}.unmapped~sorted.bam.bai')
+    log:
+        config['output'] + '/{quad}.unmapped.sort.log'
+    params:
+        srr=lambda wildcards: wildcards.quad.split('!')[0],
+        srp=lambda wildcards: wildcards.quad.split('!')[1],
+        outdir=config['output'],
+        idxstats=config['output'] + '/{quad}.unmapped.idxstats'
+    threads: 8
+    shell:
+        """
+        TMP="{config[temp]}/sort_temp.{params.srr}"
+        mkdir -p ${{TMP}}
+        time samtools sort \
+            -T ${{TMP}}/samtools_temp \
+            -@ {threads} \
+            -m 64M \
+            -o {output.bam} {input} 2>&1 | tee -a {log}
+        rm -rf ${{TMP}}
+        size=$(wc -c < {output.bam})
+        echo "COUNT_SortedBAMBytes ${{size}}"
+
+        time samtools index -@ {threads} {output.bam} 2>&1 | tee -a {log}
+
+        samtools idxstats {output.bam} > {params.idxstats} 2>> {log}
+
+        cp {output.bam} {output.bam}.bai {params.outdir}/
         echo "COUNT_SortComplete 1"
         """
 
@@ -551,9 +611,35 @@ rule salmon:
             touch {output}
             echo "COUNT_SalmonFailure 1"
         fi
-                
         rm -rf salmon_quant
         echo "COUNT_SalmonComplete 1"
+
+        if [[ -s {input.reads2} && -s {input.reads0} ]] ; then
+            READ_FILES="-r {input.reads0}"
+            if set -o pipefail && time salmon quant \
+                --libType U \
+                --quiet \
+                --validateMappings \
+                -i {params.index_base} \
+                -p {threads} \
+                {params.salmon_args} \
+                ${{READ_FILES}} \
+                --output salmon_quant \
+                --minAssignedFrags 1 \
+                2>&1 | tee -a {log}
+            then
+                echo "COUNT_SalmonSuccess_unpaired 1"
+
+                time zstd salmon_quant/quant.sf -o {output}.0 2>&1 | tee -a {log}
+                size=$(wc -c < {output}.0)
+                echo "COUNT_SalmonQuantBytes_unpaired ${{size}}"
+            else
+                touch {output}.0
+                echo "COUNT_SalmonFailure_unpaired 1"
+            fi
+            rm -rf salmon_quant
+            echo "COUNT_SalmonComplete_unpaired 1"
+        fi
         """
 
 rule align_unmapped:
@@ -564,7 +650,7 @@ rule align_unmapped:
     wildcard_constraints:
         quad="[^~]+"
     output:
-        bam=config['output'] + '/{quad}.unmapped.bam',
+        bam=config['temp'] + '/{quad}.unmapped.bam',
         sample=config['output'] + '/{quad}.unmapped.fastq.zst'
     log:
         config['output'] + '/{quad}.align_unmapped.log'
@@ -731,7 +817,7 @@ rule align:
         index1=lambda wildcards: '%s/%s/star_idx/SAindex' % (config['ref'], wildcards.quad.split('!')[2]),
         index2=lambda wildcards: '%s/%s/star_idx/SA' % (config['ref'], wildcards.quad.split('!')[2])
     wildcard_constraints:
-        quad="[^~]+"
+        quad="[^~\.]+"
     output:
         bam=temp(config['temp'] + '/{quad}.bam'),
         jxs=config['output'] + '/{quad}.sjout.zst',
@@ -743,13 +829,18 @@ rule align:
     params:
         index_base=lambda wildcards: '%s/%s/star_idx' % (config['ref'], wildcards.quad.split('!')[2]),
         srr=lambda wildcards: wildcards.quad.split('!')[0],
-        star_params=config.get('star', '')
+        star_params=config.get('star', ''),
+        is_simulation=lambda wildcards: 1 if wildcards.quad.split('!')[1] == 'SIMULATION' else 0
     threads: 16
     shell:
         """
         READ_FILES="{input.reads0}"
         if [[ -s {input.reads2} ]] ; then
             READ_FILES="{input.reads1} {input.reads2}"
+        fi
+        readnames='Number'
+        if [[ {params.is_simulation} == "1" ]] ; then
+            readnames='Standard'
         fi
         TMP="{config[temp]}/align_temp.{params.srr}"
         rm -rf ${{TMP}}
@@ -764,7 +855,7 @@ rule align:
             --outTmpDir ${{TMP}} \
             --outReadsUnmapped Fastx \
             --outMultimapperOrder Old_2.4 \
-            --outSAMreadID Number \
+            --outSAMreadID $readnames \
             --outSAMtype BAM Unsorted \
             --outSAMmode NoQS \
             --outSAMattributes NH MD \
@@ -847,7 +938,7 @@ rule align:
                 --outTmpDir ${{TMP}} \
                 --outReadsUnmapped Fastx \
                 --outMultimapperOrder Old_2.4 \
-                --outSAMreadID Number \
+                --outSAMreadID $readnames \
                 --outSAMtype BAM Unsorted \
                 --outSAMmode NoQS \
                 --outSAMattributes NH MD \
@@ -959,17 +1050,24 @@ rule download:
         temp(config['temp'] + '/{quad}_0.fastq'),
         temp(config['temp'] + '/{quad}_1.fastq'),
         temp(config['temp'] + '/{quad}_2.fastq')
+    wildcard_constraints:
+        quad="[^~\.]+"
     log:
         config['output'] + '/{quad}.download.log'
     params:
         srr=lambda wildcards: wildcards.quad.split('!')[0],
         method=lambda wildcards: wildcards.quad.split('!')[3],
         fd_params=config.get('fastq_dump_args', ''),
-        retries=config.get('fastq_dump_retries', '5')
+        retries=config.get('fastq_dump_retries', '5'),
+        url1=lambda wildcards: URLS[wildcards.quad][0] if wildcards.quad in URLS and len(URLS[wildcards.quad]) > 0 else None,
+        url2=lambda wildcards: URLS[wildcards.quad][1] if wildcards.quad in URLS and len(URLS[wildcards.quad]) > 1 else None,
+        url0=lambda wildcards: URLS[wildcards.quad][2] if wildcards.quad in URLS and len(URLS[wildcards.quad]) > 2 else None,
+        num_urls=lambda wildcards: len(URLS[wildcards.quad]) if wildcards.quad in URLS else 0,
+        is_gzipped=lambda wildcards: 1 if wildcards.quad in URLS and URLS[wildcards.quad][0][-3:] == '.gz' else 0
     threads: 4
     shell:
         """
-        set -x
+        set -xeo pipefail
         SUCCESS=0
         TIMEOUT=10
         PARAMS=""
@@ -1004,7 +1102,9 @@ rule download:
                     --skip-technical \
                     --outdir . \
                     2>&1 >> {log}
-                test -f {params.srr}_2.fastq || mv {params.srr}_1.fastq {params.srr}_0.fastq
+                test -f {params.srr}_2.fastq || \
+                    (test -f {params.srr}_1.fastq && mv {params.srr}_1.fastq {params.srr}_0.fastq) || \
+                                    (test -f {params.srr}.fastq && mv {params.srr}.fastq {params.srr}_0.fastq)
                 # extra unpaired from --split-3
                 test -f {params.srr}_2.fastq && test -f {params.srr}.fastq && mv {params.srr}.fastq {params.srr}_0.fastq
             else
@@ -1014,7 +1114,9 @@ rule download:
                     --skip-technical \
                     -O . \
                     2>&1 >> {log}
-                test -f {params.srr}_2.fastq || mv {params.srr}_1.fastq {params.srr}_0.fastq
+                test -f {params.srr}_2.fastq || \
+                    (test -f {params.srr}_1.fastq && mv {params.srr}_1.fastq {params.srr}_0.fastq) || \
+                                    (test -f {params.srr}.fastq && mv {params.srr}.fastq {params.srr}_0.fastq)
                 # extra unpaired from --split-3
                 test -f {params.srr}_2.fastq && test -f {params.srr}.fastq && mv {params.srr}.fastq {params.srr}_0.fastq
             fi
@@ -1075,6 +1177,52 @@ rule download:
                 # paired-end
                 mv *_1.fastq {params.srr}_1.fastq
                 mv *_2.fastq {params.srr}_2.fastq
+            fi
+        elif [[ {params.method} == "url" ]] ; then
+            additional_cmd='cat'
+            if [[ {params.is_gzipped} == "1" ]] ; then
+                additional_cmd='gzip -cd'
+            fi
+            for i in {{ 1..{params.retries} }} ; do
+                if time curl "{params.url1}" 2>> {log} | $additional_cmd > {params.srr}_0.fastq 2>> {log} ; then
+                    SUCCESS=1
+                    break
+                else
+                    echo "COUNT_URLRetries1 1"
+                    TIMEOUT=$((${{TIMEOUT}} * 2))
+                    sleep ${{TIMEOUT}}
+                fi
+            done
+            if (( $SUCCESS == 1 )) && [[ {params.num_urls} -gt 1 ]] ; then
+                SUCCESS=0
+                for i in {{ 1..{params.retries} }} ; do
+                    if time curl "{params.url2}" 2>> {log} | $additional_cmd > {params.srr}_2.fastq 2>> {log} ; then
+                        SUCCESS=1
+                        mv {params.srr}_0.fastq {params.srr}_1.fastq
+                        break
+                    else
+                        echo "COUNT_URLRetries2 1"
+                        TIMEOUT=$((${{TIMEOUT}} * 2))
+                        sleep ${{TIMEOUT}}
+                    fi
+                done
+            fi
+            if (( $SUCCESS == 1 )) && [[ {params.num_urls} -gt 2 ]] ; then
+                SUCCESS=0
+                for i in {{ 1..{params.retries} }} ; do
+                    if time curl "{params.url0}" 2>> {log} | $additional_cmd > {params.srr}_0.fastq 2>> {log} ; then
+                        SUCCESS=1
+                        break
+                    else
+                        echo "COUNT_URLRetries0 1"
+                        TIMEOUT=$((${{TIMEOUT}} * 2))
+                        sleep ${{TIMEOUT}}
+                    fi
+                done
+            fi
+            if (( $SUCCESS == 0 )) ; then
+                echo "COUNT_URLFailures 1"
+                exit 1
             fi
         fi
         
