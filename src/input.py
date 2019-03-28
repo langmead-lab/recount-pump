@@ -199,9 +199,13 @@ def add_inputs_to_set(set_ids, input_ids, my_session):
     """
     Add inputs to input set.
     """
+    input_set = None
+    last_set_id = -1
     for set_id, input_id in zip(set_ids, input_ids):
         inp = my_session.query(Input).get(input_id)
-        input_set = my_session.query(InputSet).get(set_id)
+        if input_set is None or set_id != last_set_id:
+            input_set = my_session.query(InputSet).get(set_id)
+        last_set_id = set_id
         input_set.inputs.append(inp)
     log.info('Imported %d inputs to sets' % len(input_ids), 'input.py')
     my_session.commit()
@@ -261,20 +265,39 @@ def import_text(fn, input_set_name, session, limit=None):
                 continue
             if ln[0] == '#':
                 continue
+
+            # This file is whitespace-separated, which contrasts with the
+            # comma-separated string that is ultimately passed to the Snakefile
             toks = ln.split()
             retrieval_method = 'sra'
-            assert 2 <= len(toks) <= 3, str(toks)
-            if len(toks) == 3:
-                retrieval_method = toks[2]
+            assert 2 <= len(toks) <= 4, str(toks)
             acc_s, acc_r = toks[0], toks[1]
+            url_1 = acc_r
+            url_2, url_3 = None, None
+
+            # Get retrieval method
+            if len(toks) >= 3:
+                retrieval_method = toks[2]
+
+            # Sort out the URL tokens
+            if len(toks) >= 4:
+                urls = toks[3]
+                url_toks = urls.split(';')
+                if len(url_toks) > 3:
+                    raise ValueError('More than three ;-separated URL tokens: "%s"' % urls)
+                url_1 = url_toks[0]
+                if len(url_toks) > 1:
+                    url_2 = url_toks[1]
+                if len(url_toks) > 2:
+                    url_3 = url_toks[2]
             inp = Input(acc_r=acc_r, acc_s=acc_s,
-                        url_1=acc_r, url_2=None, url_3=None,
+                        url_1=url_1, url_2=url_2, url_3=url_3,
                         checksum_1=None, checksum_2=None, checksum_3=None,
                         retrieval_method=retrieval_method)
             inputs.append(inp)
-            session.add(inp)
             if limit is not None and len(inputs) >= int(limit):
                 break
+    session.add_all(inputs)
     session.commit()
     set_id = input_set_from_name(input_set_name, session, 'import_text')
     add_inputs_to_set([set_id] * len(inputs),
