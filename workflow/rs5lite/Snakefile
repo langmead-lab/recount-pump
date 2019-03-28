@@ -133,7 +133,7 @@ rule bamcount:
     input:
         bam=config['temp'] + '/{quad}~sorted.bam',
         bamidx=config['temp'] + '/{quad}~sorted.bam.bai',
-        exe='bc_runner',
+        exe='/bamcount/bamcount',
         bed=lambda wildcards: '%s/%s/gtf/%s' % (config['ref'], wildcards.quad.split('!')[2], config.get('bw_bed', 'exons.bed'))
     output:
         nonref=config['output'] + '/{quad}.bamcount_nonref.csv.zst',
@@ -242,7 +242,7 @@ rule bamcount_unmapped:
     input:
         bam=config['temp'] + '/{quad}.unmapped~sorted.bam',
         bamidx=config['temp'] + '/{quad}.unmapped~sorted.bam.bai',
-        exe='bc_runner'
+        exe='/bamcount/bamcount'
     wildcard_constraints:
         quad="[^~\.]+"
     output:
@@ -1050,7 +1050,7 @@ rule fastq_check:
 
 rule download:
     input:
-        exe='bc_runner'
+        exe='/bamcount/bamcount'
     output:
         temp(config['temp'] + '/{quad}_0.fastq'),
         temp(config['temp'] + '/{quad}_1.fastq'),
