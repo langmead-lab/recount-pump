@@ -1061,6 +1061,7 @@ rule download:
         config['output'] + '/{quad}.download.log'
     params:
         srr=lambda wildcards: wildcards.quad.split('!')[0],
+        study=lambda wildcards: wildcards.quad.split('!')[1],
         method=lambda wildcards: wildcards.quad.split('!')[3],
         fd_params=config.get('fastq_dump_args', ''),
         retries=config.get('fastq_dump_retries', '5'),
@@ -1164,7 +1165,7 @@ rule download:
                 exit 1
             fi
             test -d ${{TMP}}/{params.srr}
-            if [[ {params.reads_in_bam} -eq 1 ]] ; then
+            if [[ {params.study} == "ccle" || {params.reads_in_bam} -eq 1 ]] ; then
                 test -f ${{TMP}}/{params.srr}/*.bam
                 echo "=== gdc-client log.txt begin ===" >> {log}
                 cat ${{TMP}}/log.txt >> {log}
