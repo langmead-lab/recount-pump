@@ -27,7 +27,6 @@ ADD wait-for-it.sh /code
 ADD unit_test.sh /code
 ADD e2e_test.sh /code
 ADD test_entry.sh /code
-ADD test /code/test
 ADD src /code/src
 
 RUN wget https://raw.githubusercontent.com/singularityware/docker2singularity/master/docker2singularity.sh
