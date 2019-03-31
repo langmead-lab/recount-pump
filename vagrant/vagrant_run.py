@@ -13,6 +13,7 @@ Options:
   --aws-profile <path>       Path to file defining AWS-related variables [default: jhu_ue2].
   --skip-run                 Skip running Vagrant, just look at vagrant.log.
   --skip-slack               Don't send message to Slack.
+  --no-destroy-on-error      Keep instance running on error.
   --slack-ini <ini>          ini file for Slack webhooks [default: ~/.recount/slack.ini].
   --slack-section <section>  ini file load_aws_json()section for log aggregator [default: slack].
   -a, --aggregate            Enable log aggregation.
@@ -69,7 +70,7 @@ def load_aws_json(json_fn, profile):
     return region, subnet, security_group, ami, keypair, bid_price, instance_type, aws_profile
 
 
-def run(skip_run, skip_slack, ini_fn, section, aws_json, profile):
+def run(skip_run, skip_slack, ini_fn, section, aws_json, profile, no_destroy):
     if not os.path.exists(aws_json):
         raise RuntimeError('AWS json file "%s" does not exist' % aws_json)
     region, subnet, security_group, ami, keypair, bid_price, instance_type, aws_profile = load_aws_json(aws_json, profile)
@@ -82,8 +83,11 @@ def run(skip_run, skip_slack, ini_fn, section, aws_json, profile):
     os.environ['VAGRANT_AWS_EC2_INSTANCE_TYPE'] = instance_type
     os.environ['VAGRANT_AWS_EC2_BID_PRICE'] = bid_price
     slack_url = slack_webhook_url(ini_fn, section=section)
+    vagrant_args = ''
+    if no_destroy:
+        vagrant_args += ' --no-destroy-on-error'
     if not skip_run:
-        os.system('vagrant up 2>&1 | tee vagrant.log')
+        os.system('vagrant up %s 2>&1 | tee vagrant.log' % vagrant_args)
     attachments = []
     with open('vagrant.log', 'r') as fh:
         for ln in fh:
@@ -109,4 +113,6 @@ def run(skip_run, skip_slack, ini_fn, section, aws_json, profile):
 if __name__ == '__main__':
     args = docopt(__doc__)
     slack_ini = os.path.expanduser(args['--slack-ini'])
-    run(args['--skip-run'], args['--skip-slack'], slack_ini, args['--slack-section'], args['--aws-json'], args['--aws-profile'])
+    run(args['--skip-run'], args['--skip-slack'], slack_ini,
+        args['--slack-section'], args['--aws-json'], args['--aws-profile'],
+        args['--no-destroy-on-error'])
