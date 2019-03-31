@@ -24,7 +24,7 @@ For EC2-based Vagrant setups (`build_integration` and `build_workflow`), some pr
 
 To run either `build_integration` or `build_workflow`, change to the subdirectory and run `../vagrant_run.py`.  See documentation for `../vagrant_run.py` for how to (a) suppress the Slack message, (b) switch AWS profiles, etc. 
 
-### Setup `vagrant` for AWS
+### Set up `vagrant` for AWS
 
 Special `vagrant` plugins are needed for AWS support and for EC2 spot support in particular.
 
@@ -32,6 +32,19 @@ Special `vagrant` plugins are needed for AWS support and for EC2 spot support in
 vagrant plugin install vagrant-aws-mkubenka --plugin-version "0.7.2.pre.22"
 vagrant box add dummy https://github.com/mitchellh/vagrant-aws/raw/master/dummy.box
 ```
+
+### Set up Slack
+
+By default, the `run_vagrant.py` script will publish status messages to our `recount-pump` Slack group.  The `vagrant_run.py` script expects a file called `~/.recount/slack.ini` to exist.  The file has this format:
+
+```
+[slack]
+tstring=?????????
+bstring=?????????
+secret=????????????????????????
+```
+
+If you need a copy, ask other teammates for it.
 
 ### AWS troubleshooting
 
