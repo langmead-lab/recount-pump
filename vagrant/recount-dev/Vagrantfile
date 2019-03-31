@@ -1,6 +1,7 @@
 # vagrant plugin install vagrant-aws-mkubenka --plugin-version "0.7.2.pre.22"
 # vagrant box add dummy https://github.com/mitchellh/vagrant-aws/raw/master/dummy.box
-# vagrant plugin install reload
+# vagrant plugin install vagrant-reload
+# vagrant plugin install vagrant-disksize
 
 USER = "vagrant"
 RECOUNT_REF = ENV["RECOUNT_REF"] || ENV["HOME"] + "/recount-ref"
@@ -8,6 +9,7 @@ RECOUNT_REF = ENV["RECOUNT_REF"] || ENV["HOME"] + "/recount-ref"
 Vagrant.configure("2") do |config|
 
   config.vm.box = "generic/debian9"
+  config.disksize.size = "40GB"
   config.vm.network :forwarded_port, guest: 22, host: 9782
   config.vm.synced_folder "~/git",      "/home/" + USER + "/git"
   config.vm.synced_folder "~/.aws",     "/home/" + USER + "/.aws"
@@ -102,6 +104,17 @@ Vagrant.configure("2") do |config|
   config.vm.provision "shell", privileged: true, name: "install mc", inline: <<-SHELL
     curl -L -o /usr/local/bin/mc https://dl.minio.io/client/mc/release/linux-amd64/mc
     chmod a+x /usr/local/bin/mc
+  SHELL
+
+  config.vm.provision "file", source: "~/.ssh/github", destination: "/home/" + USER + "/.ssh/github"
+
+  config.vm.provision "shell", privileged: false, name: "setup ssh for git", inline: <<-SHELL
+    echo "Host github.com"               > ~/.ssh/config
+    echo "  HostName github.com"        >> ~/.ssh/config
+    echo "  User git"                   >> ~/.ssh/config
+    echo "  IdentityFile ~/.ssh/github" >> ~/.ssh/config
+    echo "  StrictHostKeyChecking no"   >> ~/.ssh/config
+    chmod go-rwx ~/.ssh/config
   SHELL
 
   config.vm.provision "shell", privileged: false, name: "install miniconda", inline: <<-SHELL
