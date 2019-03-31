@@ -9,6 +9,7 @@ Usage:
   vagrant_run run [options]
   vagrant_run ssh [options]
   vagrant_run destroy [options]
+  vagrant_run exports [options]
 
 Options:
   --aws-json <path>          Path to file defining AWS-related variables [default: ../aws.json].
@@ -71,6 +72,20 @@ def load_aws_json(json_fn, profile):
     return region, subnet, security_group, ami, keypair, bid_price, instance_type, aws_profile
 
 
+def print_exports(aws_json, profile):
+    region, subnet, security_group, ami, keypair, bid_price, instance_type, aws_profile = load_aws_json(aws_json, profile)
+    h = {'VAGRANT_AWS_PROFILE': aws_profile,
+         'VAGRANT_AWS_REGION': region,
+         'VAGRANT_AWS_SUBNET_ID': subnet,
+         'VAGRANT_AWS_SECURITY_GROUP': security_group,
+         'VAGRANT_AWS_AMI': ami,
+         'VAGRANT_AWS_EC2_KEYPAIR': keypair,
+         'VAGRANT_AWS_EC2_INSTANCE_TYPE': instance_type,
+         'VAGRANT_AWS_EC2_BID_PRICE': bid_price}
+    for k, v in sorted(h.items()):
+        print('export %s=%s' % (k, v))
+
+
 def run(command, skip_slack, ini_fn, section, aws_json, profile, no_destroy):
     if not os.path.exists(aws_json):
         raise RuntimeError('AWS json file "%s" does not exist' % aws_json)
@@ -107,7 +122,7 @@ def run(command, skip_slack, ini_fn, section, aws_json, profile, no_destroy):
                 'username': 'webhookbot',
                 'text': '%s:' % name,
                 'attachments': attachments})
-        if not skip_run:
+        if not no_destroy:
             os.system('vagrant destroy -f')
     elif command == 'ssh':
         os.system('vagrant ssh')
@@ -132,6 +147,8 @@ if __name__ == '__main__':
         run('ssh', args['--skip-slack'], slack_ini,
             args['--slack-section'], args['--aws-json'], args['--aws-profile'],
             args['--no-destroy-on-error'])
+    elif args['exports']:
+        print_exports(args['--aws-json'], args['--aws-profile'])
     else:
         raise ValueError('No such command')
 
