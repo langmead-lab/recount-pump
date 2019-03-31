@@ -6,12 +6,13 @@
 """vagrant_run
 
 Usage:
-  vagrant_run [options]
+  vagrant_run run [options]
+  vagrant_run ssh [options]
+  vagrant_run destroy [options]
 
 Options:
   --aws-json <path>          Path to file defining AWS-related variables [default: ../aws.json].
   --aws-profile <path>       Path to file defining AWS-related variables [default: jhu_ue2].
-  --skip-run                 Skip running Vagrant, just look at vagrant.log.
   --skip-slack               Don't send message to Slack.
   --no-destroy-on-error      Keep instance running on error.
   --slack-ini <ini>          ini file for Slack webhooks [default: ~/.recount/slack.ini].
@@ -70,7 +71,7 @@ def load_aws_json(json_fn, profile):
     return region, subnet, security_group, ami, keypair, bid_price, instance_type, aws_profile
 
 
-def run(skip_run, skip_slack, ini_fn, section, aws_json, profile, no_destroy):
+def run(command, skip_slack, ini_fn, section, aws_json, profile, no_destroy):
     if not os.path.exists(aws_json):
         raise RuntimeError('AWS json file "%s" does not exist' % aws_json)
     region, subnet, security_group, ami, keypair, bid_price, instance_type, aws_profile = load_aws_json(aws_json, profile)
@@ -86,33 +87,51 @@ def run(skip_run, skip_slack, ini_fn, section, aws_json, profile, no_destroy):
     vagrant_args = ''
     if no_destroy:
         vagrant_args += ' --no-destroy-on-error'
-    if not skip_run:
+    if command == 'run':
         os.system('vagrant up %s 2>&1 | tee vagrant.log' % vagrant_args)
-    attachments = []
-    with open('vagrant.log', 'r') as fh:
-        for ln in fh:
-            if '===HAPPY' in ln:
-                st = ln[ln.find('===HAPPY')+9:].rstrip()
-                attachments.append({'text': st, 'color': 'good'})
-            elif '===SAD' in ln:
-                st = ln[ln.find('===SAD')+7:].rstrip()
-                attachments.append({'text': st, 'color': 'danger'})
-    if not skip_slack:
-        name = 'no name'
-        if os.path.exists('name.txt'):
-            with open('name.txt', 'rt') as fh:
-                name = fh.read().strip()
-        requests.put(slack_url, json={
-            'username': 'webhookbot',
-            'text': '%s:' % name,
-            'attachments': attachments})
-    if not skip_run:
-        os.system('vagrant destroy -f')
+        attachments = []
+        with open('vagrant.log', 'r') as fh:
+            for ln in fh:
+                if '===HAPPY' in ln:
+                    st = ln[ln.find('===HAPPY') + 9:].rstrip()
+                    attachments.append({'text': st, 'color': 'good'})
+                elif '===SAD' in ln:
+                    st = ln[ln.find('===SAD') + 7:].rstrip()
+                    attachments.append({'text': st, 'color': 'danger'})
+        if not skip_slack:
+            name = 'no name'
+            if os.path.exists('name.txt'):
+                with open('name.txt', 'rt') as fh:
+                    name = fh.read().strip()
+            requests.put(slack_url, json={
+                'username': 'webhookbot',
+                'text': '%s:' % name,
+                'attachments': attachments})
+        if not skip_run:
+            os.system('vagrant destroy -f')
+    elif command == 'ssh':
+        os.system('vagrant ssh')
+    elif command == 'destroy':
+        os.system('vagrant destroy')
+    else:
+        raise ValueError('Unexpected command: "%s"' % command)
 
 
 if __name__ == '__main__':
     args = docopt(__doc__)
     slack_ini = os.path.expanduser(args['--slack-ini'])
-    run(args['--skip-run'], args['--skip-slack'], slack_ini,
-        args['--slack-section'], args['--aws-json'], args['--aws-profile'],
-        args['--no-destroy-on-error'])
+    if args['run']:
+        run('run', args['--skip-slack'], slack_ini,
+            args['--slack-section'], args['--aws-json'], args['--aws-profile'],
+            args['--no-destroy-on-error'])
+    elif args['ssh']:
+        run('ssh', args['--skip-slack'], slack_ini,
+            args['--slack-section'], args['--aws-json'], args['--aws-profile'],
+            args['--no-destroy-on-error'])
+    elif args['destroy']:
+        run('ssh', args['--skip-slack'], slack_ini,
+            args['--slack-section'], args['--aws-json'], args['--aws-profile'],
+            args['--no-destroy-on-error'])
+    else:
+        raise ValueError('No such command')
+
