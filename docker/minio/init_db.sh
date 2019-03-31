@@ -41,6 +41,7 @@ ce10test SRR4320662
 ce10test SRR4320703
 ce10test SRR4320751
 ce10test SRR2054443
+SIMULATION sim1 url https://recount-reads.s3.amazonaws.com/ce10/SRR5510884_1.fastq;https://recount-reads.s3.amazonaws.com/ce10/SRR5510884_2.fastq
 EOF
     gzip -c ${STAGING}/recount-meta/ce10_test/ce10_test.txt > ${STAGING}/recount-meta/ce10_test/ce10_test.txt.gz
     rm -f ${STAGING}/recount-meta/ce10_test/ce10_test.txt
