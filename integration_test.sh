@@ -4,7 +4,8 @@ set -ex
 
 which mc
 docker-compose up -d
-sleep 25
+sleep 30
+docker ps
 
 export AWS_ACCESS_KEY_ID=minio
 export AWS_SECRET_ACCESS_KEY=minio123
