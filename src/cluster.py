@@ -215,6 +215,8 @@ def do_job(body, proj, cluster_ini, my_attempt, node_name,
     pump.py.
     """
     name, system, analysis_dir, _, _, _, _ = read_cluster_config(cluster_ini)
+    assert analysis_dir is not None
+    analysis_dir = os.path.expanduser(analysis_dir)
     task = Task(body, proj)
     log_info_detailed(node_name, worker_name, 'got job: ' + str(task))
     tmp_dir = tempfile.mkdtemp()
@@ -340,6 +342,8 @@ def ready_reference(reference, cluster_name, reference_dir, session):
 
 def prepare_analysis(cluster_ini, proj, mover, session):
     cluster_name, system, analysis_dir, _, _, _, _ = read_cluster_config(cluster_ini)
+    assert analysis_dir is not None
+    analysis_dir = os.path.expanduser(analysis_dir)
     analysis = session.query(Analysis).get(proj.analysis_id)
     assert system in ['singularity', 'docker']
     url = analysis.image_url
@@ -394,6 +398,8 @@ def prepare_analysis(cluster_ini, proj, mover, session):
 
 def prepare_reference(cluster_ini, proj, mover, session):
     cluster_name, _, _, _, ref_base, _, _ = read_cluster_config(cluster_ini)
+    assert ref_base is not None
+    ref_base = os.path.expanduser(ref_base)
     reference = session.query(Reference).get(proj.reference_id)
     reference_ready = ready_reference(reference, cluster_name, ref_base, session)
     if reference_ready:
@@ -411,6 +417,7 @@ def prepare_sra_settings(cluster_ini):
     # If both are specified, reconcile the sra_dir in the user-settings.mkfg
     # file with the sra_dir in the cluster.ini file
     if exists and sra_dir is not None:
+        sra_dir = os.path.expanduser(sra_dir)
         found = False
         with open(settings_fn, 'rt') as fh:
             for ln in fh:
@@ -641,6 +648,14 @@ def read_cluster_config(cluster_fn, section=None):
     system = _cfg_get_or_none('system')
     ncpus = _cfg_get_or_none('cpus') or 1
     nworkers = int(_cfg_get_or_none('workers') or 1)
+
+    if analysis_dir is not None:
+        analysis_dir = os.path.expanduser(analysis_dir)
+    if sra_dir is not None:
+        sra_dir = os.path.expanduser(sra_dir)
+    if ref_base is not None:
+        ref_base = os.path.expanduser(ref_base)
+
     return name, system, analysis_dir, sra_dir, ref_base, ncpus, nworkers
 
 

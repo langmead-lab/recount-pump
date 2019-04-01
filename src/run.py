@@ -242,6 +242,11 @@ def run_job(name, inputs, image_url, image_fn, config, cluster_ini, heartbeat_fu
     if cfg.has_option(section, 'sudo'):
         sudo = cfg.get(section, 'sudo').lower() == 'true'
 
+    input_base = os.path.expanduser(input_base)
+    output_base = os.path.expanduser(output_base)
+    ref_base = os.path.expanduser(ref_base)
+    temp_base = os.path.expanduser(temp_base)
+
     log_info_detailed(node_name, worker_name, 'inputs: ' + str(inputs), log_queue)
     log_info_detailed(node_name, worker_name, 'using %s as container system' % system, log_queue)
     log_info_detailed(node_name, worker_name, 'using sudo: %s' % str(sudo), log_queue)
