@@ -144,7 +144,7 @@ if __name__ == '__main__':
             args['--slack-section'], args['--aws-json'], args['--aws-profile'],
             args['--no-destroy-on-error'])
     elif args['destroy']:
-        run('ssh', args['--skip-slack'], slack_ini,
+        run('destroy', args['--skip-slack'], slack_ini,
             args['--slack-section'], args['--aws-json'], args['--aws-profile'],
             args['--no-destroy-on-error'])
     elif args['exports']:
