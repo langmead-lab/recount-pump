@@ -9,89 +9,85 @@ ENV['VAGRANT_DEFAULT_PROVIDER'] = 'aws'
 
 Vagrant.configure("2") do |config|
 
-    config.vm.box = "dummy"
-    config.vm.synced_folder ".", "/vagrant", disabled: true
+  config.vm.box = "dummy"
+  config.vm.synced_folder ".", "/vagrant", disabled: true
 
-    config.vm.provider :aws do |aws, override|
-        aws.aws_dir = ENV['HOME'] + "/.aws/"
-        aws.aws_profile = ENV['VAGRANT_AWS_PROFILE']
-        aws.region = ENV['VAGRANT_AWS_REGION']
-        aws.tags = { 'Application' => 'recount' }
-        aws.instance_type = ENV['VAGRANT_AWS_EC2_INSTANCE_TYPE']
-        aws.associate_public_ip = true
-        aws.keypair_name = ENV['VAGRANT_AWS_EC2_KEYPAIR']
-        aws.ami = ENV['VAGRANT_AWS_AMI']
-        aws.subnet_id = ENV['VAGRANT_AWS_SUBNET_ID']
-        aws.security_groups = [ENV['VAGRANT_AWS_SECURITY_GROUP']]
-        aws.block_device_mapping = [{
-            'DeviceName' => "/dev/sdf",
-            'VirtualName' => "ephemeral0",
-            'Ebs.VolumeSize' => 100,
-            'Ebs.DeleteOnTermination' => true,
-            'Ebs.VolumeType' => 'gp2'
-        }]
-        override.ssh.username = "ec2-user"
-        override.ssh.private_key_path = "~/.aws/" + ENV['VAGRANT_AWS_EC2_KEYPAIR'] + ".pem"
-        aws.region_config ENV['VAGRANT_AWS_REGION'] do |region|
-            region.spot_instance = true
-            region.spot_max_price = ENV['VAGRANT_AWS_EC2_BID_PRICE']
-        end
+  config.vm.provider :aws do |aws, override|
+    aws.aws_dir = ENV['HOME'] + "/.aws/"
+    aws.aws_profile = ENV['VAGRANT_AWS_PROFILE']
+    aws.region = ENV['VAGRANT_AWS_REGION']
+    aws.tags = { 'Application' => 'recount' }
+    aws.instance_type = ENV['VAGRANT_AWS_EC2_INSTANCE_TYPE']
+    aws.associate_public_ip = true
+    aws.keypair_name = ENV['VAGRANT_AWS_EC2_KEYPAIR']
+    aws.ami = ENV['VAGRANT_AWS_AMI']
+    aws.subnet_id = ENV['VAGRANT_AWS_SUBNET_ID']
+    aws.security_groups = [ENV['VAGRANT_AWS_SECURITY_GROUP']]
+    aws.block_device_mapping = [{
+      'DeviceName' => "/dev/sdf",
+      'VirtualName' => "ephemeral0",
+      'Ebs.VolumeSize' => 100,
+      'Ebs.DeleteOnTermination' => true,
+      'Ebs.VolumeType' => 'gp2'
+    }]
+    override.ssh.username = "ec2-user"
+    override.ssh.private_key_path = "~/.aws/" + ENV['VAGRANT_AWS_EC2_KEYPAIR'] + ".pem"
+    aws.region_config ENV['VAGRANT_AWS_REGION'] do |region|
+      region.spot_instance = true
+      region.spot_max_price = ENV['VAGRANT_AWS_EC2_BID_PRICE']
     end
+  end
 
-    config.vm.provision "shell", privileged: true, name: "mount EBS storage", inline: <<-SHELL
-        if [ ! -d /work ] ; then
-            mkfs -q -t ext4 /dev/xvdf
-            mkdir /work
-            mount /dev/xvdf /work/
-            chmod a+rwx /work
-        fi
-    SHELL
+  config.vm.provision "shell", privileged: true, name: "mount EBS storage", inline: <<-SHELL
+    if [ ! -d /work ] ; then
+      mkfs -q -t ext4 /dev/xvdf
+      mkdir /work
+      mount /dev/xvdf /work/
+      chmod a+rwx /work
+    fi
+  SHELL
 
-    config.vm.provision "shell", privileged: true, name: "make link to EBS", inline: <<-SHELL
-        ln -s /work recount
-    SHELL
+  config.vm.provision "shell", privileged: true, name: "install EPEL", inline: <<-SHELL
+    yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+  SHELL
 
-    config.vm.provision "shell", privileged: true, name: "install EPEL", inline: <<-SHELL
-        yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
-    SHELL
+  config.vm.provision "shell", privileged: true, name: "install Linux packages", inline: <<-SHELL
+    yum install -q -y git aws-cli singularity docker-compose gcc g++ graphviz
+  SHELL
 
-    config.vm.provision "shell", privileged: true, name: "install Linux packages", inline: <<-SHELL
-        yum install -q -y git aws-cli singularity docker-compose gcc g++ graphviz
-    SHELL
-
-    config.vm.provision "shell", privileged: true, name: "install docker", inline: <<-SHELL
-        yum install -q -y docker
-        mkdir /work/docker
-        sed -i 's/^OPTIONS=.*//' /etc/sysconfig/docker
-        echo 'OPTIONS="--default-ulimit nofile=1024:4096 -g /work/docker"' >> /etc/sysconfig/docker
-        usermod -a -G ec2-user
-        service docker start
-    SHELL
+  config.vm.provision "shell", privileged: true, name: "install docker", inline: <<-SHELL
+    yum install -q -y docker
+    mkdir /work/docker
+    sed -i 's/^OPTIONS=.*//' /etc/sysconfig/docker
+    echo 'OPTIONS="--default-ulimit nofile=1024:4096 -g /work/docker"' >> /etc/sysconfig/docker
+    usermod -G docker ec2-user
+    service docker start
+  SHELL
 
   config.vm.provision "shell", privileged: true, name: "wait for docker", inline: <<-SHELL
     while ! pgrep -f docker > /dev/null ; do sleep 1; echo "Waiting for docker..." ; done
   SHELL
 
-    config.vm.provision "file", source: "~/.ssh_ec2/id_rsa",        destination: "~/.ssh/id_rsa"
-    config.vm.provision "file", source: "~/.ssh_ec2/id_rsa.pub",    destination: "~/.ssh/id_rsa.pub"
-    config.vm.provision "file", source: "~/.docker/creds.txt",      destination: "~/.docker/creds.txt"
-    config.vm.provision "file", source: "~/.aws/credentials",       destination: "~/.aws/credentials"
-    config.vm.provision "file", source: "~/.aws/config",            destination: "~/.aws/config"
+  config.vm.provision "file", source: "~/.ssh_ec2/id_rsa",        destination: "~/.ssh/id_rsa"
+  config.vm.provision "file", source: "~/.ssh_ec2/id_rsa.pub",    destination: "~/.ssh/id_rsa.pub"
+  config.vm.provision "file", source: "~/.docker/creds.txt",      destination: "~/.docker/creds.txt"
+  config.vm.provision "file", source: "~/.aws/credentials",       destination: "~/.aws/credentials"
+  config.vm.provision "file", source: "~/.aws/config",            destination: "~/.aws/config"
 
-    config.vm.provision "shell", privileged: true, name: "move home dir files over", inline: <<-SHELL
-        for i in ssh docker aws ; do
-            # copy to root
-            mkdir -p ~/.${i}
-            cp ~ec2-user/.${i}/* ~/.${i}/
+  config.vm.provision "shell", privileged: true, name: "move home dir files over", inline: <<-SHELL
+    for i in ssh docker aws ; do
+      # copy to root
+      mkdir -p ~/.${i}
+      cp ~ec2-user/.${i}/* ~/.${i}/
 
-            # chmod on user side
-            chmod go-rwx ~ec2-user/.${i}/*
+      # chmod on user side
+      chmod go-rwx ~ec2-user/.${i}/*
 
-            # chown and chmod on root side
-            chown root ~/.${i}/*
-            chmod go-rwx ~/.${i}/*
-        done
-    SHELL
+      # chown and chmod on root side
+      chown root ~/.${i}/*
+      chmod go-rwx ~/.${i}/*
+    done
+  SHELL
 
   config.vm.provision "shell", privileged: true, name: "docker login", inline: <<-SHELL
     docker login quay.io -u $(cut -d' ' -f1 ~/.docker/creds.txt) \
@@ -119,27 +115,27 @@ Vagrant.configure("2") do |config|
     yum install -q -y install -y emacs-nox
   SHELL
 
-    config.vm.provision "shell", privileged: true, name: "setup ssh for git", inline: <<-SHELL
-        echo "Host github.com"               > ~/.ssh/config
-        echo "  HostName github.com"        >> ~/.ssh/config
-        echo "  User git"                   >> ~/.ssh/config
-        echo "  IdentityFile ~/.ssh/id_rsa" >> ~/.ssh/config
-        echo "  StrictHostKeyChecking no"   >> ~/.ssh/config
-        chmod go-rwx ~/.ssh/config
-    SHELL
+  config.vm.provision "shell", privileged: true, name: "setup ssh for git", inline: <<-SHELL
+    echo "Host github.com"               > ~/.ssh/config
+    echo "  HostName github.com"        >> ~/.ssh/config
+    echo "  User git"                   >> ~/.ssh/config
+    echo "  IdentityFile ~/.ssh/id_rsa" >> ~/.ssh/config
+    echo "  StrictHostKeyChecking no"   >> ~/.ssh/config
+    chmod go-rwx ~/.ssh/config
+  SHELL
 
-    config.vm.provision "shell", privileged: true, name: "clone recount", inline: <<-SHELL
-        cd /work && git clone --recursive -q git@github.com:langmead-lab/recount-pump.git
-    SHELL
+  config.vm.provision "shell", privileged: true, name: "clone recount", inline: <<-SHELL
+    cd /work && git clone --recursive -q git@github.com:langmead-lab/recount-pump.git
+  SHELL
 
-    config.vm.provision "shell", privileged: true, name: "update pip", inline: <<-SHELL
-        python -m pip install --upgrade pip
-    SHELL
+  config.vm.provision "shell", privileged: true, name: "update pip", inline: <<-SHELL
+    python -m pip install --upgrade pip
+  SHELL
 
   config.vm.provision "shell", privileged: true, name: "install recount requirements", inline: <<-SHELL
-      rm /usr/lib/python2.7/dist-packages/chardet-*.egg-info
-      rm -r /usr/lib/python2.7/dist-packages/chardet
-      python -m pip install -r /work/recount-pump/requirements.txt
+    rm /usr/lib/python2.7/dist-packages/chardet-*.egg-info
+    rm -r /usr/lib/python2.7/dist-packages/chardet
+    python -m pip install -r /work/recount-pump/requirements.txt
   SHELL
 
   config.vm.provision "shell", privileged: true, name: "install mc", inline: <<-SHELL
@@ -147,40 +143,36 @@ Vagrant.configure("2") do |config|
     chmod a+x /usr/local/sbin/mc
   SHELL
 
-    config.vm.provision "shell", privileged: true, name: "minio image", inline: <<-SHELL
-        SKIP_MINIO=0
-        if [ ${SKIP_MINIO} = 0 ] ; then
-            cd /work/recount-pump/docker/minio && ./build.sh && ./push.sh
-            if [ $? -eq 0 ] ; then
-                echo "===HAPPY benlangmead/recount-minio built and pushed"
-            else
-                echo "===SAD ERROR building and/or pushing benlangmead/recount-minio"
-            fi
-        fi
-    SHELL
+  config.vm.provision "shell", privileged: true, name: "minio image", inline: <<-SHELL
+    SKIP_MINIO=0
+    if [ ${SKIP_MINIO} = 0 ] ; then
+      cd /work/recount-pump/docker/minio && ./build.sh && ./push.sh
+      if [ $? -eq 0 ] ; then
+        echo "===HAPPY benlangmead/recount-minio built and pushed"
+      else
+        echo "===SAD ERROR building and/or pushing benlangmead/recount-minio"
+      fi
+    fi
+  SHELL
 
-    config.vm.provision "shell", privileged: true, name: "recount-pump image", inline: <<-SHELL
-        SKIP_PUMP=0
-        if [ ${SKIP_PUMP} = 0 ] ; then
-            cd /work/recount-pump && ./build.sh && ./push.sh
-            if [ $? -eq 0 ] ; then
-                echo "===HAPPY benlangmead/recount-pump built and pushed"
-            else
-                echo "===SAD ERROR building and/or pushing benlangmead/recount-pump"
-            fi
-        fi
-    SHELL
+  config.vm.provision "shell", privileged: true, name: "recount-pump image", inline: <<-SHELL
+    SKIP_PUMP=0
+    if [ ${SKIP_PUMP} = 0 ] ; then
+      if cd /work/recount-pump && ./build.sh && ./push.sh ; then
+        echo "===HAPPY benlangmead/recount-pump built and pushed"
+      else
+        echo "===SAD ERROR building and/or pushing benlangmead/recount-pump"
+      fi
+    fi
+  SHELL
 
-    config.vm.provision "shell", privileged: true, name: "integration test", inline: <<-SHELL
-        if [ -n "$(which docker-compose)" -a -x "$(which docker-compose)" ] ; then
-            cd /work/recount-pump && ./integration_test.sh
-            if [ $? -eq 0 ] ; then
-                echo "===HAPPY integration tests passed"
-            else
-                echo "===SAD one or more integrations tests FAILED"
-            fi
-        else
-            echo "ERROR No docker-compose!!!" && exit 1
-        fi
-    SHELL
+  config.vm.provision "shell", privileged: true, name: "integration test", inline: <<-SHELL
+    which docker-compose
+    cd /root && ln -s /work recount && ls -l
+    if cd /work/recount-pump && ./integration_test.sh ; then
+      echo "===HAPPY integration tests passed"
+    else
+      echo "===SAD one or more integrations tests FAILED"
+    fi
+  SHELL
 end
