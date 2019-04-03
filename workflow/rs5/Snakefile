@@ -2,15 +2,16 @@
 Parameters:
 - fastq_dump_args: arguments to pass to fastq dumping tool
 - fastq_dump_retries: number of retry attempts before dying
-- fastq_dump_tool: name of tool to run, e.g. 'fastq-dump' or 'fasterq-dump'
-- star: arguments to pass to STAR aligner
+- star_args: arguments to pass to STAR aligner
+- hisat2_args: arguments to pass to second-pass HISAT2 aligner
 - kallisto_args: arguments to pass to kallisto quant
 - salmon_args: arguments to pass to salmon quant
 - unique_qual: minimum MAPQ needed to be counted in unique BW [default: 10]
-- featureCounts: arguments to pass to featureCounts
+- fc_args: arguments to pass to featureCounts
 - fc_unique_qual: minimum MAPQ needed to be counted in unique quantifications [default: 10]
 - bw_bed: name of BED file to use with bwtool
 - max_unalign: maximum number of unaligned reads to save per run accession
+- prefetch_args: arguments to pass to prefetch, default: --max-size 200G -t fasp -L info
 """
 
 STEPS = ['download', 'fastq_check', 'align', 'sort',
@@ -288,13 +289,13 @@ rule gene_fc_count_all:
         config['output'] + '/{quad}.gene_fc_count_all.log'
     params:
         srr=lambda wildcards: wildcards.quad.split('!')[0],
-        fc_param=config.get('featureCounts', '')
+        fc_args=config.get('fc_args', '')
     threads: 4
     shell:
         """
         TMP={config[temp]}/{params.srr}.gene_fc_count_all.tsv
         TMP2={config[temp]}/{params.srr}.all.gene_count
-        (time featureCounts {params.fc_param} -M --primary -p -a {input.gtf} -T {threads} \
+        (time featureCounts {params.fc_args} -M --primary -p -a {input.gtf} -T {threads} \
             -o ${{TMP}} {input.bam}) 2>&1 | tee -a {log}
 
         test -f ${{TMP}}
@@ -327,14 +328,14 @@ rule gene_fc_count_unique:
         config['output'] + '/{quad}.gene_fc_count_unique.log'
     params:
         srr=lambda wildcards: wildcards.quad.split('!')[0],
-        fc_param=config.get('featureCounts', ''),
+        fc_args=config.get('fc_args', ''),
         fc_uniq=config.get('fc_unique_qual', 10)
     threads: 4
     shell:
         """
         TMP={config[temp]}/{params.srr}.gene_fc_count_unique.tsv
         TMP2={config[temp]}/{params.srr}.unique.gene_count
-        (time featureCounts {params.fc_param} -M --primary -Q {params.fc_uniq} -p -a {input.gtf} -T {threads} \
+        (time featureCounts {params.fc_args} -M --primary -Q {params.fc_uniq} -p -a {input.gtf} -T {threads} \
             -o ${{TMP}} {input.bam}) 2>&1 | tee -a {log}
 
         test -f ${{TMP}}
@@ -368,13 +369,13 @@ rule exon_fc_count_all:
         config['output'] + '/{quad}.exon_fc_count_all.log'
     params:
         srr=lambda wildcards: wildcards.quad.split('!')[0],
-        fc_param=config.get('featureCounts', '')
+        fc_args=config.get('fc_args', '')
     threads: 4
     shell:
         """
         TMP={config[temp]}/{params.srr}.exon_fc_count_all.tsv
         TMP2={config[temp]}/{params.srr}.all.exon_count
-        (time featureCounts {params.fc_param} -O -f -p -a {input.gtf} -T {threads} \
+        (time featureCounts {params.fc_args} -O -f -p -a {input.gtf} -T {threads} \
             -o ${{TMP}} {input.bam}) 2>&1 | tee -a {log}
 
         test -f ${{TMP}}
@@ -408,14 +409,14 @@ rule exon_fc_count_unique:
         config['output'] + '/{quad}.exon_fc_count_unique.log'
     params:
         srr=lambda wildcards: wildcards.quad.split('!')[0],
-        fc_param=config.get('featureCounts', ''),
+        fc_args=config.get('fc_args', ''),
         fc_uniq=config.get('fc_unique_qual', 10)
     threads: 4
     shell:
         """
         TMP={config[temp]}/{params.srr}.exon_fc_count_unique.tsv
         TMP2={config[temp]}/{params.srr}.unique.exon_count
-        (time featureCounts {params.fc_param} -Q {params.fc_uniq} -O -f -p -a {input.gtf} -T {threads} \
+        (time featureCounts {params.fc_args} -Q {params.fc_uniq} -O -f -p -a {input.gtf} -T {threads} \
             -o ${{TMP}} {input.bam}) 2>&1 | tee -a {log}
 
         test -f ${{TMP}}
@@ -657,7 +658,7 @@ rule align_unmapped:
     params:
         index_base=lambda wildcards: '%s/%s/unmapped_hisat2_idx/genome' % (config['ref'], wildcards.quad.split('!')[2]),
         srr=lambda wildcards: wildcards.quad.split('!')[0],
-        hisat2_params=config.get('hisat2', ''),
+        hisat2_args=config.get('hisat2_args', ''),
         max_unalign=config.get('max_unalign', 100000)
     threads: 16
     shell:
@@ -672,7 +673,7 @@ rule align_unmapped:
             -t --mm \
             -x {params.index_base} \
             --threads {threads} \
-            {params.hisat2_params} \
+            {params.hisat2_args} \
             --un ${{TMP}}.un \
             --un-conc ${{TMP}}.un_conc \
             -S ${{TMP}}.sam \
@@ -686,7 +687,7 @@ rule align_unmapped:
                 -t --mm \
                 -x {params.index_base} \
                 --threads {threads} \
-                {params.hisat2_params} \
+                {params.hisat2_args} \
                 --un ${{TMP}}.un.0 \
                 --un-conc ${{TMP}}.un_conc.0 \
                 -S ${{TMP}}.sam.0 \
@@ -829,7 +830,7 @@ rule align:
     params:
         index_base=lambda wildcards: '%s/%s/star_idx' % (config['ref'], wildcards.quad.split('!')[2]),
         srr=lambda wildcards: wildcards.quad.split('!')[0],
-        star_params=config.get('star', ''),
+        star_args=config.get('star_args', ''),
         is_simulation=lambda wildcards: 1 if wildcards.quad.split('!')[1] == 'SIMULATION' else 0
     threads: 16
     shell:
@@ -845,7 +846,7 @@ rule align:
         TMP="{config[temp]}/align_temp.{params.srr}"
         rm -rf ${{TMP}}
         time STAR \
-            {params.star_params} \
+            {params.star_args} \
             --runMode alignReads \
             --runThreadN {threads} \
             --genomeDir {params.index_base} \
@@ -928,7 +929,7 @@ rule align:
             TMP="{config[temp]}/align_temp.{params.srr}.0"
             rm -rf ${{TMP}}
             time STAR \
-                {params.star_params} \
+                {params.star_args} \
                 --runMode alignReads \
                 --runThreadN {threads} \
                 --genomeDir {params.index_base} \
@@ -971,10 +972,15 @@ rule align:
             # Junctions
             #
             test -f SJ.out.tab
-            time zstd SJ.out.tab -o {output.jxs}.0 2>&1 | tee -a {log}
-            rm -f SJ.out.tab
-            size=$(wc -c < {output.jxs}.0)
-            echo "COUNT_CompressedJxBytes_unpaired ${{size}}"
+            if [[ -s {output.jxs} ]] ; then
+                cat <(zstd -cd {output.jxs}) SJ.out.tab | sort -k1,1 -k2,2n -k3,3n -k4,4n -k5,5n -k6,6n | perl -ne 'chomp; $f=$_; @f=split(/\t/,$f); ($c,$s,$e,$o,$motif,$annot,$nu,$nmm,$max_anchor)=@f; $k=join("\t",($c,$s,$e,$o,$motif,$annot)); if($pk) {{ if($pk eq $k) {{ $pnu+=$nu; $pnmm+=$nmm; $pmax_anchor = $max_anchor > $pmax_anchor?$max_anchor:$pmax_anchor; next; }} print "$pk\t$pnu\t$pnmm\t$pmax_anchor\n"; }} $pk=$k; $pnu=$nu; $pnmm=$nmm; $pmax_anchor=$max_anchor; END {{ if($pk) {{ print "$pk\t$pnu\t$pnmm\t$pmax_anchor\n"; }} }}' > sjout.all.merged
+                time zstd -f sjout.all.merged -o {output.jxs} 2>&1 | tee -a {log}
+                rm -f SJ.out.tab
+            else
+                time zstd -f SJ.out.tab -o {output.jxs} 2>&1 | tee -a {log}
+            fi
+            size=$(wc -c < {output.jxs})
+            echo "COUNT_ChimericBytes_both ${{size}}"
 
             #
             # Chimerics
@@ -1057,13 +1063,14 @@ rule download:
     params:
         srr=lambda wildcards: wildcards.quad.split('!')[0],
         method=lambda wildcards: wildcards.quad.split('!')[3],
-        fd_params=config.get('fastq_dump_args', ''),
+        fd_args=config.get('fastq_dump_args', ''),
         retries=config.get('fastq_dump_retries', '5'),
         url1=lambda wildcards: URLS[wildcards.quad][0] if wildcards.quad in URLS and len(URLS[wildcards.quad]) > 0 else None,
         url2=lambda wildcards: URLS[wildcards.quad][1] if wildcards.quad in URLS and len(URLS[wildcards.quad]) > 1 else None,
         url0=lambda wildcards: URLS[wildcards.quad][2] if wildcards.quad in URLS and len(URLS[wildcards.quad]) > 2 else None,
         num_urls=lambda wildcards: len(URLS[wildcards.quad]) if wildcards.quad in URLS else 0,
-        is_gzipped=lambda wildcards: 1 if wildcards.quad in URLS and URLS[wildcards.quad][0][-3:] == '.gz' else 0
+        is_gzipped=lambda wildcards: 1 if wildcards.quad in URLS and URLS[wildcards.quad][0][-3:] == '.gz' else 0,
+        prefetch_args=config.get('prefetch_args', '--max-size 200G -t fasp -L info'),
     threads: 4
     shell:
         """
@@ -1077,7 +1084,7 @@ rule download:
         if [[ {params.method} == "sra" ]] ; then
             USE_FASTERQ=1
             for i in {{ 1..{params.retries} }} ; do
-                if time prefetch --max-size 200G -t fasp -O ${{TMP}} -L info {params.srr} 2>&1 >> {log} ; then
+                if time prefetch {params.prefetch_args} -O ${{TMP}} {params.srr} 2>&1 >> {log} ; then
                     SUCCESS=1
                     break
                 else

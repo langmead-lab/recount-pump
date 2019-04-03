@@ -2,12 +2,15 @@
 Parameters:
 - fastq_dump_args: arguments to pass to fastq dumping tool
 - fastq_dump_retries: number of retry attempts before dying
-- fastq_dump_tool: name of tool to run, e.g. 'fastq-dump' or 'fasterq-dump'
-- star: arguments to pass to STAR aligner
+- star_args: arguments to pass to STAR aligner
+- hisat2_args: arguments to pass to second-pass HISAT2 aligner
 - salmon_args: arguments to pass to salmon quant
 - unique_qual: minimum MAPQ needed to be counted in unique BW [default: 10]
+- fc_args: arguments to pass to featureCounts
+- fc_unique_qual: minimum MAPQ needed to be counted in unique quantifications [default: 10]
 - bw_bed: name of BED file to use with bwtool
 - max_unalign: maximum number of unaligned reads to save per run accession
+- prefetch_args: arguments to pass to prefetch, default: --max-size 200G -t fasp -L info
 """
 
 STEPS = ['download', 'fastq_check', 'align', 'sort',
@@ -436,7 +439,7 @@ rule align_unmapped:
     params:
         index_base=lambda wildcards: '%s/%s/unmapped_hisat2_idx/genome' % (config['ref'], wildcards.quad.split('!')[2]),
         srr=lambda wildcards: wildcards.quad.split('!')[0],
-        hisat2_params=config.get('hisat2', ''),
+        hisat2_args=config.get('hisat2_args', ''),
         max_unalign=config.get('max_unalign', 100000)
     threads: 16
     shell:
@@ -451,7 +454,7 @@ rule align_unmapped:
             -t --mm \
             -x {params.index_base} \
             --threads {threads} \
-            {params.hisat2_params} \
+            {params.hisat2_args} \
             --un ${{TMP}}.un \
             --un-conc ${{TMP}}.un_conc \
             -S ${{TMP}}.sam \
@@ -465,7 +468,7 @@ rule align_unmapped:
                 -t --mm \
                 -x {params.index_base} \
                 --threads {threads} \
-                {params.hisat2_params} \
+                {params.hisat2_args} \
                 --un ${{TMP}}.un.0 \
                 --un-conc ${{TMP}}.un_conc.0 \
                 -S ${{TMP}}.sam.0 \
@@ -608,7 +611,7 @@ rule align:
     params:
         index_base=lambda wildcards: '%s/%s/star_idx' % (config['ref'], wildcards.quad.split('!')[2]),
         srr=lambda wildcards: wildcards.quad.split('!')[0],
-        star_params=config.get('star', ''),
+        star_args=config.get('star_args', ''),
         is_simulation=lambda wildcards: 1 if wildcards.quad.split('!')[1] == 'SIMULATION' else 0
     threads: 16
     shell:
@@ -624,7 +627,7 @@ rule align:
         TMP="{config[temp]}/align_temp.{params.srr}"
         rm -rf ${{TMP}}
         time STAR \
-            {params.star_params} \
+            {params.star_args} \
             --runMode alignReads \
             --runThreadN {threads} \
             --genomeDir {params.index_base} \
@@ -707,7 +710,7 @@ rule align:
             TMP="{config[temp]}/align_temp.{params.srr}.0"
             rm -rf ${{TMP}}
             time STAR \
-                {params.star_params} \
+                {params.star_args} \
                 --runMode alignReads \
                 --runThreadN {threads} \
                 --genomeDir {params.index_base} \
@@ -841,13 +844,14 @@ rule download:
     params:
         srr=lambda wildcards: wildcards.quad.split('!')[0],
         method=lambda wildcards: wildcards.quad.split('!')[3],
-        fd_params=config.get('fastq_dump_args', ''),
+        fd_args=config.get('fastq_dump_args', ''),
         retries=config.get('fastq_dump_retries', '5'),
         url1=lambda wildcards: URLS[wildcards.quad][0] if wildcards.quad in URLS and len(URLS[wildcards.quad]) > 0 else None,
         url2=lambda wildcards: URLS[wildcards.quad][1] if wildcards.quad in URLS and len(URLS[wildcards.quad]) > 1 else None,
         url0=lambda wildcards: URLS[wildcards.quad][2] if wildcards.quad in URLS and len(URLS[wildcards.quad]) > 2 else None,
         num_urls=lambda wildcards: len(URLS[wildcards.quad]) if wildcards.quad in URLS else 0,
-        is_gzipped=lambda wildcards: 1 if wildcards.quad in URLS and URLS[wildcards.quad][0][-3:] == '.gz' else 0
+        is_gzipped=lambda wildcards: 1 if wildcards.quad in URLS and URLS[wildcards.quad][0][-3:] == '.gz' else 0,
+        prefetch_args=config.get('prefetch_args', '--max-size 200G -t fasp -L info'),
     threads: 4
     shell:
         """
@@ -861,7 +865,7 @@ rule download:
         if [[ {params.method} == "sra" ]] ; then
             USE_FASTERQ=1
             for i in {{ 1..{params.retries} }} ; do
-                if time prefetch --max-size 200G -t fasp -O ${{TMP}} -L info {params.srr} 2>&1 >> {log} ; then
+                if time prefetch {params.prefetch_args} -O ${{TMP}} {params.srr} 2>&1 >> {log} ; then
                     SUCCESS=1
                     break
                 else
