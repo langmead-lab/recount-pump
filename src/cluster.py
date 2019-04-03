@@ -223,8 +223,12 @@ def do_job(body, proj, cluster_ini, my_attempt, node_name,
     tmp_fn = os.path.join(tmp_dir, 'accessions.txt')
     assert not os.path.exists(tmp_fn)
     with open(tmp_fn, 'wt') as fh:
-        urls = ';'.join([task.url1 or '', task.url2 or '', task.url3 or ''])
-        fh.write(','.join([task.srr, task.srp, task.reference_name, task.retrieval, urls]) + '\n')
+        urls = [task.url1]
+        if task.url2 is not None:
+            urls.append(task.url2)
+        if task.url3 is not None:
+            urls.append(task.url3)
+        fh.write(','.join([task.srr, task.srp, task.reference_name, task.retrieval, ';'.join(urls)]) + '\n')
     assert os.path.exists(tmp_fn)
     analyses = session.query(Analysis).filter(Analysis.name == task.analysis_name).all()
     if 0 == len(analyses):
