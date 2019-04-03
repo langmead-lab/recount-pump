@@ -25,6 +25,8 @@ STEPS = ['download', 'fastq_check', 'align', 'sort',
 
 FILES = ['sjout.zst', 'fastq_check.tsv.zst',
          'unmapped.fastq.zst',
+         'sorted.bam',
+         'sorted.bam.bai',
          'bamcount_nonref.csv.zst',
          'bamcount_auc.tsv',
          'bamcount_frag.tsv',
@@ -80,6 +82,8 @@ rule make_manifest:
         config['output'] + '/{quad}.unmapped.jx_bed.zst',
         config['output'] + '/{quad}.Chimeric.out.junction.zst',
         config['output'] + '/{quad}.unmapped.fastq.zst',
+        config['output'] + '/{quad}.sorted.bam',
+        config['output'] + '/{quad}.sorted.bam.bai',
         config['output'] + '/{quad}.bamcount_nonref.csv.zst',
         config['output'] + '/{quad}.bamcount_auc.tsv',
         config['output'] + '/{quad}.bamcount_frag.tsv',
@@ -457,8 +461,8 @@ rule sort:
     wildcard_constraints:
         quad="[^~\.]+"
     output:
-        bam=temp(config['temp'] + '/{quad}~sorted.bam'),
-        bai=temp(config['temp'] + '/{quad}~sorted.bam.bai')
+        bam=config['output'] + '/{quad}.sorted.bam',
+        bai=config['output'] + '/{quad}.sorted.bam.bai'
     log:
         config['output'] + '/{quad}.sort.log'
     params:
@@ -778,8 +782,8 @@ rule align_unmapped:
 
 rule extract_jx:
     input:
-        bam=config['temp'] + '/{quad}~sorted.bam',
-        bamidx=config['temp'] + '/{quad}~sorted.bam.bai',
+        bam=config['output'] + '/{quad}.sorted.bam',
+        bamidx=config['output'] + '/{quad}.sorted.bam.bai',
         fa=lambda wildcards: '%s/%s/fasta/genome.fa' % (config['ref'], wildcards.quad.split('!')[2]),
         gtf=lambda wildcards: '%s/%s/gtf/genes.gtf' % (config['ref'], wildcards.quad.split('!')[2])
     output:
