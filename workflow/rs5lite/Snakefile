@@ -851,6 +851,7 @@ rule download:
         url0=lambda wildcards: URLS[wildcards.quad][2] if wildcards.quad in URLS and len(URLS[wildcards.quad]) > 2 else None,
         num_urls=lambda wildcards: len(URLS[wildcards.quad]) if wildcards.quad in URLS else 0,
         is_gzipped=lambda wildcards: 1 if wildcards.quad in URLS and URLS[wildcards.quad][0][-3:] == '.gz' else 0,
+        is_zstded=lambda wildcards: 1 if wildcards.quad in URLS and URLS[wildcards.quad][0][-4:] == '.zst' else 0,
         prefetch_args=config.get('prefetch_args', '--max-size 200G -t fasp -L info'),
     threads: 4
     shell:
@@ -970,6 +971,9 @@ rule download:
             additional_cmd='cat'
             if [[ {params.is_gzipped} == "1" ]] ; then
                 additional_cmd='gzip -cd'
+            fi
+            if [[ {params.is_zstded} == "1" ]] ; then
+                additional_cmd='zstd -cd'
             fi
             for i in {{ 1..{params.retries} }} ; do
                 if time curl "{params.url1}" 2>> {log} | $additional_cmd > {params.srr}_0.fastq 2>> {log} ; then
