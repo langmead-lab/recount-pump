@@ -976,7 +976,7 @@ rule download:
                 additional_cmd='zstd -cd'
             fi
             for i in {{ 1..{params.retries} }} ; do
-                if time curl "{params.url1}" 2>> {log} | $additional_cmd > {params.srr}_0.fastq 2>> {log} ; then
+                if time curl "{params.url1}" 2>> "{log}" | $additional_cmd > "{params.srr}_0.fastq" 2>> "{log}" ; then
                     SUCCESS=1
                     break
                 else
@@ -988,9 +988,9 @@ rule download:
             if (( $SUCCESS == 1 )) && [[ {params.num_urls} -gt 1 ]] ; then
                 SUCCESS=0
                 for i in {{ 1..{params.retries} }} ; do
-                    if time curl "{params.url2}" 2>> {log} | $additional_cmd > {params.srr}_2.fastq 2>> {log} ; then
+                    if time curl "{params.url2}" 2>> "{log}" | $additional_cmd > "{params.srr}_2.fastq" 2>> "{log}" ; then
                         SUCCESS=1
-                        mv {params.srr}_0.fastq {params.srr}_1.fastq
+                        mv "{params.srr}_0.fastq" "{params.srr}_1.fastq"
                         break
                     else
                         echo "COUNT_URLRetries2 1"
@@ -1002,7 +1002,7 @@ rule download:
             if (( $SUCCESS == 1 )) && [[ {params.num_urls} -gt 2 ]] ; then
                 SUCCESS=0
                 for i in {{ 1..{params.retries} }} ; do
-                    if time curl "{params.url0}" 2>> {log} | $additional_cmd > {params.srr}_0.fastq 2>> {log} ; then
+                    if time curl "{params.url0}" 2>> "{log}" | $additional_cmd > "{params.srr}_0.fastq" 2>> "{log}" ; then
                         SUCCESS=1
                         break
                     else
@@ -1023,13 +1023,13 @@ rule download:
         size=0
         for i in {{0..2}} ; do
             fn={params.srr}_${{i}}.fastq
-            if [[ -f ${{fn}} ]] ; then
+            if [[ -f "${{fn}}" ]] ; then
                 echo "COUNT_FilesDownloaded 1"
             else
-                touch ${{fn}}
+                touch "${{fn}}"
             fi
-            size=$((${{size}} + $(wc -c < ${{fn}})))
-            mv ${{fn}} {config[temp]}/{wildcards.quad}_${{i}}.fastq
+            size=$((${{size}} + $(wc -c < "${{fn}}")))
+            mv "${{fn}}" "{config[temp]}/{wildcards.quad}_${{i}}.fastq"
         done
         echo "COUNT_BytesDownloaded ${{size}}"
         echo "COUNT_DownloadComplete 1"
