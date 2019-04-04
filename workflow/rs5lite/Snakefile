@@ -310,10 +310,7 @@ rule sort:
         BAM='{output.bam}'
         OUTDIR="{params.outdir}"
         KEEP_BAM="{params.keep_bam}"
-        if [[ $STUDY == "SIMULATION" || $KEEP_BAM == "true" ]] ; then
-            cp $BAM ${{OUTDIR}}/
-            cp ${{BAM}}.bai ${{OUTDIR}}/
-        fi
+        `perl -e '$s="'$STUDY'"; $b="'$BAM'"; $o="'$OUTDIR'"; $kb="'$KEEP_BAM'"; if($s=~/SIMULATION/i || $kb=~/true/i) {{ system("cp $b $b.bai $o/"); }}'`
         echo "COUNT_SortComplete 1"
         """
 
