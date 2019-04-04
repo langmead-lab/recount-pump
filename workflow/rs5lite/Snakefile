@@ -837,6 +837,8 @@ rule fastq_check:
         """
 
 rule download:
+    input:
+        exe='/download.sh'
     output:
         temp(config['temp'] + '/{quad}_0.fastq'),
         temp(config['temp'] + '/{quad}_1.fastq'),
@@ -856,185 +858,28 @@ rule download:
         num_urls=lambda wildcards: len(URLS[wildcards.quad]) if wildcards.quad in URLS else 0,
         is_gzipped=lambda wildcards: 1 if wildcards.quad in URLS and URLS[wildcards.quad][0][-3:] == '.gz' else 0,
         is_zstded=lambda wildcards: 1 if wildcards.quad in URLS and URLS[wildcards.quad][0][-4:] == '.zst' else 0,
-        prefetch_args=config.get('prefetch_args', '--max-size 200G -t fasp -L info'),
+        prefetch_args=config.get('prefetch_args', '--max-size 200G -t fasp -L info')
     threads: 4
     shell:
         """
         set -xeo pipefail
-        SUCCESS=0
-        TIMEOUT=10
-        PARAMS=""
-        TMP="{config[temp]}/dl-{params.srr}"
-        ! test -d ${{TMP}}
-        
-        if [[ {params.method} == "sra" ]] ; then
-            USE_FASTERQ=1
-            for i in {{ 1..{params.retries} }} ; do
-                if time prefetch {params.prefetch_args} -O ${{TMP}} {params.srr} 2>&1 >> {log} ; then
-                    SUCCESS=1
-                    break
-                else
-                    echo "COUNT_SraRetries 1"
-                    TIMEOUT=$((${{TIMEOUT}} * 2))
-                    sleep ${{TIMEOUT}}
-                fi
-            done
-            if (( $SUCCESS == 0 )) ; then
-                echo "COUNT_SraFailures 1"
-                exit 1
-            fi
-            test -f ${{TMP}}/*.sra
-            size=$(cat ${{TMP}}/*.sra | wc -c)
-            echo "COUNT_SraBytesDownloaded ${{size}}"
-            if (( ${{USE_FASTERQ}} == 1 )) ; then
-                time parallel-fastq-dump --sra-id ${{TMP}}/*.sra \
-                    --threads {threads} \
-                    --tmpdir ${{TMP}} \
-                    -L info \
-                    --split-3 \
-                    --skip-technical \
-                    --outdir . \
-                    2>&1 >> {log}
-                test -f {params.srr}_2.fastq || \
-                    (test -f {params.srr}_1.fastq && mv {params.srr}_1.fastq {params.srr}_0.fastq) || \
-                                    (test -f {params.srr}.fastq && mv {params.srr}.fastq {params.srr}_0.fastq)
-                # extra unpaired from --split-3
-                test -f {params.srr}_2.fastq && test -f {params.srr}.fastq && mv {params.srr}.fastq {params.srr}_0.fastq
-            else
-                time fastq-dump ${{TMP}}/*.sra \
-                    -L info \
-                    --split-3 \
-                    --skip-technical \
-                    -O . \
-                    2>&1 >> {log}
-                test -f {params.srr}_2.fastq || \
-                    (test -f {params.srr}_1.fastq && mv {params.srr}_1.fastq {params.srr}_0.fastq) || \
-                                    (test -f {params.srr}.fastq && mv {params.srr}.fastq {params.srr}_0.fastq)
-                # extra unpaired from --split-3
-                test -f {params.srr}_2.fastq && test -f {params.srr}.fastq && mv {params.srr}.fastq {params.srr}_0.fastq
-            fi
-            rm -rf ${{TMP}}
-        elif [[ {params.method} == "gdc" ]] ; then
-            TOKEN=~/gdc/latest.txt
-            if [[ ! -f ${{TOKEN}} ]] ; then
-                echo "ERROR: no GDC token file found at ${{TOKEN}}"
-                exit 1
-            fi
-            mkdir -p ${{TMP}}
-            for i in {{ 1..{params.retries} }} ; do
-                if time gdc-client download \
-                    -t ${{TOKEN}} \
-                    --log-file ${{TMP}}/log.txt \
-                    -d ${{TMP}} \
-                    {params.srr} 2>&1 >> {log}
-                then
-                    SUCCESS=1
-                    break
-                else
-                    echo "COUNT_GdcRetries 1"
-                    TIMEOUT=$((${{TIMEOUT}} * 2))
-                    sleep ${{TIMEOUT}}
-                fi
-            done
-            if (( $SUCCESS == 0 )) ; then
-                echo "COUNT_GdcFailures 1"
-                exit 1
-            fi
-            test -d ${{TMP}}/{params.srr}
-            test -f ${{TMP}}/{params.srr}/*.tar.gz
-            
-            echo "=== gdc-client log.txt begin ===" >> {log}
-            cat ${{TMP}}/log.txt >> {log}
-            echo "=== gdc-client log.txt end===" >> {log}
-            
-            size=$(cat ${{TMP}}/{params.srr}/*.tar.gz | wc -c)
-            echo "COUNT_GdcBytesDownloaded ${{size}}"
 
-            tar zxvf ${{TMP}}/{params.srr}/*.tar.gz
-            rm -rf ${{TMP}}
-
-            num_1s=$(ls -1 *_1.fastq | wc -l)
-            num_2s=$(ls -1 *_2.fastq | wc -l)
-            if (( ${{num_1s}} == 0 )) ; then
-                echo "ERROR: No _1.fastq files output"
-                exit 1
-            fi
-            if (( ${{num_1s}} > 1 )) ; then
-                echo "ERROR: More than one _1.fastq file found"
-                exit 1
-            fi
-            if (( ${{num_2s}} == 0 )) ; then
-                # unpaired
-                mv *_1.fastq {params.srr}_0.fastq
-            else
-                # paired-end
-                mv *_1.fastq {params.srr}_1.fastq
-                mv *_2.fastq {params.srr}_2.fastq
-            fi
-        elif [[ {params.method} == "url" ]] ; then
-            additional_cmd='cat'
-            if [[ {params.is_gzipped} == "1" ]] ; then
-                additional_cmd='gzip -cd'
-            fi
-            if [[ {params.is_zstded} == "1" ]] ; then
-                additional_cmd='zstd -cd'
-            fi
-            for i in {{ 1..{params.retries} }} ; do
-                if time curl "{params.url1}" 2>> "{log}" | $additional_cmd > "{params.srr}_0.fastq" 2>> "{log}" ; then
-                    SUCCESS=1
-                    break
-                else
-                    echo "COUNT_URLRetries1 1"
-                    TIMEOUT=$((${{TIMEOUT}} * 2))
-                    sleep ${{TIMEOUT}}
-                fi
-            done
-            if (( $SUCCESS == 1 )) && [[ {params.num_urls} -gt 1 ]] ; then
-                SUCCESS=0
-                for i in {{ 1..{params.retries} }} ; do
-                    if time curl "{params.url2}" 2>> "{log}" | $additional_cmd > "{params.srr}_2.fastq" 2>> "{log}" ; then
-                        SUCCESS=1
-                        mv "{params.srr}_0.fastq" "{params.srr}_1.fastq"
-                        break
-                    else
-                        echo "COUNT_URLRetries2 1"
-                        TIMEOUT=$((${{TIMEOUT}} * 2))
-                        sleep ${{TIMEOUT}}
-                    fi
-                done
-            fi
-            if (( $SUCCESS == 1 )) && [[ {params.num_urls} -gt 2 ]] ; then
-                SUCCESS=0
-                for i in {{ 1..{params.retries} }} ; do
-                    if time curl "{params.url0}" 2>> "{log}" | $additional_cmd > "{params.srr}_0.fastq" 2>> "{log}" ; then
-                        SUCCESS=1
-                        break
-                    else
-                        echo "COUNT_URLRetries0 1"
-                        TIMEOUT=$((${{TIMEOUT}} * 2))
-                        sleep ${{TIMEOUT}}
-                    fi
-                done
-            fi
-            if (( $SUCCESS == 0 )) ; then
-                echo "COUNT_URLFailures 1"
-                exit 1
-            fi
-        fi
+        export srr="{params.srr}"
+        export quad="{wildcards.quad}"
+        export method="{params.method}"
+        export num_urls="{params.num_urls}"
+        export retries="{params.retries}"
+        export threads="{threads}"
+        export threads="{log}"
+        export temp="{config[temp]}"
         
-        # Next chunk expects the FASTQ files to exist in the current directory
-        # named {{params.srr}}_{{0,1,2}}.fastq
-        size=0
-        for i in {{0..2}} ; do
-            fn={params.srr}_${{i}}.fastq
-            if [[ -f "${{fn}}" ]] ; then
-                echo "COUNT_FilesDownloaded 1"
-            else
-                touch "${{fn}}"
-            fi
-            size=$((${{size}} + $(wc -c < "${{fn}}")))
-            mv "${{fn}}" "{config[temp]}/{wildcards.quad}_${{i}}.fastq"
-        done
-        echo "COUNT_BytesDownloaded ${{size}}"
-        echo "COUNT_DownloadComplete 1"
+        export is_gzipped="{params.is_gzipped}"
+        export is_zstded="{params.is_zstded}"
+        export prefetch_args="{params.prefetch_args}"
+        export fd_args="{params.fd_args}"
+        export url0="{params.url0}"
+        export url1="{params.url1}"
+        export url2="{params.url2}"
+
+        /bin/bash {input.exe} {wildcards.quad} {params.srr} {params.method} {params.num_urls} {threads} {params.retries} {config[temp]} {log}
         """
