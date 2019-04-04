@@ -16,7 +16,7 @@ temp=$7
 log=$8
 
 #these are expected to be set from in the environment
-#is_gzipped,is_zstded,prefetch_args,fd_args,url0,url1,url2
+#bam2fastq,study,is_gzipped,is_zstded,prefetch_args,fd_args,url0,url1,url2,gdc_token,reads_in_bam
 
 SUCCESS=0
 TIMEOUT=10
@@ -76,17 +76,26 @@ if [[ ${method} == "sra" ]] ; then
     rm -rf ${TMP}
 #----------GDC----------#
 elif [[ ${method} == "gdc" ]] ; then
-    TOKEN=~/gdc/latest.txt
-    if [[ ! -f ${TOKEN} ]] ; then
+    TOKEN=${gdc_token}
+    use_token="-t ${TOKEN}"
+    #if we have a token but it doesn't exist, throw an error
+    if [[ ! -z ${TOKEN} && ! -f ${TOKEN} ]] ; then
         echo "ERROR: no GDC token file found at ${TOKEN}"
         exit 1
+    elif [[ -z ${TOKEN} ]] ; then
+        #e.g. CCLE
+        use_token=""
     fi
     mkdir -p ${TMP}
     for i in { 1..${retries} } ; do
         if time gdc-client download \
-            -t ${TOKEN} \
-            --log-file ${TMP}/log.txt \
+            $use_token --log-file ${TMP}/log.txt \
+            -n ${threads} \
             -d ${TMP} \
+            --no-verify \
+            --no-annotations \
+            --retry-amount ${retries} \
+            --wait-time 3 \
             ${srr} 2>&1 >> ${log}
         then
             SUCCESS=1
@@ -102,35 +111,50 @@ elif [[ ${method} == "gdc" ]] ; then
         exit 1
     fi
     test -d ${TMP}/${srr}
-    test -f ${TMP}/${srr}/*.tar.gz
-    
-    echo "=== gdc-client log.txt begin ===" >> ${log}
-    cat ${TMP}/log.txt >> ${log}
-    echo "=== gdc-client log.txt end===" >> ${log}
-    
-    size=$(cat ${TMP}/${srr}/*.tar.gz | wc -c)
-    echo "COUNT_GdcBytesDownloaded ${size}"
-
-    tar zxvf ${TMP}/${srr}/*.tar.gz
-    rm -rf ${TMP}
-
-    num_1s=$(ls -1 *_1.fastq | wc -l)
-    num_2s=$(ls -1 *_2.fastq | wc -l)
-    if (( ${num_1s} == 0 )) ; then
-        echo "ERROR: No _1.fastq files output"
-        exit 1
-    fi
-    if (( ${num_1s} > 1 )) ; then
-        echo "ERROR: More than one _1.fastq file found"
-        exit 1
-    fi
-    if (( ${num_2s} == 0 )) ; then
-        # unpaired
-        mv *_1.fastq ${srr}_0.fastq
+    if [[ ${study} == "ccle" || ${reads_in_bam} -eq 1 ]] ; then
+        test -f ${TMP}/${srr}/*.bam
+        echo "=== gdc-client log.txt begin ===" >> ${log}
+        cat ${TMP}/log.txt >> ${log}
+        echo "=== gdc-client log.txt end===" >> ${log}
+        
+        size=$(cat ${TMP}/${srr}/*.bam | wc -c)
+        echo "COUNT_GdcBytesDownloaded ${size}"
+        BAM=$(ls ${TMP}/${srr}/*.bam)
+        ${bam2fastq} $BAM --threads ${threads} --bam2fastq ${srr} --filter-out 256 --re-reverse 2>&1 >> ${log}
+        
+        test -s ${srr}.fastq && \
+            mv ${srr}.fastq ${srr}_0.fastq
     else
-        # paired-end
-        mv *_1.fastq ${srr}_1.fastq
-        mv *_2.fastq ${srr}_2.fastq
+        test -f ${TMP}/${srr}/*.tar.gz
+        
+        echo "=== gdc-client log.txt begin ===" >> ${log}
+        cat ${TMP}/log.txt >> ${log}
+        echo "=== gdc-client log.txt end===" >> ${log}
+        
+        size=$(cat ${TMP}/${srr}/*.tar.gz | wc -c)
+        echo "COUNT_GdcBytesDownloaded ${size}"
+
+        tar zxvf ${TMP}/${srr}/*.tar.gz
+        rm -rf ${TMP}
+
+        num_1s=$(ls -1 *_1.fastq | wc -l)
+        num_2s=$(ls -1 *_2.fastq | wc -l)
+        if (( ${num_1s} == 0 )) ; then
+            echo "ERROR: No _1.fastq files output"
+            exit 1
+        fi
+        if (( ${num_1s} > 1 )) ; then
+            echo "ERROR: More than one _1.fastq file found"
+            exit 1
+        fi
+        if (( ${num_2s} == 0 )) ; then
+            # unpaired
+            mv *_1.fastq ${srr}_0.fastq
+        else
+            # paired-end
+            mv *_1.fastq ${srr}_1.fastq
+            mv *_2.fastq ${srr}_2.fastq
+        fi
     fi
 #----------URL----------#
 elif [[ ${method} == "url" ]] ; then

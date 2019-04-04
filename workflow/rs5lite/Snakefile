@@ -36,6 +36,8 @@ FILES = ['sjout.zst', 'fastq_check.tsv.zst',
          'manifest'] + list(map(lambda x: x + '.log', STEPS))
 
 URLS={}
+TOKENS={}
+READS_IN_BAM=set()
 
 
 def get_accessions(wildcards):
@@ -48,12 +50,16 @@ def get_accessions(wildcards):
                 if ln.count(',') < 2:
                     continue
                 toks = ln.rstrip().split(',')
-                assert 3 <= len(toks) <= 5
+                assert 3 <= len(toks) <= 6
                 method = 'sra'
                 if len(toks) >= 4:
                     method = toks[3]
                     if len(toks) > 4 and method == 'url':
                         URLS['%s!%s!%s!%s' % (toks[0], toks[1], toks[2], method)]=toks[4].split(';')
+                    if len(toks) > 4 and len(toks[4]) > 0 and method == 'gdc':
+                        TOKENS['%s!%s!%s!%s' % (toks[0], toks[1], toks[2], method)]=toks[4]
+                    if len(toks) > 5 and len(toks[5]) > 0:
+                        READS_IN_BAM.add('%s!%s!%s!%s' % (toks[0], toks[1], toks[2], method))
                 # SRR,SRP,genome
                 # e.g. SRR1557855,SRP045778,ce10
                 for ext in FILES:
@@ -834,7 +840,8 @@ rule fastq_check:
 
 rule download:
     input:
-        exe='/download.sh'
+        download='/download.sh',
+        bam2fastq='/bamcount/bamcount'
     output:
         temp(config['temp'] + '/{quad}_0.fastq'),
         temp(config['temp'] + '/{quad}_1.fastq'),
@@ -845,6 +852,7 @@ rule download:
         config['output'] + '/{quad}.download.log'
     params:
         srr=lambda wildcards: wildcards.quad.split('!')[0],
+        study=lambda wildcards: wildcards.quad.split('!')[1],
         method=lambda wildcards: wildcards.quad.split('!')[3],
         fd_args=config.get('fastq_dump_args', ''),
         retries=config.get('fastq_dump_retries', '5'),
@@ -854,6 +862,8 @@ rule download:
         num_urls=lambda wildcards: len(URLS[wildcards.quad]) if wildcards.quad in URLS else 0,
         is_gzipped=lambda wildcards: 1 if wildcards.quad in URLS and URLS[wildcards.quad][0][-3:] == '.gz' else 0,
         is_zstded=lambda wildcards: 1 if wildcards.quad in URLS and URLS[wildcards.quad][0][-4:] == '.zst' else 0,
+        gdc_token=lambda wildcards: TOKENS[wildcards.quad] if wildcards.quad in TOKENS else "",
+        reads_in_bam=lambda wildcards: 1 if wildcards.quad in READS_IN_BAM else 0,
         prefetch_args=config.get('prefetch_args', '--max-size 200G -t fasp -L info')
     threads: 4
     shell:
@@ -861,6 +871,7 @@ rule download:
         set -xeo pipefail
 
         export srr="{params.srr}"
+        export study="{params.study}"
         export quad="{wildcards.quad}"
         export method="{params.method}"
         export num_urls="{params.num_urls}"
@@ -876,6 +887,9 @@ rule download:
         export url0="{params.url0}"
         export url1="{params.url1}"
         export url2="{params.url2}"
+        export gdc_token="{params.gdc_token}"
+        export reads_in_bam="{params.reads_in_bam}"
+        export bam2fastq="{input.bam2fastq}"
 
-        /bin/bash {input.exe} {wildcards.quad} {params.srr} {params.method} {params.num_urls} {threads} {params.retries} {config[temp]} {log}
+        /bin/bash {input.download} {wildcards.quad} {params.srr} {params.method} {params.num_urls} {threads} {params.retries} {config[temp]} {log}
         """
