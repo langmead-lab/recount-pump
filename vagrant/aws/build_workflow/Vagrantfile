@@ -93,7 +93,7 @@ Vagrant.configure("2") do |config|
     SHELL
 
     config.vm.provision "shell", privileged: true, name: "clone recount", inline: <<-SHELL
-        cd /work && git clone -q git@github.com:langmead-lab/recount-pump.git
+        cd /work && git clone --recursive -q git@github.com:langmead-lab/recount-pump.git
     SHELL
         
     config.vm.provision "shell", privileged: true, name: "docker login", inline: <<-SHELL
