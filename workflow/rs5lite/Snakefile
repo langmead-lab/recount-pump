@@ -21,6 +21,7 @@ STEPS = ['download', 'fastq_check', 'align', 'sort',
 
 FILES = ['sjout.zst', 'fastq_check.tsv.zst',
          'unmapped.fastq.zst',
+         'unmapped_split3.fastq.zst',
          'bamcount_nonref.csv.zst',
          'bamcount_auc.tsv',
          'bamcount_frag.tsv',
@@ -32,7 +33,9 @@ FILES = ['sjout.zst', 'fastq_check.tsv.zst',
          'all.bw.zst',
          'unique.bw.zst',
          'salmon.tsv.zst',
+         'salmon_split3.tsv.zst',
          'jx_bed.zst', 'unmapped.jx_bed.zst',
+         'idxstats', 'unmapped.idxstats',
          'manifest'] + list(map(lambda x: x + '.log', STEPS))
 
 URLS={}
@@ -71,12 +74,20 @@ rule all:
 
 rule make_manifest:
     input:
+        config['output'] + '/{quad}~sorted.bam',
+        config['output'] + '/{quad}~sorted.bam.bai',
+        config['output'] + '/{quad}.unmapped~sorted.bam',
+        config['output'] + '/{quad}.unmapped~sorted.bam.bai',
+        config['output'] + '/{quad}.idxstats',
+        config['output'] + '/{quad}.unmapped.idxstats',
         config['output'] + '/{quad}.salmon.tsv.zst',
+        config['output'] + '/{quad}.salmon_split3.tsv.zst',
         config['output'] + '/{quad}.sjout.zst',
         config['output'] + '/{quad}.jx_bed.zst',
         config['output'] + '/{quad}.unmapped.jx_bed.zst',
         config['output'] + '/{quad}.Chimeric.out.junction.zst',
         config['output'] + '/{quad}.unmapped.fastq.zst',
+        config['output'] + '/{quad}.unmapped_split3.fastq.zst',
         config['output'] + '/{quad}.bamcount_nonref.csv.zst',
         config['output'] + '/{quad}.bamcount_auc.tsv',
         config['output'] + '/{quad}.bamcount_frag.tsv',
@@ -97,6 +108,8 @@ rule make_manifest:
         config['output'] + '/{quad}.fastq_check.log',
         config['output'] + '/{quad}.sort.log',
         config['output'] + '/{quad}.salmon.log'
+    wildcard_constraints:
+        quad="[^~\.]+"
     output:
         config['output'] + '/{quad}.manifest'
     params:
@@ -104,15 +117,26 @@ rule make_manifest:
     run:
         with open(output[0], 'wt') as fh:
             for fn in FILES:
-                fh.write(params.quad + "." + fn + '\n')
+                fh.write(params.quad + '.' + fn + '\n')
+            #BAMs are dealt with outside of FILEs so we can delete them when not needed
+            #w/o screwing up Snakemake
+            if 'keep_bam' not in config and params.quad.split('!')[1] != 'SIMULATION':
+                os.unlink(config['output'] + '/' + params.quad + '~sorted.bam')
+                os.unlink(config['output'] + '/' + params.quad + '~sorted.bam.bai')
+            #but if we need the BAMs we write them to the manifest manually
+            else:
+                fh.write(params.quad + '~sorted.bam\n')
+                fh.write(params.quad + '~sorted.bam.bai\n')
+        os.unlink(config['output'] + '/' + params.quad + '.unmapped~sorted.bam')
+        os.unlink(config['output'] + '/' + params.quad + '.unmapped~sorted.bam.bai')
         #all finished, if this exists in URLS, delete
         if params.quad in URLS:
             del URLS[quad]
 
 rule bamcount:
     input:
-        bam=config['temp'] + '/{quad}~sorted.bam',
-        bamidx=config['temp'] + '/{quad}~sorted.bam.bai',
+        bam=config['output'] + '/{quad}~sorted.bam',
+        bamidx=config['output'] + '/{quad}~sorted.bam.bai',
         exe='/bamcount/bamcount',
         bed=lambda wildcards: '%s/%s/gtf/%s' % (config['ref'], wildcards.quad.split('!')[2], config.get('bw_bed', 'exons.bed'))
     output:
@@ -210,8 +234,8 @@ rule bamcount:
 
 rule bamcount_unmapped:
     input:
-        bam=config['temp'] + '/{quad}.unmapped~sorted.bam',
-        bamidx=config['temp'] + '/{quad}.unmapped~sorted.bam.bai',
+        bam=config['output'] + '/{quad}.unmapped~sorted.bam',
+        bamidx=config['output'] + '/{quad}.unmapped~sorted.bam.bai',
         exe='/bamcount/bamcount'
     output:
         nonref=config['output'] + '/{quad}.bamcount_unmapped_nonref.csv.zst',
@@ -279,18 +303,16 @@ rule sort:
     input:
         config['temp'] + '/{quad}.bam'
     wildcard_constraints:
-        quad="[^~\.]+"
+        quad="[^~]+"
     output:
-        bam=temp(config['temp'] + '/{quad}~sorted.bam'),
-        bai=temp(config['temp'] + '/{quad}~sorted.bam.bai')
+        bam=config['output'] + '/{quad}~sorted.bam',
+        bai=config['output'] + '/{quad}~sorted.bam.bai',
+        idxstats=config['output'] + '/{quad}.idxstats'
     log:
         config['output'] + '/{quad}.sort.log'
     params:
         srr=lambda wildcards: wildcards.quad.split('!')[0],
-        srp=lambda wildcards: wildcards.quad.split('!')[1],
-        outdir=config['output'],
-        idxstats=config['output'] + '/{quad}.idxstats',
-        keep_bam='keep_bam' in config
+        srp=lambda wildcards: wildcards.quad.split('!')[1]
     threads: 8
     shell:
         """
@@ -307,53 +329,8 @@ rule sort:
 
         time samtools index -@ {threads} {output.bam} 2>&1 | tee -a {log}
 
-        samtools idxstats {output.bam} > {params.idxstats} 2>> {log}
+        samtools idxstats {output.bam} > {output.idxstats} 2>> {log}
 
-        #we may want to keep this BAM if its
-        #1) part of the simulation set OR
-        #2) its part of the config params
-        STUDY="{params.srp}"
-        BAM='{output.bam}'
-        OUTDIR="{params.outdir}"
-        KEEP_BAM="{params.keep_bam}"
-        `perl -e '$s="'$STUDY'"; $b="'$BAM'"; $o="'$OUTDIR'"; $kb="'$KEEP_BAM'"; if($s=~/SIMULATION/i || $kb=~/true/i) {{ system("cp $b $b.bai $o/"); }}'`
-        echo "COUNT_SortComplete 1"
-        """
-
-rule sort_unmapped:
-    input:
-        config['temp'] + '/{quad}.unmapped.bam'
-    wildcard_constraints:
-        quad="[^~\.]+"
-    output:
-        bam=temp(config['temp'] + '/{quad}.unmapped~sorted.bam'),
-        bai=temp(config['temp'] + '/{quad}.unmapped~sorted.bam.bai')
-    log:
-        config['output'] + '/{quad}.unmapped.sort.log'
-    params:
-        srr=lambda wildcards: wildcards.quad.split('!')[0],
-        srp=lambda wildcards: wildcards.quad.split('!')[1],
-        outdir=config['output'],
-        idxstats=config['output'] + '/{quad}.unmapped.idxstats'
-    threads: 8
-    shell:
-        """
-        TMP="{config[temp]}/sort_temp.{params.srr}"
-        mkdir -p ${{TMP}}
-        time samtools sort \
-            -T ${{TMP}}/samtools_temp \
-            -@ {threads} \
-            -m 64M \
-            -o {output.bam} {input} 2>&1 | tee -a {log}
-        rm -rf ${{TMP}}
-        size=$(wc -c < {output.bam})
-        echo "COUNT_SortedBAMBytes ${{size}}"
-
-        time samtools index -@ {threads} {output.bam} 2>&1 | tee -a {log}
-
-        samtools idxstats {output.bam} > {params.idxstats} 2>> {log}
-
-        cp {output.bam} {output.bam}.bai {params.outdir}/
         echo "COUNT_SortComplete 1"
         """
 
@@ -365,7 +342,8 @@ rule salmon:
         index1=lambda wildcards: '%s/%s/salmon_index/hash.bin' % (config['ref'], wildcards.quad.split('!')[2]),
         index2=lambda wildcards: '%s/%s/salmon_index/sa.bin' % (config['ref'], wildcards.quad.split('!')[2])
     output:
-        config['output'] + '/{quad}.salmon.tsv.zst'
+        salmon_main=config['output'] + '/{quad}.salmon.tsv.zst',
+        salmon_split3=config['output'] + '/{quad}.salmon_split3.tsv.zst'
     log:
         config['output'] + '/{quad}.salmon.log'
     params:
@@ -392,11 +370,11 @@ rule salmon:
         then
             echo "COUNT_SalmonSuccess 1"
 
-            time zstd salmon_quant/quant.sf -o {output} 2>&1 | tee -a {log}
-            size=$(wc -c < {output})
+            time zstd salmon_quant/quant.sf -o {output.salmon_main} 2>&1 | tee -a {log}
+            size=$(wc -c < {output.salmon_main})
             echo "COUNT_SalmonQuantBytes ${{size}}"
         else
-            touch {output}
+            touch {output.salmon_main}
             echo "COUNT_SalmonFailure 1"
         fi
         rm -rf salmon_quant
@@ -418,28 +396,32 @@ rule salmon:
             then
                 echo "COUNT_SalmonSuccess_unpaired 1"
 
-                time zstd salmon_quant/quant.sf -o {output}.0 2>&1 | tee -a {log}
-                size=$(wc -c < {output}.0)
-                echo "COUNT_SalmonQuantBytes_unpaired ${{size}}"
+                time zstd salmon_quant/quant.sf -o {output.salmon_split3} 2>&1 | tee -a {log}
+                size=$(wc -c < {output.salmon_split3})
+                echo "COUNT_SalmonQuantBytes_split3 ${{size}}"
             else
-                touch {output}.0
-                echo "COUNT_SalmonFailure_unpaired 1"
+                touch {output.salmon_split3}
+                echo "COUNT_SalmonFailure_split3 1"
             fi
             rm -rf salmon_quant
-            echo "COUNT_SalmonComplete_unpaired 1"
+            echo "COUNT_SalmonComplete_split3 1"
+        else
+            touch {output.salmon_split3}
         fi
         """
 
 rule align_unmapped:
     input:
+        unmapped0=config['temp'] + '/{quad}_0.unmappedfastq',
         unmapped1=config['temp'] + '/{quad}_1.unmappedfastq',
         unmapped2=config['temp'] + '/{quad}_2.unmappedfastq',
         index=lambda wildcards: '%s/%s/unmapped_hisat2_idx/genome.1.ht2' % (config['ref'], wildcards.quad.split('!')[2])
     wildcard_constraints:
         quad="[^~]+"
     output:
-        bam=config['temp'] + '/{quad}.unmapped.bam',
-        sample=config['output'] + '/{quad}.unmapped.fastq.zst'
+        bam=(config['temp'] + '/{quad}.unmapped.bam'),
+        sample=config['output'] + '/{quad}.unmapped.fastq.zst',
+        sample_split3=config['output'] + '/{quad}.unmapped_split3.fastq.zst'
     log:
         config['output'] + '/{quad}.align_unmapped.log'
     params:
@@ -467,8 +449,8 @@ rule align_unmapped:
             2>&1 | tee -a {log}
 
         MAX_UNALIGN={params.max_unalign}
-        if [[ -s {input.unmapped1}.0 ]] ; then
-            READ_FILES="-U {input.unmapped1}.0"
+        if [[ -s {input.unmapped0} ]] ; then
+            READ_FILES="-U {input.unmapped0}"
             time hisat2 \
                 $READ_FILES \
                 -t --mm \
@@ -551,10 +533,12 @@ rule align_unmapped:
        
         #handle the split3 case in addition (if it exists) 
         if [[ -s ${{TMP}}.samp.0.fastq ]] ; then
-            time zstd ${{TMP}}.samp.0.fastq -o {output.sample}.0 2>&1 | tee -a {log}
-            size=$(wc -c < {output.sample}.0)
-            echo "COUNT_UnmappedSampleBytes_unpaired ${{size}}"
+            time zstd ${{TMP}}.samp.0.fastq -o {output.sample_split3} 2>&1 | tee -a {log}
+            size=$(wc -c < {output.sample_split3})
+            echo "COUNT_UnmappedSampleBytes_split3 ${{size}}"
             rm -f ${{TMP}}.samp.0.fastq
+        else
+            touch {output.sample_split3}
         fi
 
         size=$(wc -c < {output.bam})
@@ -565,8 +549,8 @@ rule align_unmapped:
 
 rule extract_jx:
     input:
-        bam=config['temp'] + '/{quad}~sorted.bam',
-        bamidx=config['temp'] + '/{quad}~sorted.bam.bai',
+        bam=config['output'] + '/{quad}~sorted.bam',
+        bamidx=config['output'] + '/{quad}~sorted.bam.bai',
         fa=lambda wildcards: '%s/%s/fasta/genome.fa' % (config['ref'], wildcards.quad.split('!')[2]),
         gtf=lambda wildcards: '%s/%s/gtf/genes.gtf' % (config['ref'], wildcards.quad.split('!')[2])
     output:
@@ -610,6 +594,7 @@ rule align:
         bam=temp(config['temp'] + '/{quad}.bam'),
         jxs=config['output'] + '/{quad}.sjout.zst',
         chimeric=config['output'] + '/{quad}.Chimeric.out.junction.zst',
+        unmapped0=config['temp'] + '/{quad}_0.unmappedfastq',
         unmapped1=config['temp'] + '/{quad}_1.unmappedfastq',
         unmapped2=config['temp'] + '/{quad}_2.unmappedfastq'
     log:
@@ -789,7 +774,7 @@ rule align:
             # Unmapped
             #
             test -f Unmapped.out.mate1
-            mv Unmapped.out.mate1 {output.unmapped1}.0
+            mv Unmapped.out.mate1 {output.unmapped0}
 
             #
             # Alignments
@@ -798,12 +783,14 @@ rule align:
             echo "COUNT_BAMBytes_unpaired ${{size}}"
             mv Aligned.out.bam {output.bam}.0
 
-            echo "COUNT_AlignComplete_unpaired 1"
+            echo "COUNT_AlignComplete_split3 1"
 
             #now cat the 2 BAMs
             samtools cat {output.bam} {output.bam}.0 -o {output.bam}.2
             mv {output.bam}.2 {output.bam}
             rm {output.bam}.0
+        else
+            touch {output.unmapped0}
         fi
         """
 
