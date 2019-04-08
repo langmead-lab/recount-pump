@@ -1,0 +1,936 @@
+gdc_file_id	aliquot_id	case_id	disease_type	experimental_strategy	gender	investigation	platform	primary_site	reference_genome	sample_id	sample_type
+8c0d94ae-a908-47c9-a301-3b5c3d0fafaa	CCLE-LU99-RNA-08	CCLE-LU99	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	LU99	Cell Line
+cb611afa-675c-460c-91bf-e0b2e17fc550	CCLE-NCI-H1385-RNA-08	CCLE-NCI-H1385	Lung squamous cell carcinoma	RNA-Seq	Female	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H1385	Cell Line
+6108dcae-c84c-43ca-b33b-065ee422eea0	CCLE-COR-L23-RNA-08	CCLE-COR-L23	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	COR-L23	Cell Line
+d3738c54-3194-41a8-9008-986ba7d4a5e1	CCLE-EFO-21-RNA-08	CCLE-EFO-21	Ovarian serous cystadenocarcinoma	RNA-Seq	Female	CCLE-OV	Illumina	ovary	HG19_Broad_variant	EFO-21	Cell Line
+f8d6ed53-d7d8-47b5-bde2-4fec37de1087	CCLE-KURAMOCHI-RNA-08	CCLE-KURAMOCHI	Ovarian serous cystadenocarcinoma	RNA-Seq	Female	CCLE-OV	Illumina	ovary	HG19_Broad_variant	KURAMOCHI	Cell Line
+7bc75831-378f-4ad3-aa39-0d3465f61143	CCLE-SNU-685-RNA-08	CCLE-SNU-685	Cervical squamous cell carcinoma and endocervical adenocarcinoma	RNA-Seq	Female	CCLE-CESC	Illumina	endometrium	HG19_Broad_variant	SNU-685	Cell Line
+5faaf1d9-f57e-4665-839e-e51535f490aa	CCLE-Hs746T-RNA-08	CCLE-Hs746T	Stomach adenocarcinoma	RNA-Seq	Male	CCLE-STAD	Illumina	stomach	HG19_Broad_variant	Hs746T	Cell Line
+2e3f0cea-6fda-4132-9c63-473de4ecc42d	CCLE-SNU-C1-RNA-08	CCLE-SNU-C1	Colon adenocarcinoma	RNA-Seq	Male	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	SNU-C1	Cell Line
+e6075d40-df96-4457-9350-cc632931ec39	CCLE-LCLC-103H-RNA-08	CCLE-LCLC-103H	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	LCLC-103H	Cell Line
+a7c7f112-5a0d-43d2-9b1b-78a80e0a2e83	CCLE-M059K-RNA-08	CCLE-M059K	Brain Lower Grade Glioma	RNA-Seq	Male	CCLE-LGG	Illumina	central_nervous_system	HG19_Broad_variant	M059K	Cell Line
+c3c9fc31-fd9f-4b7c-9fc1-83292fc2997b	CCLE-SW-1710-RNA-08	CCLE-SW-1710	Bladder Urothelial Carcinoma	RNA-Seq	Female	CCLE-BLCA	Illumina	urinary_tract	HG19_Broad_variant	SW-1710	Cell Line
+e5e963a5-1da6-4a05-a71d-900e3f2bbd52	CCLE-HCC70-RNA-08	CCLE-HCC70	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	HCC70	Cell Line
+af9a65d2-cb4b-4751-9833-4bfdb2b1270f	CCLE-SU-DHL-8-RNA-08	CCLE-SU-DHL-8	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Male	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	SU-DHL-8	Cell Line
+dea4cc6c-aa72-4dd1-8e88-54eb2092d745	CCLE-Hs852.T-RNA-08	CCLE-Hs852.T	Skin Cutaneous Melanoma	RNA-Seq	Male	CCLE-SKCM	Illumina	skin	HG19_Broad_variant	Hs852.T	Cell Line
+df50cd89-12d9-46ee-a20f-e6a20a4f10b0	CCLE-SNU-61-RNA-08	CCLE-SNU-61	Colon adenocarcinoma	RNA-Seq	Male	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	SNU-61	Cell Line
+b82fb337-1b52-4146-b3a8-7878422a8027	CCLE-MUTZ-5-RNA-08	CCLE-MUTZ-5	Chronic Lymphocytic Leukemia	RNA-Seq	Male	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	MUTZ-5	Cell Line
+29f2b02c-9852-4d99-9322-dfcf0bdb4a80	CCLE-HuT78-RNA-08	CCLE-HuT78	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Male	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	HuT78	Cell Line
+fbdca495-36e8-4786-9169-9ffe24ec4d5d	CCLE-GCIY-RNA-08	CCLE-GCIY	Stomach adenocarcinoma	RNA-Seq	Female	CCLE-STAD	Illumina	stomach	HG19_Broad_variant	GCIY	Cell Line
+31a00988-4c90-4ada-918c-000a7f05b6cc	CCLE-MHH-CALL-2-RNA-08	CCLE-MHH-CALL-2	Chronic Lymphocytic Leukemia	RNA-Seq	Female	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	MHH-CALL-2	Cell Line
+a37de319-05a2-4ab4-8b9c-a9e7b48b2c15	CCLE-SNU-8-RNA-08	CCLE-SNU-8	Ovarian serous cystadenocarcinoma	RNA-Seq	Female	CCLE-OV	Illumina	ovary	HG19_Broad_variant	SNU-8	Cell Line
+4564c61e-d134-41d8-aba7-16eb6467a63d	CCLE-T-47D-RNA-08	CCLE-T-47D	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	T-47D	Cell Line
+03f81428-b59b-4fae-bf00-545a9a59a2e4	CCLE-A4-Fuk-RNA-08	CCLE-A4-Fuk	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Female	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	A4-Fuk	Cell Line
+cf7bd5fa-48a1-4a10-a38e-d34412f886c6	CCLE-NCI-H2291-RNA-08	CCLE-NCI-H2291	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H2291	Cell Line
+6994834a-66b9-4356-a27d-985bdafb6f7a	CCLE-BICR18-RNA-08	CCLE-BICR18	Head and Neck squamous cell carcinoma	RNA-Seq	Male	CCLE-HNSC	Illumina	upper_aerodigestive_tract	HG19_Broad_variant	BICR18	Cell Line
+4bc29906-a409-4f7d-812f-fd300d2ad9ad	CCLE-BT-483-RNA-08	CCLE-BT-483	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	BT-483	Cell Line
+29f3edc7-5155-4e39-aac8-f68f7dc5be18	CCLE-SNU-626-RNA-08	CCLE-SNU-626	Brain Lower Grade Glioma	RNA-Seq	Male	CCLE-LGG	Illumina	central_nervous_system	HG19_Broad_variant	SNU-626	Cell Line
+bf85d21f-882b-40c3-9e34-9a755470c6a0	CCLE-Hs706.T-RNA-08	CCLE-Hs706.T	Sarcoma	RNA-Seq	Female	CCLE-SARC	Illumina	bone	HG19_Broad_variant	Hs706.T	Cell Line
+da249431-4151-468e-91af-070f3ac5cb56	CCLE-AsPC-1-RNA-08	CCLE-AsPC-1	Pancreatic adenocarcinoma	RNA-Seq	Female	CCLE-PAAD	Illumina	pancreas	HG19_Broad_variant	AsPC-1	Cell Line
+58f9fc13-dbfa-43c3-ab34-e78c9a5e9202	CCLE-SNU-81-RNA-08	CCLE-SNU-81	Colon adenocarcinoma	RNA-Seq	Male	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	SNU-81	Cell Line
+a55dd78a-107e-4c0b-96aa-533b4b1fd074	CCLE-U-BLC1-RNA-08	CCLE-U-BLC1	Bladder Urothelial Carcinoma	RNA-Seq	Female	CCLE-BLCA	Illumina	urinary_tract	HG19_Broad_variant	U-BLC1	Cell Line
+2785e37f-b489-40fe-8118-1400eed8a585	CCLE-COLO-678-RNA-08	CCLE-COLO-678	Colon adenocarcinoma	RNA-Seq	Male	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	COLO-678	Cell Line
+e29af531-b99c-462b-a53e-0d3278071389	CCLE-MOLM-6-RNA-08	CCLE-MOLM-6	Chronic Lymphocytic Leukemia	RNA-Seq	Male	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	MOLM-6	Cell Line
+6a60893d-4472-43fd-9ead-cb7b8c2fe9b4	CCLE-KYSE-140-RNA-08	CCLE-KYSE-140	Esophageal carcinoma	RNA-Seq	Male	CCLE-ESCA	Illumina	oesophagus	HG19_Broad_variant	KYSE-140	Cell Line
+a3dee2de-710c-4fea-917c-ebd3dc178302	CCLE-COR-L311-RNA-08	CCLE-COR-L311	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	COR-L311	Cell Line
+1e72f8f4-9fc7-4926-b9f7-040c18171dee	CCLE-SK-LU-1-RNA-08	CCLE-SK-LU-1	Lung squamous cell carcinoma	RNA-Seq	Female	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	SK-LU-1	Cell Line
+a8cb3312-8bcc-4f8b-b272-0a4759420c13	CCLE-LOU-NH91-RNA-08	CCLE-LOU-NH91	Lung squamous cell carcinoma	RNA-Seq	Female	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	LOU-NH91	Cell Line
+d3737457-0cbb-4a63-a8bb-87425272c314	CCLE-HLF-RNA-08	CCLE-HLF	Liver hepatocellular carcinoma	RNA-Seq	Male	CCLE-LIHC	Illumina	liver	HG19_Broad_variant	HLF	Cell Line
+59c898e7-ddca-4369-a81b-3f4a397d2740	CCLE-Hs616.T-RNA-08	CCLE-Hs616.T	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Male	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	Hs616.T	Cell Line
+8cfdfe09-8877-40e1-84c3-7aa7ce8e2449	CCLE-P12-ICHIKAWA-RNA-08	CCLE-P12-ICHIKAWA	Chronic Lymphocytic Leukemia	RNA-Seq	Male	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	P12-ICHIKAWA	Cell Line
+8396567d-1f52-4b73-ad86-3effdbb21e20	CCLE-NCI-H1793-RNA-08	CCLE-NCI-H1793	Lung squamous cell carcinoma	RNA-Seq	Female	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H1793	Cell Line
+f09a7ee6-31e0-4f7c-9212-3235e7193659	CCLE-KYSE-30-RNA-08	CCLE-KYSE-30	Esophageal carcinoma	RNA-Seq	Male	CCLE-ESCA	Illumina	oesophagus	HG19_Broad_variant	KYSE-30	Cell Line
+a26333aa-21e2-45f3-b7ec-6f70f797a8fa	CCLE-PC-3-RNA-08	CCLE-PC-3	Prostate adenocarcinoma	RNA-Seq	Male	CCLE-PRAD	Illumina	prostate	HG19_Broad_variant	PC-3	Cell Line
+5caa3da3-813d-431e-a391-f5c111d9f9e8	CCLE-TE-14-RNA-08	CCLE-TE-14	Esophageal carcinoma	RNA-Seq	Not available	CCLE-ESCA	Illumina	oesophagus	HG19_Broad_variant	TE-14	Cell Line
+dc008c2c-eec1-4a98-b86f-8fd1dfc99db9	CCLE-JM1-RNA-08	CCLE-JM1	Chronic Lymphocytic Leukemia	RNA-Seq	Not available	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	JM1	Cell Line
+880aa66f-e9ba-4c6f-82ce-a8b12e20ca3c	CCLE-ECC12-RNA-08	CCLE-ECC12	Stomach adenocarcinoma	RNA-Seq	Not available	CCLE-STAD	Illumina	stomach	HG19_Broad_variant	ECC12	Cell Line
+d3e3d7d8-6bae-4809-94ca-cb84ab63b45a	CCLE-SW48-RNA-08	CCLE-SW48	Colon adenocarcinoma	RNA-Seq	Female	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	SW48	Cell Line
+c35f9c09-803a-4ec2-9edf-7cbae289e471	CCLE-FaDu-RNA-08	CCLE-FaDu	Head and Neck squamous cell carcinoma	RNA-Seq	Male	CCLE-HNSC	Illumina	upper_aerodigestive_tract	HG19_Broad_variant	FaDu	Cell Line
+a56e9dd1-bf79-457a-aa80-c8513a82f6e8	CCLE-253J-BV-RNA-08	CCLE-253J-BV	Bladder Urothelial Carcinoma	RNA-Seq	Unknown	CCLE-BLCA	Illumina	urinary_tract	HG19_Broad_variant	253J-BV	Cell Line
+427b9dee-4905-4b92-98b0-c7b700e8986c	CCLE-LCLC-97TM1-RNA-08	CCLE-LCLC-97TM1	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	LCLC-97TM1	Cell Line
+ac12eb85-1ec0-4ac7-ada9-2e229d947699	CCLE-MOLM-16-RNA-08	CCLE-MOLM-16	Chronic Lymphocytic Leukemia	RNA-Seq	Female	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	MOLM-16	Cell Line
+14a78bb4-8095-4ffd-a963-5befd42c8428	CCLE-23132-87-RNA-08	CCLE-23132-87	Stomach adenocarcinoma	RNA-Seq	Male	CCLE-STAD	Illumina	stomach	HG19_Broad_variant	23132-87	Cell Line
+32c43be9-d2d8-4ce5-8f16-6651c0df6f84	CCLE-A549-RNA-08	CCLE-A549	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	A549	Cell Line
+3d4ca824-6de4-409e-9003-89d5fd6ab269	CCLE-Calu-3-RNA-08	CCLE-Calu-3	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	Calu-3	Cell Line
+26d461be-fa91-40ec-8d68-3d2db7367333	CCLE-JHH-6-RNA-08	CCLE-JHH-6	Liver hepatocellular carcinoma	RNA-Seq	Female	CCLE-LIHC	Illumina	liver	HG19_Broad_variant	JHH-6	Cell Line
+066c6486-1b31-4cfc-9e05-66de0b4539c3	CCLE-SW1990-RNA-08	CCLE-SW1990	Pancreatic adenocarcinoma	RNA-Seq	Male	CCLE-PAAD	Illumina	pancreas	HG19_Broad_variant	SW1990	Cell Line
+abe6d60f-2822-40ce-ba61-c534aff20eea	CCLE-Hs281.T-RNA-08	CCLE-Hs281.T	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	Hs281.T	Cell Line
+d0800cb3-0ffa-4fd6-bf42-ceed3cee809f	CCLE-HCC38-RNA-08	CCLE-HCC38	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	HCC38	Cell Line
+6c0130cc-68c6-444a-97e9-4a4515fc7398	CCLE-GB-1-RNA-08	CCLE-GB-1	Brain Lower Grade Glioma	RNA-Seq	Male	CCLE-LGG	Illumina	central_nervous_system	HG19_Broad_variant	GB-1	Cell Line
+8a8565e1-2b67-41b9-87ed-36474622acb7	CCLE-SW1573-RNA-08	CCLE-SW1573	Lung squamous cell carcinoma	RNA-Seq	Female	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	SW1573	Cell Line
+303a7329-0160-4699-878e-ba52a4d2df2f	CCLE-MDA-MB-453-RNA-08	CCLE-MDA-MB-453	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	MDA-MB-453	Cell Line
+5fecdcf4-5d7e-47c1-bc27-e75f26b7dbe8	CCLE-NCI-H1703-RNA-08	CCLE-NCI-H1703	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H1703	Cell Line
+7e66e2d2-c77f-4b86-8bab-960117896ff6	CCLE-SW1463-RNA-08	CCLE-SW1463	Colon adenocarcinoma	RNA-Seq	Female	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	SW1463	Cell Line
+e8362d69-3c9d-4ff9-965f-0c3498e5f861	CCLE-SNU-601-RNA-08	CCLE-SNU-601	Stomach adenocarcinoma	RNA-Seq	Male	CCLE-STAD	Illumina	stomach	HG19_Broad_variant	SNU-601	Cell Line
+192b6d80-fba1-49ce-8d62-aade197403af	CCLE-NCI-H1299-RNA-08	CCLE-NCI-H1299	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H1299	Cell Line
+d1c34b42-cd8c-4777-868b-b40d38dd729e	CCLE-HuT102-RNA-08	CCLE-HuT102	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Male	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	HuT102	Cell Line
+8ce730b9-56af-4869-9769-49cc09d18041	CCLE-NCI-H2052-RNA-08	CCLE-NCI-H2052	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	pleura	HG19_Broad_variant	NCI-H2052	Cell Line
+c8401274-0b9a-4dfc-9d2a-5621be59425c	CCLE-JVM-2-RNA-08	CCLE-JVM-2	Chronic Lymphocytic Leukemia	RNA-Seq	Female	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	JVM-2	Cell Line
+7e5b9cfe-2eee-479f-b37c-86e05f90b624	CCLE-SNU-1077-RNA-08	CCLE-SNU-1077	Cervical squamous cell carcinoma and endocervical adenocarcinoma	RNA-Seq	Female	CCLE-CESC	Illumina	endometrium	HG19_Broad_variant	SNU-1077	Cell Line
+aecca2e6-0181-4447-992a-efa6414d626a	CCLE-T98G-RNA-08	CCLE-T98G	Brain Lower Grade Glioma	RNA-Seq	Male	CCLE-LGG	Illumina	central_nervous_system	HG19_Broad_variant	T98G	Cell Line
+bea32b75-7471-460a-987a-e134dc4f3c39	CCLE-OE33-RNA-08	CCLE-OE33	Esophageal carcinoma	RNA-Seq	Female	CCLE-ESCA	Illumina	oesophagus	HG19_Broad_variant	OE33	Cell Line
+72e9f1b3-1620-4e93-bd60-5bcb19a7a5f6	CCLE-TE-4-RNA-08	CCLE-TE-4	Esophageal carcinoma	RNA-Seq	Not available	CCLE-ESCA	Illumina	oesophagus	HG19_Broad_variant	TE-4	Cell Line
+1a8bcaba-1b85-436a-aa90-2a2eaf80d495	CCLE-NCI-H2342-RNA-08	CCLE-NCI-H2342	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H2342	Cell Line
+99ce0fb0-c1c9-4651-adbf-653fca8709ca	CCLE-SJSA-1-RNA-08	CCLE-SJSA-1	Sarcoma	RNA-Seq	Male	CCLE-SARC	Illumina	bone	HG19_Broad_variant	SJSA-1	Cell Line
+87388baa-856e-4323-8f98-bb5e74319ccf	CCLE-EBC-1-RNA-08	CCLE-EBC-1	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	EBC-1	Cell Line
+1f918d0b-b3dd-4137-8b9e-9f5235d1c1d0	CCLE-NCI-H1876-RNA-08	CCLE-NCI-H1876	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H1876	Cell Line
+13e519f3-239f-4daa-9ffb-c081174def69	CCLE-HEC-151-RNA-08	CCLE-HEC-151	Cervical squamous cell carcinoma and endocervical adenocarcinoma	RNA-Seq	Female	CCLE-CESC	Illumina	endometrium	HG19_Broad_variant	HEC-151	Cell Line
+bda6b62a-32d2-4ca3-aa7a-8ab622d3a293	CCLE-TOV-112D-RNA-08	CCLE-TOV-112D	Ovarian serous cystadenocarcinoma	RNA-Seq	Female	CCLE-OV	Illumina	ovary	HG19_Broad_variant	TOV-112D	Cell Line
+0b520da3-8463-4988-977c-e70ad5125785	CCLE-RPMI-8402-RNA-08	CCLE-RPMI-8402	Chronic Lymphocytic Leukemia	RNA-Seq	Female	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	RPMI-8402	Cell Line
+5f933bda-f233-42db-a178-96333b584845	CCLE-HCC2935-RNA-08	CCLE-HCC2935	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	HCC2935	Cell Line
+fc1d84bf-ddae-4f5e-b00e-a38bb4902baa	CCLE-59M-RNA-08	CCLE-59M	Ovarian serous cystadenocarcinoma	RNA-Seq	Female	CCLE-OV	Illumina	ovary	HG19_Broad_variant	59M	Cell Line
+44584d3f-e5db-4ece-8970-9480c921f812	CCLE-MHH-CALL-3-RNA-08	CCLE-MHH-CALL-3	Chronic Lymphocytic Leukemia	RNA-Seq	Female	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	MHH-CALL-3	Cell Line
+e7cc4292-a9cb-47e0-ae2d-27f9190f7d6c	CCLE-MSTO-211H-RNA-08	CCLE-MSTO-211H	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	pleura	HG19_Broad_variant	MSTO-211H	Cell Line
+240c65aa-7152-453d-a0bb-32364d521f9f	CCLE-SK-CO-1-RNA-08	CCLE-SK-CO-1	Colon adenocarcinoma	RNA-Seq	Male	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	SK-CO-1	Cell Line
+f7ebbb68-52c6-4804-bceb-7315f8c96dfa	CCLE-Hs819.T-RNA-08	CCLE-Hs819.T	Sarcoma	RNA-Seq	Male	CCLE-SARC	Illumina	bone	HG19_Broad_variant	Hs819.T	Cell Line
+49394d11-e378-4b1a-a7e4-222f3a198408	CCLE-HCC-1359-RNA-08	CCLE-HCC-1359	Lung squamous cell carcinoma	RNA-Seq	Female	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	HCC-1359	Cell Line
+1cf42378-5924-40af-aa80-85cd6f6d0173	CCLE-Panc10.05-RNA-08	CCLE-Panc10.05	Pancreatic adenocarcinoma	RNA-Seq	Male	CCLE-PAAD	Illumina	pancreas	HG19_Broad_variant	Panc10.05	Cell Line
+186d25f7-aefe-4b54-9952-6bfdb8c20ea1	CCLE-Sq-1-RNA-08	CCLE-Sq-1	Lung squamous cell carcinoma	RNA-Seq	Not available	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	Sq-1	Cell Line
+33631406-d9a1-47d7-923e-e3ca5685227e	CCLE-HGC-27-RNA-08	CCLE-HGC-27	Stomach adenocarcinoma	RNA-Seq	Not available	CCLE-STAD	Illumina	stomach	HG19_Broad_variant	HGC-27	Cell Line
+8be413f0-fb3a-41cb-9aae-7d592e670d00	CCLE-JHUEM-3-RNA-08	CCLE-JHUEM-3	Uterine Corpus Endometrioid Carcinoma	RNA-Seq	Not available	CCLE-CESC	Illumina	endometrium	HG19_Broad_variant	JHUEM-3	Cell Line
+7139fdce-e4ec-451c-967d-a5f306e6710c	CCLE-PK-59-RNA-08	CCLE-PK-59	Pancreatic adenocarcinoma	RNA-Seq	Not available	CCLE-PAAD	Illumina	pancreas	HG19_Broad_variant	PK-59	Cell Line
+7614bbdd-f7ff-4bea-b125-2566919b42c2	CCLE-NCI-H322-RNA-08	CCLE-NCI-H322	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H322	Cell Line
+dad1a1e9-dc5a-439c-a1df-55d48c6dcfec	CCLE-NCI-H1339-RNA-08	CCLE-NCI-H1339	Lung squamous cell carcinoma	RNA-Seq	Female	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H1339	Cell Line
+dc96776c-d2d9-4612-a252-b3c733c408ae	CCLE-Hs739.T-RNA-08	CCLE-Hs739.T	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	Hs739.T	Cell Line
+b9750714-5f62-433f-a82f-b575f1b41cb6	CCLE-SK-N-DZ-RNA-08	CCLE-SK-N-DZ	Brain Lower Grade Glioma	RNA-Seq	Female	CCLE-LGG	Illumina	autonomic_ganglia	HG19_Broad_variant	SK-N-DZ	Cell Line
+e8c613e3-4a6d-440c-9d90-5a42514b588d	CCLE-SNU-1040-RNA-08	CCLE-SNU-1040	Colon adenocarcinoma	RNA-Seq	Male	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	SNU-1040	Cell Line
+ee79bd98-4bf1-4857-880c-5440fedc882a	CCLE-TE125.T-RNA-08	CCLE-TE125.T	Sarcoma	RNA-Seq	Female	CCLE-SARC	Illumina	soft_tissue	HG19_Broad_variant	TE125.T	Cell Line
+e5c495ea-438a-4b19-afab-3561a7d76486	CCLE-UM-UC-1-RNA-08	CCLE-UM-UC-1	Bladder Urothelial Carcinoma	RNA-Seq	Male	CCLE-BLCA	Illumina	urinary_tract	HG19_Broad_variant	UM-UC-1	Cell Line
+efd938fb-f49c-42fe-8e60-7a972af3a8cc	CCLE-MOLT-16-RNA-08	CCLE-MOLT-16	Chronic Lymphocytic Leukemia	RNA-Seq	Female	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	MOLT-16	Cell Line
+7516fc04-6d13-42cc-be1e-c57157310728	CCLE-MKN1-RNA-08	CCLE-MKN1	Stomach adenocarcinoma	RNA-Seq	Male	CCLE-STAD	Illumina	stomach	HG19_Broad_variant	MKN1	Cell Line
+7a8922f6-de40-4252-8fa7-40c145b059af	CCLE-SK-LMS-1-RNA-08	CCLE-SK-LMS-1	Sarcoma	RNA-Seq	Female	CCLE-SARC	Illumina	soft_tissue	HG19_Broad_variant	SK-LMS-1	Cell Line
+09032761-c49f-430b-80da-4687cdd8782e	CCLE-RMG-I-RNA-08	CCLE-RMG-I	Ovarian serous cystadenocarcinoma	RNA-Seq	Female	CCLE-OV	Illumina	ovary	HG19_Broad_variant	RMG-I	Cell Line
+8eb83afa-0ae0-48eb-a9d4-09c4f4496222	CCLE-COLO-783-RNA-08	CCLE-COLO-783	Skin Cutaneous Melanoma	RNA-Seq	Female	CCLE-SKCM	Illumina	skin	HG19_Broad_variant	COLO-783	Cell Line
+b496b51a-973d-47ef-be8c-18f91ee82b9f	CCLE-KP-2-RNA-08	CCLE-KP-2	Pancreatic adenocarcinoma	RNA-Seq	Female	CCLE-PAAD	Illumina	pancreas	HG19_Broad_variant	KP-2	Cell Line
+6982da6a-cfba-4dfd-bf20-0450bf7a8193	CCLE-TT2609-C02-RNA-08	CCLE-TT2609-C02	Thyroid carcinoma	RNA-Seq	Male	CCLE-THCA	Illumina	thyroid	HG19_Broad_variant	TT2609-C02	Cell Line
+811e2fe2-7106-48d2-ae33-b57abd466b16	CCLE-ACHN-RNA-08	CCLE-ACHN	Kidney renal clear cell carcinoma	RNA-Seq	Male	CCLE-KIRC	Illumina	kidney	HG19_Broad_variant	ACHN	Cell Line
+45d231bc-b711-4b29-98b5-b043d2b21a9c	CCLE-EM-2-RNA-08	CCLE-EM-2	Chronic Lymphocytic Leukemia	RNA-Seq	Female	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	EM-2	Cell Line
+d39df325-0b99-4bd6-8399-7c949f801393	CCLE-MONO-MAC-1-RNA-08	CCLE-MONO-MAC-1	Chronic Lymphocytic Leukemia	RNA-Seq	Male	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	MONO-MAC-1	Cell Line
+485d25de-e929-4123-8df6-65cdd3c5859f	CCLE-ONS-76-RNA-08	CCLE-ONS-76	Brain Lower Grade Glioma	RNA-Seq	Female	CCLE-LGG	Illumina	central_nervous_system	HG19_Broad_variant	ONS-76	Cell Line
+02743924-8960-4a75-ac62-d3b879456aaf	CCLE-Hs839.T-RNA-08	CCLE-Hs839.T	Skin Cutaneous Melanoma	RNA-Seq	Female	CCLE-SKCM	Illumina	skin	HG19_Broad_variant	Hs839.T	Cell Line
+636f7ab1-143c-4c8a-b60f-a76a427414d5	CCLE-COLO684-RNA-08	CCLE-COLO684	Cervical squamous cell carcinoma and endocervical adenocarcinoma	RNA-Seq	Female	CCLE-CESC	Illumina	endometrium	HG19_Broad_variant	COLO684	Cell Line
+ba409f73-9297-4b5f-b6e0-139c1f519985	CCLE-639-V-RNA-08	CCLE-639-V	Bladder Urothelial Carcinoma	RNA-Seq	Male	CCLE-BLCA	Illumina	urinary_tract	HG19_Broad_variant	639-V	Cell Line
+069603c0-c114-4cb9-b591-9d61d4141f95	CCLE-BHY-RNA-08	CCLE-BHY	Head and Neck squamous cell carcinoma	RNA-Seq	Male	CCLE-HNSC	Illumina	upper_aerodigestive_tract	HG19_Broad_variant	BHY	Cell Line
+6345fd4b-d46d-4dff-a8b9-926d946f2eb8	CCLE-T84-RNA-08	CCLE-T84	Colon adenocarcinoma	RNA-Seq	Male	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	T84	Cell Line
+abe90c4c-01e2-44a1-be42-c4801ce34065	CCLE-KOPN-8-RNA-08	CCLE-KOPN-8	Chronic Lymphocytic Leukemia	RNA-Seq	Female	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	KOPN-8	Cell Line
+5a79e2ef-616e-40a8-b8e2-31a63624fc03	CCLE-EFO-27-RNA-08	CCLE-EFO-27	Ovarian serous cystadenocarcinoma	RNA-Seq	Female	CCLE-OV	Illumina	ovary	HG19_Broad_variant	EFO-27	Cell Line
+46334eeb-13ca-4e23-be2f-a4323c267fc3	CCLE-Malme-3M-RNA-08	CCLE-Malme-3M	Skin Cutaneous Melanoma	RNA-Seq	Male	CCLE-SKCM	Illumina	skin	HG19_Broad_variant	Malme-3M	Cell Line
+bf68c0b2-fc2f-46e5-86fa-9f9fc4ec973e	CCLE-SNU-489-RNA-08	CCLE-SNU-489	Brain Lower Grade Glioma	RNA-Seq	Male	CCLE-LGG	Illumina	central_nervous_system	HG19_Broad_variant	SNU-489	Cell Line
+232602c0-b1ef-4b75-b8e1-3a679227d5c3	CCLE-NCI-H82-RNA-08	CCLE-NCI-H82	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H82	Cell Line
+6d7c526b-f5ac-409b-a590-56c7cdbcb4e9	CCLE-NCI-H647-RNA-08	CCLE-NCI-H647	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H647	Cell Line
+2d12b6ee-0f07-468f-9439-d5d285aeef3d	CCLE-Capan-1-RNA-08	CCLE-Capan-1	Pancreatic adenocarcinoma	RNA-Seq	Male	CCLE-PAAD	Illumina	pancreas	HG19_Broad_variant	Capan-1	Cell Line
+2e4b5c18-dc9d-438d-adbf-feac0203b5d6	CCLE-U-118MG-RNA-08	CCLE-U-118MG	Brain Lower Grade Glioma	RNA-Seq	Male	CCLE-LGG	Illumina	central_nervous_system	HG19_Broad_variant	U-118MG	Cell Line
+b45a190f-899a-40a4-b0ef-db95d2d94417	CCLE-UM-UC-3-RNA-08	CCLE-UM-UC-3	Bladder Urothelial Carcinoma	RNA-Seq	Male	CCLE-BLCA	Illumina	urinary_tract	HG19_Broad_variant	UM-UC-3	Cell Line
+f2a048a3-46de-45cc-9c4d-bd77dbe6e10b	CCLE-MFE-296-RNA-08	CCLE-MFE-296	Cervical squamous cell carcinoma and endocervical adenocarcinoma	RNA-Seq	Female	CCLE-CESC	Illumina	endometrium	HG19_Broad_variant	MFE-296	Cell Line
+f6c98386-2f9e-449a-956a-faebeb2aa09e	CCLE-SNU-175-RNA-08	CCLE-SNU-175	Colon adenocarcinoma	RNA-Seq	Female	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	SNU-175	Cell Line
+455f544d-e86a-4453-96de-e11e2c9ee842	CCLE-OCI-M1-RNA-08	CCLE-OCI-M1	Chronic Lymphocytic Leukemia	RNA-Seq	Not available	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	OCI-M1	Cell Line
+97bdeb09-89b6-4645-bab0-c49fd8c66d03	CCLE-BT-549-RNA-08	CCLE-BT-549	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	BT-549	Cell Line
+cdae72ca-32b8-494b-88c0-fe3565fb4986	CCLE-LOXIMVI-RNA-08	CCLE-LOXIMVI	Skin Cutaneous Melanoma	RNA-Seq	Not available	CCLE-SKCM	Illumina	skin	HG19_Broad_variant	LOXIMVI	Cell Line
+ac5a0adb-81e0-493c-a17f-b55c72b43fa7	CCLE-PANC-1-RNA-08	CCLE-PANC-1	Pancreatic adenocarcinoma	RNA-Seq	Not available	CCLE-PAAD	Illumina	pancreas	HG19_Broad_variant	PANC-1	Cell Line
+56b05b2e-1d29-4e3c-bcdd-59473c316e3d	CCLE-JHOM-1-RNA-08	CCLE-JHOM-1	Ovarian serous cystadenocarcinoma	RNA-Seq	Not available	CCLE-OV	Illumina	ovary	HG19_Broad_variant	JHOM-1	Cell Line
+c890ee6f-a42b-40dd-86d7-988a000ee695	CCLE-CI-1-RNA-08	CCLE-CI-1	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Female	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	CI-1	Cell Line
+c71d4901-49a2-4ac4-ad6f-50225194502a	CCLE-BICR31-RNA-08	CCLE-BICR31	Head and Neck squamous cell carcinoma	RNA-Seq	Male	CCLE-HNSC	Illumina	upper_aerodigestive_tract	HG19_Broad_variant	BICR31	Cell Line
+a981f4ec-439b-4a16-bd35-c29137c8c266	CCLE-Caki-1-RNA-08	CCLE-Caki-1	Kidney renal clear cell carcinoma	RNA-Seq	Male	CCLE-KIRC	Illumina	kidney	HG19_Broad_variant	Caki-1	Cell Line
+d77e8809-d688-4bb1-8041-6d774c50c1ca	CCLE-NCI-H810-RNA-08	CCLE-NCI-H810	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H810	Cell Line
+3c0b3d9e-5f43-41fb-bbaf-2dde741e6dcd	CCLE-HCC2218-RNA-08	CCLE-HCC2218	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	HCC2218	Cell Line
+418c4129-6335-492c-ac4b-f24ecc83b9f7	CCLE-AGS-RNA-08	CCLE-AGS	Stomach adenocarcinoma	RNA-Seq	Female	CCLE-STAD	Illumina	stomach	HG19_Broad_variant	AGS	Cell Line
+8a839e06-7228-4871-a4f1-d1dd535ed521	CCLE-P31-FUJ-RNA-08	CCLE-P31-FUJ	Chronic Lymphocytic Leukemia	RNA-Seq	Male	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	P31-FUJ	Cell Line
+3dfc2482-9b37-435f-b22f-755aeb82b59f	CCLE-OVISE-RNA-08	CCLE-OVISE	Ovarian serous cystadenocarcinoma	RNA-Seq	Female	CCLE-OV	Illumina	ovary	HG19_Broad_variant	OVISE	Cell Line
+b3537cd5-262c-410c-91a9-316acd6cd808	CCLE-NAMALWA-RNA-08	CCLE-NAMALWA	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Female	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	NAMALWA	Cell Line
+dc1fd708-503b-4e11-b6f1-d336268580c8	CCLE-DMS53-RNA-08	CCLE-DMS53	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	DMS53	Cell Line
+241dc613-cf9f-412c-8e15-32023732b329	CCLE-HCC-366-RNA-08	CCLE-HCC-366	Lung squamous cell carcinoma	RNA-Seq	Female	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	HCC-366	Cell Line
+3d6064ba-8e30-49d9-a540-da8be67c8080	CCLE-HCC1428-RNA-08	CCLE-HCC1428	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	HCC1428	Cell Line
+0f481c51-d1b5-44e0-b252-c6b67e334e0c	CCLE-Hs255.T-RNA-08	CCLE-Hs255.T	Colon adenocarcinoma	RNA-Seq	Female	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	Hs255.T	Cell Line
+8761f992-a294-412f-9e13-bb916a1831c3	CCLE-NCI-H2081-RNA-08	CCLE-NCI-H2081	Lung squamous cell carcinoma	RNA-Seq	Female	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H2081	Cell Line
+5cdb41fb-6e72-4c6b-817e-7bea77462798	CCLE-GOS-3-RNA-08	CCLE-GOS-3	Brain Lower Grade Glioma	RNA-Seq	Male	CCLE-LGG	Illumina	central_nervous_system	HG19_Broad_variant	GOS-3	Cell Line
+22cc9011-1bf1-47f1-88ce-c406168efbbb	CCLE-D283Med-RNA-08	CCLE-D283Med	Brain Lower Grade Glioma	RNA-Seq	Male	CCLE-LGG	Illumina	central_nervous_system	HG19_Broad_variant	D283Med	Cell Line
+c11aa745-72ea-44ca-b70d-7811c2f244b7	CCLE-SNU-1066-RNA-08	CCLE-SNU-1066	Head and Neck squamous cell carcinoma	RNA-Seq	Male	CCLE-HNSC	Illumina	upper_aerodigestive_tract	HG19_Broad_variant	SNU-1066	Cell Line
+fce02e2d-bc6f-4f0c-a4e1-bd30cd0d4e14	CCLE-PEER-RNA-08	CCLE-PEER	Chronic Lymphocytic Leukemia	RNA-Seq	Female	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	PEER	Cell Line
+6e57d7d0-c1eb-4eda-a645-dd2838e31816	CCLE-HT55-RNA-08	CCLE-HT55	Colon adenocarcinoma	RNA-Seq	Not available	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	HT55	Cell Line
+f5f7e673-03a6-4ee6-ab25-8e25435a1419	CCLE-BV-173-RNA-08	CCLE-BV-173	Chronic Lymphocytic Leukemia	RNA-Seq	Male	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	BV-173	Cell Line
+09614bb0-1561-4cb9-b1b1-ff04c1957d0a	CCLE-MDST8-RNA-08	CCLE-MDST8	Colon adenocarcinoma	RNA-Seq	Not available	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	MDST8	Cell Line
+073db962-a90c-4c3b-87c8-a0e8cfca1f67	CCLE-SNU-308-RNA-08	CCLE-SNU-308	Liver hepatocellular carcinoma	RNA-Seq	Not available	CCLE-LIHC	Illumina	biliary_tract	HG19_Broad_variant	SNU-308	Cell Line
+7bc0d6e7-11bc-430c-a073-1b080b5f88c8	CCLE-SK-MEL-5-RNA-08	CCLE-SK-MEL-5	Skin Cutaneous Melanoma	RNA-Seq	Female	CCLE-SKCM	Illumina	skin	HG19_Broad_variant	SK-MEL-5	Cell Line
+59b5010b-df6b-4d72-9538-350c4cd6062a	CCLE-HPAC-RNA-08	CCLE-HPAC	Pancreatic adenocarcinoma	RNA-Seq	Female	CCLE-PAAD	Illumina	pancreas	HG19_Broad_variant	HPAC	Cell Line
+e8a4ef7b-d0e9-412c-9043-6d188a024411	CCLE-Hs822.T-RNA-08	CCLE-Hs822.T	Sarcoma	RNA-Seq	Female	CCLE-SARC	Illumina	bone	HG19_Broad_variant	Hs822.T	Cell Line
+26b6a326-9c88-40d2-a083-61410dddbbcd	CCLE-NCI-H2106-RNA-08	CCLE-NCI-H2106	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H2106	Cell Line
+13487810-c4e1-4f91-bca3-75bc34846982	CCLE-KMS-34-RNA-08	CCLE-KMS-34	Multiple Myeloma Plasma cell leukemia	RNA-Seq	Female	CCLE-MM	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	KMS-34	Cell Line
+c12989d0-0c78-4d96-8f77-9739ebd166e0	CCLE-A2780-RNA-08	CCLE-A2780	Ovarian serous cystadenocarcinoma	RNA-Seq	Female	CCLE-OV	Illumina	ovary	HG19_Broad_variant	A2780	Cell Line
+5e705861-10cd-4594-a45e-ef974191b1d2	CCLE-LN-18-RNA-08	CCLE-LN-18	Brain Lower Grade Glioma	RNA-Seq	Male	CCLE-LGG	Illumina	central_nervous_system	HG19_Broad_variant	LN-18	Cell Line
+7eb8a31a-6d4c-4f2a-bc7a-111ca1d991c8	CCLE-LNCaPcloneFGC-RNA-08	CCLE-LNCaPcloneFGC	Prostate adenocarcinoma	RNA-Seq	Male	CCLE-PRAD	Illumina	prostate	HG19_Broad_variant	LNCaPcloneFGC	Cell Line
+eb058d46-6473-4883-a1c7-0a480b5975db	CCLE-AN3CA-RNA-08	CCLE-AN3CA	Cervical squamous cell carcinoma and endocervical adenocarcinoma	RNA-Seq	Female	CCLE-CESC	Illumina	endometrium	HG19_Broad_variant	AN3CA	Cell Line
+998b5404-ed3c-4056-b0e3-f5949e267dd5	CCLE-LoVo-RNA-08	CCLE-LoVo	Colon adenocarcinoma	RNA-Seq	Male	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	LoVo	Cell Line
+46db14bc-6162-4a83-86e4-da3e347d5243	CCLE-COLO668-RNA-08	CCLE-COLO668	Lung squamous cell carcinoma	RNA-Seq	Female	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	COLO668	Cell Line
+c703c0c4-1208-4eb2-9356-8ca299537c36	CCLE-HT-1080-RNA-08	CCLE-HT-1080	Sarcoma	RNA-Seq	Male	CCLE-SARC	Illumina	soft_tissue	HG19_Broad_variant	HT-1080	Cell Line
+1135e268-756b-49da-ae34-a3c0a0a2b269	CCLE-Hs578T-RNA-08	CCLE-Hs578T	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	Hs578T	Cell Line
+4dec2ce1-b5fd-425d-806f-b73305f41630	CCLE-SIG-M5-RNA-08	CCLE-SIG-M5	Chronic Lymphocytic Leukemia	RNA-Seq	Male	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	SIG-M5	Cell Line
+4a4865e1-8bf9-41eb-be20-f89c4a7745b4	CCLE-MCAS-RNA-08	CCLE-MCAS	Ovarian serous cystadenocarcinoma	RNA-Seq	Female	CCLE-OV	Illumina	ovary	HG19_Broad_variant	MCAS	Cell Line
+74433d27-050a-443f-9887-500e611cfe7b	CCLE-OCI-LY-19-RNA-08	CCLE-OCI-LY-19	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Female	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	OCI-LY-19	Cell Line
+b30af377-27d9-46ba-9101-58b270f4bbb0	CCLE-HT-RNA-08	CCLE-HT	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Male	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	HT	Cell Line
+247027b5-a51e-4a86-8e97-7c882a744a44	CCLE-PL-21-RNA-08	CCLE-PL-21	Chronic Lymphocytic Leukemia	RNA-Seq	Male	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	PL-21	Cell Line
+d14a141f-2e87-4f3a-a592-671c0ebf0639	CCLE-Hs698.T-RNA-08	CCLE-Hs698.T	Colon adenocarcinoma	RNA-Seq	Male	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	Hs698.T	Cell Line
+49a7889a-39fc-4a45-985d-aa33c3df073a	CCLE-HT-1197-RNA-08	CCLE-HT-1197	Bladder Urothelial Carcinoma	RNA-Seq	Male	CCLE-BLCA	Illumina	urinary_tract	HG19_Broad_variant	HT-1197	Cell Line
+4c8843ec-449c-4a26-81ba-fbdf263e4019	CCLE-WSU-DLCL2-RNA-08	CCLE-WSU-DLCL2	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Male	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	WSU-DLCL2	Cell Line
+68500e3c-ddb7-476a-8a62-30bec4bed66c	CCLE-DK-MG-RNA-08	CCLE-DK-MG	Brain Lower Grade Glioma	RNA-Seq	Female	CCLE-LGG	Illumina	central_nervous_system	HG19_Broad_variant	DK-MG	Cell Line
+b1ca0dd2-5808-43e8-b142-75126d584881	CCLE-NCI-H1437-RNA-08	CCLE-NCI-H1437	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H1437	Cell Line
+8f8183a4-b1c2-432c-a289-d9ce657850d7	CCLE-Hep3B2.1-7-RNA-08	CCLE-Hep3B2.1-7	Liver hepatocellular carcinoma	RNA-Seq	Male	CCLE-LIHC	Illumina	liver	HG19_Broad_variant	Hep3B2.1-7	Cell Line
+00939120-82ce-4fca-9fd2-77eb4e52c546	CCLE-NUGC-3-RNA-08	CCLE-NUGC-3	Stomach adenocarcinoma	RNA-Seq	Male	CCLE-STAD	Illumina	stomach	HG19_Broad_variant	NUGC-3	Cell Line
+3d1b70a9-abff-42c4-94c0-bbcad731a1bd	CCLE-NCI-H1563-RNA-08	CCLE-NCI-H1563	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H1563	Cell Line
+4b70fd9f-5422-468c-8601-a2b11fa57f30	CCLE-HEC-1-B-RNA-08	CCLE-HEC-1-B	Cervical squamous cell carcinoma and endocervical adenocarcinoma	RNA-Seq	Female	CCLE-CESC	Illumina	endometrium	HG19_Broad_variant	HEC-1-B	Cell Line
+f7fc846c-fb36-440d-8038-c681f9a47d78	CCLE-NCI-H3255-RNA-08	CCLE-NCI-H3255	Lung squamous cell carcinoma	RNA-Seq	Female	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H3255	Cell Line
+59c68156-fd75-4e09-b285-b6725724df8b	CCLE-HEC-59-RNA-08	CCLE-HEC-59	Cervical squamous cell carcinoma and endocervical adenocarcinoma	RNA-Seq	Female	CCLE-CESC	Illumina	endometrium	HG19_Broad_variant	HEC-59	Cell Line
+792750eb-023b-40a5-891e-55407be00915	CCLE-CHP-126-RNA-08	CCLE-CHP-126	Brain Lower Grade Glioma	RNA-Seq	Female	CCLE-LGG	Illumina	autonomic_ganglia	HG19_Broad_variant	CHP-126	Cell Line
+2ae3c14a-7ad8-4f77-9dde-f62006620063	CCLE-SH-4-RNA-08	CCLE-SH-4	Skin Cutaneous Melanoma	RNA-Seq	Female	CCLE-SKCM	Illumina	skin	HG19_Broad_variant	SH-4	Cell Line
+1016f3d9-3506-4bd0-926b-c312b9b6360e	CCLE-COLO-679-RNA-08	CCLE-COLO-679	Skin Cutaneous Melanoma	RNA-Seq	Female	CCLE-SKCM	Illumina	skin	HG19_Broad_variant	COLO-679	Cell Line
+51959e8c-0fba-450b-a9ea-44341bfa8812	CCLE-Hs944.T-RNA-08	CCLE-Hs944.T	Skin Cutaneous Melanoma	RNA-Seq	Male	CCLE-SKCM	Illumina	skin	HG19_Broad_variant	Hs944.T	Cell Line
+4c79a08b-9666-4195-9c80-b3ad9ad086a6	CCLE-HCT116-RNA-08	CCLE-HCT116	Colon adenocarcinoma	RNA-Seq	Male	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	HCT116	Cell Line
+2276e38e-f21a-408c-a084-d310ce2e0a7f	CCLE-NCI-H684-RNA-08	CCLE-NCI-H684	Liver hepatocellular carcinoma	RNA-Seq	Not available	CCLE-LIHC	Illumina	liver	HG19_Broad_variant	NCI-H684	Cell Line
+5e1ae02f-560a-4fe6-8080-88a278e2b2b5	CCLE-D341Med-RNA-08	CCLE-D341Med	Brain Lower Grade Glioma	RNA-Seq	Male	CCLE-LGG	Illumina	central_nervous_system	HG19_Broad_variant	D341Med	Cell Line
+59083a28-951b-4acf-98ce-c954d1da4a3b	CCLE-JMSU-1-RNA-08	CCLE-JMSU-1	Bladder Urothelial Carcinoma	RNA-Seq	Male	CCLE-BLCA	Illumina	urinary_tract	HG19_Broad_variant	JMSU-1	Cell Line
+0d57e895-6928-4c41-b481-26c31e686f85	CCLE-S-117-RNA-08	CCLE-S-117	Thyroid carcinoma	RNA-Seq	Female	CCLE-THCA	Illumina	soft_tissue	HG19_Broad_variant	S-117	Cell Line
+f6ee0c6e-e785-4101-a534-e63c87a8b9a2	CCLE-NCI-H596-RNA-08	CCLE-NCI-H596	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H596	Cell Line
+626c0487-4217-4b5f-bc6f-9f2f9b63648d	CCLE-LS411N-RNA-08	CCLE-LS411N	Colon adenocarcinoma	RNA-Seq	Male	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	LS411N	Cell Line
+2344a47c-3673-4ddf-bc66-71dbcc65176d	CCLE-BC-3C-RNA-08	CCLE-BC-3C	Bladder Urothelial Carcinoma	RNA-Seq	Female	CCLE-BLCA	Illumina	urinary_tract	HG19_Broad_variant	BC-3C	Cell Line
+dc8393c0-7d9e-4040-a91a-5783544cac35	CCLE-HSC-4-RNA-08	CCLE-HSC-4	Head and Neck squamous cell carcinoma	RNA-Seq	Male	CCLE-HNSC	Illumina	upper_aerodigestive_tract	HG19_Broad_variant	HSC-4	Cell Line
+dbcc9004-aa9c-4965-a1c4-fc0787ce903c	CCLE-KMS-21BM-RNA-08	CCLE-KMS-21BM	Multiple Myeloma Plasma cell leukemia	RNA-Seq	Male	CCLE-MM	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	KMS-21BM	Cell Line
+30727716-dce7-4967-a70c-9b193bb2879c	CCLE-BICR16-RNA-08	CCLE-BICR16	Head and Neck squamous cell carcinoma	RNA-Seq	Male	CCLE-HNSC	Illumina	upper_aerodigestive_tract	HG19_Broad_variant	BICR16	Cell Line
+dcd48648-8b10-414e-8561-5f77b1cfeb2d	CCLE-VM-CUB1-RNA-08	CCLE-VM-CUB1	Bladder Urothelial Carcinoma	RNA-Seq	Male	CCLE-BLCA	Illumina	urinary_tract	HG19_Broad_variant	VM-CUB1	Cell Line
+fbb5d1a1-7183-4c90-a8a1-903573ee2abd	CCLE-OCUM-1-RNA-08	CCLE-OCUM-1	Stomach adenocarcinoma	RNA-Seq	Female	CCLE-STAD	Illumina	stomach	HG19_Broad_variant	OCUM-1	Cell Line
+486b077c-07f3-40ec-8b97-28fd9cd4c55d	CCLE-JVM-3-RNA-08	CCLE-JVM-3	Chronic Lymphocytic Leukemia	RNA-Seq	Male	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	JVM-3	Cell Line
+85491658-50bf-4842-8371-dfb1dd8707bb	CCLE-CAS-1-RNA-08	CCLE-CAS-1	Brain Lower Grade Glioma	RNA-Seq	Male	CCLE-LGG	Illumina	central_nervous_system	HG19_Broad_variant	CAS-1	Cell Line
+d489fe7c-8d50-46e2-b903-e84284f89a5b	CCLE-GDM-1-RNA-08	CCLE-GDM-1	Chronic Lymphocytic Leukemia	RNA-Seq	Female	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	GDM-1	Cell Line
+2d353f6c-4eaa-40d2-b881-28c365ce8b86	CCLE-IM95-RNA-08	CCLE-IM95	Stomach adenocarcinoma	RNA-Seq	Male	CCLE-STAD	Illumina	stomach	HG19_Broad_variant	IM95	Cell Line
+b2ec496f-6563-4f8d-9c62-b0a69615f66e	CCLE-COLO792-RNA-08	CCLE-COLO792	Skin Cutaneous Melanoma	RNA-Seq	Male	CCLE-SKCM	Illumina	skin	HG19_Broad_variant	COLO792	Cell Line
+3316c470-9ce7-4be5-b4b4-14ae74e108d9	CCLE-IPC-298-RNA-08	CCLE-IPC-298	Skin Cutaneous Melanoma	RNA-Seq	Female	CCLE-SKCM	Illumina	skin	HG19_Broad_variant	IPC-298	Cell Line
+986b1656-b5c5-47c4-a2ae-0f9f91d8963f	CCLE-DMS114-RNA-08	CCLE-DMS114	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	DMS114	Cell Line
+8383c85e-27cd-4e42-a4bf-7786fa589b8d	CCLE-HCC1806-RNA-08	CCLE-HCC1806	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	HCC1806	Cell Line
+34920551-ab14-4e5f-a747-2ef62f57b9ea	CCLE-NCI-H889-RNA-08	CCLE-NCI-H889	Lung squamous cell carcinoma	RNA-Seq	Female	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H889	Cell Line
+b663ef29-25a8-4562-8c9f-755c2874a7c9	CCLE-NCI-H1944-RNA-08	CCLE-NCI-H1944	Lung squamous cell carcinoma	RNA-Seq	Female	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H1944	Cell Line
+d5ec3e1c-657b-42ec-9665-a0e7fe4451c6	CCLE-BICR6-RNA-08	CCLE-BICR6	Head and Neck squamous cell carcinoma	RNA-Seq	Male	CCLE-HNSC	Illumina	upper_aerodigestive_tract	HG19_Broad_variant	BICR6	Cell Line
+046e0a94-3fcf-431c-9eef-49463404adee	CCLE-EC-GI-10-RNA-08	CCLE-EC-GI-10	Esophageal carcinoma	RNA-Seq	Not available	CCLE-ESCA	Illumina	oesophagus	HG19_Broad_variant	EC-GI-10	Cell Line
+40800206-b76e-4ba3-98ab-076173e0f25d	CCLE-BICR22-RNA-08	CCLE-BICR22	Head and Neck squamous cell carcinoma	RNA-Seq	Male	CCLE-HNSC	Illumina	upper_aerodigestive_tract	HG19_Broad_variant	BICR22	Cell Line
+bcbf8c1e-8957-4546-93bd-952fbc38a4b4	CCLE-OV7-RNA-08	CCLE-OV7	Ovarian serous cystadenocarcinoma	RNA-Seq	Female	CCLE-OV	Illumina	ovary	HG19_Broad_variant	OV7	Cell Line
+bfef92d3-6606-4512-8bb5-dc8dc4396003	CCLE-K029AX-RNA-08	CCLE-K029AX	Skin Cutaneous Melanoma	RNA-Seq	Not available	CCLE-SKCM	Illumina	skin	HG19_Broad_variant	K029AX	Cell Line
+5d0a2d39-5d23-4255-83ea-3b9e3ac5dda2	CCLE-BFTC-905-RNA-08	CCLE-BFTC-905	Bladder Urothelial Carcinoma	RNA-Seq	Female	CCLE-BLCA	Illumina	urinary_tract	HG19_Broad_variant	BFTC-905	Cell Line
+d048435c-efe7-4555-841a-3f0375a7c3de	CCLE-Hs939.T-RNA-08	CCLE-Hs939.T	Skin Cutaneous Melanoma	RNA-Seq	Female	CCLE-SKCM	Illumina	skin	HG19_Broad_variant	Hs939.T	Cell Line
+2356f61f-958c-4df2-a955-d510e47be727	CCLE-TE159.T-RNA-08	CCLE-TE159.T	Sarcoma	RNA-Seq	Male	CCLE-SARC	Illumina	soft_tissue	HG19_Broad_variant	TE159.T	Cell Line
+551baa94-9283-4be1-9245-724898760121	CCLE-KMM-1-RNA-08	CCLE-KMM-1	Multiple Myeloma Plasma cell leukemia	RNA-Seq	Male	CCLE-MM	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	KMM-1	Cell Line
+c927a1ef-9a84-40b8-a640-d96a6e5bf0b3	CCLE-BL-70-RNA-08	CCLE-BL-70	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Male	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	BL-70	Cell Line
+8322e710-cd45-4e2d-89d5-e6118db78af8	CCLE-COLO-320-RNA-08	CCLE-COLO-320	Colon adenocarcinoma	RNA-Seq	Female	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	COLO-320	Cell Line
+a77e09db-666e-42f0-90b0-185f04ae2158	CCLE-KMS-27-RNA-08	CCLE-KMS-27	Multiple Myeloma Plasma cell leukemia	RNA-Seq	Male	CCLE-MM	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	KMS-27	Cell Line
+9e4092b2-2898-40dd-80f7-cee6f43d32bf	CCLE-PLC-PRF-5-RNA-08	CCLE-PLC-PRF-5	Liver hepatocellular carcinoma	RNA-Seq	Male	CCLE-LIHC	Illumina	liver	HG19_Broad_variant	PLC-PRF-5	Cell Line
+19db511b-6b1d-47ab-854e-c8bf7d29928c	CCLE-LMSU-RNA-08	CCLE-LMSU	Stomach adenocarcinoma	RNA-Seq	Not available	CCLE-STAD	Illumina	stomach	HG19_Broad_variant	LMSU	Cell Line
+2e6426d6-0b85-4dd0-9dda-ad69dd17d611	CCLE-COR-L88-RNA-08	CCLE-COR-L88	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	COR-L88	Cell Line
+242d4ed9-0adf-40a4-afbd-b4472385a566	CCLE-MUTZ-3-RNA-08	CCLE-MUTZ-3	Chronic Lymphocytic Leukemia	RNA-Seq	Male	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	MUTZ-3	Cell Line
+d538fcac-edcc-48a0-8ae6-fde2b27ca565	CCLE-DEL-RNA-08	CCLE-DEL	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Male	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	DEL	Cell Line
+b6dcb5b9-98a3-479c-8887-7e22ac6be64c	CCLE-Daoy-RNA-08	CCLE-Daoy	Brain Lower Grade Glioma	RNA-Seq	Male	CCLE-LGG	Illumina	central_nervous_system	HG19_Broad_variant	Daoy	Cell Line
+b5defaa9-56f6-4860-82c7-ca700466fc5a	CCLE-RERF-LC-Ad1-RNA-08	CCLE-RERF-LC-Ad1	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	RERF-LC-Ad1	Cell Line
+451b14f0-5777-42b1-b34e-e3d5fe1032b6	CCLE-KMRC-3-RNA-08	CCLE-KMRC-3	Kidney renal clear cell carcinoma	RNA-Seq	Not available	CCLE-KIRC	Illumina	kidney	HG19_Broad_variant	KMRC-3	Cell Line
+32b81972-cb0d-4e75-8a35-685d0888e29e	CCLE-BCP-1-RNA-08	CCLE-BCP-1	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Male	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	BCP-1	Cell Line
+a08e14d5-09a4-4264-bdf1-59ba7c25492f	CCLE-KPL-1-RNA-08	CCLE-KPL-1	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	KPL-1	Cell Line
+b5754d4b-87ef-4d46-9e82-6e33cd246d6b	CCLE-NB-4-RNA-08	CCLE-NB-4	Chronic Lymphocytic Leukemia	RNA-Seq	Female	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	NB-4	Cell Line
+ee433031-e6ec-409f-859c-71fb379dfdf8	CCLE-JHH-7-RNA-08	CCLE-JHH-7	Liver hepatocellular carcinoma	RNA-Seq	Male	CCLE-LIHC	Illumina	liver	HG19_Broad_variant	JHH-7	Cell Line
+a87829ea-aa56-416d-aa17-1fb6686b3fcc	CCLE-FTC-133-RNA-08	CCLE-FTC-133	Thyroid carcinoma	RNA-Seq	Male	CCLE-THCA	Illumina	thyroid	HG19_Broad_variant	FTC-133	Cell Line
+b9c4d2eb-6d46-455a-b820-b4345af10512	CCLE-GMS-10-RNA-08	CCLE-GMS-10	Brain Lower Grade Glioma	RNA-Seq	Male	CCLE-LGG	Illumina	central_nervous_system	HG19_Broad_variant	GMS-10	Cell Line
+e4fcb382-b048-49f9-bdce-c14de493f8b3	CCLE-8305C-RNA-08	CCLE-8305C	Thyroid carcinoma	RNA-Seq	Female	CCLE-THCA	Illumina	thyroid	HG19_Broad_variant	8305C	Cell Line
+13924031-19ce-4fcb-b023-5b2e3aefdf77	CCLE-SNU-324-RNA-08	CCLE-SNU-324	Pancreatic adenocarcinoma	RNA-Seq	Male	CCLE-PAAD	Illumina	pancreas	HG19_Broad_variant	SNU-324	Cell Line
+1765db8d-ac51-4737-b14e-649360129e8f	CCLE-A-204-RNA-08	CCLE-A-204	Sarcoma	RNA-Seq	Female	CCLE-SARC	Illumina	soft_tissue	HG19_Broad_variant	A-204	Cell Line
+e773a84f-bbf2-438e-9ad2-3b67072e962e	CCLE-HT-29-RNA-08	CCLE-HT-29	Colon adenocarcinoma	RNA-Seq	Female	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	HT-29	Cell Line
+1b373604-3d47-43ee-bb76-8172f37ab7bf	CCLE-Hs821.T-RNA-08	CCLE-Hs821.T	Sarcoma	RNA-Seq	Female	CCLE-SARC	Illumina	bone	HG19_Broad_variant	Hs821.T	Cell Line
+7986627f-d70c-48f3-8332-c835fa44a34a	CCLE-FTC-238-RNA-08	CCLE-FTC-238	Thyroid carcinoma	RNA-Seq	Male	CCLE-THCA	Illumina	thyroid	HG19_Broad_variant	FTC-238	Cell Line
+6fa824a5-7c7a-40f1-a561-67c5a7621c61	CCLE-OV56-RNA-08	CCLE-OV56	Ovarian serous cystadenocarcinoma	RNA-Seq	Female	CCLE-OV	Illumina	ovary	HG19_Broad_variant	OV56	Cell Line
+029c795d-8ea0-406f-8ab9-2a719778122d	CCLE-CCF-STTG1-RNA-08	CCLE-CCF-STTG1	Brain Lower Grade Glioma	RNA-Seq	Female	CCLE-LGG	Illumina	central_nervous_system	HG19_Broad_variant	CCF-STTG1	Cell Line
+fe4261cf-01bb-40e6-8d62-65c2e6ed84b9	CCLE-SCaBER-RNA-08	CCLE-SCaBER	Bladder Urothelial Carcinoma	RNA-Seq	Male	CCLE-BLCA	Illumina	urinary_tract	HG19_Broad_variant	SCaBER	Cell Line
+a09d31f0-8b19-4e93-bd18-aaffd7ef3174	CCLE-MOLP-2-RNA-08	CCLE-MOLP-2	Multiple Myeloma Plasma cell leukemia	RNA-Seq	Male	CCLE-MM	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	MOLP-2	Cell Line
+47b982b3-c7ce-4ca7-8c86-c71c15979620	CCLE-NCI-H1915-RNA-08	CCLE-NCI-H1915	Lung squamous cell carcinoma	RNA-Seq	Female	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H1915	Cell Line
+5f74fada-e347-4cf2-8152-d76a945b1be6	CCLE-MHH-ES-1-RNA-08	CCLE-MHH-ES-1	Sarcoma	RNA-Seq	Male	CCLE-SARC	Illumina	bone	HG19_Broad_variant	MHH-ES-1	Cell Line
+c4dce471-63f5-4947-8f2a-db35721f850f	CCLE-OVK18-RNA-08	CCLE-OVK18	Ovarian serous cystadenocarcinoma	RNA-Seq	Not available	CCLE-OV	Illumina	ovary	HG19_Broad_variant	OVK18	Cell Line
+bb4d2e42-dac5-44ff-b146-d6407a9154cd	CCLE-HCC-95-RNA-08	CCLE-HCC-95	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	HCC-95	Cell Line
+815bfe4b-025e-47a0-966a-81c42fa6a8b9	CCLE-NCI-H1395-RNA-08	CCLE-NCI-H1395	Lung squamous cell carcinoma	RNA-Seq	Female	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H1395	Cell Line
+97b0d0fd-29d6-4d63-9788-030fab95e50a	CCLE-LUDLU-1-RNA-08	CCLE-LUDLU-1	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	LUDLU-1	Cell Line
+f1230537-7999-45a6-8e85-00359d4328c7	CCLE-UACC-257-RNA-08	CCLE-UACC-257	Skin Cutaneous Melanoma	RNA-Seq	Not available	CCLE-SKCM	Illumina	skin	HG19_Broad_variant	UACC-257	Cell Line
+d94f83e9-6ded-4ad1-aaab-bd896865efa6	CCLE-KNS-81-RNA-08	CCLE-KNS-81	Brain Lower Grade Glioma	RNA-Seq	Male	CCLE-LGG	Illumina	central_nervous_system	HG19_Broad_variant	KNS-81	Cell Line
+6da8b100-10c0-46b0-98f5-ceae25e5ac76	CCLE-PC-14-RNA-08	CCLE-PC-14	Lung squamous cell carcinoma	RNA-Seq	Not available	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	PC-14	Cell Line
+0801cb34-9e75-40f9-a6f4-f1efbe4c1b1b	CCLE-NCI-H1734-RNA-08	CCLE-NCI-H1734	Lung squamous cell carcinoma	RNA-Seq	Female	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H1734	Cell Line
+64167ca8-d98e-46d4-a687-46e63864886f	CCLE-THP-1-RNA-08	CCLE-THP-1	Chronic Lymphocytic Leukemia	RNA-Seq	Male	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	THP-1	Cell Line
+546f3f8b-307f-490c-9227-bd56cc2a989d	CCLE-OE21-RNA-08	CCLE-OE21	Esophageal carcinoma	RNA-Seq	Male	CCLE-ESCA	Illumina	oesophagus	HG19_Broad_variant	OE21	Cell Line
+ac471204-b653-43ee-8fba-02033ec6b47b	CCLE-SNU-1-RNA-08	CCLE-SNU-1	Stomach adenocarcinoma	RNA-Seq	Male	CCLE-STAD	Illumina	stomach	HG19_Broad_variant	SNU-1	Cell Line
+b2cd08c4-43da-4e18-b730-2e39f20d9894	CCLE-SK-N-AS-RNA-08	CCLE-SK-N-AS	Brain Lower Grade Glioma	RNA-Seq	Female	CCLE-LGG	Illumina	autonomic_ganglia	HG19_Broad_variant	SK-N-AS	Cell Line
+ffc773a6-7b3d-4149-bf88-f324ff25357b	CCLE-ML-1-RNA-08	CCLE-ML-1	Thyroid carcinoma	RNA-Seq	Female	CCLE-THCA	Illumina	thyroid	HG19_Broad_variant	ML-1	Cell Line
+1f290458-df28-4c78-b73d-0202fb53bb0e	CCLE-SCC-4-RNA-08	CCLE-SCC-4	Head and Neck squamous cell carcinoma	RNA-Seq	Male	CCLE-HNSC	Illumina	upper_aerodigestive_tract	HG19_Broad_variant	SCC-4	Cell Line
+5c956357-4c65-4a44-801e-cdc6364ec617	CCLE-DV-90-RNA-08	CCLE-DV-90	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	DV-90	Cell Line
+f01bc708-c13f-4e7b-90c1-6379cd264639	CCLE-NCI-H2122-RNA-08	CCLE-NCI-H2122	Lung squamous cell carcinoma	RNA-Seq	Female	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H2122	Cell Line
+8e738bc8-40c7-4629-8fd7-67a7ac697ad8	CCLE-YD-15-RNA-08	CCLE-YD-15	Head and Neck squamous cell carcinoma	RNA-Seq	Male	CCLE-HNSC	Illumina	salivary_gland	HG19_Broad_variant	YD-15	Cell Line
+d5dbbf67-cd35-41bb-8e6b-3addcd9b1cd3	CCLE-EJM-RNA-08	CCLE-EJM	Multiple Myeloma Plasma cell leukemia	RNA-Seq	Female	CCLE-MM	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	EJM	Cell Line
+6c280b50-4fd1-4f67-923a-37867dbf61a7	CCLE-L-428-RNA-08	CCLE-L-428	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Female	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	L-428	Cell Line
+a235d54b-7ea5-4c9c-a6a7-7c437eb9abcf	CCLE-NCI-H1105-RNA-08	CCLE-NCI-H1105	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H1105	Cell Line
+de08487a-cd1b-425b-82a1-17a3c49def05	CCLE-Hs742.T-RNA-08	CCLE-Hs742.T	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	Hs742.T	Cell Line
+21f36f38-d563-41cc-9801-8281b3aa892b	CCLE-FU-OV-1-RNA-08	CCLE-FU-OV-1	Ovarian serous cystadenocarcinoma	RNA-Seq	Female	CCLE-OV	Illumina	ovary	HG19_Broad_variant	FU-OV-1	Cell Line
+d3a7ad2f-f9b5-47a2-b0ff-089c7b0b1d73	CCLE-YH-13-RNA-08	CCLE-YH-13	Brain Lower Grade Glioma	RNA-Seq	Male	CCLE-LGG	Illumina	central_nervous_system	HG19_Broad_variant	YH-13	Cell Line
+2bb94ba3-d093-4cd3-80e4-e3954847337b	CCLE-BEN-RNA-08	CCLE-BEN	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	BEN	Cell Line
+a0a2dc37-e2de-4b44-8876-805468a3595b	CCLE-WM-793-RNA-08	CCLE-WM-793	Skin Cutaneous Melanoma	RNA-Seq	Not available	CCLE-SKCM	Illumina	skin	HG19_Broad_variant	WM-793	Cell Line
+8dfe337f-a724-4de0-af9f-6030fafbf50e	CCLE-B-CPAP-RNA-08	CCLE-B-CPAP	Thyroid carcinoma	RNA-Seq	Female	CCLE-THCA	Illumina	thyroid	HG19_Broad_variant	B-CPAP	Cell Line
+615c0218-1c12-4f69-8eec-6c3c5fcdf87f	CCLE-QGP-1-RNA-08	CCLE-QGP-1	Pancreatic adenocarcinoma	RNA-Seq	Not available	CCLE-PAAD	Illumina	pancreas	HG19_Broad_variant	QGP-1	Cell Line
+9a59f7c1-fcf9-4308-96be-3600fc26deee	CCLE-SW1116-RNA-08	CCLE-SW1116	Colon adenocarcinoma	RNA-Seq	Male	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	SW1116	Cell Line
+ebc134e1-3c7c-4d45-8986-b1325067e9e4	CCLE-NCI-H1650-RNA-08	CCLE-NCI-H1650	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H1650	Cell Line
+4c204175-779e-41ad-a57c-44e1263bea1b	CCLE-SNU-245-RNA-08	CCLE-SNU-245	Liver hepatocellular carcinoma	RNA-Seq	Not available	CCLE-LIHC	Illumina	biliary_tract	HG19_Broad_variant	SNU-245	Cell Line
+e1e88f01-186d-4018-9710-151e05e5c908	CCLE-RL95-2-RNA-08	CCLE-RL95-2	Cervical squamous cell carcinoma and endocervical adenocarcinoma	RNA-Seq	Female	CCLE-CESC	Illumina	endometrium	HG19_Broad_variant	RL95-2	Cell Line
+3ca471ad-9a08-4109-ad53-edee0d514ac0	CCLE-JHOS-4-RNA-08	CCLE-JHOS-4	Ovarian serous cystadenocarcinoma	RNA-Seq	Female	CCLE-OV	Illumina	ovary	HG19_Broad_variant	JHOS-4	Cell Line
+6fa77b04-bb16-49c5-8033-79dd76860c97	CCLE-NALM-6-RNA-08	CCLE-NALM-6	Chronic Lymphocytic Leukemia	RNA-Seq	Male	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	NALM-6	Cell Line
+2696755f-5a56-4977-9cc4-6bb1c7d0ba0b	CCLE-NB-1-RNA-08	CCLE-NB-1	Brain Lower Grade Glioma	RNA-Seq	Male	CCLE-LGG	Illumina	autonomic_ganglia	HG19_Broad_variant	NB-1	Cell Line
+5290e6fb-598b-469a-8f00-e83bb9dd14c0	CCLE-UO-31-RNA-08	CCLE-UO-31	Kidney renal clear cell carcinoma	RNA-Seq	Not available	CCLE-KIRC	Illumina	Not available	HG19_Broad_variant	UO-31	Cell Line
+96ea9280-a63c-4cef-84ae-a392dfe49e10	CCLE-NCI-H1963-RNA-08	CCLE-NCI-H1963	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H1963	Cell Line
+d6f97294-6cdd-4343-b40d-8277df996576	CCLE-SU-DHL-1-RNA-08	CCLE-SU-DHL-1	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Male	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	SU-DHL-1	Cell Line
+a8d5e772-d4d3-41f8-aa25-b59f2474afd7	CCLE-786-O-RNA-08	CCLE-786-O	Kidney renal clear cell carcinoma	RNA-Seq	Male	CCLE-KIRC	Illumina	kidney	HG19_Broad_variant	786-O	Cell Line
+30d8e837-4ae0-45b7-9408-9325205ab0ed	CCLE-HCC-1171-RNA-08	CCLE-HCC-1171	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	HCC-1171	Cell Line
+843975b6-4c83-47fc-8bfd-82aedaf18462	CCLE-TYK-nu-RNA-08	CCLE-TYK-nu	Ovarian serous cystadenocarcinoma	RNA-Seq	Female	CCLE-OV	Illumina	ovary	HG19_Broad_variant	TYK-nu	Cell Line
+92411141-a266-4f05-a26e-9423b7afbad4	CCLE-TOV-21G-RNA-08	CCLE-TOV-21G	Ovarian serous cystadenocarcinoma	RNA-Seq	Female	CCLE-OV	Illumina	ovary	HG19_Broad_variant	TOV-21G	Cell Line
+ecb8f166-ab86-4964-b6df-02486c057911	CCLE-SK-N-BE2-RNA-08	CCLE-SK-N-BE2	Brain Lower Grade Glioma	RNA-Seq	Male	CCLE-LGG	Illumina	autonomic_ganglia	HG19_Broad_variant	SK-N-BE2	Cell Line
+c43661fa-4997-43ff-bba1-1d32554c91f4	CCLE-NCI-H1623-RNA-08	CCLE-NCI-H1623	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H1623	Cell Line
+b3cfeadd-4111-4ad6-8b8e-77221791b30a	CCLE-WM1799-RNA-08	CCLE-WM1799	Skin Cutaneous Melanoma	RNA-Seq	Not available	CCLE-SKCM	Illumina	skin	HG19_Broad_variant	WM1799	Cell Line
+3a593971-7cec-4e28-8068-32d0c726c955	CCLE-KMS-11-RNA-08	CCLE-KMS-11	Multiple Myeloma Plasma cell leukemia	RNA-Seq	Female	CCLE-MM	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	KMS-11	Cell Line
+c80a8580-8f79-4acc-aeaf-1afb145b1dbc	CCLE-PA-TU-8902-RNA-08	CCLE-PA-TU-8902	Pancreatic adenocarcinoma	RNA-Seq	Female	CCLE-PAAD	Illumina	pancreas	HG19_Broad_variant	PA-TU-8902	Cell Line
+ace50400-cc58-43ae-a2fd-4257710f179d	CCLE-NCI-H1838-RNA-08	CCLE-NCI-H1838	Lung squamous cell carcinoma	RNA-Seq	Female	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H1838	Cell Line
+af1a103c-f44d-4dfe-a986-18aad2ca9de4	CCLE-NU-DUL-1-RNA-08	CCLE-NU-DUL-1	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Male	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	NU-DUL-1	Cell Line
+7fd4ba12-90eb-495e-9ec3-38c312992b7d	CCLE-A-375-RNA-08	CCLE-A-375	Skin Cutaneous Melanoma	RNA-Seq	Female	CCLE-SKCM	Illumina	skin	HG19_Broad_variant	A-375	Cell Line
+d65bb645-9aba-429b-b709-8e1642a6d52f	CCLE-Daudi-RNA-08	CCLE-Daudi	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Male	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	Daudi	Cell Line
+abc9bba3-ff65-4783-983d-8627deca6978	CCLE-TC-71-RNA-08	CCLE-TC-71	Sarcoma	RNA-Seq	Male	CCLE-SARC	Illumina	bone	HG19_Broad_variant	TC-71	Cell Line
+f77a3011-2118-4760-97bf-a0ca807eafb4	CCLE-SNU-1197-RNA-08	CCLE-SNU-1197	Colon adenocarcinoma	RNA-Seq	Male	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	SNU-1197	Cell Line
+c67f05a8-93b1-46bf-9f14-bf451d0c1cbb	CCLE-SNU-878-RNA-08	CCLE-SNU-878	Liver hepatocellular carcinoma	RNA-Seq	Female	CCLE-LIHC	Illumina	liver	HG19_Broad_variant	SNU-878	Cell Line
+0c28af8f-82f3-4dd3-8be4-d20c55a5d42f	CCLE-DU145-RNA-08	CCLE-DU145	Prostate adenocarcinoma	RNA-Seq	Male	CCLE-PRAD	Illumina	prostate	HG19_Broad_variant	DU145	Cell Line
+a55a8f96-f28f-4a6f-8cee-eb6f1c84998a	CCLE-HEL-RNA-08	CCLE-HEL	Chronic Lymphocytic Leukemia	RNA-Seq	Male	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	HEL	Cell Line
+535f87a1-5e09-4ae5-a2b8-1a83b862d85e	CCLE-TCCSUP-RNA-08	CCLE-TCCSUP	Bladder Urothelial Carcinoma	RNA-Seq	Female	CCLE-BLCA	Illumina	urinary_tract	HG19_Broad_variant	TCCSUP	Cell Line
+9d370bd7-e516-4cd8-a92f-ad3fd10f24df	CCLE-RH-30-RNA-08	CCLE-RH-30	Sarcoma	RNA-Seq	Male	CCLE-SARC	Illumina	soft_tissue	HG19_Broad_variant	RH-30	Cell Line
+43458c1c-ffe2-4645-9d15-b00ba24017c5	CCLE-G-401-RNA-08	CCLE-G-401	Kidney renal clear cell carcinoma	RNA-Seq	Male	CCLE-KIRC	Illumina	soft_tissue	HG19_Broad_variant	G-401	Cell Line
+d87a7aca-004b-4db5-a912-471e50125f13	CCLE-CAL-54-RNA-08	CCLE-CAL-54	Kidney renal clear cell carcinoma	RNA-Seq	Male	CCLE-KIRC	Illumina	kidney	HG19_Broad_variant	CAL-54	Cell Line
+1059c957-cc01-428f-9100-6e95125d0e4c	CCLE-NCI-H2009-RNA-08	CCLE-NCI-H2009	Lung squamous cell carcinoma	RNA-Seq	Female	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H2009	Cell Line
+65e0bdde-1987-46d4-8a71-bbda1e38e620	CCLE-MFE-280-RNA-08	CCLE-MFE-280	Cervical squamous cell carcinoma and endocervical adenocarcinoma	RNA-Seq	Female	CCLE-CESC	Illumina	endometrium	HG19_Broad_variant	MFE-280	Cell Line
+03bf73e6-b844-449c-82ae-7417f519f4d2	CCLE-KP4-RNA-08	CCLE-KP4	Pancreatic adenocarcinoma	RNA-Seq	Male	CCLE-PAAD	Illumina	pancreas	HG19_Broad_variant	KP4	Cell Line
+5c94ce2e-a700-472d-a69f-e7f80d9a1dba	CCLE-G-402-RNA-08	CCLE-G-402	Kidney renal clear cell carcinoma	RNA-Seq	Female	CCLE-KIRC	Illumina	soft_tissue	HG19_Broad_variant	G-402	Cell Line
+f8b1b68a-71f1-46f6-9667-857687400e5f	CCLE-NCI-H508-RNA-08	CCLE-NCI-H508	Colon adenocarcinoma	RNA-Seq	Male	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	NCI-H508	Cell Line
+19447541-45e0-49ec-8e63-803f63815abe	CCLE-NCI-H209-RNA-08	CCLE-NCI-H209	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H209	Cell Line
+2b711a6f-c7ec-428f-8f43-003c27bd02bb	CCLE-JIMT-1-RNA-08	CCLE-JIMT-1	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	JIMT-1	Cell Line
+efa31694-c7bd-4264-955d-96e33420e890	CCLE-SNU-520-RNA-08	CCLE-SNU-520	Stomach adenocarcinoma	RNA-Seq	Female	CCLE-STAD	Illumina	stomach	HG19_Broad_variant	SNU-520	Cell Line
+f5598b1b-5364-48e5-b9b3-e03bb83de599	CCLE-CAL-148-RNA-08	CCLE-CAL-148	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	CAL-148	Cell Line
+1945cc47-e6ac-49e8-bc97-09b35d900ee0	CCLE-Hs343.T-RNA-08	CCLE-Hs343.T	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	Hs343.T	Cell Line
+810b4ff7-209e-4b73-885d-7d654fa947da	CCLE-CAMA-1-RNA-08	CCLE-CAMA-1	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	CAMA-1	Cell Line
+dde643e7-35cb-4095-8f0b-fe8230dfc8fd	CCLE-CAL-78-RNA-08	CCLE-CAL-78	Sarcoma	RNA-Seq	Male	CCLE-SARC	Illumina	bone	HG19_Broad_variant	CAL-78	Cell Line
+5ad5aed5-713f-4bb0-b0a7-cf715a25e3e6	CCLE-NCI-H526-RNA-08	CCLE-NCI-H526	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H526	Cell Line
+7d16ad49-e5b3-4f13-8935-c3ee920555be	CCLE-JL-1-RNA-08	CCLE-JL-1	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	pleura	HG19_Broad_variant	JL-1	Cell Line
+5fd63cbf-6a81-4643-9259-e44e3e0b6eef	CCLE-KYM-1-RNA-08	CCLE-KYM-1	Sarcoma	RNA-Seq	Not available	CCLE-SARC	Illumina	soft_tissue	HG19_Broad_variant	KYM-1	Cell Line
+42339433-9f8c-4d26-a5e5-6534d2fab89d	CCLE-OVMANA-RNA-08	CCLE-OVMANA	Ovarian serous cystadenocarcinoma	RNA-Seq	Female	CCLE-OV	Illumina	ovary	HG19_Broad_variant	OVMANA	Cell Line
+bf9b4157-d44a-40dd-80df-491bef171dec	CCLE-NCI-H2172-RNA-08	CCLE-NCI-H2172	Lung squamous cell carcinoma	RNA-Seq	Female	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H2172	Cell Line
+c3428b18-1a40-4c0d-827f-d64d712a7c1c	CCLE-CL-34-RNA-08	CCLE-CL-34	Colon adenocarcinoma	RNA-Seq	Female	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	CL-34	Cell Line
+2c1a4f66-567b-46e0-9849-a869ac47ffc2	CCLE-U-87MG-RNA-08	CCLE-U-87MG	Brain Lower Grade Glioma	RNA-Seq	Female	CCLE-LGG	Illumina	central_nervous_system	HG19_Broad_variant	U-87MG	Cell Line
+65118679-fee5-4d94-9545-c9926b96de12	CCLE-SNU-407-RNA-08	CCLE-SNU-407	Colon adenocarcinoma	RNA-Seq	Male	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	SNU-407	Cell Line
+2fb5fffb-d23b-4d01-aa52-46a0c1213d71	CCLE-NCI-H2085-RNA-08	CCLE-NCI-H2085	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H2085	Cell Line
+0ae7bd17-1d26-47bf-8fd3-2fc07b2bce28	CCLE-BL-41-RNA-08	CCLE-BL-41	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Male	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	BL-41	Cell Line
+d6c827e4-3894-4f37-90b0-b97584622e40	CCLE-SNU-182-RNA-08	CCLE-SNU-182	Liver hepatocellular carcinoma	RNA-Seq	Male	CCLE-LIHC	Illumina	liver	HG19_Broad_variant	SNU-182	Cell Line
+9a878f5c-0df4-4da4-8681-e613d77e6464	CCLE-RS-5-RNA-08	CCLE-RS-5	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	pleura	HG19_Broad_variant	RS-5	Cell Line
+459d4439-f7e9-4b87-b906-ec08bfe278ad	CCLE-KMS-12-BM-RNA-08	CCLE-KMS-12-BM	Multiple Myeloma Plasma cell leukemia	RNA-Seq	Female	CCLE-MM	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	KMS-12-BM	Cell Line
+98ca89b3-4114-47ef-a106-22a084989b74	CCLE-SW1417-RNA-08	CCLE-SW1417	Colon adenocarcinoma	RNA-Seq	Female	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	SW1417	Cell Line
+98cec699-f9ee-4eb5-beaf-efbe8c05f8d3	CCLE-HCC1143-RNA-08	CCLE-HCC1143	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	HCC1143	Cell Line
+dc45e1c0-e048-40b5-b48c-8caf3a7bc5ad	CCLE-RT4-RNA-08	CCLE-RT4	Bladder Urothelial Carcinoma	RNA-Seq	Male	CCLE-BLCA	Illumina	urinary_tract	HG19_Broad_variant	RT4	Cell Line
+02d99fb4-8876-41f2-807e-20d75a827b36	CCLE-OS-RC-2-RNA-08	CCLE-OS-RC-2	Kidney renal clear cell carcinoma	RNA-Seq	Not available	CCLE-KIRC	Illumina	kidney	HG19_Broad_variant	OS-RC-2	Cell Line
+b001bb8a-d1dd-4ffc-9ac5-871d282a4bd1	CCLE-SK-MES-1-RNA-08	CCLE-SK-MES-1	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	SK-MES-1	Cell Line
+8d0f6714-04ae-4530-a1c0-fdd665eedfb7	CCLE-KALS-1-RNA-08	CCLE-KALS-1	Brain Lower Grade Glioma	RNA-Seq	Female	CCLE-LGG	Illumina	central_nervous_system	HG19_Broad_variant	KALS-1	Cell Line
+45596f26-417b-437e-8274-23935774e8a3	CCLE-ST486-RNA-08	CCLE-ST486	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Female	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	ST486	Cell Line
+0686ac59-d369-4c35-9035-86e999f13811	CCLE-L-363-RNA-08	CCLE-L-363	Multiple Myeloma Plasma cell leukemia	RNA-Seq	Female	CCLE-MM	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	L-363	Cell Line
+4de606db-9446-4d49-804b-9d5f72288f02	CCLE-Hs294T-RNA-08	CCLE-Hs294T	Skin Cutaneous Melanoma	RNA-Seq	Male	CCLE-SKCM	Illumina	skin	HG19_Broad_variant	Hs294T	Cell Line
+bf1e2523-00c5-42f6-8255-d6b704849841	CCLE-KMS-28BM-RNA-08	CCLE-KMS-28BM	Multiple Myeloma Plasma cell leukemia	RNA-Seq	Female	CCLE-MM	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	KMS-28BM	Cell Line
+29e21863-5b06-4eec-a5d2-e38ebd3ddfb8	CCLE-SBC-5-RNA-08	CCLE-SBC-5	Lung squamous cell carcinoma	RNA-Seq	Not available	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	SBC-5	Cell Line
+992319c0-04d2-4948-8248-533f55235d29	CCLE-MDA-MB-175-VII-RNA-08	CCLE-MDA-MB-175-VII	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	MDA-MB-175-VII	Cell Line
+80ba0c0f-2e56-449a-a0e1-46046a79ab1d	CCLE-SNU-5-RNA-08	CCLE-SNU-5	Stomach adenocarcinoma	RNA-Seq	Female	CCLE-STAD	Illumina	stomach	HG19_Broad_variant	SNU-5	Cell Line
+907d5bbd-2d19-49be-b6f9-15c6c0d9d36e	CCLE-NCI-H520-RNA-08	CCLE-NCI-H520	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H520	Cell Line
+ac9f6dd8-1284-4e51-895a-c9bb96756329	CCLE-NCI-H1048-RNA-08	CCLE-NCI-H1048	Lung squamous cell carcinoma	RNA-Seq	Female	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H1048	Cell Line
+3e9a1cdd-95e3-4100-b7a3-2d999493a352	CCLE-C32-RNA-08	CCLE-C32	Skin Cutaneous Melanoma	RNA-Seq	Male	CCLE-SKCM	Illumina	skin	HG19_Broad_variant	C32	Cell Line
+b4b49a62-957f-4c58-a6df-8a7879c87124	CCLE-KM-H2-RNA-08	CCLE-KM-H2	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Male	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	KM-H2	Cell Line
+faae94f2-662b-4dff-854a-69ed9cde1c35	CCLE-SNU-387-RNA-08	CCLE-SNU-387	Liver hepatocellular carcinoma	RNA-Seq	Female	CCLE-LIHC	Illumina	liver	HG19_Broad_variant	SNU-387	Cell Line
+2faaf156-6a0e-4e39-9d34-aeea45ef5b63	CCLE-SK-UT-1-RNA-08	CCLE-SK-UT-1	Sarcoma	RNA-Seq	Female	CCLE-SARC	Illumina	soft_tissue	HG19_Broad_variant	SK-UT-1	Cell Line
+4881ec65-580d-4f1a-972e-9f45a508216f	CCLE-NCI-H1568-RNA-08	CCLE-NCI-H1568	Lung squamous cell carcinoma	RNA-Seq	Female	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H1568	Cell Line
+6f89773c-aed3-4b8b-b298-54fd009266f0	CCLE-RH-18-RNA-08	CCLE-RH-18	Sarcoma	RNA-Seq	Not available	CCLE-SARC	Illumina	soft_tissue	HG19_Broad_variant	RH-18	Cell Line
+856f5df5-9b70-450f-83c5-9f4edccd8dff	CCLE-Caki-2-RNA-08	CCLE-Caki-2	Kidney renal clear cell carcinoma	RNA-Seq	Male	CCLE-KIRC	Illumina	kidney	HG19_Broad_variant	Caki-2	Cell Line
+42dcbc5c-5485-4bcb-8f28-af316041bdaa	CCLE-MKN7-RNA-08	CCLE-MKN7	Stomach adenocarcinoma	RNA-Seq	Male	CCLE-STAD	Illumina	stomach	HG19_Broad_variant	MKN7	Cell Line
+9bc91c7e-105b-4bb5-9691-5db7a78cbc4b	CCLE-Hs863.T-RNA-08	CCLE-Hs863.T	Sarcoma	RNA-Seq	Female	CCLE-SARC	Illumina	bone	HG19_Broad_variant	Hs863.T	Cell Line
+d2957df9-332f-4cab-b92e-7c67efdb2457	CCLE-NCI-H2170-RNA-08	CCLE-NCI-H2170	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H2170	Cell Line
+b7cb5f58-f823-4381-9000-8a34b2cfec2e	CCLE-CAL-120-RNA-08	CCLE-CAL-120	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	CAL-120	Cell Line
+be9d3fa3-72a2-458e-b986-86a12dcade95	CCLE-KE-97-RNA-08	CCLE-KE-97	Stomach adenocarcinoma	RNA-Seq	Male	CCLE-STAD	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	KE-97	Cell Line
+73caf4c1-b5b2-44fe-9e02-6eac99eebf9f	CCLE-5637-RNA-08	CCLE-5637	Bladder Urothelial Carcinoma	RNA-Seq	Male	CCLE-BLCA	Illumina	urinary_tract	HG19_Broad_variant	5637	Cell Line
+9db129e9-b602-43e5-9d89-417843a7882b	CCLE-UACC-812-RNA-08	CCLE-UACC-812	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	UACC-812	Cell Line
+a94b6f57-7d3f-4009-8e5f-3012ace18485	CCLE-Hs695T-RNA-08	CCLE-Hs695T	Skin Cutaneous Melanoma	RNA-Seq	Male	CCLE-SKCM	Illumina	skin	HG19_Broad_variant	Hs695T	Cell Line
+5bb7de20-824e-4863-a070-71037c679847	CCLE-SW1088-RNA-08	CCLE-SW1088	Brain Lower Grade Glioma	RNA-Seq	Male	CCLE-LGG	Illumina	central_nervous_system	HG19_Broad_variant	SW1088	Cell Line
+19228692-0202-4ba4-87d8-c02acccced3b	CCLE-SW900-RNA-08	CCLE-SW900	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	SW900	Cell Line
+a4e050b7-06ef-453d-9386-3f03a648f3f8	CCLE-COR-L24-RNA-08	CCLE-COR-L24	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	COR-L24	Cell Line
+7feeb7ae-54bd-4365-9586-f95ef57e6357	CCLE-TE617.T-RNA-08	CCLE-TE617.T	Sarcoma	RNA-Seq	Female	CCLE-SARC	Illumina	soft_tissue	HG19_Broad_variant	TE617.T	Cell Line
+e8ef1b09-9851-4b55-b13c-25dc5fd8b3d9	CCLE-HCC-1195-RNA-08	CCLE-HCC-1195	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	HCC-1195	Cell Line
+888bda08-bd61-4ca1-be6b-6d9d522a11bc	CCLE-BDCM-RNA-08	CCLE-BDCM	Chronic Lymphocytic Leukemia	RNA-Seq	Male	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	BDCM	Cell Line
+bfa91e23-1585-4fc1-99c4-5844a1da6ddd	CCLE-NCI-H1792-RNA-08	CCLE-NCI-H1792	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H1792	Cell Line
+fa6d12b2-f990-4b64-9c4f-4bf09618ae1b	CCLE-Hs870.T-RNA-08	CCLE-Hs870.T	Sarcoma	RNA-Seq	Not available	CCLE-SARC	Illumina	bone	HG19_Broad_variant	Hs870.T	Cell Line
+966df82f-60e1-495a-9a4b-cb5f9132e477	CCLE-CL-11-RNA-08	CCLE-CL-11	Colon adenocarcinoma	RNA-Seq	Not available	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	CL-11	Cell Line
+be2cb768-73cb-4cb8-85e4-a63fc11fc6e2	CCLE-SK-MM-2-RNA-08	CCLE-SK-MM-2	Multiple Myeloma Plasma cell leukemia	RNA-Seq	Male	CCLE-MM	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	SK-MM-2	Cell Line
+4d630ecc-35c9-47e4-b27e-b89b0699f9d3	CCLE-HCC-1588-RNA-08	CCLE-HCC-1588	Lung squamous cell carcinoma	RNA-Seq	Female	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	HCC-1588	Cell Line
+a1756610-c15d-4dbe-8d2d-8ce51c2a3d41	CCLE-NCI-H2087-RNA-08	CCLE-NCI-H2087	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H2087	Cell Line
+ed8c027b-116d-468e-b92e-14671f4a898f	CCLE-HD-MY-Z-RNA-08	CCLE-HD-MY-Z	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Not available	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	HD-MY-Z	Cell Line
+5b661208-1ed8-4cb2-8a1d-69bdbfa9926f	CCLE-253J-RNA-08	CCLE-253J	Bladder Urothelial Carcinoma	RNA-Seq	Not available	CCLE-BLCA	Illumina	urinary_tract	HG19_Broad_variant	253J	Cell Line
+17c76f2e-78ec-4a2b-ae8c-8137631045fc	CCLE-ZR-75-30-RNA-08	CCLE-ZR-75-30	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	ZR-75-30	Cell Line
+de65ce4c-6935-41fd-808b-2c4f0e72bdf4	CCLE-OCI-AML2-RNA-08	CCLE-OCI-AML2	Chronic Lymphocytic Leukemia	RNA-Seq	Male	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	OCI-AML2	Cell Line
+36dc122f-b05d-44ec-b812-78028b88925b	CCLE-CMK-RNA-08	CCLE-CMK	Chronic Lymphocytic Leukemia	RNA-Seq	Not available	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	CMK	Cell Line
+50ff8f53-256d-4622-9a61-26789b70ca49	CCLE-DM-3-RNA-08	CCLE-DM-3	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	pleura	HG19_Broad_variant	DM-3	Cell Line
+a42b6d6e-6bc4-4683-a04f-c6762e9daabd	CCLE-TE-8-RNA-08	CCLE-TE-8	Esophageal carcinoma	RNA-Seq	Not available	CCLE-ESCA	Illumina	oesophagus	HG19_Broad_variant	TE-8	Cell Line
+790d1345-84eb-44ab-8a4c-dd36c7ebc6e0	CCLE-IGR-37-RNA-08	CCLE-IGR-37	Skin Cutaneous Melanoma	RNA-Seq	Male	CCLE-SKCM	Illumina	skin	HG19_Broad_variant	IGR-37	Cell Line
+8c78b799-0a31-4545-8799-8428562b371f	CCLE-KYSE-270-RNA-08	CCLE-KYSE-270	Esophageal carcinoma	RNA-Seq	Male	CCLE-ESCA	Illumina	oesophagus	HG19_Broad_variant	KYSE-270	Cell Line
+9bd563b0-29cc-4c83-8edc-bfe089f54e38	CCLE-SW780-RNA-08	CCLE-SW780	Bladder Urothelial Carcinoma	RNA-Seq	Female	CCLE-BLCA	Illumina	urinary_tract	HG19_Broad_variant	SW780	Cell Line
+81e99614-d149-4435-8e38-4af2f365f50b	CCLE-SNB75-RNA-08	CCLE-SNB75	Brain Lower Grade Glioma	RNA-Seq	Not available	CCLE-LGG	Illumina	Not available	HG19_Broad_variant	SNB75	Cell Line
+9f079021-d1da-426d-80eb-5af2544b32ab	CCLE-AML-193-RNA-08	CCLE-AML-193	Chronic Lymphocytic Leukemia	RNA-Seq	Female	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	AML-193	Cell Line
+9cc8608b-cfaf-4598-9814-4ef8b6905460	CCLE-CJM-RNA-08	CCLE-CJM	Skin Cutaneous Melanoma	RNA-Seq	Not available	CCLE-SKCM	Illumina	skin	HG19_Broad_variant	CJM	Cell Line
+c88b8503-73ce-4c8e-89a9-498b614037ae	CCLE-RKO-RNA-08	CCLE-RKO	Colon adenocarcinoma	RNA-Seq	Not available	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	RKO	Cell Line
+79a9d8cb-3798-486f-a27b-9af84746d353	CCLE-RERF-GC-1B-RNA-08	CCLE-RERF-GC-1B	Stomach adenocarcinoma	RNA-Seq	Male	CCLE-STAD	Illumina	stomach	HG19_Broad_variant	RERF-GC-1B	Cell Line
+b1ad79a2-9d32-4835-8dce-162d7f7b6185	CCLE-G-361-RNA-08	CCLE-G-361	Skin Cutaneous Melanoma	RNA-Seq	Male	CCLE-SKCM	Illumina	skin	HG19_Broad_variant	G-361	Cell Line
+0ec7ff59-e77b-445b-99c7-884415a3e69c	CCLE-KMS-20-RNA-08	CCLE-KMS-20	Multiple Myeloma Plasma cell leukemia	RNA-Seq	Female	CCLE-MM	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	KMS-20	Cell Line
+76d02dc2-cc4f-4374-93d9-f9703fe2ea2f	CCLE-MFE-319-RNA-08	CCLE-MFE-319	Cervical squamous cell carcinoma and endocervical adenocarcinoma	RNA-Seq	Female	CCLE-CESC	Illumina	endometrium	HG19_Broad_variant	MFE-319	Cell Line
+14e5a2e8-512f-4eee-8e20-5808a49871f1	CCLE-HCC202-RNA-08	CCLE-HCC202	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	HCC202	Cell Line
+f9af8483-aee8-49a9-a8ef-9e9b12851c9c	CCLE-NUGC-2-RNA-08	CCLE-NUGC-2	Stomach adenocarcinoma	RNA-Seq	Female	CCLE-STAD	Illumina	stomach	HG19_Broad_variant	NUGC-2	Cell Line
+3e0fde5a-2fef-4440-b752-ffd6ca00838f	CCLE-MOLT-13-RNA-08	CCLE-MOLT-13	Chronic Lymphocytic Leukemia	RNA-Seq	Female	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	MOLT-13	Cell Line
+51f90537-516a-46a7-9e53-67144a863903	CCLE-697-RNA-08	CCLE-697	Chronic Lymphocytic Leukemia	RNA-Seq	Male	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	697	Cell Line
+317c72de-00d5-4afd-ab6a-7fb7b990ef07	CCLE-OCI-LY3-RNA-08	CCLE-OCI-LY3	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Not available	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	OCI-LY3	0
+dea804ae-e352-48d8-afb7-3ca6cbeb2510	CCLE-GI-1-RNA-08	CCLE-GI-1	Brain Lower Grade Glioma	RNA-Seq	Male	CCLE-LGG	Illumina	central_nervous_system	HG19_Broad_variant	GI-1	Cell Line
+34e32f97-243d-443f-b982-87a3779a5b34	CCLE-Caov-4-RNA-08	CCLE-Caov-4	Ovarian serous cystadenocarcinoma	RNA-Seq	Female	CCLE-OV	Illumina	ovary	HG19_Broad_variant	Caov-4	Cell Line
+660800e9-2bee-4122-92ca-65fc214f0dc6	CCLE-SUP-M2-RNA-08	CCLE-SUP-M2	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Female	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	SUP-M2	Cell Line
+eafb5c93-6762-4e31-a4f6-093385455d76	CCLE-HEC-1-A-RNA-08	CCLE-HEC-1-A	Cervical squamous cell carcinoma and endocervical adenocarcinoma	RNA-Seq	Female	CCLE-CESC	Illumina	endometrium	HG19_Broad_variant	HEC-1-A	Cell Line
+0eb4b6c3-c648-46ab-8ada-3e4974257d45	CCLE-SCC-25-RNA-08	CCLE-SCC-25	Head and Neck squamous cell carcinoma	RNA-Seq	Male	CCLE-HNSC	Illumina	upper_aerodigestive_tract	HG19_Broad_variant	SCC-25	Cell Line
+296eb322-a942-4618-822e-eae03a5b7951	CCLE-SK-MEL-3-RNA-08	CCLE-SK-MEL-3	Skin Cutaneous Melanoma	RNA-Seq	Female	CCLE-SKCM	Illumina	skin	HG19_Broad_variant	SK-MEL-3	Cell Line
+26f7d917-2cb0-4fa4-97ce-476ad0f667ca	CCLE-NCI-H2347-RNA-08	CCLE-NCI-H2347	Lung squamous cell carcinoma	RNA-Seq	Female	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H2347	Cell Line
+cfc33995-092a-4d2c-a237-66a57835d31b	CCLE-T24-RNA-08	CCLE-T24	Bladder Urothelial Carcinoma	RNA-Seq	Female	CCLE-BLCA	Illumina	urinary_tract	HG19_Broad_variant	T24	Cell Line
+4201be01-ebcb-43e5-948f-52ef8c2b7e98	CCLE-JHUEM-1-RNA-08	CCLE-JHUEM-1	Uterine Corpus Endometrioid Carcinoma	RNA-Seq	Female	CCLE-UCEC	Illumina	endometrium	HG19_Broad_variant	JHUEM-1	Cell Line
+b478a36f-e01e-430d-bad4-8e2fad074cb9	CCLE-SNU-1105-RNA-08	CCLE-SNU-1105	Brain Lower Grade Glioma	RNA-Seq	Male	CCLE-LGG	Illumina	central_nervous_system	HG19_Broad_variant	SNU-1105	Cell Line
+bb45a52d-c5e7-42e4-be52-2ab76b0106c7	CCLE-KYSE-180-RNA-08	CCLE-KYSE-180	Esophageal carcinoma	RNA-Seq	Male	CCLE-ESCA	Illumina	oesophagus	HG19_Broad_variant	KYSE-180	Cell Line
+911c65c2-52dc-4c09-abc5-5066123db98e	CCLE-NCO2-RNA-08	CCLE-NCO2	Chronic Lymphocytic Leukemia	RNA-Seq	Female	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	NCO2	Cell Line
+091ad56a-ba56-4a4e-a8f0-a3a74c1e2eab	CCLE-CL-40-RNA-08	CCLE-CL-40	Colon adenocarcinoma	RNA-Seq	Female	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	CL-40	Cell Line
+7ed3e895-6826-430d-a39d-338111f16083	CCLE-SNU-1214-RNA-08	CCLE-SNU-1214	Head and Neck squamous cell carcinoma	RNA-Seq	Male	CCLE-HNSC	Illumina	upper_aerodigestive_tract	HG19_Broad_variant	SNU-1214	Cell Line
+b0912b5d-2b20-418c-88c8-eb6ff61275f8	CCLE-OVSAHO-RNA-08	CCLE-OVSAHO	Ovarian serous cystadenocarcinoma	RNA-Seq	Female	CCLE-OV	Illumina	ovary	HG19_Broad_variant	OVSAHO	Cell Line
+cbf2f7c7-ded1-4ff0-afc8-222ec3c404f2	CCLE-NCI-H1581-RNA-08	CCLE-NCI-H1581	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H1581	Cell Line
+633bedb2-700a-42a3-b412-dea897e72965	CCLE-SNU-216-RNA-08	CCLE-SNU-216	Stomach adenocarcinoma	RNA-Seq	Female	CCLE-STAD	Illumina	stomach	HG19_Broad_variant	SNU-216	Cell Line
+c4e92989-fbd7-45a4-b331-b7ed989a2edd	CCLE-HCC-78-RNA-08	CCLE-HCC-78	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	HCC-78	Cell Line
+f79d1ef7-1da7-4697-9915-483f34b6a17c	CCLE-YD-8-RNA-08	CCLE-YD-8	Head and Neck squamous cell carcinoma	RNA-Seq	Female	CCLE-HNSC	Illumina	upper_aerodigestive_tract	HG19_Broad_variant	YD-8	Cell Line
+dbc1a0ca-2ee0-43b4-895a-2fdbcd995e2c	CCLE-DMS454-RNA-08	CCLE-DMS454	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	DMS454	Cell Line
+0cfc4e86-aaae-4076-8e4c-92938bd35744	CCLE-HCC-1833-RNA-08	CCLE-HCC-1833	Lung squamous cell carcinoma	RNA-Seq	Not available	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	HCC-1833	Cell Line
+1d8ae777-32d5-41c6-b995-d63b4c14406d	CCLE-SNU-668-RNA-08	CCLE-SNU-668	Stomach adenocarcinoma	RNA-Seq	Male	CCLE-STAD	Illumina	stomach	HG19_Broad_variant	SNU-668	Cell Line
+9293ed19-cecc-446a-9220-5245260ea8be	CCLE-HuH-7-RNA-08	CCLE-HuH-7	Liver hepatocellular carcinoma	RNA-Seq	Male	CCLE-LIHC	Illumina	liver	HG19_Broad_variant	HuH-7	Cell Line
+47e9cd8d-f8ef-4b6e-b92b-447e6fd7c056	CCLE-HH-RNA-08	CCLE-HH	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Male	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	HH	Cell Line
+8898058b-e2a0-4d35-b943-197d3373d351	CCLE-NCI-H1648-RNA-08	CCLE-NCI-H1648	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H1648	Cell Line
+99b9e67b-fc9a-4e04-8592-731e0b4b1b9c	CCLE-HEC-50B-RNA-08	CCLE-HEC-50B	Cervical squamous cell carcinoma and endocervical adenocarcinoma	RNA-Seq	Female	CCLE-CESC	Illumina	endometrium	HG19_Broad_variant	HEC-50B	Cell Line
+2b602f9e-855c-4f1a-8fd4-78e07deb1d0d	CCLE-OCI-AML3-RNA-08	CCLE-OCI-AML3	Chronic Lymphocytic Leukemia	RNA-Seq	Male	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	OCI-AML3	Cell Line
+2e7e6baa-5059-413a-8706-3a5c9879df97	CCLE-Hs618.T-RNA-08	CCLE-Hs618.T	Lung squamous cell carcinoma	RNA-Seq	Female	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	Hs618.T	Cell Line
+80b072e1-9aa7-44ef-b36d-a85e74f5ad04	CCLE-NCI-H524-RNA-08	CCLE-NCI-H524	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H524	Cell Line
+039ac444-24a7-4753-b414-ef89d85ab13b	CCLE-A172-RNA-08	CCLE-A172	Brain Lower Grade Glioma	RNA-Seq	Male	CCLE-LGG	Illumina	central_nervous_system	HG19_Broad_variant	A172	Cell Line
+8f53d512-2630-47ba-8e6a-a11d6170c626	CCLE-MM1-S-RNA-08	CCLE-MM1-S	Multiple Myeloma Plasma cell leukemia	RNA-Seq	Not available	CCLE-MM	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	MM1-S	Cell Line
+0ca2bc70-463c-4ed1-a482-766eb51a2fe1	CCLE-NCI-H23-RNA-08	CCLE-NCI-H23	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H23	Cell Line
+c8a38c3f-23c3-4c8b-a713-ee1bbea97d8c	CCLE-IGROV1-RNA-08	CCLE-IGROV1	Ovarian serous cystadenocarcinoma	RNA-Seq	Female	CCLE-OV	Illumina	ovary	HG19_Broad_variant	IGROV1	Cell Line
+05beaef9-4e5d-4d26-9dcf-32c56bbea15f	CCLE-Hs229.T-RNA-08	CCLE-Hs229.T	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	Hs229.T	Cell Line
+cca431b2-49ad-4e83-bb41-6b5d1d7222b1	CCLE-Hs683-RNA-08	CCLE-Hs683	Brain Lower Grade Glioma	RNA-Seq	Male	CCLE-LGG	Illumina	central_nervous_system	HG19_Broad_variant	Hs683	Cell Line
+036c14a2-c62c-4a40-827b-82a9ba54acbd	CCLE-SU.86.86-RNA-08	CCLE-SU.86.86	Pancreatic adenocarcinoma	RNA-Seq	Female	CCLE-PAAD	Illumina	pancreas	HG19_Broad_variant	SU.86.86	Cell Line
+23392825-c92a-434b-aa80-e0ea083d8d64	CCLE-Set-2-RNA-08	CCLE-Set-2	Chronic Lymphocytic Leukemia	RNA-Seq	Female	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	Set-2	Cell Line
+1239fdca-0571-49e4-a0f4-5b9a77667569	CCLE-Detroit562-RNA-08	CCLE-Detroit562	Head and Neck squamous cell carcinoma	RNA-Seq	Female	CCLE-HNSC	Illumina	upper_aerodigestive_tract	HG19_Broad_variant	Detroit562	Cell Line
+f03dbfee-a523-438f-8459-f47f2ff1880f	CCLE-NCI-H2066-RNA-08	CCLE-NCI-H2066	Lung squamous cell carcinoma	RNA-Seq	Female	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H2066	Cell Line
+569e5a67-840b-44eb-a39a-04ee2b2ac631	CCLE-KG-1-RNA-08	CCLE-KG-1	Chronic Lymphocytic Leukemia	RNA-Seq	Male	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	KG-1	Cell Line
+4409e183-ae9b-4e25-adb8-53233acc085e	CCLE-NCI-H1435-RNA-08	CCLE-NCI-H1435	Lung squamous cell carcinoma	RNA-Seq	Female	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H1435	Cell Line
+840af541-fbe0-4e1f-aa6d-d625ba843b20	CCLE-HEL92.1.7-RNA-08	CCLE-HEL92.1.7	Chronic Lymphocytic Leukemia	RNA-Seq	Male	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	HEL92.1.7	Cell Line
+2a663aaa-b5a9-4493-8431-4857aba9ecd7	CCLE-MC116-RNA-08	CCLE-MC116	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Male	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	MC116	Cell Line
+c910c1e7-b21f-4eed-887f-a52bab5f073b	CCLE-Hs766T-RNA-08	CCLE-Hs766T	Pancreatic adenocarcinoma	RNA-Seq	Male	CCLE-PAAD	Illumina	pancreas	HG19_Broad_variant	Hs766T	Cell Line
+213930db-d7ff-41df-b8c9-e8d0d06d7ced	CCLE-RD-RNA-08	CCLE-RD	Sarcoma	RNA-Seq	Female	CCLE-SARC	Illumina	soft_tissue	HG19_Broad_variant	RD	Cell Line
+a5489018-24b0-4c6f-923a-190be1bedabd	CCLE-BICR56-RNA-08	CCLE-BICR56	Head and Neck squamous cell carcinoma	RNA-Seq	Female	CCLE-HNSC	Illumina	upper_aerodigestive_tract	HG19_Broad_variant	BICR56	Cell Line
+7971bf54-f08e-490a-a4d0-804c8b07de6c	CCLE-TM-31-RNA-08	CCLE-TM-31	Brain Lower Grade Glioma	RNA-Seq	Not available	CCLE-LGG	Illumina	central_nervous_system	HG19_Broad_variant	TM-31	Cell Line
+48d80211-fb46-463d-a9fa-6cee13b1e407	CCLE-TE-11-RNA-08	CCLE-TE-11	Esophageal carcinoma	RNA-Seq	Not available	CCLE-ESCA	Illumina	oesophagus	HG19_Broad_variant	TE-11	Cell Line
+f636eee7-808c-4857-a8a6-ec34560e9de4	CCLE-NU-DHL-1-RNA-08	CCLE-NU-DHL-1	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Male	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	NU-DHL-1	Cell Line
+208f38d8-73d4-49fc-bdd2-0b9019f2df10	CCLE-HLF-a-RNA-08	CCLE-HLF-a	Lung squamous cell carcinoma	RNA-Seq	Female	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	HLF-a	Cell Line
+36962b5a-ae88-48c2-b22d-c04fd37f4fd5	CCLE-KE-37-RNA-08	CCLE-KE-37	Chronic Lymphocytic Leukemia	RNA-Seq	Male	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	KE-37	Cell Line
+1474b8a8-284f-4416-8c66-618340458bb2	CCLE-Hs172.T-RNA-08	CCLE-Hs172.T	Bladder Urothelial Carcinoma	RNA-Seq	Male	CCLE-BLCA	Illumina	urinary_tract	HG19_Broad_variant	Hs172.T	Cell Line
+75404aad-f951-4528-b283-c46e1acd5814	CCLE-MHH-CALL-4-RNA-08	CCLE-MHH-CALL-4	Chronic Lymphocytic Leukemia	RNA-Seq	Male	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	MHH-CALL-4	Cell Line
+14d72c3c-757f-468f-8c16-a8600986ffb2	CCLE-NCI-H2405-RNA-08	CCLE-NCI-H2405	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H2405	Cell Line
+019cafc2-afc0-4668-839e-3e4d930f53f9	CCLE-T1-73-RNA-08	CCLE-T1-73	Sarcoma	RNA-Seq	Not available	CCLE-SARC	Illumina	bone	HG19_Broad_variant	T1-73	Cell Line
+2f97c09a-4463-42ef-b53c-2eab74707525	CCLE-EHEB-RNA-08	CCLE-EHEB	Chronic Lymphocytic Leukemia	RNA-Seq	Female	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	EHEB	Cell Line
+9470ebd7-1a7b-40c1-b869-de81508903c0	CCLE-MDA-MB-435S-RNA-08	CCLE-MDA-MB-435S	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	skin	HG19_Broad_variant	MDA-MB-435S	Cell Line
+fb292481-33e4-4d93-8e06-a8b4e432a539	CCLE-NCI-H146-RNA-08	CCLE-NCI-H146	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H146	Cell Line
+ca109ea0-944b-4c4c-bda1-24b0b6cbf779	CCLE-SCC-15-RNA-08	CCLE-SCC-15	Head and Neck squamous cell carcinoma	RNA-Seq	Male	CCLE-HNSC	Illumina	upper_aerodigestive_tract	HG19_Broad_variant	SCC-15	Cell Line
+8db7f0b2-b70f-4450-81a6-b833aea66e0f	CCLE-MEL-JUSO-RNA-08	CCLE-MEL-JUSO	Skin Cutaneous Melanoma	RNA-Seq	Female	CCLE-SKCM	Illumina	skin	HG19_Broad_variant	MEL-JUSO	Cell Line
+c1c07f7a-8486-4247-99b6-363076149727	CCLE-KP-N-SI9s-RNA-08	CCLE-KP-N-SI9s	Brain Lower Grade Glioma	RNA-Seq	Male	CCLE-LGG	Illumina	autonomic_ganglia	HG19_Broad_variant	KP-N-SI9s	Cell Line
+989999de-3189-4881-8e5c-a215545280af	CCLE-TE-5-RNA-08	CCLE-TE-5	Esophageal carcinoma	RNA-Seq	Not available	CCLE-ESCA	Illumina	oesophagus	HG19_Broad_variant	TE-5	Cell Line
+c5071fdc-d9fe-419c-9ca4-fca445687303	CCLE-A3-KAW-RNA-08	CCLE-A3-KAW	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Female	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	A3-KAW	Cell Line
+52e9fdaf-b9a4-4533-983e-8da09db5ceec	CCLE-SK-HEP-1-RNA-08	CCLE-SK-HEP-1	Liver hepatocellular carcinoma	RNA-Seq	Male	CCLE-LIHC	Illumina	liver	HG19_Broad_variant	SK-HEP-1	Cell Line
+cdaecbe4-2ebd-44b5-992d-15d6ad7ad545	CCLE-JURKAT-RNA-08	CCLE-JURKAT	Chronic Lymphocytic Leukemia	RNA-Seq	Male	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	JURKAT	Cell Line
+389946e9-f8da-4c7b-bb14-e7d756ce4a3a	CCLE-SNU-16-RNA-08	CCLE-SNU-16	Stomach adenocarcinoma	RNA-Seq	Female	CCLE-STAD	Illumina	stomach	HG19_Broad_variant	SNU-16	Cell Line
+6e599a64-bb75-4d05-a38f-0168e3038f5c	CCLE-HCC-2108-RNA-08	CCLE-HCC-2108	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	HCC-2108	Cell Line
+ff04194f-7c26-4cb1-a763-04ef0f377752	CCLE-HCC-1438-RNA-08	CCLE-HCC-1438	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	HCC-1438	Cell Line
+20afb68f-d336-446d-94a0-6bbf9e4e8535	CCLE-KELLY-RNA-08	CCLE-KELLY	Brain Lower Grade Glioma	RNA-Seq	Not available	CCLE-LGG	Illumina	autonomic_ganglia	HG19_Broad_variant	KELLY	Cell Line
+ac83832e-2a6a-43b2-af10-b9911c347793	CCLE-NCI-H838-RNA-08	CCLE-NCI-H838	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H838	Cell Line
+33fe59e7-3e3d-4275-b8a7-5affae8ecc8d	CCLE-MCF7-RNA-08	CCLE-MCF7	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	MCF7	Cell Line
+7166a9f4-0d76-4aaa-bd06-182a5821f211	CCLE-M-07e-RNA-08	CCLE-M-07e	Chronic Lymphocytic Leukemia	RNA-Seq	Female	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	M-07e	Cell Line
+25fbbdd6-deb5-4630-b4ed-89abc6eae485	CCLE-KYSE-510-RNA-08	CCLE-KYSE-510	Esophageal carcinoma	RNA-Seq	Female	CCLE-ESCA	Illumina	oesophagus	HG19_Broad_variant	KYSE-510	Cell Line
+8f15de5d-2e2b-4a65-8378-51fb69464645	CCLE-YKG1-RNA-08	CCLE-YKG1	Brain Lower Grade Glioma	RNA-Seq	Female	CCLE-LGG	Illumina	central_nervous_system	HG19_Broad_variant	YKG1	Cell Line
+27b74db5-80e5-4866-843a-f144ca752430	CCLE-P3HR-1-RNA-08	CCLE-P3HR-1	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Male	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	P3HR-1	Cell Line
+2413f7ee-42c7-4cd1-8130-4b14860aadee	CCLE-GP2d-RNA-08	CCLE-GP2d	Colon adenocarcinoma	RNA-Seq	Female	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	GP2d	Cell Line
+5475da08-7279-42f5-a7bb-2853d4e63c21	CCLE-NCI-H28-RNA-08	CCLE-NCI-H28	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	pleura	HG19_Broad_variant	NCI-H28	Cell Line
+2dd9e22b-77cb-42d4-830d-e19a854e3083	CCLE-Panc08.13-RNA-08	CCLE-Panc08.13	Pancreatic adenocarcinoma	RNA-Seq	Male	CCLE-PAAD	Illumina	pancreas	HG19_Broad_variant	Panc08.13	Cell Line
+95a56cf7-346c-4f74-90d1-1a0f11327a7a	CCLE-HCC1500-RNA-08	CCLE-HCC1500	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	HCC1500	Cell Line
+294dbcab-0680-41cc-8777-b66cf5889c09	CCLE-DMS79-RNA-08	CCLE-DMS79	Lung squamous cell carcinoma	RNA-Seq	Not available	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	DMS79	Cell Line
+51b64c57-a4b0-4395-bb44-e9f83ed42e8b	CCLE-Hs936.T-RNA-08	CCLE-Hs936.T	Skin Cutaneous Melanoma	RNA-Seq	Male	CCLE-SKCM	Illumina	skin	HG19_Broad_variant	Hs936.T	Cell Line
+2ab5fd4d-59e1-40e1-b4c0-7e99e8150fab	CCLE-SW1271-RNA-08	CCLE-SW1271	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	SW1271	Cell Line
+bdd97a07-3618-45a8-b734-adb8e4540074	CCLE-Reh-RNA-08	CCLE-Reh	Chronic Lymphocytic Leukemia	RNA-Seq	Not available	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	Reh	Cell Line
+92891437-1be8-4872-86c4-289feb27aa73	CCLE-HCC2157-RNA-08	CCLE-HCC2157	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	HCC2157	Cell Line
+9145ef02-f8ab-4cc8-8330-f422fcd1cc23	CCLE-TE441.T-RNA-08	CCLE-TE441.T	Sarcoma	RNA-Seq	Female	CCLE-SARC	Illumina	soft_tissue	HG19_Broad_variant	TE441.T	Cell Line
+c0b5a281-2caa-4766-a9ba-6f02b48f3c34	CCLE-IMR-32-RNA-08	CCLE-IMR-32	Brain Lower Grade Glioma	RNA-Seq	Male	CCLE-LGG	Illumina	autonomic_ganglia	HG19_Broad_variant	IMR-32	Cell Line
+a4965226-f30b-4f19-9b45-07588812fcef	CCLE-HuTu80-RNA-08	CCLE-HuTu80	Stomach adenocarcinoma	RNA-Seq	Not available	CCLE-STAD	Illumina	small_intestine	HG19_Broad_variant	HuTu80	Cell Line
+efb7393b-e5a1-4ecf-bfac-ef163d698ab2	CCLE-JURL-MK1-RNA-08	CCLE-JURL-MK1	Chronic Lymphocytic Leukemia	RNA-Seq	Male	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	JURL-MK1	Cell Line
+cb3f7213-3d07-4f22-94df-9e25762f1eb5	CCLE-HCC1569-RNA-08	CCLE-HCC1569	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	HCC1569	Cell Line
+ff73537d-7cd1-4ad4-af14-0e2ab23aa70f	CCLE-RPMI8226-RNA-08	CCLE-RPMI8226	Multiple Myeloma Plasma cell leukemia	RNA-Seq	Male	CCLE-MM	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	RPMI8226	Cell Line
+59436a48-822f-46a6-bbe7-688e376709c2	CCLE-NCI-H69-RNA-08	CCLE-NCI-H69	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H69	Cell Line
+5c1f3b65-6154-4519-aa1c-beda200efad6	CCLE-RL-RNA-08	CCLE-RL	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Male	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	RL	Cell Line
+da9c7c27-7c64-4e58-abcc-d5bd51d16417	CCLE-SNU-C5-RNA-08	CCLE-SNU-C5	Colon adenocarcinoma	RNA-Seq	Female	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	SNU-C5	Cell Line
+a0b836a0-6f03-4df9-a60e-80b1b6c7acfe	CCLE-ME-1-RNA-08	CCLE-ME-1	Chronic Lymphocytic Leukemia	RNA-Seq	Male	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	ME-1	Cell Line
+23096f0b-831a-49ee-9128-dd162b428b7a	CCLE-WM983B-RNA-08	CCLE-WM983B	Skin Cutaneous Melanoma	RNA-Seq	Not available	CCLE-SKCM	Illumina	Not available	HG19_Broad_variant	WM983B	Cell Line
+595c5612-721a-4155-bdf4-0d9708a0c2c1	CCLE-EFM-19-RNA-08	CCLE-EFM-19	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	EFM-19	Cell Line
+30dc47eb-aa58-4ff7-bc96-42a57512ba97	CCLE-NCI-H446-RNA-08	CCLE-NCI-H446	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H446	Cell Line
+18004fb1-89a2-4ba1-a321-a0aa854e98c3	CCLE-NCI-H510-RNA-08	CCLE-NCI-H510	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H510	Cell Line
+447ef99d-fc26-44b3-9225-bd50cf132024	CCLE-CAL-29-RNA-08	CCLE-CAL-29	Bladder Urothelial Carcinoma	RNA-Seq	Female	CCLE-BLCA	Illumina	urinary_tract	HG19_Broad_variant	CAL-29	Cell Line
+351c8847-4c9c-4996-b160-d15d74925fbd	CCLE-HMCB-RNA-08	CCLE-HMCB	Skin Cutaneous Melanoma	RNA-Seq	Not available	CCLE-SKCM	Illumina	skin	HG19_Broad_variant	HMCB	Cell Line
+1ad9c630-3925-4d28-9c72-ae281a6592b8	CCLE-EPLC-272H-RNA-08	CCLE-EPLC-272H	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	EPLC-272H	Cell Line
+f1ca6ff0-a619-44d1-b15b-510e7ad35392	CCLE-NUGC-4-RNA-08	CCLE-NUGC-4	Stomach adenocarcinoma	RNA-Seq	Not available	CCLE-STAD	Illumina	stomach	HG19_Broad_variant	NUGC-4	Cell Line
+c7d6e0f7-150a-4676-8a7c-ea35f4e47ab2	CCLE-KASUMI-2-RNA-08	CCLE-KASUMI-2	Chronic Lymphocytic Leukemia	RNA-Seq	Male	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	KASUMI-2	Cell Line
+87252fc8-69be-41aa-b837-e1bfd9f76f38	CCLE-DMS273-RNA-08	CCLE-DMS273	Lung squamous cell carcinoma	RNA-Seq	Female	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	DMS273	Cell Line
+e0d9f89e-3a3d-4cdc-ba0f-94f82213c3e2	CCLE-KMRC-1-RNA-08	CCLE-KMRC-1	Kidney renal clear cell carcinoma	RNA-Seq	Male	CCLE-KIRC	Illumina	kidney	HG19_Broad_variant	KMRC-1	Cell Line
+e24a56ac-8dde-4b61-983b-80295175343c	CCLE-SCLC-21H-RNA-08	CCLE-SCLC-21H	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	SCLC-21H	Cell Line
+96493946-9b0d-41ca-a2d0-8d3f406dbe96	CCLE-SU-DHL-4-RNA-08	CCLE-SU-DHL-4	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Male	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	SU-DHL-4	Cell Line
+8f73a927-27e1-49bd-a50f-77e091961d6c	CCLE-C2BBe1-RNA-08	CCLE-C2BBe1	Colon adenocarcinoma	RNA-Seq	Male	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	C2BBe1	Cell Line
+4338c380-a0b4-4485-afcd-9c6f1b4031ce	CCLE-TE-1-RNA-08	CCLE-TE-1	Esophageal carcinoma	RNA-Seq	Male	CCLE-ESCA	Illumina	oesophagus	HG19_Broad_variant	TE-1	Cell Line
+ae0f1654-f2ad-4255-b012-90991cc83f7a	CCLE-HEC-108-RNA-08	CCLE-HEC-108	Cervical squamous cell carcinoma and endocervical adenocarcinoma	RNA-Seq	Female	CCLE-CESC	Illumina	endometrium	HG19_Broad_variant	HEC-108	Cell Line
+7697f554-4b56-4886-b3d0-2c31560bedb8	CCLE-Hs729-RNA-08	CCLE-Hs729	Sarcoma	RNA-Seq	Male	CCLE-SARC	Illumina	soft_tissue	HG19_Broad_variant	Hs729	Cell Line
+5751f0b1-04d7-4744-bf6f-2d7c8e71b67f	CCLE-647-V-RNA-08	CCLE-647-V	Bladder Urothelial Carcinoma	RNA-Seq	Male	CCLE-BLCA	Illumina	urinary_tract	HG19_Broad_variant	647-V	Cell Line
+c10ad714-17ad-4b19-a918-b06db4eeebbd	CCLE-SUP-T11-RNA-08	CCLE-SUP-T11	Chronic Lymphocytic Leukemia	RNA-Seq	Male	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	SUP-T11	Cell Line
+55de5658-1574-4e41-bc84-9aee9eb7203c	CCLE-FU97-RNA-08	CCLE-FU97	Stomach adenocarcinoma	RNA-Seq	Female	CCLE-STAD	Illumina	stomach	HG19_Broad_variant	FU97	Cell Line
+04cdb83d-80a0-4ef4-9426-96dd2a688e70	CCLE-NCI-H1341-RNA-08	CCLE-NCI-H1341	Lung squamous cell carcinoma	RNA-Seq	Female	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H1341	Cell Line
+7a958e35-6f73-4736-a9f9-f5d99218ad2a	CCLE-DND-41-RNA-08	CCLE-DND-41	Chronic Lymphocytic Leukemia	RNA-Seq	Male	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	DND-41	Cell Line
+b0935d46-4b8c-45fe-b7ed-098f65b6b0ea	CCLE-HOP-92-RNA-08	CCLE-HOP-92	Lung squamous cell carcinoma	RNA-Seq	Not available	CCLE-LUSC	Illumina	Not available	HG19_Broad_variant	HOP-92	Cell Line
+fcc63bef-8ec9-4b0b-8e7f-e17d70d211a3	CCLE-T.T-RNA-08	CCLE-T.T	Esophageal carcinoma	RNA-Seq	Male	CCLE-ESCA	Illumina	oesophagus	HG19_Broad_variant	T.T	Cell Line
+29814e40-0216-4bb5-bd4e-78caf1df90de	CCLE-RERF-LC-KJ-RNA-08	CCLE-RERF-LC-KJ	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	RERF-LC-KJ	Cell Line
+648f1907-504b-4a85-b472-7bdf8cd37efc	CCLE-NCI-H2029-RNA-08	CCLE-NCI-H2029	Lung squamous cell carcinoma	RNA-Seq	Female	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H2029	Cell Line
+d3f602c7-675d-4369-8c31-c2afcab47e25	CCLE-SNU-899-RNA-08	CCLE-SNU-899	Head and Neck squamous cell carcinoma	RNA-Seq	Male	CCLE-HNSC	Illumina	upper_aerodigestive_tract	HG19_Broad_variant	SNU-899	Cell Line
+61d4aacc-ac9b-4434-ac96-705248624d07	CCLE-Hs895.T-RNA-08	CCLE-Hs895.T	Skin Cutaneous Melanoma	RNA-Seq	Female	CCLE-SKCM	Illumina	skin	HG19_Broad_variant	Hs895.T	Cell Line
+b240c278-572c-4ca1-afe7-fc5c2365ef31	CCLE-HuH-6-RNA-08	CCLE-HuH-6	Liver hepatocellular carcinoma	RNA-Seq	Not available	CCLE-LIHC	Illumina	liver	HG19_Broad_variant	HuH-6	Cell Line
+b9bf9885-acac-418e-82e6-d90971fb75eb	CCLE-SNU-1033-RNA-08	CCLE-SNU-1033	Colon adenocarcinoma	RNA-Seq	Female	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	SNU-1033	Cell Line
+879c59fe-d3a7-419e-bdf3-1ebe5adb8320	CCLE-DAN-G-RNA-08	CCLE-DAN-G	Pancreatic adenocarcinoma	RNA-Seq	Not available	CCLE-PAAD	Illumina	pancreas	HG19_Broad_variant	DAN-G	Cell Line
+56f3aeb6-ef49-4ab5-919a-f9c314f12476	CCLE-NOMO-1-RNA-08	CCLE-NOMO-1	Chronic Lymphocytic Leukemia	RNA-Seq	Female	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	NOMO-1	Cell Line
+5876fbad-1149-47e2-b164-45ffc730916a	CCLE-TGBC11TKB-RNA-08	CCLE-TGBC11TKB	Stomach adenocarcinoma	RNA-Seq	Not available	CCLE-STAD	Illumina	stomach	HG19_Broad_variant	TGBC11TKB	Cell Line
+91e17f47-7ea6-48f4-9f5c-8b6c5216174b	CCLE-TE-10-RNA-08	CCLE-TE-10	Esophageal carcinoma	RNA-Seq	Not available	CCLE-ESCA	Illumina	oesophagus	HG19_Broad_variant	TE-10	Cell Line
+2484065c-efdd-4c85-a999-6030a53a6767	CCLE-SW1353-RNA-08	CCLE-SW1353	Sarcoma	RNA-Seq	Female	CCLE-SARC	Illumina	bone	HG19_Broad_variant	SW1353	Cell Line
+89e0ade1-c40e-4f1f-9fa9-0c9ae3b9ab4a	CCLE-MV-4-11-RNA-08	CCLE-MV-4-11	Chronic Lymphocytic Leukemia	RNA-Seq	Male	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	MV-4-11	Cell Line
+f47e0182-ba52-4a38-90e0-00537ef227a1	CCLE-42-MG-BA-RNA-08	CCLE-42-MG-BA	Brain Lower Grade Glioma	RNA-Seq	Male	CCLE-LGG	Illumina	central_nervous_system	HG19_Broad_variant	42-MG-BA	Cell Line
+9b88b1c7-7862-48dd-b914-922f1dc3e13d	CCLE-MDA-MB-361-RNA-08	CCLE-MDA-MB-361	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	MDA-MB-361	Cell Line
+a5448cc4-9bb9-4f99-a181-8ef662c87d79	CCLE-MOLP-8-RNA-08	CCLE-MOLP-8	Multiple Myeloma Plasma cell leukemia	RNA-Seq	Male	CCLE-MM	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	MOLP-8	Cell Line
+061fd88f-0e88-47ef-b353-528d099ddd49	CCLE-Hs600.T-RNA-08	CCLE-Hs600.T	Skin Cutaneous Melanoma	RNA-Seq	Not available	CCLE-SKCM	Illumina	skin	HG19_Broad_variant	Hs600.T	Cell Line
+b777e0e2-9939-4777-9a57-bb4194a08ed1	CCLE-Li-7-RNA-08	CCLE-Li-7	Liver hepatocellular carcinoma	RNA-Seq	Not available	CCLE-LIHC	Illumina	liver	HG19_Broad_variant	Li-7	Cell Line
+cd98f429-c7ac-45ad-9eda-2d6bb646dbe1	CCLE-PA-TU-8988T-RNA-08	CCLE-PA-TU-8988T	Pancreatic adenocarcinoma	RNA-Seq	Female	CCLE-PAAD	Illumina	pancreas	HG19_Broad_variant	PA-TU-8988T	Cell Line
+06d83cad-4d5d-489c-8bcc-960d7a0fee8b	CCLE-JHH-1-RNA-08	CCLE-JHH-1	Liver hepatocellular carcinoma	RNA-Seq	Male	CCLE-LIHC	Illumina	liver	HG19_Broad_variant	JHH-1	Cell Line
+00f02b84-6d71-4c5e-b92a-0ebce0d43f9d	CCLE-TT-RNA-08	CCLE-TT	Thyroid carcinoma	RNA-Seq	Female	CCLE-THCA	Illumina	thyroid	HG19_Broad_variant	TT	Cell Line
+0ca47851-0647-42ef-9eaa-9a2aaca17893	CCLE-GSU-RNA-08	CCLE-GSU	Stomach adenocarcinoma	RNA-Seq	Not available	CCLE-STAD	Illumina	stomach	HG19_Broad_variant	GSU	Cell Line
+40275d35-a50f-4992-b450-ee7317e94612	CCLE-MEG-01-RNA-08	CCLE-MEG-01	Chronic Lymphocytic Leukemia	RNA-Seq	Male	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	MEG-01	Cell Line
+f073ba2e-d91d-451e-a174-d583effa32cf	CCLE-LXF-289-RNA-08	CCLE-LXF-289	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	LXF-289	Cell Line
+4e0a60ee-4936-49fd-b95b-f420ea0f6bae	CCLE-COV362-RNA-08	CCLE-COV362	Ovarian serous cystadenocarcinoma	RNA-Seq	Female	CCLE-OV	Illumina	ovary	HG19_Broad_variant	COV362	Cell Line
+b49e7f0d-9c6b-4865-b93a-d99ab78fd77d	CCLE-NCI-H1666-RNA-08	CCLE-NCI-H1666	Lung squamous cell carcinoma	RNA-Seq	Female	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H1666	Cell Line
+77a7bc07-60b5-4eab-948a-ce7eef317db3	CCLE-Capan-2-RNA-08	CCLE-Capan-2	Pancreatic adenocarcinoma	RNA-Seq	Male	CCLE-PAAD	Illumina	pancreas	HG19_Broad_variant	Capan-2	Cell Line
+0e11f01d-49fb-4c2d-a577-bbe320b7ca5b	CCLE-KP-N-RT-BM-1-RNA-08	CCLE-KP-N-RT-BM-1	Brain Lower Grade Glioma	RNA-Seq	Not available	CCLE-LGG	Illumina	autonomic_ganglia	HG19_Broad_variant	KP-N-RT-BM-1	Cell Line
+66d5390b-c614-43ce-bcee-8f5d7ff30ec3	CCLE-VCaP-RNA-08	CCLE-VCaP	Prostate adenocarcinoma	RNA-Seq	Male	CCLE-PRAD	Illumina	prostate	HG19_Broad_variant	VCaP	Cell Line
+6cffd586-e902-4c48-b648-05bd3675f9ab	CCLE-NCI-H211-RNA-08	CCLE-NCI-H211	Lung squamous cell carcinoma	RNA-Seq	Female	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H211	Cell Line
+b59810af-42ae-411a-8913-284ebe090440	CCLE-COLO-800-RNA-08	CCLE-COLO-800	Skin Cutaneous Melanoma	RNA-Seq	Not available	CCLE-SKCM	Illumina	skin	HG19_Broad_variant	COLO-800	Cell Line
+f8b017bd-a73f-41fa-a1d5-2716cffb74f3	CCLE-MES-SA-RNA-08	CCLE-MES-SA	Sarcoma	RNA-Seq	Female	CCLE-SARC	Illumina	soft_tissue	HG19_Broad_variant	MES-SA	Cell Line
+2a2f4666-2893-4357-a3c5-34f5523f7ac3	CCLE-PA-TU-8988S-RNA-08	CCLE-PA-TU-8988S	Pancreatic adenocarcinoma	RNA-Seq	Female	CCLE-PAAD	Illumina	pancreas	HG19_Broad_variant	PA-TU-8988S	Cell Line
+62cb2e2b-635e-48fc-8bd2-692c8944095c	CCLE-KNS-42-RNA-08	CCLE-KNS-42	Brain Lower Grade Glioma	RNA-Seq	Male	CCLE-LGG	Illumina	central_nervous_system	HG19_Broad_variant	KNS-42	Cell Line
+6d4f0603-d9f4-47e0-83a4-857c634fa656	CCLE-NALM-1-RNA-08	CCLE-NALM-1	Chronic Lymphocytic Leukemia	RNA-Seq	Female	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	NALM-1	Cell Line
+b9910859-8088-489a-a59b-95e4aa8005a9	CCLE-HuCCT1-RNA-08	CCLE-HuCCT1	Liver hepatocellular carcinoma	RNA-Seq	Male	CCLE-LIHC	Illumina	biliary_tract	HG19_Broad_variant	HuCCT1	Cell Line
+e3841acd-4f3c-4f99-ba51-6a7405fe976e	CCLE-CHP-212-RNA-08	CCLE-CHP-212	Brain Lower Grade Glioma	RNA-Seq	Not available	CCLE-LGG	Illumina	autonomic_ganglia	HG19_Broad_variant	CHP-212	Cell Line
+ad94b119-c331-4edc-901a-6f4065d28470	CCLE-CAL-85-1-RNA-08	CCLE-CAL-85-1	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	CAL-85-1	Cell Line
+e8385ceb-1e07-4176-8b80-4f9e75531007	CCLE-SK-N-FI-RNA-08	CCLE-SK-N-FI	Brain Lower Grade Glioma	RNA-Seq	Male	CCLE-LGG	Illumina	autonomic_ganglia	HG19_Broad_variant	SK-N-FI	Cell Line
+9c38c8f4-3ebf-490a-ac7b-4bce9892e0c0	CCLE-JHUEM-7-RNA-08	CCLE-JHUEM-7	Cervical squamous cell carcinoma and endocervical adenocarcinoma	RNA-Seq	Female	CCLE-CESC	Illumina	endometrium	HG19_Broad_variant	JHUEM-7	Cell Line
+2f246764-c7c1-414a-a121-e7ed8d0ab774	CCLE-WM-115-RNA-08	CCLE-WM-115	Skin Cutaneous Melanoma	RNA-Seq	Female	CCLE-SKCM	Illumina	skin	HG19_Broad_variant	WM-115	Cell Line
+8a3038ca-7378-4e0a-98cc-53a93d1d4d22	CCLE-SNU-423-RNA-08	CCLE-SNU-423	Liver hepatocellular carcinoma	RNA-Seq	Male	CCLE-LIHC	Illumina	liver	HG19_Broad_variant	SNU-423	Cell Line
+6926491d-38db-4efb-8411-22dc4d6a1c1b	CCLE-HOP-62-RNA-08	CCLE-HOP-62	Lung squamous cell carcinoma	RNA-Seq	Not available	CCLE-LUSC	Illumina	Not available	HG19_Broad_variant	HOP-62	Cell Line
+a2f748fc-91cf-4835-9449-91ae19d50e27	CCLE-OUMS-23-RNA-08	CCLE-OUMS-23	Colon adenocarcinoma	RNA-Seq	Not available	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	OUMS-23	Cell Line
+e989abea-81a3-4947-b3cb-b2a64b1f724f	CCLE-COV644-RNA-08	CCLE-COV644	Ovarian serous cystadenocarcinoma	RNA-Seq	Female	CCLE-OV	Illumina	ovary	HG19_Broad_variant	COV644	Cell Line
+0ca4b611-0af9-4b5e-a687-7aef0bc6d55c	CCLE-NCI-H747-RNA-08	CCLE-NCI-H747	Colon adenocarcinoma	RNA-Seq	Male	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	NCI-H747	Cell Line
+0bbf95f1-2a34-448b-80b1-42f1323c7cea	CCLE-MONO-MAC-6-RNA-08	CCLE-MONO-MAC-6	Chronic Lymphocytic Leukemia	RNA-Seq	Male	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	MONO-MAC-6	Cell Line
+1e1dcd43-4323-4e49-a670-0075c1815204	CCLE-SW1783-RNA-08	CCLE-SW1783	Brain Lower Grade Glioma	RNA-Seq	Male	CCLE-LGG	Illumina	central_nervous_system	HG19_Broad_variant	SW1783	Cell Line
+f5dfc203-6840-4456-adf8-6c921986f4fc	CCLE-Caov-3-RNA-08	CCLE-Caov-3	Ovarian serous cystadenocarcinoma	RNA-Seq	Female	CCLE-OV	Illumina	ovary	HG19_Broad_variant	Caov-3	Cell Line
+872a3baa-00cc-486e-a4f8-85eb51bafce4	CCLE-Hs675.T-RNA-08	CCLE-Hs675.T	Colon adenocarcinoma	RNA-Seq	Male	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	Hs675.T	Cell Line
+f631ab56-11cb-4cbd-9179-f3f3ddfce7c7	CCLE-RPMI-7951-RNA-08	CCLE-RPMI-7951	Skin Cutaneous Melanoma	RNA-Seq	Female	CCLE-SKCM	Illumina	skin	HG19_Broad_variant	RPMI-7951	Cell Line
+ca1b8c29-243b-4fca-a6d2-b876e1faed5d	CCLE-U-937-RNA-08	CCLE-U-937	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Male	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	U-937	Cell Line
+20ca17de-de36-492a-84d2-0ab0b8605a27	CCLE-KMBC-2-RNA-08	CCLE-KMBC-2	Bladder Urothelial Carcinoma	RNA-Seq	Not available	CCLE-BLCA	Illumina	urinary_tract	HG19_Broad_variant	KMBC-2	Cell Line
+2910bad9-41df-4471-81d4-5250375d60d6	CCLE-KNS-60-RNA-08	CCLE-KNS-60	Brain Lower Grade Glioma	RNA-Seq	Male	CCLE-LGG	Illumina	central_nervous_system	HG19_Broad_variant	KNS-60	Cell Line
+5c4ad724-90ca-4baa-a165-0754cc348c6a	CCLE-SK-MEL-28-RNA-08	CCLE-SK-MEL-28	Skin Cutaneous Melanoma	RNA-Seq	Male	CCLE-SKCM	Illumina	skin	HG19_Broad_variant	SK-MEL-28	Cell Line
+1bcf7a1c-05f6-46e6-a1a3-c871372bb3a4	CCLE-Pfeiffer-RNA-08	CCLE-Pfeiffer	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Male	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	Pfeiffer	Cell Line
+4cd1920a-f421-4910-a5c5-1b72c4538ce7	CCLE-U-251MG-RNA-08	CCLE-U-251MG	Brain Lower Grade Glioma	RNA-Seq	Male	CCLE-LGG	Illumina	central_nervous_system	HG19_Broad_variant	U-251MG	Cell Line
+a3f5e399-af24-4595-a70d-38969c40ecb6	CCLE-JK-1-RNA-08	CCLE-JK-1	Chronic Lymphocytic Leukemia	RNA-Seq	Male	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	JK-1	Cell Line
+f12f107d-cef6-4583-bf46-f61ad6e550bc	CCLE-Kasumi-6-RNA-08	CCLE-Kasumi-6	Chronic Lymphocytic Leukemia	RNA-Seq	Male	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	Kasumi-6	Cell Line
+3c72b35d-719a-4489-b8a0-54bd0a551870	CCLE-L-540-RNA-08	CCLE-L-540	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Female	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	L-540	Cell Line
+6630e532-e3e7-43c5-bfff-78d60d0ff3cf	CCLE-CAL-33-RNA-08	CCLE-CAL-33	Head and Neck squamous cell carcinoma	RNA-Seq	Male	CCLE-HNSC	Illumina	upper_aerodigestive_tract	HG19_Broad_variant	CAL-33	Cell Line
+f894c15e-5f4d-480a-928a-284272285de1	CCLE-HuG1-N-RNA-08	CCLE-HuG1-N	Stomach adenocarcinoma	RNA-Seq	Male	CCLE-STAD	Illumina	stomach	HG19_Broad_variant	HuG1-N	Cell Line
+d367db0b-27d9-4856-9489-bb085e1b998e	CCLE-COR-L279-RNA-08	CCLE-COR-L279	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	COR-L279	Cell Line
+104c183e-6b9f-44b0-94ba-d0fb42bfc2f3	CCLE-SK-N-MC-RNA-08	CCLE-SK-N-MC	Brain Lower Grade Glioma	RNA-Seq	Female	CCLE-LGG	Illumina	bone	HG19_Broad_variant	SK-N-MC	Cell Line
+62d42c74-8a5a-46a7-af99-125b60f9ecac	CCLE-TE-15-RNA-08	CCLE-TE-15	Esophageal carcinoma	RNA-Seq	Female	CCLE-ESCA	Illumina	oesophagus	HG19_Broad_variant	TE-15	Cell Line
+452b5703-56e1-4467-b79b-203027bd67ce	CCLE-OCI-AML5-RNA-08	CCLE-OCI-AML5	Chronic Lymphocytic Leukemia	RNA-Seq	Male	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	OCI-AML5	Cell Line
+4478d502-2222-44f4-95b6-c8cb2ebc017e	CCLE-SF539-RNA-08	CCLE-SF539	Brain Lower Grade Glioma	RNA-Seq	Not available	CCLE-LGG	Illumina	Not available	HG19_Broad_variant	SF539	Cell Line
+a94c9771-b172-4a24-865b-af3f112a83b2	CCLE-COLO-680N-RNA-08	CCLE-COLO-680N	Esophageal carcinoma	RNA-Seq	Female	CCLE-ESCA	Illumina	oesophagus	HG19_Broad_variant	COLO-680N	Cell Line
+1acf65a0-0268-4288-9904-33bff618a31d	CCLE-PE-CA-PJ41cloneD2-RNA-08	CCLE-PE-CA-PJ41cloneD2	Head and Neck squamous cell carcinoma	RNA-Seq	Female	CCLE-HNSC	Illumina	upper_aerodigestive_tract	HG19_Broad_variant	PE-CA-PJ41cloneD2	Cell Line
+20b65872-72bc-4e5c-8bf3-901fee399e05	CCLE-ES-2-RNA-08	CCLE-ES-2	Ovarian serous cystadenocarcinoma	RNA-Seq	Female	CCLE-OV	Illumina	ovary	HG19_Broad_variant	ES-2	Cell Line
+04006920-bfbd-4de8-941b-f34015f7ce8e	CCLE-COR-L105-RNA-08	CCLE-COR-L105	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	COR-L105	Cell Line
+0c413179-bf99-4f89-af7d-04462ebe5271	CCLE-SNU-449-RNA-08	CCLE-SNU-449	Liver hepatocellular carcinoma	RNA-Seq	Male	CCLE-LIHC	Illumina	liver	HG19_Broad_variant	SNU-449	Cell Line
+17b48350-84fb-486e-bf5a-02b371d5e8d7	CCLE-ABC-1-RNA-08	CCLE-ABC-1	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	ABC-1	Cell Line
+5b7127e3-d144-4db0-9a42-a0e36c520423	CCLE-KARPAS-422-RNA-08	CCLE-KARPAS-422	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Not available	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	KARPAS-422	Cell Line
+8cdf19b8-1242-4698-8116-fa17ea20df3b	CCLE-KYSE-70-RNA-08	CCLE-KYSE-70	Esophageal carcinoma	RNA-Seq	Male	CCLE-ESCA	Illumina	oesophagus	HG19_Broad_variant	KYSE-70	Cell Line
+3f5c41c5-07ec-4f7a-8038-ac856248834f	CCLE-MDA-MB-415-RNA-08	CCLE-MDA-MB-415	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	MDA-MB-415	Cell Line
+688602fd-3eb9-4c32-9e99-4eae1007600f	CCLE-SW620-RNA-08	CCLE-SW620	Colon adenocarcinoma	RNA-Seq	Male	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	SW620	Cell Line
+47030e40-acbd-4905-939c-d57441d7042e	CCLE-NCI-H2171-RNA-08	CCLE-NCI-H2171	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H2171	Cell Line
+0dfd087c-1220-49d2-baac-44890d7906de	CCLE-SNU-1076-RNA-08	CCLE-SNU-1076	Head and Neck squamous cell carcinoma	RNA-Seq	Male	CCLE-HNSC	Illumina	upper_aerodigestive_tract	HG19_Broad_variant	SNU-1076	Cell Line
+4eb9d31a-ea92-4846-8791-59f3ad7837e3	CCLE-SK-BR-3-RNA-08	CCLE-SK-BR-3	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	SK-BR-3	Cell Line
+7c80bf20-84ab-4449-b8cf-9871ea6c915f	CCLE-RMUG-S-RNA-08	CCLE-RMUG-S	Ovarian serous cystadenocarcinoma	RNA-Seq	Female	CCLE-OV	Illumina	ovary	HG19_Broad_variant	RMUG-S	Cell Line
+6e9d00b4-a012-40b6-b342-4dcdfe389c0b	CCLE-HUP-T4-RNA-08	CCLE-HUP-T4	Pancreatic adenocarcinoma	RNA-Seq	Male	CCLE-PAAD	Illumina	pancreas	HG19_Broad_variant	HUP-T4	Cell Line
+89b9acb0-29d5-48cb-8e8a-b953a2cb0590	CCLE-LAMA-84-RNA-08	CCLE-LAMA-84	Chronic Lymphocytic Leukemia	RNA-Seq	Female	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	LAMA-84	Cell Line
+b1f430a4-af50-46be-bd02-1a4e4f2feb68	CCLE-SNU-719-RNA-08	CCLE-SNU-719	Stomach adenocarcinoma	RNA-Seq	Male	CCLE-STAD	Illumina	stomach	HG19_Broad_variant	SNU-719	Cell Line
+66bc4593-cd97-4f73-964a-235bfa51794e	CCLE-COR-L95-RNA-08	CCLE-COR-L95	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	COR-L95	Cell Line
+016fa736-7ff0-4d35-b01c-69d3040c0b8f	CCLE-YD-10B-RNA-08	CCLE-YD-10B	Head and Neck squamous cell carcinoma	RNA-Seq	Male	CCLE-HNSC	Illumina	upper_aerodigestive_tract	HG19_Broad_variant	YD-10B	Cell Line
+b2df25b2-2250-44a2-9947-d68f4946fc8a	CCLE-GCT-RNA-08	CCLE-GCT	Sarcoma	RNA-Seq	Male	CCLE-SARC	Illumina	soft_tissue	HG19_Broad_variant	GCT	Cell Line
+ac5912cd-faad-44b0-84db-a00654eaf26d	CCLE-OVTOKO-RNA-08	CCLE-OVTOKO	Ovarian serous cystadenocarcinoma	RNA-Seq	Female	CCLE-OV	Illumina	ovary	HG19_Broad_variant	OVTOKO	Cell Line
+f8102544-a3ce-41de-a8c9-af708d95ddbc	CCLE-SW403-RNA-08	CCLE-SW403	Colon adenocarcinoma	RNA-Seq	Female	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	SW403	Cell Line
+f46a076d-08b9-418c-8fde-398c9606d1f3	CCLE-AU565-RNA-08	CCLE-AU565	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	AU565	Cell Line
+7ef5e9be-a911-4d7c-83de-79a10902d6aa	CCLE-NCI-H1694-RNA-08	CCLE-NCI-H1694	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H1694	Cell Line
+98a0206b-29f5-42d3-957b-6480e2fde185	CCLE-HCC-15-RNA-08	CCLE-HCC-15	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	HCC-15	Cell Line
+4552e52e-a8b6-4beb-aef1-1075353473ac	CCLE-MHH-NB-11-RNA-08	CCLE-MHH-NB-11	Brain Lower Grade Glioma	RNA-Seq	Male	CCLE-LGG	Illumina	autonomic_ganglia	HG19_Broad_variant	MHH-NB-11	Cell Line
+0f5ba7d3-6f43-44af-9bbc-f9b4c09bbfeb	CCLE-MDA-MB-231-RNA-08	CCLE-MDA-MB-231	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	MDA-MB-231	Cell Line
+fcafb383-a8ba-4a2a-8564-255eb9cde9a7	CCLE-MDA-MB-468-RNA-08	CCLE-MDA-MB-468	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	MDA-MB-468	Cell Line
+d9d1c20a-d775-46b7-9502-7e97d1f3a6e8	CCLE-SNU-475-RNA-08	CCLE-SNU-475	Liver hepatocellular carcinoma	RNA-Seq	Male	CCLE-LIHC	Illumina	liver	HG19_Broad_variant	SNU-475	Cell Line
+311ef801-241b-4a6c-bc9e-76d4ecc28d4f	CCLE-JHH-5-RNA-08	CCLE-JHH-5	Liver hepatocellular carcinoma	RNA-Seq	Male	CCLE-LIHC	Illumina	liver	HG19_Broad_variant	JHH-5	Cell Line
+632647a6-5cb3-4117-b549-fdb440221db9	CCLE-WM-88-RNA-08	CCLE-WM-88	Skin Cutaneous Melanoma	RNA-Seq	Not available	CCLE-SKCM	Illumina	skin	HG19_Broad_variant	WM-88	Cell Line
+44dcf574-506e-434a-b788-460a69167cd4	CCLE-MDA-MB-436-RNA-08	CCLE-MDA-MB-436	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	MDA-MB-436	Cell Line
+dfe44eb8-f15d-4b90-af6b-4db2ff59c623	CCLE-HCC1599-RNA-08	CCLE-HCC1599	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	HCC1599	Cell Line
+a6026e7e-4ca2-40f8-b2b3-bfadeb230e3a	CCLE-SF126-RNA-08	CCLE-SF126	Brain Lower Grade Glioma	RNA-Seq	Not available	CCLE-LGG	Illumina	central_nervous_system	HG19_Broad_variant	SF126	Cell Line
+fe83299a-e7bd-489a-a470-649b2159566f	CCLE-A2058-RNA-08	CCLE-A2058	Skin Cutaneous Melanoma	RNA-Seq	Male	CCLE-SKCM	Illumina	skin	HG19_Broad_variant	A2058	Cell Line
+6f50b1cf-4975-4638-ae6c-5f6b25e8a1a5	CCLE-VMRC-RCZ-RNA-08	CCLE-VMRC-RCZ	Kidney renal clear cell carcinoma	RNA-Seq	Not available	CCLE-KIRC	Illumina	kidney	HG19_Broad_variant	VMRC-RCZ	Cell Line
+586b5389-a51d-47f5-b51e-9e05ece0f289	CCLE-KE-39-RNA-08	CCLE-KE-39	Stomach adenocarcinoma	RNA-Seq	Male	CCLE-STAD	Illumina	stomach	HG19_Broad_variant	KE-39	Cell Line
+9d1499ba-1000-42e4-8d90-2fd373a95309	CCLE-Panc02.03-RNA-08	CCLE-Panc02.03	Pancreatic adenocarcinoma	RNA-Seq	Female	CCLE-PAAD	Illumina	pancreas	HG19_Broad_variant	Panc02.03	Cell Line
+db72b457-23e1-4e81-9161-36cf3aef4464	CCLE-A-673-RNA-08	CCLE-A-673	Sarcoma	RNA-Seq	Female	CCLE-SARC	Illumina	bone	HG19_Broad_variant	A-673	Cell Line
+ff157ede-b643-4644-a305-ca67157df7e9	CCLE-MDA-MB-134-VI-RNA-08	CCLE-MDA-MB-134-VI	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	MDA-MB-134-VI	Cell Line
+be38fbd8-2a1a-4ef4-841d-64a041b178a5	CCLE-UACC-893-RNA-08	CCLE-UACC-893	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	UACC-893	Cell Line
+82ffe43f-314e-474b-afe8-cb3a5d472743	CCLE-TE-9-RNA-08	CCLE-TE-9	Esophageal carcinoma	RNA-Seq	Male	CCLE-ESCA	Illumina	oesophagus	HG19_Broad_variant	TE-9	Cell Line
+81ad5486-1ec0-444c-b632-23a483915975	CCLE-MKN74-RNA-08	CCLE-MKN74	Stomach adenocarcinoma	RNA-Seq	Male	CCLE-STAD	Illumina	stomach	HG19_Broad_variant	MKN74	Cell Line
+a10051c1-c141-45a2-b5a5-14e543ac95f8	CCLE-SW948-RNA-08	CCLE-SW948	Colon adenocarcinoma	RNA-Seq	Female	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	SW948	Cell Line
+f996e5cb-ffae-410e-b78b-5c33ac440411	CCLE-JHUEM-2-RNA-08	CCLE-JHUEM-2	Cervical squamous cell carcinoma and endocervical adenocarcinoma	RNA-Seq	Female	CCLE-CESC	Illumina	endometrium	HG19_Broad_variant	JHUEM-2	Cell Line
+7d50e571-2e84-45b6-b475-581885823a05	CCLE-769-P-RNA-08	CCLE-769-P	Kidney renal clear cell carcinoma	RNA-Seq	Female	CCLE-KIRC	Illumina	kidney	HG19_Broad_variant	769-P	Cell Line
+8b15bc54-1ef1-43b3-a373-3000bbf4706b	CCLE-PK-45H-RNA-08	CCLE-PK-45H	Pancreatic adenocarcinoma	RNA-Seq	Not available	CCLE-PAAD	Illumina	pancreas	HG19_Broad_variant	PK-45H	Cell Line
+5e3752d6-deb7-4f2a-ae9f-13e62b8099f8	CCLE-Panc04.03-RNA-08	CCLE-Panc04.03	Pancreatic adenocarcinoma	RNA-Seq	Male	CCLE-PAAD	Illumina	pancreas	HG19_Broad_variant	Panc04.03	Cell Line
+45e4bf91-e60b-4fc2-93f8-0b4d9b26233c	CCLE-SNU-869-RNA-08	CCLE-SNU-869	Liver hepatocellular carcinoma	RNA-Seq	Not available	CCLE-LIHC	Illumina	biliary_tract	HG19_Broad_variant	SNU-869	Cell Line
+4cf4ca58-453d-4ef8-a8f7-8c47bce9002a	CCLE-COR-L47-RNA-08	CCLE-COR-L47	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	COR-L47	Cell Line
+f5282a2c-c5d7-430d-bde3-717c96db4a03	CCLE-ESS-1-RNA-08	CCLE-ESS-1	Uterine Corpus Endometrioid Carcinoma	RNA-Seq	Female	CCLE-UCEC	Illumina	endometrium	HG19_Broad_variant	ESS-1	Cell Line
+3b19271c-709f-43c7-af47-48528d3c6798	CCLE-JJN-3-RNA-08	CCLE-JJN-3	Multiple Myeloma Plasma cell leukemia	RNA-Seq	Female	CCLE-MM	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	JJN-3	Cell Line
+96dbdc8d-bf32-4ca1-bfc5-471d07430f83	CCLE-AM-38-RNA-08	CCLE-AM-38	Brain Lower Grade Glioma	RNA-Seq	Male	CCLE-LGG	Illumina	central_nervous_system	HG19_Broad_variant	AM-38	Cell Line
+a39bdecf-761d-416a-a90e-8bc5a383e1ce	CCLE-TEN-RNA-08	CCLE-TEN	Uterine Corpus Endometrioid Carcinoma	RNA-Seq	Female	CCLE-UCEC	Illumina	endometrium	HG19_Broad_variant	TEN	Cell Line
+c8a04504-3061-47c0-beea-bd2651116056	CCLE-OVCAR-4-RNA-08	CCLE-OVCAR-4	Ovarian serous cystadenocarcinoma	RNA-Seq	Female	CCLE-OV	Illumina	ovary	HG19_Broad_variant	OVCAR-4	Cell Line
+12bf6e43-8aa7-471a-b733-98c50a6a5cbd	CCLE-CL-14-RNA-08	CCLE-CL-14	Colon adenocarcinoma	RNA-Seq	Male	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	CL-14	Cell Line
+57e083be-222a-47af-9619-785fb68eb4bd	CCLE-SK-MEL-30-RNA-08	CCLE-SK-MEL-30	Skin Cutaneous Melanoma	RNA-Seq	Male	CCLE-SKCM	Illumina	skin	HG19_Broad_variant	SK-MEL-30	Cell Line
+7694ecf8-ef6c-4306-bdf7-c5060940089a	CCLE-NCI-H1355-RNA-08	CCLE-NCI-H1355	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H1355	Cell Line
+8d1c557b-110e-4f9a-9ed8-b6c8faf9b025	CCLE-VMRC-RCW-RNA-08	CCLE-VMRC-RCW	Kidney renal clear cell carcinoma	RNA-Seq	Male	CCLE-KIRC	Illumina	kidney	HG19_Broad_variant	VMRC-RCW	Cell Line
+5aa5d841-f357-45c2-a40a-ad5d9cdd9ed1	CCLE-SNU-1079-RNA-08	CCLE-SNU-1079	Liver hepatocellular carcinoma	RNA-Seq	Not available	CCLE-LIHC	Illumina	biliary_tract	HG19_Broad_variant	SNU-1079	Cell Line
+f2e7f763-cc29-4252-aece-acc5d8da22dc	CCLE-TALL-1-RNA-08	CCLE-TALL-1	Chronic Lymphocytic Leukemia	RNA-Seq	Male	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	TALL-1	Cell Line
+490d5ea8-f672-4436-8657-77301792b44b	CCLE-A101D-RNA-08	CCLE-A101D	Skin Cutaneous Melanoma	RNA-Seq	Male	CCLE-SKCM	Illumina	skin	HG19_Broad_variant	A101D	Cell Line
+5898593a-0667-464b-a270-69141e2a4fc5	CCLE-HT-144-RNA-08	CCLE-HT-144	Skin Cutaneous Melanoma	RNA-Seq	Male	CCLE-SKCM	Illumina	skin	HG19_Broad_variant	HT-144	Cell Line
+f82bda09-8490-495c-b8d2-036db3ba078e	CCLE-LS180-RNA-08	CCLE-LS180	Colon adenocarcinoma	RNA-Seq	Female	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	LS180	Cell Line
+12e3cf5c-344b-4886-bb77-a972326c338c	CCLE-KP-N-YN-RNA-08	CCLE-KP-N-YN	Brain Lower Grade Glioma	RNA-Seq	Not available	CCLE-LGG	Illumina	autonomic_ganglia	HG19_Broad_variant	KP-N-YN	Cell Line
+5b904e4c-21cc-490a-bbb7-cb561b89f996	CCLE-HT-1376-RNA-08	CCLE-HT-1376	Bladder Urothelial Carcinoma	RNA-Seq	Female	CCLE-BLCA	Illumina	urinary_tract	HG19_Broad_variant	HT-1376	Cell Line
+2056cb9d-dc70-44b0-896b-7518b7d8aebe	CCLE-HCT-15-RNA-08	CCLE-HCT-15	Colon adenocarcinoma	RNA-Seq	Male	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	HCT-15	Cell Line
+fa4dc8c7-d6fb-4f6b-83b1-f0ea1ae73571	CCLE-RERF-LC-Ad2-RNA-08	CCLE-RERF-LC-Ad2	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	RERF-LC-Ad2	Cell Line
+c4f0e026-2684-446e-8dc3-478ad8f0dc32	CCLE-SCC-9-RNA-08	CCLE-SCC-9	Head and Neck squamous cell carcinoma	RNA-Seq	Male	CCLE-HNSC	Illumina	upper_aerodigestive_tract	HG19_Broad_variant	SCC-9	Cell Line
+e57531d4-02b8-43e5-9890-d097470adbd6	CCLE-SKM-1-RNA-08	CCLE-SKM-1	Chronic Lymphocytic Leukemia	RNA-Seq	Male	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	SKM-1	Cell Line
+0bd03808-4b4b-4bfd-b8ff-163af5efc240	CCLE-HL-60-RNA-08	CCLE-HL-60	Chronic Lymphocytic Leukemia	RNA-Seq	Female	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	HL-60	Cell Line
+c6facd46-b996-43ce-99e1-05c06bc40b5d	CCLE-SW837-RNA-08	CCLE-SW837	Colon adenocarcinoma	RNA-Seq	Male	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	SW837	Cell Line
+a81d14ae-3412-4bd3-bde6-56669a5abd8a	CCLE-8-MG-BA-RNA-08	CCLE-8-MG-BA	Brain Lower Grade Glioma	RNA-Seq	Female	CCLE-LGG	Illumina	central_nervous_system	HG19_Broad_variant	8-MG-BA	Cell Line
+0e67231f-97be-447c-b3b0-a656fc30a62d	CCLE-PE-CA-PJ15-RNA-08	CCLE-PE-CA-PJ15	Head and Neck squamous cell carcinoma	RNA-Seq	Male	CCLE-HNSC	Illumina	upper_aerodigestive_tract	HG19_Broad_variant	PE-CA-PJ15	Cell Line
+1e45f714-878e-4748-bb37-4ccb7e6a3ec1	CCLE-LS513-RNA-08	CCLE-LS513	Colon adenocarcinoma	RNA-Seq	Male	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	LS513	Cell Line
+f331fd36-e0aa-481c-9644-b7e20dbc4d90	CCLE-ACC-MESO-1-RNA-08	CCLE-ACC-MESO-1	Mesothelioma	RNA-Seq	Not available	CCLE-MESO	Illumina	pleura	HG19_Broad_variant	ACC-MESO-1	Cell Line
+6d38ddd0-b2f2-489d-865b-b27f2ca1497d	CCLE-TUHR14TKB-RNA-08	CCLE-TUHR14TKB	Kidney renal clear cell carcinoma	RNA-Seq	Not available	CCLE-KIRC	Illumina	kidney	HG19_Broad_variant	TUHR14TKB	Cell Line
+1c30190d-7956-4db9-903b-a683f9a83377	CCLE-SK-MEL-24-RNA-08	CCLE-SK-MEL-24	Skin Cutaneous Melanoma	RNA-Seq	Male	CCLE-SKCM	Illumina	skin	HG19_Broad_variant	SK-MEL-24	Cell Line
+bb717516-9c25-4c9b-8cbe-47cd7dfc8b5f	CCLE-OE19-RNA-08	CCLE-OE19	Esophageal carcinoma	RNA-Seq	Male	CCLE-ESCA	Illumina	oesophagus	HG19_Broad_variant	OE19	Cell Line
+80567efe-354e-4495-88c6-a70ec5f8a491	CCLE-NCI-H650-RNA-08	CCLE-NCI-H650	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H650	Cell Line
+1c497784-5bc0-4843-bd2e-df3f9590e779	CCLE-NCI-H1755-RNA-08	CCLE-NCI-H1755	Lung squamous cell carcinoma	RNA-Seq	Female	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H1755	Cell Line
+c53d0ac1-5279-4db0-8443-3c45a9aa8187	CCLE-EKVX-RNA-08	CCLE-EKVX	Lung squamous cell carcinoma	RNA-Seq	Not available	CCLE-LUSC	Illumina	Not available	HG19_Broad_variant	EKVX	Cell Line
+17a35dee-92e3-475b-b64c-de40ac93cbb6	CCLE-RCH-ACV-RNA-08	CCLE-RCH-ACV	Chronic Lymphocytic Leukemia	RNA-Seq	Female	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	RCH-ACV	Cell Line
+2c86a804-39e7-4f54-a973-89b9c502df29	CCLE-A-498-RNA-08	CCLE-A-498	Kidney renal clear cell carcinoma	RNA-Seq	Female	CCLE-KIRC	Illumina	kidney	HG19_Broad_variant	A-498	Cell Line
+c31494e0-a985-44eb-8762-335eeaf5fd59	CCLE-SNU-349-RNA-08	CCLE-SNU-349	Kidney renal clear cell carcinoma	RNA-Seq	Male	CCLE-KIRC	Illumina	kidney	HG19_Broad_variant	SNU-349	Cell Line
+3e7984b2-baae-4ed7-97c5-64b5d762ff64	CCLE-HCC-44-RNA-08	CCLE-HCC-44	Lung squamous cell carcinoma	RNA-Seq	Female	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	HCC-44	Cell Line
+cd3f7e33-1813-44a5-b43f-0f358e7f2bd0	CCLE-Panc05.04-RNA-08	CCLE-Panc05.04	Pancreatic adenocarcinoma	RNA-Seq	Female	CCLE-PAAD	Illumina	pancreas	HG19_Broad_variant	Panc05.04	Cell Line
+581fd312-0bef-4696-81d8-3af8df759b9c	CCLE-HCC827-RNA-08	CCLE-HCC827	Lung squamous cell carcinoma	RNA-Seq	Female	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	HCC827	Cell Line
+28b5b5b9-5e07-4880-9ab0-87c599b5d8b0	CCLE-G-292cloneA141B1-RNA-08	CCLE-G-292cloneA141B1	Sarcoma	RNA-Seq	Female	CCLE-SARC	Illumina	bone	HG19_Broad_variant	G-292cloneA141B1	Cell Line
+5a022d51-5375-412f-b7a4-85db5102678c	CCLE-MG-63-RNA-08	CCLE-MG-63	Sarcoma	RNA-Seq	Male	CCLE-SARC	Illumina	bone	HG19_Broad_variant	MG-63	Cell Line
+20d37f79-4291-409f-b841-54ae581edce2	CCLE-SNU-478-RNA-08	CCLE-SNU-478	Liver hepatocellular carcinoma	RNA-Seq	Not available	CCLE-LIHC	Illumina	biliary_tract	HG19_Broad_variant	SNU-478	Cell Line
+ee432bf6-ba7a-40d8-9e00-6d424d1497c7	CCLE-CCK-81-RNA-08	CCLE-CCK-81	Colon adenocarcinoma	RNA-Seq	Not available	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	CCK-81	Cell Line
+23c8eac1-b5fa-4376-9430-5ffb56c7655a	CCLE-GA-10-RNA-08	CCLE-GA-10	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Male	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	GA-10	Cell Line
+ee1607aa-980d-4246-9f25-fd2a089d7b49	CCLE-NCC-StC-K140-RNA-08	CCLE-NCC-StC-K140	Stomach adenocarcinoma	RNA-Seq	Not available	CCLE-STAD	Illumina	stomach	HG19_Broad_variant	NCC-StC-K140	Cell Line
+5a16bd29-ec46-46da-a9f3-c49f0e2979d4	CCLE-NH-6-RNA-08	CCLE-NH-6	Brain Lower Grade Glioma	RNA-Seq	Not available	CCLE-LGG	Illumina	autonomic_ganglia	HG19_Broad_variant	NH-6	Cell Line
+6eb0df4f-4e7f-4f71-a5a7-316fe9781e64	CCLE-SR-786-RNA-08	CCLE-SR-786	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Male	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	SR-786	Cell Line
+febd180f-ec0d-4564-8f2f-457b4c1dee31	CCLE-U266B1-RNA-08	CCLE-U266B1	Multiple Myeloma Plasma cell leukemia	RNA-Seq	Male	CCLE-MM	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	U266B1	Cell Line
+2f2bce5e-e5ea-46e2-8b13-84333d1ca836	CCLE-L-1236-RNA-08	CCLE-L-1236	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Male	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	L-1236	Cell Line
+e1c0bd84-6eb3-4734-8375-e5dad62c0497	CCLE-HCC4006-RNA-08	CCLE-HCC4006	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	HCC4006	Cell Line
+71ee227e-1d1f-4839-9c80-b3b60c9e632d	CCLE-MIAPaCa-2-RNA-08	CCLE-MIAPaCa-2	Pancreatic adenocarcinoma	RNA-Seq	Male	CCLE-PAAD	Illumina	pancreas	HG19_Broad_variant	MIAPaCa-2	Cell Line
+5919108a-f072-4bef-8897-da1a650a3447	CCLE-JHOC-5-RNA-08	CCLE-JHOC-5	Ovarian serous cystadenocarcinoma	RNA-Seq	Not available	CCLE-OV	Illumina	ovary	HG19_Broad_variant	JHOC-5	Cell Line
+154d01c3-700a-4e36-8004-2c1280b6b8cd	CCLE-NCI-H2030-RNA-08	CCLE-NCI-H2030	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H2030	Cell Line
+f9540ad2-e72a-4f14-9299-b2c3492d89c7	CCLE-DU4475-RNA-08	CCLE-DU4475	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	DU4475	Cell Line
+47c87b36-ecd6-439e-9b19-88a3790e2f83	CCLE-NCI-H1975-RNA-08	CCLE-NCI-H1975	Lung squamous cell carcinoma	RNA-Seq	Female	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H1975	Cell Line
+c78ec18c-7026-4651-90ca-885eb4d6f847	CCLE-HepG2-RNA-08	CCLE-HepG2	Liver hepatocellular carcinoma	RNA-Seq	Male	CCLE-LIHC	Illumina	liver	HG19_Broad_variant	HepG2	Cell Line
+768c15ea-4690-4376-a305-4fb3374ef8dd	CCLE-NCI-H2073-RNA-08	CCLE-NCI-H2073	Lung squamous cell carcinoma	RNA-Seq	Female	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H2073	Cell Line
+1a06404b-fd9d-491b-9a58-758810a3a8b5	CCLE-NCI-H441-RNA-08	CCLE-NCI-H441	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H441	Cell Line
+7eac7576-e6a3-43cc-9992-7c7290faa88b	CCLE-GAMG-RNA-08	CCLE-GAMG	Brain Lower Grade Glioma	RNA-Seq	Female	CCLE-LGG	Illumina	central_nervous_system	HG19_Broad_variant	GAMG	Cell Line
+c42eed0c-4d54-4e26-9986-64fce0cb6e1c	CCLE-UACC-62-RNA-08	CCLE-UACC-62	Skin Cutaneous Melanoma	RNA-Seq	Not available	CCLE-SKCM	Illumina	skin	HG19_Broad_variant	UACC-62	Cell Line
+96203aa3-08d4-4cce-921c-9103841d7b58	CCLE-LP-1-RNA-08	CCLE-LP-1	Multiple Myeloma Plasma cell leukemia	RNA-Seq	Female	CCLE-MM	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	LP-1	Cell Line
+889af0e8-fe16-4b93-a6ca-9a2c666ef9eb	CCLE-SNU-840-RNA-08	CCLE-SNU-840	Ovarian serous cystadenocarcinoma	RNA-Seq	Female	CCLE-OV	Illumina	ovary	HG19_Broad_variant	SNU-840	Cell Line
+7f2837fe-0417-411f-aabe-a69ba97abc83	CCLE-NCI-H1092-RNA-08	CCLE-NCI-H1092	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H1092	Cell Line
+009d7f14-c6fd-42c5-9b9f-00dff58644a8	CCLE-KG-1-C-RNA-08	CCLE-KG-1-C	Brain Lower Grade Glioma	RNA-Seq	Male	CCLE-LGG	Illumina	central_nervous_system	HG19_Broad_variant	KG-1-C	Cell Line
+1dc5aa91-51d0-4108-930b-2776135ed6aa	CCLE-J82-RNA-08	CCLE-J82	Bladder Urothelial Carcinoma	RNA-Seq	Male	CCLE-BLCA	Illumina	urinary_tract	HG19_Broad_variant	J82	Cell Line
+29a8a8d1-2406-4d4d-8004-0c6048e9365c	CCLE-NCI-H929-RNA-08	CCLE-NCI-H929	Multiple Myeloma Plasma cell leukemia	RNA-Seq	Female	CCLE-MM	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	NCI-H929	Cell Line
+441d3423-aa5e-4754-bd63-bdd4240d7e40	CCLE-Hs611.T-RNA-08	CCLE-Hs611.T	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Female	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	Hs611.T	Cell Line
+a9d229c8-b80e-4596-b3f6-873a3b10f94a	CCLE-SNU-1041-RNA-08	CCLE-SNU-1041	Head and Neck squamous cell carcinoma	RNA-Seq	Not available	CCLE-HNSC	Illumina	upper_aerodigestive_tract	HG19_Broad_variant	SNU-1041	Cell Line
+3889f351-7ca6-4981-a56a-e09956eecb47	CCLE-EN-RNA-08	CCLE-EN	Cervical squamous cell carcinoma and endocervical adenocarcinoma	RNA-Seq	Female	CCLE-CESC	Illumina	endometrium	HG19_Broad_variant	EN	Cell Line
+98cb439c-4650-4bbe-bb5c-da5801db34c3	CCLE-KYSE-520-RNA-08	CCLE-KYSE-520	Esophageal carcinoma	RNA-Seq	Female	CCLE-ESCA	Illumina	oesophagus	HG19_Broad_variant	KYSE-520	Cell Line
+01165e99-ced0-41fd-b5f9-661c0a0a6e63	CCLE-SHP-77-RNA-08	CCLE-SHP-77	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	SHP-77	Cell Line
+d2a6ec30-b79c-4074-bb3d-163668a322c8	CCLE-NCI-H660-RNA-08	CCLE-NCI-H660	Prostate adenocarcinoma	RNA-Seq	Male	CCLE-PRAD	Illumina	prostate	HG19_Broad_variant	NCI-H660	Cell Line
+2ae82028-6995-4294-b301-5603acce804f	CCLE-LC-1F-RNA-08	CCLE-LC-1F	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	LC-1F	Cell Line
+19445cb9-a33d-466a-ae80-14c3d4485878	CCLE-Panc02.13-RNA-08	CCLE-Panc02.13	Pancreatic adenocarcinoma	RNA-Seq	Female	CCLE-PAAD	Illumina	pancreas	HG19_Broad_variant	Panc02.13	Cell Line
+06613b74-3d94-4051-b244-b19ea5412af8	CCLE-Hs834.T-RNA-08	CCLE-Hs834.T	Skin Cutaneous Melanoma	RNA-Seq	Female	CCLE-SKCM	Illumina	skin	HG19_Broad_variant	Hs834.T	Cell Line
+3c82480e-2818-478e-8b87-784a7d5663c7	CCLE-NCI-H2286-RNA-08	CCLE-NCI-H2286	Lung squamous cell carcinoma	RNA-Seq	Female	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H2286	Cell Line
+dd1a3cb8-bf27-4227-9029-4d5cb98f5948	CCLE-ECC10-RNA-08	CCLE-ECC10	Stomach adenocarcinoma	RNA-Seq	Not available	CCLE-STAD	Illumina	stomach	HG19_Broad_variant	ECC10	Cell Line
+5023f733-c3a9-4df9-a8da-1b8fcf1c7efa	CCLE-Hs737.T-RNA-08	CCLE-Hs737.T	Sarcoma	RNA-Seq	Female	CCLE-SARC	Illumina	bone	HG19_Broad_variant	Hs737.T	Cell Line
+f62a7d4b-1d78-4471-b366-71ab9b296720	CCLE-NCI-H460-RNA-08	CCLE-NCI-H460	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H460	Cell Line
+184ead88-f3e5-4887-bd64-8f95393219be	CCLE-HCC1954-RNA-08	CCLE-HCC1954	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	HCC1954	Cell Line
+cd90dd34-063c-4d62-9e34-3d442de3d164	CCLE-YAPC-RNA-08	CCLE-YAPC	Pancreatic adenocarcinoma	RNA-Seq	Male	CCLE-PAAD	Illumina	pancreas	HG19_Broad_variant	YAPC	Cell Line
+76cf255f-d573-411e-b717-84c641812821	CCLE-NCI-H522-RNA-08	CCLE-NCI-H522	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H522	Cell Line
+5e3fe93a-a633-47ed-a918-05ec8f40782c	CCLE-SNU-1272-RNA-08	CCLE-SNU-1272	Kidney renal clear cell carcinoma	RNA-Seq	Female	CCLE-KIRC	Illumina	kidney	HG19_Broad_variant	SNU-1272	Cell Line
+86ede875-12c9-48f4-9856-920dd702e762	CCLE-TO175.T-RNA-08	CCLE-TO175.T	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Male	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	TO175.T	Cell Line
+d988f708-b68e-4803-aaa0-32dd3a3bbbb1	CCLE-Saos-2-RNA-08	CCLE-Saos-2	Sarcoma	RNA-Seq	Female	CCLE-SARC	Illumina	bone	HG19_Broad_variant	Saos-2	Cell Line
+2163fe06-e53d-4e56-8077-3177ecab190c	CCLE-NCI-H2452-RNA-08	CCLE-NCI-H2452	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	pleura	HG19_Broad_variant	NCI-H2452	Cell Line
+050793a9-f186-4bad-b857-d459a3c4362d	CCLE-KATOIII-RNA-08	CCLE-KATOIII	Stomach adenocarcinoma	RNA-Seq	Male	CCLE-STAD	Illumina	stomach	HG19_Broad_variant	KATOIII	Cell Line
+419c5c98-e58a-4163-bd98-7c35c01b5639	CCLE-22Rv1-RNA-08	CCLE-22Rv1	Prostate adenocarcinoma	RNA-Seq	Male	CCLE-PRAD	Illumina	prostate	HG19_Broad_variant	22Rv1	Cell Line
+2f866a67-fc3b-4713-8754-81409cfe601c	CCLE-COLO741-RNA-08	CCLE-COLO741	Colon adenocarcinoma	RNA-Seq	Female	CCLE-COAD	Illumina	skin	HG19_Broad_variant	COLO741	Cell Line
+537fbd27-1b53-4b52-960f-1460f3bc2121	CCLE-SNU-738-RNA-08	CCLE-SNU-738	Brain Lower Grade Glioma	RNA-Seq	Male	CCLE-LGG	Illumina	central_nervous_system	HG19_Broad_variant	SNU-738	Cell Line
+a8da2c28-47c8-4e24-88ea-635105472b6c	CCLE-OV-90-RNA-08	CCLE-OV-90	Ovarian serous cystadenocarcinoma	RNA-Seq	Female	CCLE-OV	Illumina	ovary	HG19_Broad_variant	OV-90	Cell Line
+6daaeb4d-d66f-4efa-b1fe-ada91f1236ba	CCLE-BT-20-RNA-08	CCLE-BT-20	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	BT-20	Cell Line
+926f369b-fa20-4bc7-8213-273a839f6028	CCLE-EB1-RNA-08	CCLE-EB1	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Female	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	EB1	Cell Line
+129cc436-1923-46c2-9ef7-5876941747d6	CCLE-huH-1-RNA-08	CCLE-huH-1	Liver hepatocellular carcinoma	RNA-Seq	Male	CCLE-LIHC	Illumina	liver	HG19_Broad_variant	huH-1	Cell Line
+16cc5bdd-336f-41ba-9e89-afd1e431e0ad	CCLE-8505C-RNA-08	CCLE-8505C	Thyroid carcinoma	RNA-Seq	Female	CCLE-THCA	Illumina	thyroid	HG19_Broad_variant	8505C	Cell Line
+750d0ae8-1b04-444d-ba83-275c8afd7b73	CCLE-Ki-JK-RNA-08	CCLE-Ki-JK	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Male	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	Ki-JK	Cell Line
+d0b8db61-1633-47a2-b057-b8f6110ee9bd	CCLE-Hs606.T-RNA-08	CCLE-Hs606.T	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	Hs606.T	Cell Line
+c6d2b3f0-06b9-4f69-a57b-52dba3f53d5f	CCLE-MOLT-3-RNA-08	CCLE-MOLT-3	Chronic Lymphocytic Leukemia	RNA-Seq	Not available	CCLE-LCLL	Illumina	Not available	HG19_Broad_variant	MOLT-3	Cell Line
+9ddb7053-e792-4ee7-807b-d8b17f12b434	CCLE-JHOM-2B-RNA-08	CCLE-JHOM-2B	Ovarian serous cystadenocarcinoma	RNA-Seq	Not available	CCLE-OV	Illumina	ovary	HG19_Broad_variant	JHOM-2B	Cell Line
+d1e3a281-e33e-4748-8509-0c543d94fa0a	CCLE-YD-38-RNA-08	CCLE-YD-38	Head and Neck squamous cell carcinoma	RNA-Seq	Male	CCLE-HNSC	Illumina	upper_aerodigestive_tract	HG19_Broad_variant	YD-38	Cell Line
+17d511f8-a794-4f78-8915-58348eb1a493	CCLE-BHT-101-RNA-08	CCLE-BHT-101	Thyroid carcinoma	RNA-Seq	Female	CCLE-THCA	Illumina	thyroid	HG19_Broad_variant	BHT-101	Cell Line
+a1ce555c-48f6-4e31-98f9-ab59d0e1ff38	CCLE-Hs888.T-RNA-08	CCLE-Hs888.T	Sarcoma	RNA-Seq	Male	CCLE-SARC	Illumina	bone	HG19_Broad_variant	Hs888.T	Cell Line
+a69a5595-d2a0-4df7-99cb-8b0fb0bbc341	CCLE-KYSE-150-RNA-08	CCLE-KYSE-150	Esophageal carcinoma	RNA-Seq	Female	CCLE-ESCA	Illumina	oesophagus	HG19_Broad_variant	KYSE-150	Cell Line
+e50942f8-b3d1-41a9-b115-45537437b642	CCLE-KCL-22-RNA-08	CCLE-KCL-22	Chronic Lymphocytic Leukemia	RNA-Seq	Female	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	KCL-22	Cell Line
+d96f8e90-187f-4241-885c-5aaa74a81f21	CCLE-HT115-RNA-08	CCLE-HT115	Colon adenocarcinoma	RNA-Seq	Not available	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	HT115	Cell Line
+c7893460-0d49-439d-b62d-88f685529ea5	CCLE-SF268-RNA-08	CCLE-SF268	Brain Lower Grade Glioma	RNA-Seq	Not available	CCLE-LGG	Illumina	Not available	HG19_Broad_variant	SF268	Cell Line
+ee9f83e8-663f-45f3-8be9-13966554eda1	CCLE-HCC1395-RNA-08	CCLE-HCC1395	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	HCC1395	Cell Line
+c20f5dcb-e866-4fa8-80d2-25faf6a97bd6	CCLE-OAW42-RNA-08	CCLE-OAW42	Ovarian serous cystadenocarcinoma	RNA-Seq	Female	CCLE-OV	Illumina	ovary	HG19_Broad_variant	OAW42	Cell Line
+23bfe06e-f450-4791-9c6b-fa5cc88aeedf	CCLE-SNG-M-RNA-08	CCLE-SNG-M	Cervical squamous cell carcinoma and endocervical adenocarcinoma	RNA-Seq	Female	CCLE-CESC	Illumina	endometrium	HG19_Broad_variant	SNG-M	Cell Line
+e48ea2ee-1dda-4061-a199-6e22fd2df382	CCLE-NCI-H661-RNA-08	CCLE-NCI-H661	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H661	Cell Line
+03764c5c-1e94-4b99-a4b5-e6b271f315dd	CCLE-ONCO-DG-1-RNA-08	CCLE-ONCO-DG-1	Ovarian serous cystadenocarcinoma	RNA-Seq	Female	CCLE-OV	Illumina	ovary	HG19_Broad_variant	ONCO-DG-1	Cell Line
+9168f8e9-0558-4348-ad7d-289a586d14d7	CCLE-SNU-213-RNA-08	CCLE-SNU-213	Pancreatic adenocarcinoma	RNA-Seq	Male	CCLE-PAAD	Illumina	pancreas	HG19_Broad_variant	SNU-213	Cell Line
+dfd1aee0-bba1-4845-b56a-4bba63f065bc	CCLE-HuNS1-RNA-08	CCLE-HuNS1	Multiple Myeloma Plasma cell leukemia	RNA-Seq	Male	CCLE-MM	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	HuNS1	Cell Line
+d7edac30-fe8a-41b4-ad43-d01495a5ca03	CCLE-NCI-H716-RNA-08	CCLE-NCI-H716	Colon adenocarcinoma	RNA-Seq	Not available	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	NCI-H716	Cell Line
+75f27863-61a6-4c34-8313-ab75742dd572	CCLE-NCI-H1781-RNA-08	CCLE-NCI-H1781	Lung squamous cell carcinoma	RNA-Seq	Female	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H1781	Cell Line
+dc564d9f-3732-48ee-86ab-e21facb622b7	CCLE-H4-RNA-08	CCLE-H4	Brain Lower Grade Glioma	RNA-Seq	Male	CCLE-LGG	Illumina	central_nervous_system	HG19_Broad_variant	H4	Cell Line
+d03f9ca9-4b06-4633-b09b-e975841e6873	CCLE-Hs840.T-RNA-08	CCLE-Hs840.T	Head and Neck squamous cell carcinoma	RNA-Seq	Male	CCLE-HNSC	Illumina	upper_aerodigestive_tract	HG19_Broad_variant	Hs840.T	Cell Line
+be684665-bc0e-4d67-a777-c23b1996cae1	CCLE-Toledo-RNA-08	CCLE-Toledo	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Female	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	Toledo	Cell Line
+7a25f112-e80d-4b3e-83e1-f6a2b8c1d827	CCLE-PSN1-RNA-08	CCLE-PSN1	Pancreatic adenocarcinoma	RNA-Seq	Not available	CCLE-PAAD	Illumina	pancreas	HG19_Broad_variant	PSN1	Cell Line
+a15c8112-6774-409c-905b-b4360460a0f0	CCLE-OAW28-RNA-08	CCLE-OAW28	Ovarian serous cystadenocarcinoma	RNA-Seq	Female	CCLE-OV	Illumina	ovary	HG19_Broad_variant	OAW28	Cell Line
+6e87f4a2-24fc-40ba-bdfb-e20a794382b7	CCLE-NCI-H226-RNA-08	CCLE-NCI-H226	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H226	Cell Line
+b7dba9bb-f269-481d-b6f4-d120996cf0f9	CCLE-ALL-SIL-RNA-08	CCLE-ALL-SIL	Chronic Lymphocytic Leukemia	RNA-Seq	Male	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	ALL-SIL	Cell Line
+75d6f369-9e3d-442e-8473-6465ca10bc6d	CCLE-HSC-2-RNA-08	CCLE-HSC-2	Head and Neck squamous cell carcinoma	RNA-Seq	Male	CCLE-HNSC	Illumina	upper_aerodigestive_tract	HG19_Broad_variant	HSC-2	Cell Line
+693bc78c-a146-4631-b233-047e25891356	CCLE-JHH-4-RNA-08	CCLE-JHH-4	Liver hepatocellular carcinoma	RNA-Seq	Male	CCLE-LIHC	Illumina	liver	HG19_Broad_variant	JHH-4	Cell Line
+4f35e840-53e9-4f94-9165-b2eb4f6e9197	CCLE-RCC10RGB-RNA-08	CCLE-RCC10RGB	Kidney renal clear cell carcinoma	RNA-Seq	Not available	CCLE-KIRC	Illumina	kidney	HG19_Broad_variant	RCC10RGB	Cell Line
+d24f4598-a2fa-487f-88a9-e32badb4eb02	CCLE-RT-112-RNA-08	CCLE-RT-112	Bladder Urothelial Carcinoma	RNA-Seq	Female	CCLE-BLCA	Illumina	urinary_tract	HG19_Broad_variant	RT-112	Cell Line
+ba7346b2-4643-4bb9-8899-aa79daf4e404	CCLE-HOS-RNA-08	CCLE-HOS	Sarcoma	RNA-Seq	Female	CCLE-SARC	Illumina	bone	HG19_Broad_variant	HOS	Cell Line
+f457d0ec-8689-4413-8483-81dbf85c35f5	CCLE-Raji-RNA-08	CCLE-Raji	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Male	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	Raji	Cell Line
+4234722f-3787-4733-be2e-65ed44ece4d4	CCLE-KNS-62-RNA-08	CCLE-KNS-62	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	KNS-62	Cell Line
+9dfb8a70-b4ad-4380-87f4-791065d47e02	CCLE-LU65-RNA-08	CCLE-LU65	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	LU65	Cell Line
+d5f6fd70-24ea-4c69-af30-1b5c85290b54	CCLE-KS-1-RNA-08	CCLE-KS-1	Brain Lower Grade Glioma	RNA-Seq	Female	CCLE-LGG	Illumina	central_nervous_system	HG19_Broad_variant	KS-1	Cell Line
+ae7c2dc6-e707-400e-a760-1ef619bf4012	CCLE-KMRC-2-RNA-08	CCLE-KMRC-2	Kidney renal clear cell carcinoma	RNA-Seq	Male	CCLE-KIRC	Illumina	kidney	HG19_Broad_variant	KMRC-2	Cell Line
+4e941bcc-cd53-400f-95d6-23e5cb749ee1	CCLE-OC314-RNA-08	CCLE-OC314	Ovarian serous cystadenocarcinoma	RNA-Seq	Female	CCLE-OV	Illumina	ovary	HG19_Broad_variant	OC314	Cell Line
+61998e50-56b5-4928-92a0-1b4570bf8769	CCLE-MDAPCa2b-RNA-08	CCLE-MDAPCa2b	Prostate adenocarcinoma	RNA-Seq	Male	CCLE-PRAD	Illumina	prostate	HG19_Broad_variant	MDAPCa2b	Cell Line
+cdba5db3-b098-43ca-9a3d-2b45283d223c	CCLE-Loucy-RNA-08	CCLE-Loucy	Chronic Lymphocytic Leukemia	RNA-Seq	Female	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	Loucy	Cell Line
+a9316c11-5bfc-4984-bac5-20aee6c682aa	CCLE-NCI-H1693-RNA-08	CCLE-NCI-H1693	Lung squamous cell carcinoma	RNA-Seq	Female	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H1693	Cell Line
+a145ab14-29ad-4acd-a81e-86356e0414a2	CCLE-NCI-H1184-RNA-08	CCLE-NCI-H1184	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H1184	Cell Line
+f8df0beb-ac7f-450f-aa61-eef082f642ae	CCLE-EOL-1-RNA-08	CCLE-EOL-1	Chronic Lymphocytic Leukemia	RNA-Seq	Male	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	EOL-1	Cell Line
+4baa9e92-77f1-4830-bba3-f25421f4c7aa	CCLE-MPP89-RNA-08	CCLE-MPP89	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	pleura	HG19_Broad_variant	MPP89	Cell Line
+28a9fcec-6f21-4c28-b67e-e84bb8b677ec	CCLE-BxPC-3-RNA-08	CCLE-BxPC-3	Pancreatic adenocarcinoma	RNA-Seq	Female	CCLE-PAAD	Illumina	pancreas	HG19_Broad_variant	BxPC-3	Cell Line
+ac56f396-53b6-4082-8857-eaa4f8eb7d96	CCLE-GSS-RNA-08	CCLE-GSS	Stomach adenocarcinoma	RNA-Seq	Not available	CCLE-STAD	Illumina	stomach	HG19_Broad_variant	GSS	Cell Line
+f865cad6-3b21-4f6b-8e8a-85d6915e101a	CCLE-MEC-1-RNA-08	CCLE-MEC-1	Chronic Lymphocytic Leukemia	RNA-Seq	Male	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	MEC-1	Cell Line
+2398ff39-be0d-4873-af6f-d867dbd24320	CCLE-KMRC-20-RNA-08	CCLE-KMRC-20	Kidney renal clear cell carcinoma	RNA-Seq	Not available	CCLE-KIRC	Illumina	kidney	HG19_Broad_variant	KMRC-20	Cell Line
+692a845c-7957-41f2-b679-5434c69ba25b	CCLE-Calu-6-RNA-08	CCLE-Calu-6	Lung squamous cell carcinoma	RNA-Seq	Female	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	Calu-6	Cell Line
+35c092c4-682b-4e66-9364-3d71b984cc33	CCLE-RKN-RNA-08	CCLE-RKN	Sarcoma	RNA-Seq	Female	CCLE-SARC	Illumina	soft_tissue	HG19_Broad_variant	RKN	Cell Line
+1b0de3ae-7b52-4ade-b203-b0a745a4e4e0	CCLE-Hs934.T-RNA-08	CCLE-Hs934.T	Skin Cutaneous Melanoma	RNA-Seq	Female	CCLE-SKCM	Illumina	skin	HG19_Broad_variant	Hs934.T	Cell Line
+c1aee8f4-67cd-41f5-999b-d282dcdb64a1	CCLE-LK-2-RNA-08	CCLE-LK-2	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	LK-2	Cell Line
+307c041f-2687-45c4-b343-b9b2360bbbc2	CCLE-HEC-251-RNA-08	CCLE-HEC-251	Cervical squamous cell carcinoma and endocervical adenocarcinoma	RNA-Seq	Female	CCLE-CESC	Illumina	endometrium	HG19_Broad_variant	HEC-251	Cell Line
+80ef622d-492b-4cd6-a185-b5dbec21242b	CCLE-WM-266-4-RNA-08	CCLE-WM-266-4	Skin Cutaneous Melanoma	RNA-Seq	Female	CCLE-SKCM	Illumina	skin	HG19_Broad_variant	WM-266-4	Cell Line
+e06346fa-d308-4a5a-96f4-8589af2093ce	CCLE-OPM-2-RNA-08	CCLE-OPM-2	Multiple Myeloma Plasma cell leukemia	RNA-Seq	Female	CCLE-MM	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	OPM-2	Cell Line
+7f279c60-5e29-4487-991e-f255181b6dee	CCLE-CAL-12T-RNA-08	CCLE-CAL-12T	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	CAL-12T	Cell Line
+4e2d02af-bca1-4d85-abd2-74c69f5f54a4	CCLE-NCI-H1930-RNA-08	CCLE-NCI-H1930	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H1930	Cell Line
+a0422bb0-e948-40a3-b67e-1efbb1b6c43e	CCLE-RCM-1-RNA-08	CCLE-RCM-1	Colon adenocarcinoma	RNA-Seq	Not available	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	RCM-1	Cell Line
+8c2aa70d-6cac-41a5-9646-d728d2c38693	CCLE-RH-41-RNA-08	CCLE-RH-41	Sarcoma	RNA-Seq	Female	CCLE-SARC	Illumina	soft_tissue	HG19_Broad_variant	RH-41	Cell Line
+b8f6ada7-4213-43d2-8e8c-96b7ffdb63d1	CCLE-NIH-OVCAR-3-RNA-08	CCLE-NIH-OVCAR-3	Ovarian serous cystadenocarcinoma	RNA-Seq	Female	CCLE-OV	Illumina	ovary	HG19_Broad_variant	NIH-OVCAR-3	Cell Line
+0fb9e460-cda6-4551-970b-f2ed103afc5b	CCLE-OVCAR-8-RNA-08	CCLE-OVCAR-8	Ovarian serous cystadenocarcinoma	RNA-Seq	Female	CCLE-OV	Illumina	ovary	HG19_Broad_variant	OVCAR-8	Cell Line
+c66f2cd0-f894-4f75-8c20-84f0d848aed5	CCLE-SNU-1196-RNA-08	CCLE-SNU-1196	Liver hepatocellular carcinoma	RNA-Seq	Not available	CCLE-LIHC	Illumina	biliary_tract	HG19_Broad_variant	SNU-1196	Cell Line
+72cd1798-8d97-4443-b445-f6b1ce250dfd	CCLE-BFTC-909-RNA-08	CCLE-BFTC-909	Kidney renal clear cell carcinoma	RNA-Seq	Male	CCLE-KIRC	Illumina	kidney	HG19_Broad_variant	BFTC-909	Cell Line
+33ea5cc4-7821-4004-8682-432f837fccf9	CCLE-HDQ-P1-RNA-08	CCLE-HDQ-P1	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	HDQ-P1	Cell Line
+73ee6471-dbd8-48ea-b41b-ae654e3cb161	CCLE-MJ-RNA-08	CCLE-MJ	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Male	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	MJ	Cell Line
+e3e812f0-0065-4b7f-bf1c-0816710fa9f1	CCLE-EKVX-v1-RNA-08	CCLE-EKVX-v1	Stomach adenocarcinoma	RNA-Seq	Not available	CCLE-STAD	Illumina	Not available	HG19_Broad_variant	EKVX-v1	Cell Line
+63bdc3ef-ba8c-4e87-811a-f0f797693931	CCLE-KARPAS-620-RNA-08	CCLE-KARPAS-620	Multiple Myeloma Plasma cell leukemia	RNA-Seq	Female	CCLE-MM	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	KARPAS-620	Cell Line
+ec089ef2-7109-40fd-8620-8badd76b292f	CCLE-Panc03.27-RNA-08	CCLE-Panc03.27	Pancreatic adenocarcinoma	RNA-Seq	Female	CCLE-PAAD	Illumina	pancreas	HG19_Broad_variant	Panc03.27	Cell Line
+6a384274-0c65-45ff-ae60-c6b22634a831	CCLE-RS4-11-RNA-08	CCLE-RS4-11	Chronic Lymphocytic Leukemia	RNA-Seq	Female	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	RS4-11	Cell Line
+a320cc77-76ef-4667-bd1a-34e54d36b472	CCLE-RERF-LC-AI-RNA-08	CCLE-RERF-LC-AI	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	RERF-LC-AI	Cell Line
+01bcb335-007e-49e5-964c-c58ad06946ef	CCLE-SIMA-RNA-08	CCLE-SIMA	Brain Lower Grade Glioma	RNA-Seq	Male	CCLE-LGG	Illumina	autonomic_ganglia	HG19_Broad_variant	SIMA	Cell Line
+ef4a5f35-0d59-4eaf-83d9-414b16261231	CCLE-NCI-H2023-RNA-08	CCLE-NCI-H2023	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H2023	Cell Line
+1ecf0a0c-9c28-4007-badc-6134a05fe10e	CCLE-DMS153-RNA-08	CCLE-DMS153	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	DMS153	Cell Line
+ae249106-bed5-497c-a502-aac9290afa13	CCLE-HCC-56-RNA-08	CCLE-HCC-56	Colon adenocarcinoma	RNA-Seq	Not available	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	HCC-56	Cell Line
+fa7b8a7f-4359-43f8-ae1f-438b66462388	CCLE-SH-10-TC-RNA-08	CCLE-SH-10-TC	Stomach adenocarcinoma	RNA-Seq	Not available	CCLE-STAD	Illumina	stomach	HG19_Broad_variant	SH-10-TC	Cell Line
+d1aa398f-f513-4083-8f3b-b0ab3df947b1	CCLE-REC-1-RNA-08	CCLE-REC-1	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Male	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	REC-1	Cell Line
+4de86012-ea89-463d-90e9-c6bb9c853823	CCLE-LN-229-RNA-08	CCLE-LN-229	Brain Lower Grade Glioma	RNA-Seq	Female	CCLE-LGG	Illumina	central_nervous_system	HG19_Broad_variant	LN-229	Cell Line
+8a082c2e-bc71-4f4f-b631-8dc3a775ee9f	CCLE-IST-MES1-RNA-08	CCLE-IST-MES1	Lung squamous cell carcinoma	RNA-Seq	Female	CCLE-LUSC	Illumina	pleura	HG19_Broad_variant	IST-MES1	Cell Line
+b1b2a8d6-0923-4bdf-9771-bfdb08989857	CCLE-IGR-1-RNA-08	CCLE-IGR-1	Skin Cutaneous Melanoma	RNA-Seq	Male	CCLE-SKCM	Illumina	skin	HG19_Broad_variant	IGR-1	Cell Line
+593992a9-b46a-4ccf-8240-cc1ef1abafa7	CCLE-SNU-761-RNA-08	CCLE-SNU-761	Liver hepatocellular carcinoma	RNA-Seq	Male	CCLE-LIHC	Illumina	liver	HG19_Broad_variant	SNU-761	Cell Line
+112eb28d-52a1-43eb-8805-640b21056879	CCLE-NCI-H1155-RNA-08	CCLE-NCI-H1155	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H1155	Cell Line
+2b72cf73-47aa-4858-a6ef-9aab323bf301	CCLE-PF-382-RNA-08	CCLE-PF-382	Chronic Lymphocytic Leukemia	RNA-Seq	Female	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	PF-382	Cell Line
+ad625405-50d1-4912-b3e8-244ec9185fa1	CCLE-F-36P-RNA-08	CCLE-F-36P	Chronic Lymphocytic Leukemia	RNA-Seq	Male	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	F-36P	Cell Line
+19d82e50-a9f4-4b2d-92c1-37e1ab8d2c22	CCLE-JHOS-2-RNA-08	CCLE-JHOS-2	Ovarian serous cystadenocarcinoma	RNA-Seq	Female	CCLE-OV	Illumina	ovary	HG19_Broad_variant	JHOS-2	Cell Line
+9dd53176-893d-425b-b7e3-c46af5742f79	CCLE-CAL-51-RNA-08	CCLE-CAL-51	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	CAL-51	Cell Line
+2aabee6e-22d5-4f63-a05b-b9e5968a60c3	CCLE-NCI-H2126-RNA-08	CCLE-NCI-H2126	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H2126	Cell Line
+e0580650-35fe-4d31-884f-2cdaa8a4bc9d	CCLE-SW480-RNA-08	CCLE-SW480	Colon adenocarcinoma	RNA-Seq	Male	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	SW480	Cell Line
+814aece1-68f2-44ad-88a0-8039a183e023	CCLE-MeWo-RNA-08	CCLE-MeWo	Skin Cutaneous Melanoma	RNA-Seq	Male	CCLE-SKCM	Illumina	skin	HG19_Broad_variant	MeWo	Cell Line
+a0338ded-e51c-4c31-a57e-5fd3ee82a3b8	CCLE-NCI-H727-RNA-08	CCLE-NCI-H727	Lung squamous cell carcinoma	RNA-Seq	Female	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H727	Cell Line
+83533870-a4b7-4ef1-854d-0d859bd64d5c	CCLE-TF-1-RNA-08	CCLE-TF-1	Chronic Lymphocytic Leukemia	RNA-Seq	Male	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	TF-1	Cell Line
+02b56f2a-6813-4afe-88be-50c00ed9db55	CCLE-KM12-RNA-08	CCLE-KM12	Colon adenocarcinoma	RNA-Seq	Not available	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	KM12	Cell Line
+f3957518-53ac-45f1-a61d-d33600ee83d0	CCLE-BT-474-RNA-08	CCLE-BT-474	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	BT-474	Cell Line
+27c00e55-f3b4-47fa-bbd5-a30516174ce9	CCLE-HCC-33-RNA-08	CCLE-HCC-33	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	HCC-33	Cell Line
+2b507086-977b-4cb7-abd9-83ee4ce9a893	CCLE-PE-CA-PJ34cloneC12-RNA-08	CCLE-PE-CA-PJ34cloneC12	Head and Neck squamous cell carcinoma	RNA-Seq	Male	CCLE-HNSC	Illumina	upper_aerodigestive_tract	HG19_Broad_variant	PE-CA-PJ34cloneC12	Cell Line
+a423da04-6e64-4ccd-8465-41a1165b353c	CCLE-Mino-RNA-08	CCLE-Mino	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Male	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	Mino	Cell Line
+dd2f22d3-b924-4598-9707-c36d4051b613	CCLE-SNU-503-RNA-08	CCLE-SNU-503	Colon adenocarcinoma	RNA-Seq	Male	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	SNU-503	Cell Line
+f41cdf85-03c1-4256-bdf1-0da75864ae0a	CCLE-CADO-ES1-RNA-08	CCLE-CADO-ES1	Sarcoma	RNA-Seq	Female	CCLE-SARC	Illumina	bone	HG19_Broad_variant	CADO-ES1	Cell Line
+357c6f80-c86c-4d0f-a988-bed0cee0f8e4	CCLE-MOR-CPR-RNA-08	CCLE-MOR-CPR	Lung squamous cell carcinoma	RNA-Seq	Not available	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	MOR-CPR	Cell Line
+d6ca2cd2-5e2d-49c6-92fc-95ad74fe3228	CCLE-SW579-RNA-08	CCLE-SW579	Thyroid carcinoma	RNA-Seq	Male	CCLE-THCA	Illumina	thyroid	HG19_Broad_variant	SW579	Cell Line
+91ddea67-b610-41a6-a183-6e7d7eff63dc	CCLE-SF-295-RNA-08	CCLE-SF-295	Brain Lower Grade Glioma	RNA-Seq	Not available	CCLE-LGG	Illumina	central_nervous_system	HG19_Broad_variant	SF-295	Cell Line
+f0b44c02-2d6d-40b5-a98d-33cdd7192ad7	CCLE-MOLM-13-RNA-08	CCLE-MOLM-13	Chronic Lymphocytic Leukemia	RNA-Seq	Male	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	MOLM-13	Cell Line
+efde9bc7-abbf-4e4f-9d4d-4308d7d8d532	CCLE-NCI-H854-RNA-08	CCLE-NCI-H854	Lung squamous cell carcinoma	RNA-Seq	Not available	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H854	Cell Line
+50cf3da0-44b2-418a-8bb2-7d3e880f0797	CCLE-TUHR4TKB-RNA-08	CCLE-TUHR4TKB	Kidney renal clear cell carcinoma	RNA-Seq	Not available	CCLE-KIRC	Illumina	kidney	HG19_Broad_variant	TUHR4TKB	Cell Line
+01520b32-7a1c-43c5-9471-a7bb2eac9e94	CCLE-IA-LM-RNA-08	CCLE-IA-LM	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	IA-LM	Cell Line
+a4072540-bc61-4180-a1b0-5d4c0a16c0df	CCLE-KYSE-410-RNA-08	CCLE-KYSE-410	Esophageal carcinoma	RNA-Seq	Male	CCLE-ESCA	Illumina	oesophagus	HG19_Broad_variant	KYSE-410	Cell Line
+f9ed2587-c2fd-4c19-9972-f07af935a106	CCLE-HCC1937-RNA-08	CCLE-HCC1937	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	HCC1937	Cell Line
+efe027d3-68a6-4f80-80fe-a8f14325b3e9	CCLE-TUHR10TKB-RNA-08	CCLE-TUHR10TKB	Kidney renal clear cell carcinoma	RNA-Seq	Not available	CCLE-KIRC	Illumina	kidney	HG19_Broad_variant	TUHR10TKB	Cell Line
+03e4ced2-8d21-4ee4-92f8-901657bc5672	CCLE-MKN-45-RNA-08	CCLE-MKN-45	Stomach adenocarcinoma	RNA-Seq	Female	CCLE-STAD	Illumina	stomach	HG19_Broad_variant	MKN-45	Cell Line
+d886b660-b56e-4caa-9ac3-d7d0b8032b58	CCLE-DB-RNA-08	CCLE-DB	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Male	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	DB	Cell Line
+4c34fb3c-db2b-489d-b0b1-93d909385213	CCLE-A-253-RNA-08	CCLE-A-253	Head and Neck squamous cell carcinoma	RNA-Seq	Male	CCLE-HNSC	Illumina	salivary_gland	HG19_Broad_variant	A-253	Cell Line
+9fc5da43-4f04-4bdc-a5bb-59a1ec219926	CCLE-CFPAC-1-RNA-08	CCLE-CFPAC-1	Pancreatic adenocarcinoma	RNA-Seq	Male	CCLE-PAAD	Illumina	pancreas	HG19_Broad_variant	CFPAC-1	Cell Line
+f204ba88-2bdb-4363-9cbd-d1f198939cf8	CCLE-SNU-C4-RNA-08	CCLE-SNU-C4	Colon adenocarcinoma	RNA-Seq	Male	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	SNU-C4	Cell Line
+5be8d024-61b2-4fd5-b559-b16ae3c1051f	CCLE-SU-DHL-5-RNA-08	CCLE-SU-DHL-5	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Female	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	SU-DHL-5	Cell Line
+87c41362-be6c-4d5a-b8a1-e5dbd7bf9493	CCLE-HPAF-II-RNA-08	CCLE-HPAF-II	Pancreatic adenocarcinoma	RNA-Seq	Male	CCLE-PAAD	Illumina	pancreas	HG19_Broad_variant	HPAF-II	Cell Line
+cd3bda69-de3d-4be4-b0e7-e3459debc6a5	CCLE-EFE-184-RNA-08	CCLE-EFE-184	Cervical squamous cell carcinoma and endocervical adenocarcinoma	RNA-Seq	Female	CCLE-CESC	Illumina	endometrium	HG19_Broad_variant	EFE-184	Cell Line
+8a349a3f-b828-43d3-8dff-274cdde60907	CCLE-U-2OS-RNA-08	CCLE-U-2OS	Sarcoma	RNA-Seq	Female	CCLE-SARC	Illumina	bone	HG19_Broad_variant	U-2OS	Cell Line
+54b787ae-5da0-4ec3-92a1-19a160f962ad	CCLE-HCC1419-RNA-08	CCLE-HCC1419	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	HCC1419	Cell Line
+1d773201-98be-4949-aa7d-c0b5af805ce4	CCLE-KASUMI-1-RNA-08	CCLE-KASUMI-1	Chronic Lymphocytic Leukemia	RNA-Seq	Male	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	KASUMI-1	Cell Line
+b9978028-06d2-4836-88c2-daeda7ce0ec3	CCLE-RI-1-RNA-08	CCLE-RI-1	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Female	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	RI-1	Cell Line
+30307926-8aba-48fb-90c6-196ebf49e6f6	CCLE-EFM-192A-RNA-08	CCLE-EFM-192A	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	EFM-192A	Cell Line
+64c078fe-4374-4411-8790-0b58393665e4	CCLE-KHM-1B-RNA-08	CCLE-KHM-1B	Multiple Myeloma Plasma cell leukemia	RNA-Seq	Male	CCLE-MM	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	KHM-1B	Cell Line
+986bb9ee-154e-4024-86d8-b79ba7cb07cd	CCLE-TCC-PAN2-RNA-08	CCLE-TCC-PAN2	Pancreatic adenocarcinoma	RNA-Seq	Female	CCLE-PAAD	Illumina	pancreas	HG19_Broad_variant	TCC-PAN2	Cell Line
+0f6d5995-ffcc-4f0f-9247-bd9b5d7db5e1	CCLE-SNU-410-RNA-08	CCLE-SNU-410	Pancreatic adenocarcinoma	RNA-Seq	Male	CCLE-PAAD	Illumina	pancreas	HG19_Broad_variant	SNU-410	Cell Line
+3093d133-43b2-48b2-914e-7b7de479fa43	CCLE-Hey-A8-RNA-08	CCLE-Hey-A8	Ovarian serous cystadenocarcinoma	RNA-Seq	Female	CCLE-OV	Illumina	ovary	HG19_Broad_variant	Hey-A8	Cell Line
+1c768ef8-3db3-49e5-852e-c0942eacdac6	CCLE-LS123-RNA-08	CCLE-LS123	Colon adenocarcinoma	RNA-Seq	Female	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	LS123	Cell Line
+4834d4d4-6313-40c1-9d96-f11d65c2f74a	CCLE-HMC-1-8-RNA-08	CCLE-HMC-1-8	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	HMC-1-8	Cell Line
+4bdb2373-3244-4ded-b7dc-e546b8ea35a1	CCLE-NCI-H841-RNA-08	CCLE-NCI-H841	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H841	Cell Line
+90bb4431-9173-4054-8b82-3520c532e507	CCLE-Hs940.T-RNA-08	CCLE-Hs940.T	Skin Cutaneous Melanoma	RNA-Seq	Male	CCLE-SKCM	Illumina	skin	HG19_Broad_variant	Hs940.T	Cell Line
+0bd9d2fa-3086-49fb-8eb1-cc0248e0c0a6	CCLE-IshikawaHeraklio02ER-RNA-08	CCLE-IshikawaHeraklio02ER	Cervical squamous cell carcinoma and endocervical adenocarcinoma	RNA-Seq	Not available	CCLE-CESC	Illumina	Not available	HG19_Broad_variant	IshikawaHeraklio02ER	Cell Line
+f4f9be10-fb95-40db-868f-d7714c9b4203	CCLE-HSC-3-RNA-08	CCLE-HSC-3	Head and Neck squamous cell carcinoma	RNA-Seq	Male	CCLE-HNSC	Illumina	upper_aerodigestive_tract	HG19_Broad_variant	HSC-3	Cell Line
+48f6a76a-4ccf-41df-b5ba-5ccb1021dd99	CCLE-NALM-19-RNA-08	CCLE-NALM-19	Chronic Lymphocytic Leukemia	RNA-Seq	Male	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	NALM-19	Cell Line
+a029bb8d-6ab1-497e-a363-577def459a42	CCLE-SK-MEL-31-RNA-08	CCLE-SK-MEL-31	Skin Cutaneous Melanoma	RNA-Seq	Female	CCLE-SKCM	Illumina	skin	HG19_Broad_variant	SK-MEL-31	Cell Line
+d488d017-3f18-4756-ab47-331edc534526	CCLE-L3.3-RNA-08	CCLE-L3.3	Pancreatic adenocarcinoma	RNA-Seq	Not available	CCLE-PAAD	Illumina	pancreas	HG19_Broad_variant	L3.3	Cell Line
+abe93dd9-f170-452b-b8c5-5a56367701a5	CCLE-KMS-26-RNA-08	CCLE-KMS-26	Multiple Myeloma Plasma cell leukemia	RNA-Seq	Male	CCLE-MM	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	KMS-26	Cell Line
+0ad81fd6-5d10-47a2-bac2-221a4daa3c28	CCLE-HEC-265-RNA-08	CCLE-HEC-265	Cervical squamous cell carcinoma and endocervical adenocarcinoma	RNA-Seq	Female	CCLE-CESC	Illumina	endometrium	HG19_Broad_variant	HEC-265	Cell Line
+70bedb7b-2ea8-4930-a045-ce6dd3f7a8ce	CCLE-COLO829-RNA-08	CCLE-COLO829	Skin Cutaneous Melanoma	RNA-Seq	Male	CCLE-SKCM	Illumina	skin	HG19_Broad_variant	COLO829	Cell Line
+e9fe556a-3fd1-4311-bc2e-304886155497	CCLE-NCI-H1618-RNA-08	CCLE-NCI-H1618	Lung squamous cell carcinoma	RNA-Seq	Female	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H1618	Cell Line
+974cdad7-eeed-404a-b8e6-88fdaa3f8192	CCLE-HCC-2279-RNA-08	CCLE-HCC-2279	Lung squamous cell carcinoma	RNA-Seq	Female	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	HCC-2279	Cell Line
+8d548cb3-5d2f-4a0d-8d01-dfd0b84f588c	CCLE-DOHH-2-RNA-08	CCLE-DOHH-2	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Male	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	DOHH-2	Cell Line
+a5925679-b7d0-43d8-a2c9-74997a781097	CCLE-KU-19-19-RNA-08	CCLE-KU-19-19	Bladder Urothelial Carcinoma	RNA-Seq	Male	CCLE-BLCA	Illumina	urinary_tract	HG19_Broad_variant	KU-19-19	Cell Line
+d35481f0-824b-4f50-a70e-e9e49a64fd5c	CCLE-LS1034-RNA-08	CCLE-LS1034	Colon adenocarcinoma	RNA-Seq	Male	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	LS1034	Cell Line
+d57ac1f6-b473-4187-ae90-486d1a03a93b	CCLE-SNU-201-RNA-08	CCLE-SNU-201	Brain Lower Grade Glioma	RNA-Seq	Male	CCLE-LGG	Illumina	central_nervous_system	HG19_Broad_variant	SNU-201	Cell Line
+a9a98bca-97b2-4622-8798-f84d17666266	CCLE-ZR-75-1-RNA-08	CCLE-ZR-75-1	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	ZR-75-1	Cell Line
+17a216c0-e573-4ed2-80b2-5444b4566bc6	CCLE-COV434-RNA-08	CCLE-COV434	Ovarian serous cystadenocarcinoma	RNA-Seq	Female	CCLE-OV	Illumina	ovary	HG19_Broad_variant	COV434	Cell Line
+a7c8f248-57e1-478d-bac8-d03a5a190bf0	CCLE-NCI-H2228-RNA-08	CCLE-NCI-H2228	Lung squamous cell carcinoma	RNA-Seq	Female	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H2228	Cell Line
+792f86ea-1c9c-42d2-9c3a-4f1426d0c7a3	CCLE-T3M-4-RNA-08	CCLE-T3M-4	Pancreatic adenocarcinoma	RNA-Seq	Male	CCLE-PAAD	Illumina	pancreas	HG19_Broad_variant	T3M-4	Cell Line
+322c912d-302b-4f16-8901-87c685b7365d	CCLE-NCI-H2227-RNA-08	CCLE-NCI-H2227	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H2227	Cell Line
+f0515531-c5d1-4201-86e0-1124de10c14f	CCLE-RD-ES-RNA-08	CCLE-RD-ES	Sarcoma	RNA-Seq	Male	CCLE-SARC	Illumina	bone	HG19_Broad_variant	RD-ES	Cell Line
+e16c14e6-5672-4a26-a750-feb492f5bde3	CCLE-KLE-RNA-08	CCLE-KLE	Cervical squamous cell carcinoma and endocervical adenocarcinoma	RNA-Seq	Female	CCLE-CESC	Illumina	endometrium	HG19_Broad_variant	KLE	Cell Line
+e00d1bac-32db-4822-9f32-b9f2ded5e0b7	CCLE-SNU-466-RNA-08	CCLE-SNU-466	Brain Lower Grade Glioma	RNA-Seq	Male	CCLE-LGG	Illumina	central_nervous_system	HG19_Broad_variant	SNU-466	Cell Line
+2689d108-a2c6-4280-9494-a351749481a7	CCLE-Calu-1-RNA-08	CCLE-Calu-1	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	Calu-1	Cell Line
+4c836b97-62e2-45f4-8bd9-b1812d232ef4	CCLE-SUP-T1-RNA-08	CCLE-SUP-T1	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Male	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	SUP-T1	Cell Line
+3b1c4150-117e-494f-804a-99372d9240db	CCLE-HEC-6-RNA-08	CCLE-HEC-6	Cervical squamous cell carcinoma and endocervical adenocarcinoma	RNA-Seq	Female	CCLE-CESC	Illumina	endometrium	HG19_Broad_variant	HEC-6	Cell Line
+ac5ba8a4-c770-4965-b669-00e4bcf3334f	CCLE-NCI-H1869-RNA-08	CCLE-NCI-H1869	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H1869	Cell Line
+1c38de58-8802-4626-a845-b6a9b9858655	CCLE-HCC1187-RNA-08	CCLE-HCC1187	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	HCC1187	Cell Line
+90649971-280d-47f4-b705-b9bde77f62b5	CCLE-SNU-119-RNA-08	CCLE-SNU-119	Ovarian serous cystadenocarcinoma	RNA-Seq	Female	CCLE-OV	Illumina	ovary	HG19_Broad_variant	SNU-119	Cell Line
+be0b38c4-e696-4ca8-b66d-86d31c51fbb6	CCLE-NCI-N87-RNA-08	CCLE-NCI-N87	Stomach adenocarcinoma	RNA-Seq	Male	CCLE-STAD	Illumina	stomach	HG19_Broad_variant	NCI-N87	Cell Line
+6ec0e835-e06f-45ee-bf88-949b04e0f6ee	CCLE-CW-2-RNA-08	CCLE-CW-2	Colon adenocarcinoma	RNA-Seq	Not available	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	CW-2	Cell Line
+c0dade5c-205e-4a07-9d18-db74a4ecc51b	CCLE-NCI-H2196-RNA-08	CCLE-NCI-H2196	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H2196	Cell Line
+65cc1477-0809-41c6-afe6-2dd29fb8e852	CCLE-NCI-H196-RNA-08	CCLE-NCI-H196	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H196	Cell Line
+ddf00d2a-5fa8-4feb-99e6-b95e00ec013d	CCLE-NCI-H2110-RNA-08	CCLE-NCI-H2110	Lung squamous cell carcinoma	RNA-Seq	Not available	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H2110	Cell Line
+cf5da625-3051-4bd2-8944-3b25bfcdcab1	CCLE-TE-6-RNA-08	CCLE-TE-6	Esophageal carcinoma	RNA-Seq	Not available	CCLE-ESCA	Illumina	oesophagus	HG19_Broad_variant	TE-6	Cell Line
+be76b07f-a367-4275-8e40-be55e7b8d428	CCLE-JHH-2-RNA-08	CCLE-JHH-2	Liver hepatocellular carcinoma	RNA-Seq	Male	CCLE-LIHC	Illumina	liver	HG19_Broad_variant	JHH-2	Cell Line
+a7a66e78-2e04-4fd0-8a66-df90558c0d4b	CCLE-CA46-RNA-08	CCLE-CA46	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Male	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	CA46	Cell Line
+2ae92105-b8a3-44fe-a035-a27332fd96b2	CCLE-SUIT-2-RNA-08	CCLE-SUIT-2	Pancreatic adenocarcinoma	RNA-Seq	Male	CCLE-PAAD	Illumina	pancreas	HG19_Broad_variant	SUIT-2	Cell Line
+8bb77314-3aef-4a79-ac82-881f1f60f5bb	CCLE-NCI-H1573-RNA-08	CCLE-NCI-H1573	Lung squamous cell carcinoma	RNA-Seq	Female	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H1573	Cell Line
+3b88bd67-dd24-473b-9e40-f3dff58160f2	CCLE-MDA-MB-157-RNA-08	CCLE-MDA-MB-157	Breast invasive carcinoma	RNA-Seq	Female	CCLE-BRCA	Illumina	breast	HG19_Broad_variant	MDA-MB-157	Cell Line
+b0def56c-ebe0-4d52-b7f1-be20cf899cd9	CCLE-SNU-886-RNA-08	CCLE-SNU-886	Liver hepatocellular carcinoma	RNA-Seq	Male	CCLE-LIHC	Illumina	liver	HG19_Broad_variant	SNU-886	Cell Line
+073d62c7-d2e5-45fc-a9b3-a6337d843402	CCLE-NMC-G1-RNA-08	CCLE-NMC-G1	Brain Lower Grade Glioma	RNA-Seq	Not available	CCLE-LGG	Illumina	central_nervous_system	HG19_Broad_variant	NMC-G1	Cell Line
+dd88f703-8d75-43b4-956a-61b3d6c424b5	CCLE-DBTRG-05MG-RNA-08	CCLE-DBTRG-05MG	Brain Lower Grade Glioma	RNA-Seq	Female	CCLE-LGG	Illumina	central_nervous_system	HG19_Broad_variant	DBTRG-05MG	Cell Line
+3d971016-6587-4505-b989-93dcd162cd7b	CCLE-KARPAS-299-RNA-08	CCLE-KARPAS-299	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Male	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	KARPAS-299	Cell Line
+36c33223-bcea-487b-ae3a-185318a8ac6f	CCLE-NCI-H1651-RNA-08	CCLE-NCI-H1651	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H1651	Cell Line
+54b8dbd4-a178-4ab4-932e-5e3331941602	CCLE-GRANTA-519-RNA-08	CCLE-GRANTA-519	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Female	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	GRANTA-519	Cell Line
+d4248301-68a3-4c47-9d8c-a50007d42fad	CCLE-HOP-62-v1-RNA-08	CCLE-HOP-62-v1	Stomach adenocarcinoma	RNA-Seq	Not available	CCLE-STAD	Illumina	Not available	HG19_Broad_variant	HOP-62-v1	Cell Line
+563d7b6c-a6d0-4160-9bc3-6ec789ee67a7	CCLE-COLO201-RNA-08	CCLE-COLO201	Colon adenocarcinoma	RNA-Seq	Male	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	COLO201	Cell Line
+35c0f305-6a14-4660-861e-81482bb4fb5c	CCLE-PE-CA-PJ49-RNA-08	CCLE-PE-CA-PJ49	Head and Neck squamous cell carcinoma	RNA-Seq	Male	CCLE-HNSC	Illumina	upper_aerodigestive_tract	HG19_Broad_variant	PE-CA-PJ49	Cell Line
+db7f1fbe-f5cb-482f-b537-d94983600e13	CCLE-PK-1-RNA-08	CCLE-PK-1	Pancreatic adenocarcinoma	RNA-Seq	Not available	CCLE-PAAD	Illumina	pancreas	HG19_Broad_variant	PK-1	Cell Line
+c9216e25-df0a-4db4-acf6-5b8f55281324	CCLE-SUP-B15-RNA-08	CCLE-SUP-B15	Chronic Lymphocytic Leukemia	RNA-Seq	Male	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	SUP-B15	Cell Line
+4bcead97-f248-4bb5-8394-f7d3c3e4dcb5	CCLE-Hs688A.T-RNA-08	CCLE-Hs688A.T	Skin Cutaneous Melanoma	RNA-Seq	Male	CCLE-SKCM	Illumina	skin	HG19_Broad_variant	Hs688A.T	Cell Line
+10b2db78-b409-4074-935f-bccdc20ac756	CCLE-T3M-10-RNA-08	CCLE-T3M-10	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	T3M-10	Cell Line
+02fd51e3-fdda-4cca-b07c-1f13ecb5112b	CCLE-SNU-620-RNA-08	CCLE-SNU-620	Stomach adenocarcinoma	RNA-Seq	Female	CCLE-STAD	Illumina	stomach	HG19_Broad_variant	SNU-620	Cell Line
+fdeb4d02-de54-46e5-bf4b-1c686110545a	CCLE-HARA-RNA-08	CCLE-HARA	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	HARA	Cell Line
+fad56ecd-19c8-4f71-b688-84a1c0fc3ea3	CCLE-HPB-ALL-RNA-08	CCLE-HPB-ALL	Chronic Lymphocytic Leukemia	RNA-Seq	Male	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	HPB-ALL	Cell Line
+f41d82a0-8c1a-433b-818f-6376a04420e6	CCLE-IST-MES2-RNA-08	CCLE-IST-MES2	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	pleura	HG19_Broad_variant	IST-MES2	Cell Line
+6c00674f-532f-4adf-baec-e6b53bc1575c	CCLE-SU-DHL-6-RNA-08	CCLE-SU-DHL-6	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Male	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	SU-DHL-6	Cell Line
+6cc737a7-0a48-492e-bf42-4b199529cd8d	CCLE-NCI-H1436-RNA-08	CCLE-NCI-H1436	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H1436	Cell Line
+dc1a3d02-cee5-42dd-a77f-950bbf915d98	CCLE-SK-MEL-1-RNA-08	CCLE-SK-MEL-1	Skin Cutaneous Melanoma	RNA-Seq	Male	CCLE-SKCM	Illumina	skin	HG19_Broad_variant	SK-MEL-1	Cell Line
+ab2b26e8-6ad3-49d6-8b84-dd634d51e0d4	CCLE-NCI-H292-RNA-08	CCLE-NCI-H292	Lung squamous cell carcinoma	RNA-Seq	Female	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H292	Cell Line
+0bf02faf-2612-453a-8dfb-09d4e4720108	CCLE-CML-T1-RNA-08	CCLE-CML-T1	Chronic Lymphocytic Leukemia	RNA-Seq	Female	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	CML-T1	Cell Line
+76b28831-2803-4532-8bd7-65cfeceb50f2	CCLE-RERF-LC-Sq1-RNA-08	CCLE-RERF-LC-Sq1	Lung squamous cell carcinoma	RNA-Seq	Female	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	RERF-LC-Sq1	Cell Line
+fbb33861-061e-4333-b12c-c852cfd4427d	CCLE-SEM-RNA-08	CCLE-SEM	Chronic Lymphocytic Leukemia	RNA-Seq	Female	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	SEM	Cell Line
+e34f47a8-0045-48ef-898c-8a065e43dcc4	CCLE-SK-OV-3-RNA-08	CCLE-SK-OV-3	Ovarian serous cystadenocarcinoma	RNA-Seq	Female	CCLE-OV	Illumina	ovary	HG19_Broad_variant	SK-OV-3	Cell Line
+8b75ce03-c5f3-4b76-937e-56e94046f4dc	CCLE-JeKo-1-RNA-08	CCLE-JeKo-1	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Female	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	JeKo-1	Cell Line
+3a7dfa3d-d9c6-459e-aa4a-079feac3b189	CCLE-CAL-62-RNA-08	CCLE-CAL-62	Thyroid carcinoma	RNA-Seq	Female	CCLE-THCA	Illumina	thyroid	HG19_Broad_variant	CAL-62	Cell Line
+fe0c88b3-84c9-4a6b-a4e7-6992e958caa9	CCLE-COV318-RNA-08	CCLE-COV318	Ovarian serous cystadenocarcinoma	RNA-Seq	Female	CCLE-OV	Illumina	ovary	HG19_Broad_variant	COV318	Cell Line
+6eec844d-c35c-49cd-9e9a-50647370d845	CCLE-SK-ES-1-RNA-08	CCLE-SK-ES-1	Sarcoma	RNA-Seq	Male	CCLE-SARC	Illumina	bone	HG19_Broad_variant	SK-ES-1	Cell Line
+349eeeb1-63d1-4d6a-a517-b4fe5cbfa72e	CCLE-ChaGo-K-1-RNA-08	CCLE-ChaGo-K-1	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	ChaGo-K-1	Cell Line
+57a5bcf7-a5fb-434e-a6b6-5ac790d7cd58	CCLE-KYSE-450-RNA-08	CCLE-KYSE-450	Esophageal carcinoma	RNA-Seq	Male	CCLE-ESCA	Illumina	oesophagus	HG19_Broad_variant	KYSE-450	Cell Line
+4bbd0d4c-149a-46d6-b00b-2f84853f2762	CCLE-MEL-HO-RNA-08	CCLE-MEL-HO	Skin Cutaneous Melanoma	RNA-Seq	Female	CCLE-SKCM	Illumina	skin	HG19_Broad_variant	MEL-HO	Cell Line
+95cbb7b3-29fa-4da4-ad29-5d1d08b5a266	CCLE-KYO-1-RNA-08	CCLE-KYO-1	Chronic Lymphocytic Leukemia	RNA-Seq	Male	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	KYO-1	Cell Line
+cbd247be-1287-47d2-ad5b-c5edceb5c2c2	CCLE-K-562-RNA-08	CCLE-K-562	Chronic Lymphocytic Leukemia	RNA-Seq	Female	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	K-562	Cell Line
+2527a456-5168-4187-bf29-395ca62686d6	CCLE-AMO-1-RNA-08	CCLE-AMO-1	Multiple Myeloma Plasma cell leukemia	RNA-Seq	Female	CCLE-MM	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	AMO-1	Cell Line
+1357785f-f84b-4688-9b4c-0c2b5472ef51	CCLE-RERF-LC-MS-RNA-08	CCLE-RERF-LC-MS	Lung squamous cell carcinoma	RNA-Seq	Not available	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	RERF-LC-MS	Cell Line
+049f0d6d-14bf-42ac-af26-65acf7f5f0e4	CCLE-KP-3-RNA-08	CCLE-KP-3	Pancreatic adenocarcinoma	RNA-Seq	Not available	CCLE-PAAD	Illumina	pancreas	HG19_Broad_variant	KP-3	Cell Line
+a6e3dae9-1320-42e9-95fa-c7f3a81d9f85	CCLE-CAL27-RNA-08	CCLE-CAL27	Head and Neck squamous cell carcinoma	RNA-Seq	Male	CCLE-HNSC	Illumina	upper_aerodigestive_tract	HG19_Broad_variant	CAL27	Cell Line
+e7e854b5-3ef7-4c3c-9f8d-48ef5097e98a	CCLE-NCI-H358-RNA-08	CCLE-NCI-H358	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H358	Cell Line
+b93f6e04-a2aa-4a1e-a53a-4019af6c8592	CCLE-SU-DHL-10-RNA-08	CCLE-SU-DHL-10	Lymphoid Neoplasm Diffuse Large B-cell Lymphoma	RNA-Seq	Male	CCLE-DLBC	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	SU-DHL-10	Cell Line
+b919444e-837f-4f70-a131-d9312a0e85f6	CCLE-SNU-398-RNA-08	CCLE-SNU-398	Liver hepatocellular carcinoma	RNA-Seq	Male	CCLE-LIHC	Illumina	liver	HG19_Broad_variant	SNU-398	Cell Line
+cdb0da8e-fbf2-49a9-bace-567f6d4c555a	CCLE-NCI-H2444-RNA-08	CCLE-NCI-H2444	Lung squamous cell carcinoma	RNA-Seq	Male	CCLE-LUSC	Illumina	lung	HG19_Broad_variant	NCI-H2444	Cell Line
+7c982878-9c7a-4964-aa27-46657b7baa83	CCLE-HUP-T3-RNA-08	CCLE-HUP-T3	Pancreatic adenocarcinoma	RNA-Seq	Male	CCLE-PAAD	Illumina	pancreas	HG19_Broad_variant	HUP-T3	Cell Line
+965331ef-da7f-4508-96b7-58e99fd8972c	CCLE-A-704-RNA-08	CCLE-A-704	Kidney renal clear cell carcinoma	RNA-Seq	Male	CCLE-KIRC	Illumina	kidney	HG19_Broad_variant	A-704	Cell Line
+6b113e6c-35e9-45df-8d53-413a1ae50e30	CCLE-KU812-RNA-08	CCLE-KU812	Chronic Lymphocytic Leukemia	RNA-Seq	Male	CCLE-LCLL	Illumina	haematopoietic_and_lymphoid_tissue	HG19_Broad_variant	KU812	Cell Line
+a767cff2-26b7-4e07-8147-8b13ee71aee6	CCLE-SNU-C2A-RNA-08	CCLE-SNU-C2A	Colon adenocarcinoma	RNA-Seq	Female	CCLE-COAD	Illumina	large_intestine	HG19_Broad_variant	SNU-C2A	Cell Line
