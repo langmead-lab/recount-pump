@@ -1,0 +1,12 @@
+{
+	"version": "9",
+	"hosts": {
+		"s3": {
+			"url": "http://localhost:29000",
+			"accessKey": "minio",
+			"secretKey": "minio123",
+			"api": "S3v4",
+			"lookup": "auto"
+		}
+	}
+}

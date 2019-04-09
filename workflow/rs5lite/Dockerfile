@@ -25,7 +25,7 @@ RUN curl -OL https://github.com/samtools/samtools/releases/download/${SM_VER}/sa
     make install
 
 # install bamcount
-ENV BC_VER=0.2.4
+ENV BC_VER=0.2.8
 RUN mkdir -p /bamcount && \
     cd /bamcount && \
     wget -q https://github.com/BenLangmead/bamcount/releases/download/${BC_VER}/bamcount-${BC_VER}.zip && \
@@ -35,6 +35,10 @@ RUN mkdir -p /bamcount && \
 # install Snakefile
 COPY Snakefile /Snakefile
 RUN chmod a+r /Snakefile
+
+# install download.sh
+COPY ../common/download.sh /download.sh
+RUN chmod a+r /download.sh
 
 # install generic workflow wrapper script
 COPY workflow.bash /workflow.bash

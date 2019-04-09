@@ -12,25 +12,20 @@ Usage:
   sradbv2 count <lucene-search> [options]
   sradbv2 size-dist <lucene-search> <n> [options]
   sradbv2 bases <lucene-search> [options]
-  sradbv2 size <lucene-search> [options]
   sradbv2 summarize-rna [options]
-  sradbv2 query [<SRP>,<SRR>]...  [options]
-  sradbv2 query-file <file> [options]
 
 Options:
   --size <size>            Number of records to fetch per call [default: 300].
   --stop-after <num>       Stop processing results after this many [default: 1000000].
-  --delay                  Seconds to sleep between requests [default: 1].
+  --include-dbgap          Include records from studies that have a dbGaP identifier
+                           among the study identifiers.
   --log-ini <ini>          .ini file for log aggregator [default: ~/.recount/log.ini].
   --log-level <level>      Set level for log aggregation; could be CRITICAL,
                            ERROR, WARNING, INFO, DEBUG [default: INFO].
-  --noheader               Suppress header in output.
-  --nostdout               Output to files named by study accession.
   --gzip                   Gzip outputs.
   --quiet                  Don't complain about bad records.
   --output <name>          Output filename [default: search.json].
   -h, --help               Show this screen.
-  --version                Show version.
 """
 
 from __future__ import print_function
@@ -40,18 +35,19 @@ import cgi
 import gzip
 import random
 import itertools
+import os
+from docopt import docopt
+from collections import defaultdict
+import log
 if sys.version[:1] == '2':
     from urllib import quote
     from urllib2 import urlopen
 else:
     from urllib.request import urlopen
     from urllib.parse import quote
-import time
-import os
-from docopt import docopt
-from collections import defaultdict
-import log
 
+
+# TODO: what sort of filter allows us to know whether something is dbGaP-protected?
 
 sradbv2_api_url = 'https://api-omicidx.cancerdatasci.org/sra/1.0'
 sradbv2_full_url = sradbv2_api_url + '/full'
@@ -112,14 +108,36 @@ def get_payload(search, size):
     return json.loads(payload), encodec
 
 
-def search_iterator(search, size):
+def dbgap_filter(hit):
+    """
+    Filter to apply to a single hit object.  Returns true if hit passes the
+    filter.  Filter checks if there is a key in the study->identifier
+    dictionary list that indicates this might be a dbGap project.
+    """
+    assert '_source' in hit
+    assert 'study' in hit['_source']
+    assert 'identifiers' in hit['_source']['study']
+    for ident in hit['_source']['study']['identifiers']:
+        if 'namespace' in ident and ident['namespace'] == 'dbGaP':
+            return False
+    return True
+
+
+def filter_hits(hits, hit_filter=None):
+    if hit_filter is not None:
+        return filter(hit_filter, hits)
+    return hits
+
+
+def search_iterator(search, size, hit_filter=None):
     jn, encodec = get_payload(search, size)
     tot_hits = jn['hits']['total']
     num_hits = len(jn['hits']['hits'])
     assert num_hits <= tot_hits
     log.info('Writing hits [%d, %d) out of %d' % (0, num_hits, tot_hits), 'sradbv2.py')
     for hit in jn['hits']['hits']:
-        yield hit
+        if hit_filter is None or hit_filter(hit):
+            yield hit
     nscrolls = 1
     while num_hits < tot_hits:
         url = sradbv2_scroll_url + '?scroll_id=' + jn['_scroll_id']
@@ -133,128 +151,32 @@ def search_iterator(search, size):
         log.info('Writing hits [%d, %d) out of %d, scroll=%d' %
                  (old_num_hits, num_hits, tot_hits, nscrolls), 'sradbv2.py')
         for hit in jn['hits']['hits']:
-            yield hit
+            if hit_filter is None or hit_filter(hit):
+                yield hit
         nscrolls += 1
-
-
-def download_and_extract_fields(run_acc, study_acc, header_fields):
-    url = "%s/%s" % (sradbv2_full_url, run_acc)
-    response = urlopen(url)
-    j, ct = cgi.parse_header(response.headers.get('Content-type', ''))
-    encodec = ct.get('charset', 'utf-8')
-    payload = response.read().decode(encodec)
-    with open("%s.%s.json.temp" % (run_acc, study_acc), "wb") as fout:
-        fout.write(payload.encode())
-    jfields = json.loads(payload)
-    header_fields.update(jfields['_source'].keys())
-
-
-def process_run(run_acc, study_acc, header_fields, outfile):
-    infile = "%s.%s.json.temp" % (run_acc, study_acc)
-    with open(infile, "rb") as fin:
-        jfields = json.load(fin)
-    os.unlink(infile)
-    for (i, field) in enumerate(header_fields):
-        if i != 0:
-            outfile.write('\t')
-        # skip missing field
-        if field not in jfields['_source']:
-            continue
-        value = jfields['_source'][field]
-        if field == 'run.reads':
-            idx = 0
-            if len(value) == 2:
-                idx = 1
-            outfile.write(str(value[idx]["base_coord"]))
-            continue
-        fields = field.split('_')
-        subfield_type = fields[1]
-        if len(fields) == 2 and subfield_type in nested_fields:
-            tag_name = nested_fields[subfield_type][0]
-            value_name = nested_fields[subfield_type][1]
-            if subfield_type == b'identifiers':
-                temp = tag_name
-                tag_name = value_name
-                value_name = temp
-            for (j, subfield) in enumerate(value):
-                if j != 0:
-                    outfile.write(SUBFIELD_DELIM)
-                outfile.write(subfield[tag_name] + KEY_VALUE_DELIM + subfield[value_name])
-            continue
-        # for the Unicode strings we assume to be here
-        try:
-            outfile.write(value.encode('utf-8'))
-        # otherwise just convert non-string types to standard strings
-        except AttributeError:
-            outfile.write(str(value))
-    outfile.write('\n')
-
-
-def process_study(study_acc, runs_per_study, header_fields, nostdout, noheader):
-    header_fields = sorted(list(header_fields))
-    outfile = sys.stdout
-    if nostdout:
-        outfile = open('%s.metadata.tsv' % study_acc, 'wb')
-    if not noheader:
-        outfile.write(b'\t'.join(header_fields) + b'\n')
-    [process_run(run_acc, study_acc, header_fields, outfile) for run_acc in runs_per_study]
-    if nostdout:
-        outfile.close()
-
-
-def query_string_iterator(sts):
-    for st in sts:
-        if not st.count(',') == 1:
-            raise ValueError('Bad query argument: "%s"' % st)
-        study_acc, run_acc = st.split(',')
-        yield study_acc, run_acc
-
-
-def query_file_iterator(fn):
-    with open(fn, "rb") as fin:
-        for line in fin:
-            study_acc, run_acc = line.rstrip().split(b'\t')
-            yield study_acc, run_acc
-
-
-def query(delay, nostdout, noheader, query_string=None, query_file=None):
-    prev_study = None
-    runs_per_study = set()
-    header_fields = set()
-    header_fields_vec = []
-    it = query_string_iterator(query_string) if query_string else query_file_iterator(query_file)
-    for study_acc, run_acc in it:
-        if study_acc != prev_study:
-            if prev_study is not None:
-                process_study(prev_study, runs_per_study, header_fields, nostdout, noheader)
-            runs_per_study = set()
-            header_fields = set()
-        prev_study = study_acc
-        runs_per_study.add(run_acc)
-        download_and_extract_fields(run_acc, study_acc, header_fields)
-        header_fields_vec.append(len(header_fields))
-        if delay > 0:
-            time.sleep(delay)
-    if prev_study is not None:
-        process_study(prev_study, runs_per_study, header_fields, nostdout, noheader)
 
 
 def count_search(search):
     """
-    Return the number of hits satisfying the query
+    Return the number of hits satisfying the query; doesn't interrogate the
+    hits themselves
     """
     jn, _ = get_payload(search, 1)
     return int(jn['hits']['total'])
 
 
-def process_search(search, size, gzip_output, output_fn):
+def process_search(search, size, gzip_output, output_fn, hit_filter=None):
     jn, encodec = get_payload(search, size)
     with openex(output_fn, 'wb', gzip_output) as fout:
         tot_hits = jn['hits']['total']
         num_hits = len(jn['hits']['hits'])
         assert num_hits <= tot_hits
+        hits = jn['hits']['hits']
+        filtered_hits = hits
+        if hit_filter is not None:
+            filtered_hits = list(filter(hit_filter, hits))
         log.info('Writing hits [%d, %d) out of %d' % (0, num_hits, tot_hits), 'sradbv2.py')
-        dump = json.dumps(jn['hits']['hits'], indent=4).encode('UTF-8')
+        dump = json.dumps(filtered_hits, indent=4).encode('UTF-8')
         if num_hits < tot_hits:
             assert dump.endswith(b']'), dump
             dump = dump[:-1] + b','  # don't prematurely end list
@@ -269,9 +191,13 @@ def process_search(search, size, gzip_output, output_fn):
             old_num_hits = num_hits
             num_hits += len(jn['hits']['hits'])
             assert num_hits <= tot_hits
+            hits = jn['hits']['hits']
+            filtered_hits = hits
+            if hit_filter is not None:
+                filtered_hits = list(filter(hit_filter, hits))
             log.info('Writing hits [%d, %d) out of %d, scroll=%d' %
                      (old_num_hits, num_hits, tot_hits, nscrolls), 'sradbv2.py')
-            dump = json.dumps(jn['hits']['hits'], indent=4).encode('UTF-8')
+            dump = json.dumps(filtered_hits, indent=4).encode('UTF-8')
             assert dump.startswith(b'[')
             dump = dump[1:]  # make one big list, not many little ones
             if num_hits < tot_hits:
@@ -281,9 +207,9 @@ def process_search(search, size, gzip_output, output_fn):
             nscrolls += 1
 
 
-def hit_search_random(search, limit, size, stop_after, gzip_output, output_fn):
+def hit_search_random(search, limit, size, stop_after, gzip_output, output_fn, hit_filter=None):
     samp = ReservoirSampler(limit)
-    for hit in itertools.islice(enumerate(search_iterator(search, size)), stop_after):
+    for hit in itertools.islice(enumerate(search_iterator(search, size, hit_filter=hit_filter)), stop_after):
         samp.add(hit[1])
     first = True
     with openex(output_fn, 'wt', gzip_output) as fout:
@@ -312,7 +238,8 @@ taxa = {'A thaliana': 3702,      # 4. arabidopsis
 # experiment.library_selection:"size fractionation"
 rna_seq_query = ['experiment.library_strategy:"rna seq"',
                  'experiment.library_source:transcriptomic',
-                 'experiment.platform:illumina']
+                 'experiment.platform:illumina',
+                 'Status:live']
 
 single_cell_query = ['study.abstract:"single-cell"',
                      'experiment.library_construction_protocol:"single-cell"',
@@ -366,19 +293,20 @@ if __name__ == '__main__':
                     log_ini=os.path.expanduser(args['--log-ini']),
                     agg_level=args['--log-level'])
     try:
+        hit_filter = dbgap_filter
+        if args['--include-dbgap']:
+            hit_filter = None
         if args['search']:
-            # sample.taxon_id:6239 AND experiment.library_strategy:"rna seq" AND experiment.library_source:transcriptomic AND experiment.platform:illumina
-            process_search(args['<lucene-search>'], int(args['--size']), args['--gzip'], args['--output'])
+            process_search(args['<lucene-search>'], int(args['--size']),
+                           args['--gzip'], args['--output'],
+                           hit_filter=hit_filter)
         if args['search-random-subset']:
             hit_search_random(args['<lucene-search>'], int(args['<subset-size>']),
                               int(args['--size']), int(args['--stop-after']),
-                              args['--gzip'], args['--output'])
+                              args['--gzip'], args['--output'],
+                              hit_filter=hit_filter)
         if args['count']:
             print(count_search(args['<lucene-search>']))
-        elif args['query']:
-            query(args['--delay'], args['--nostdout'], args['--noheader'], query_string=args['<SRP>,<SRR>'])
-        elif args['query-file']:
-            query(args['--delay'], args['--nostdout'], args['--noheader'], query_file=args['<file>'])
         elif args['summarize-rna']:
             print(summarize_rna())
         elif args['size-dist']:

@@ -1,0 +1,3 @@
+The `aws` subdirectory contains scripts that automate interacting with AWS services relevant to recount-pump using the [AWS CLI](https://aws.amazon.com/cli/).  They should be run from project directories where there is already a `creds` subdirectory containing `db.ini`, `log.ini` and `queue.ini`, as created by the `projects/common/make_creds.py` script.
+
+The `db`, `logs` and `sqs` subdirectories each contain scripts related to AWS services [Amazon Relational Database Service (RDS)](https://aws.amazon.com/rds/), [Amazon CloudWatch](https://aws.amazon.com/cloudwatch/) and [Amazon Simple Queueing Service (SQS)](https://aws.amazon.com/sqs/). 

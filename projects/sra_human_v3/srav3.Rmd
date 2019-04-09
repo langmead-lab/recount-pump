@@ -1,0 +1,137 @@
+---
+title: "srav3"
+output: html_document
+---
+
+```{r libs}
+library(ggplot2)
+library(dplyr)
+library(grid)
+library(gridExtra)
+```
+
+```{r read_csv}
+read_table <- function(fn) {
+    m <- read.csv(fn, header=F)
+    colnames(m) <- c('srr', 'srp', 'sc',
+                     'rec_year', 'rec_month', 'rec_day',
+                     'up_year', 'up_month', 'up_day')
+    m$rec_date <- as.Date(paste(m$rec_year, m$rec_month, m$rec_day, sep='.'), format='%Y.%m.%d')
+    m$sc <- ifelse(m$sc == 'True', 'Single-cell', 'Bulk')
+    m <- m %>% arrange(rec_date)
+    m$arrival <- 0
+    is_sc <- m$sc == 'Single-cell'
+    is_not_sc <- !is_sc
+    m$arrival[is_sc] <- seq(sum(is_sc))
+    m$arrival[is_not_sc] <- seq(sum(is_not_sc))
+    m
+}
+
+m_human <- read_table('summ_9606.csv')
+m_mouse <- read_table('summ_10090.csv')
+```
+
+```{r combined_plot}
+grid_arrange_shared_legend <- function(..., ncol = length(list(...)), nrow = 1, position = c("bottom", "right")) {
+
+  plots <- list(...)
+  position <- match.arg(position)
+  g <- ggplotGrob(plots[[1]] + theme(legend.position = position))$grobs
+  legend <- g[[which(sapply(g, function(x) x$name) == "guide-box")]]
+  lheight <- sum(legend$height)
+  lwidth <- sum(legend$width)
+  gl <- lapply(plots, function(x) x + theme(legend.position="none"))
+  gl <- c(gl, ncol = ncol, nrow = nrow)
+
+  combined <- switch(position,
+                     "bottom" = arrangeGrob(do.call(arrangeGrob, gl),
+                                            legend,
+                                            ncol = 1,
+                                            heights = unit.c(unit(1, "npc") - lheight, lheight)),
+                     "right" = arrangeGrob(do.call(arrangeGrob, gl),
+                                           legend,
+                                           ncol = 2,
+                                           widths = unit.c(unit(1, "npc") - lwidth, lwidth)))
+  grid.newpage()
+  grid.draw(combined)
+  # return gtable invisibly
+  invisible(combined)
+}
+```
+
+```{r plot_srr}
+plot_srr <- function(m, species) {
+    ggplot(m, aes(x=rec_date, color=sc, y=arrival)) +
+        geom_line() +
+        labs(x='Received date', y='Cumulative count',
+             title=paste(species, 'RNA-seq run accessions')) +
+        ylim(0, 450000) +
+        theme_bw() +
+        theme(legend.title=element_blank())
+}   
+
+human_srr <- plot_srr(m_human, 'Human')
+mouse_srr <- plot_srr(m_mouse, 'Mouse')
+```
+
+```{r srpify}
+srpify <- function(m) {
+    mp <- m %>% group_by(srp) %>%
+        summarise(rec_date=max(rec_date),
+                  sc=ifelse(all(sc == 'Single-cell'), 'Single-cell',
+                      ifelse(all(sc == 'Bulk'), 'Bulk', 'Mixed')),
+                  n=length(srr))
+    mp <- mp %>% arrange(rec_date)
+    is_sc <- mp$sc == 'Single-cell'
+    is_bulk <- mp$sc == 'Bulk'
+    is_neither <- !is_sc & !is_bulk
+    mp$arrival <- 0
+    mp$arrival[is_sc] <- seq(sum(is_sc))
+    mp$arrival[is_bulk] <- seq(sum(is_bulk))
+    mp$arrival[is_neither] <- seq(sum(is_neither))
+    mp
+}
+```
+
+```{r plot_srp}
+plot_srp <- function(mp, species) {
+    ggplot(mp %>% filter(sc != 'Mixed'), aes(x=rec_date, color=sc, y=arrival)) +
+        geom_line() +
+        labs(x='Received date', y='Cumulative count',
+             title=paste(species, 'RNA-seq study accessions')) +
+        theme_bw() +
+        theme(legend.title=element_blank())
+}
+
+human_srp <- plot_srp(srpify(m_human), 'Human')
+mouse_srp <- plot_srp(srpify(m_mouse), 'Mouse')
+```
+
+```{r plot_all}
+grid_arrange_shared_legend(human_srr, mouse_srr, human_srp, mouse_srp, nrow=2, ncol=2)
+
+pdf(file='sra_rna_growth.pdf', onefile=F)
+grid_arrange_shared_legend(human_srr, mouse_srr, human_srp, mouse_srp, nrow=2, ncol=2)
+dev.off()
+```
+
+```{r top_studies}
+mp_mouse <- srpify(m_mouse) %>% arrange(desc(n))
+print(head(mp_mouse %>% filter(sc == 'Single-cell'), n=100))
+```
+
+```{r top_dates_mouse}
+m_mouse %>%
+    group_by(rec_date) %>%
+    summarise(n=length(srr), srps=paste(unique(srp), collapse=' ')) %>%
+    arrange(desc(n)) %>%
+    head(5)
+```
+
+```{r top_dates_human}
+m_human %>%
+    group_by(rec_date) %>%
+    summarise(n=length(srr), srps=paste(unique(srp), collapse=' ')) %>%
+    arrange(desc(n)) %>%
+    head(5)
+```

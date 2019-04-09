@@ -2,8 +2,10 @@
 
 set -ex
 
+which mc
 docker-compose up -d
-sleep 15
+sleep 30
+docker ps
 
 export AWS_ACCESS_KEY_ID=minio
 export AWS_SECRET_ACCESS_KEY=minio123
@@ -18,14 +20,4 @@ export SINGULARITY_CACHEDIR="${RECOUNT_IMAGES}"
 # Remove python and pytest caches
 ./clean.sh
 ./unit_test.sh
-
-export RECOUNT_CREDS="$HOME/.creds_integration_test/.recount"
-
-rm -rf ~/.creds_integration_test
-cp -r creds ~/.creds_integration_test
-for i in $(ls ~/.creds_integration_test/*.override) ; do
-    echo "*** Renaming ${i} ***"
-    mv ${i} $(echo ${i} | sed 's/\.override$//')
-done
-
 ./e2e_test.sh

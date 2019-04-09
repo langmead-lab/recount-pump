@@ -1,0 +1,10 @@
+human_bulk_spike ERR204963 sra
+human_bulk_spike ERR204946 sra
+human_sc_spike SRR2967497 sra
+human_sc_spike SRR2967744 sra
+mouse_bulk_spike SRR207104 sra
+mouse_bulk_spike SRR207098 sra
+mouse_sc_spike SRR6615047 sra
+mouse_sc_spike SRR6543546 sra
+SIMULATION HG00152_male_GBR_LUMC_7_1_1 url https://recount-reads.s3.amazonaws.com/human_sim/HG00152_male_GBR_LUMC_7-1-1_sim_left.fastq.zst;https://recount-reads.s3.amazonaws.com/human_sim/HG00152_male_GBR_LUMC_7-1-1_sim_right.fastq.zst
+SIMULATION HG00111_female_GBR_CNAG_CRG_2_1_1 url https://recount-reads.s3.amazonaws.com/human_sim/HG00111_female_GBR_CNAG_CRG_2-1-1_sim_left.fastq.zst;https://recount-reads.s3.amazonaws.com/human_sim/HG00111_female_GBR_CNAG_CRG_2-1-1_sim_right.fastq.zst

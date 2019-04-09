@@ -72,7 +72,7 @@ pr_aln_plot(msub, T, F, T, 'Base level (with SC, no annotation)')
 
 ```{r plot_prec_rec}
 fscore_inov_plot <- function(m, want_intron, want_ann, title) {
-    msub$tool_and_pass <- paste(msub$tool, ifelse(msub$twopass, '1-pass', '2-pass'))
+    msub$tool_and_pass <- paste(msub$tool, ifelse(msub$twopass, '2-pass', '1-pass'))
     mplot <- msub %>% filter(inton == want_intron & ann == want_ann & !alignment)
     ggplot(mplot,
         aes(x=tool_and_pass, y=fscore, color=tool)) +
@@ -92,7 +92,7 @@ fscore_inov_plot(msub, F, F, 'Overlap-level (no annotation)')
 
 ```{r plot_fscore_aln}
 fscore_aln_plot <- function(m, want_softclip, want_ann, want_baselev, title) {
-    msub$tool_and_pass <- paste(msub$tool, ifelse(msub$twopass, '1-pass', '2-pass'))
+    msub$tool_and_pass <- paste(msub$tool, ifelse(msub$twopass, '2-pass', '1-pass'))
     mplot <- msub %>% filter(softclip == want_softclip &
             ann == want_ann & alignment & baselev == want_baselev)
     ggplot(mplot,

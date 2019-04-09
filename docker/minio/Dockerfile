@@ -1,4 +1,4 @@
-FROM minio/minio
+FROM minio/minio:RELEASE.2019-03-27T22-35-21Z
 
 # From parent Dockerfile:
 

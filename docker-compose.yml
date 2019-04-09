@@ -1,7 +1,7 @@
 version: '3'
 services:
   elasticmq:
-    image: "softwaremill/elasticmq:0.14.4"
+    image: "softwaremill/elasticmq:0.14.6"
     container_name: "elasticmq"
     volumes:
       - ./docker/elasticmq/custom-compose.conf:/opt/elasticmq.conf

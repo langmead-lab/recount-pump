@@ -4,3 +4,4 @@ images
 .nextflow.log
 .nextflow
 .snakemake
+*.log

@@ -1,0 +1,4 @@
+tranche_?_*.json
+summ_*.csv
+tranche_?_*.json.zst
+*.pdf

@@ -215,13 +215,20 @@ def do_job(body, proj, cluster_ini, my_attempt, node_name,
     pump.py.
     """
     name, system, analysis_dir, _, _, _, _ = read_cluster_config(cluster_ini)
+    assert analysis_dir is not None
+    analysis_dir = os.path.expanduser(analysis_dir)
     task = Task(body, proj)
     log_info_detailed(node_name, worker_name, 'got job: ' + str(task))
     tmp_dir = tempfile.mkdtemp()
     tmp_fn = os.path.join(tmp_dir, 'accessions.txt')
     assert not os.path.exists(tmp_fn)
     with open(tmp_fn, 'wt') as fh:
-        fh.write(','.join([task.srr, task.srp, task.reference_name, task.retrieval]) + '\n')
+        urls = [task.url1]
+        if task.url2 is not None:
+            urls.append(task.url2)
+        if task.url3 is not None:
+            urls.append(task.url3)
+        fh.write(','.join([task.srr, task.srp, task.reference_name, task.retrieval, ';'.join(urls)]) + '\n')
     assert os.path.exists(tmp_fn)
     analyses = session.query(Analysis).filter(Analysis.name == task.analysis_name).all()
     if 0 == len(analyses):
@@ -246,8 +253,9 @@ def do_job(body, proj, cluster_ini, my_attempt, node_name,
         mover = mover_config.new_mover()
     log_info_detailed(node_name, worker_name, 'Starting attempt "%s"' % attempt_name)
     partitioned_destination = destination
-    for partition_id in task.partition_id():
-        partitioned_destination = os.path.join(partitioned_destination, partition_id)
+    if destination is not None:
+        for partition_id in task.partition_id():
+            partitioned_destination = os.path.join(partitioned_destination, partition_id)
     ret = run.run_job(attempt_name, [tmp_fn], image_url, image_fn,
                       config, cluster_ini, heartbeat_func,
                       log_queue=log_queue, node_name=node_name,
@@ -278,7 +286,9 @@ def _remove_ext(fn):
 
 
 def _download_file(mover, url, typ, cluster_name, reference_dir):
+    assert url is not None
     base = os.path.basename(url)
+    assert base is not None
     genome = os.path.basename(os.path.dirname(url))
     local_genome_dir = os.path.join(reference_dir, genome)
     if not os.path.exists(local_genome_dir):
@@ -336,6 +346,8 @@ def ready_reference(reference, cluster_name, reference_dir, session):
 
 def prepare_analysis(cluster_ini, proj, mover, session):
     cluster_name, system, analysis_dir, _, _, _, _ = read_cluster_config(cluster_ini)
+    assert analysis_dir is not None
+    analysis_dir = os.path.expanduser(analysis_dir)
     analysis = session.query(Analysis).get(proj.analysis_id)
     assert system in ['singularity', 'docker']
     url = analysis.image_url
@@ -390,6 +402,8 @@ def prepare_analysis(cluster_ini, proj, mover, session):
 
 def prepare_reference(cluster_ini, proj, mover, session):
     cluster_name, _, _, _, ref_base, _, _ = read_cluster_config(cluster_ini)
+    assert ref_base is not None
+    ref_base = os.path.expanduser(ref_base)
     reference = session.query(Reference).get(proj.reference_id)
     reference_ready = ready_reference(reference, cluster_name, ref_base, session)
     if reference_ready:
@@ -407,6 +421,7 @@ def prepare_sra_settings(cluster_ini):
     # If both are specified, reconcile the sra_dir in the user-settings.mkfg
     # file with the sra_dir in the cluster.ini file
     if exists and sra_dir is not None:
+        sra_dir = os.path.expanduser(sra_dir)
         found = False
         with open(settings_fn, 'rt') as fh:
             for ln in fh:
@@ -583,8 +598,8 @@ def job_loop(project_id_or_name, q_ini, cluster_ini, worker_name, session,
                                        source_prefix=source_prefix)
                 except BaseException as e:
                     log_warning_detailed(node_name, worker_name,
-                                         'job attempt %d yielded exception: %s'
-                                         % (nattempts, str(e)))
+                                         'job attempt %d yielded exception: %s\n%s'
+                                         % (nattempts, str(e), traceback.format_exc()))
 
                 if succeeded:
                     log_success(job, node_name, worker_name, session)
@@ -637,6 +652,14 @@ def read_cluster_config(cluster_fn, section=None):
     system = _cfg_get_or_none('system')
     ncpus = _cfg_get_or_none('cpus') or 1
     nworkers = int(_cfg_get_or_none('workers') or 1)
+
+    if analysis_dir is not None:
+        analysis_dir = os.path.expanduser(analysis_dir)
+    if sra_dir is not None:
+        sra_dir = os.path.expanduser(sra_dir)
+    if ref_base is not None:
+        ref_base = os.path.expanduser(ref_base)
+
     return name, system, analysis_dir, sra_dir, ref_base, ncpus, nworkers
 
 

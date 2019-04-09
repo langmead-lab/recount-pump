@@ -34,16 +34,13 @@ from __future__ import print_function
 import os
 import log
 import pytest
-import gzip
 import json
-import codecs
 import tempfile
 from docopt import docopt
 from sqlalchemy import Column, ForeignKey, Integer, String, Sequence, Table
 from sqlalchemy.orm import relationship
 from base import Base
-from sqlalchemy.sql import text
-from toolbox import session_maker_from_config
+from toolbox import session_maker_from_config, openex
 
 
 class Input(Base):
@@ -202,9 +199,13 @@ def add_inputs_to_set(set_ids, input_ids, my_session):
     """
     Add inputs to input set.
     """
+    input_set = None
+    last_set_id = -1
     for set_id, input_id in zip(set_ids, input_ids):
         inp = my_session.query(Input).get(input_id)
-        input_set = my_session.query(InputSet).get(set_id)
+        if input_set is None or set_id != last_set_id:
+            input_set = my_session.query(InputSet).get(set_id)
+        last_set_id = set_id
         input_set.inputs.append(inp)
     log.info('Imported %d inputs to sets' % len(input_ids), 'input.py')
     my_session.commit()
@@ -239,34 +240,66 @@ def import_input_set(name, csv_fn, my_session):
     return input_set.id, n_added_input
 
 
+def input_set_from_name(input_set_name, session, caller_name):
+    input_sets = session.query(InputSet).filter(InputSet.name == input_set_name).all()
+    if len(input_sets) > 1:
+        raise RuntimeError('More than one InputSet with name "%s"' % input_set_name)
+    if len(input_sets) == 1:
+        log.info('%s is using an existing InputSet with name "%s"' % (caller_name, input_set_name), 'input.py')
+        set_id = input_sets[0].id
+    else:
+        log.info('%s creating a new InputSet with name "%s"' % (caller_name, input_set_name), 'input.py')
+        set_id = add_input_set(input_set_name, session)
+    return set_id
+
+
 def import_text(fn, input_set_name, session, limit=None):
     log.info('Loading metadata from text file "%s"' % fn, 'input.py')
     if not os.path.exists(fn):
         raise RuntimeError('No such text file as "%s"' % fn)
     inputs = []
-    with open(fn, 'rt') as fh:
+    with openex(fn) as fh:
         for ln in fh:
             ln = ln.rstrip()
             if len(ln) == 0:
                 continue
             if ln[0] == '#':
                 continue
+
+            # This file is whitespace-separated, which contrasts with the
+            # comma-separated string that is ultimately passed to the Snakefile
             toks = ln.split()
             retrieval_method = 'sra'
-            assert 2 <= len(toks) <= 3, str(toks)
-            if len(toks) == 3:
-                retrieval_method = toks[2]
+            assert 2 <= len(toks) <= 4, str(toks)
             acc_s, acc_r = toks[0], toks[1]
+            url_1 = acc_r
+            url_2, url_3 = None, None
+
+            # Get retrieval method
+            if len(toks) >= 3:
+                retrieval_method = toks[2]
+
+            # Sort out the URL tokens
+            if len(toks) >= 4:
+                urls = toks[3]
+                url_toks = urls.split(';')
+                if len(url_toks) > 3:
+                    raise ValueError('More than three ;-separated URL tokens: "%s"' % urls)
+                url_1 = url_toks[0]
+                if len(url_toks) > 1:
+                    url_2 = url_toks[1]
+                if len(url_toks) > 2:
+                    url_3 = url_toks[2]
             inp = Input(acc_r=acc_r, acc_s=acc_s,
-                        url_1=acc_r, url_2=None, url_3=None,
+                        url_1=url_1, url_2=url_2, url_3=url_3,
                         checksum_1=None, checksum_2=None, checksum_3=None,
                         retrieval_method=retrieval_method)
             inputs.append(inp)
-            session.add(inp)
             if limit is not None and len(inputs) >= int(limit):
                 break
+    session.add_all(inputs)
     session.commit()
-    set_id = add_input_set(input_set_name, session)
+    set_id = input_set_from_name(input_set_name, session, 'import_text')
     add_inputs_to_set([set_id] * len(inputs),
                       list(map(lambda x: x.id, inputs)),
                       session)
@@ -277,7 +310,7 @@ def import_json(json_fn, input_set_name, session, limit=None):
     log.info('Loading metadata from json file "%s"' % json_fn, 'input.py')
     if not os.path.exists(json_fn):
         raise RuntimeError('No such json file as "%s"' % json_fn)
-    js = json.load(codecs.getreader("utf-8")(gzip.open(json_fn)) if json_fn.endswith('.gz') else open(json_fn))
+    js = json.load(openex(json_fn))
     inputs = []
     if len(js) == 0:
         raise ValueError('Attempt to import from empty JSON file: "%s"' % json_fn)
@@ -303,7 +336,7 @@ def import_json(json_fn, input_set_name, session, limit=None):
         if limit is not None and len(inputs) >= int(limit):
             break
     session.commit()
-    set_id = add_input_set(input_set_name, session)
+    set_id = input_set_from_name(input_set_name, session, 'import_text')
     add_inputs_to_set([set_id] * len(inputs),
                       list(map(lambda x: x.id, inputs)),
                       session)

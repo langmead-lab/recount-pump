@@ -17,6 +17,17 @@ else:
     from configparser import RawConfigParser
 
 
+def openex(fn):
+    if fn.endswith('.gz'):
+        pipe = subprocess.Popen('gzip -dc ' + fn, shell=True, stdout=subprocess.PIPE)
+        return pipe.stdout
+    elif fn.endswith('.zstd') or fn.endswith('.zst'):
+        pipe = subprocess.Popen('zstd -dc ' + fn, shell=True, stdout=subprocess.PIPE)
+        return pipe.stdout
+    else:
+        return open(fn, 'rt')
+
+
 def generate_file_md5(fn, blocksize=2**20):
     """
     Return md5 checksum of file; based on:
