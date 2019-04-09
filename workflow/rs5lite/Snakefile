@@ -42,7 +42,7 @@ FILES = ['sjout.zst', 'fastq_check.tsv.zst',
          'jx_bed.zst', 'unmapped.jx_bed.zst',
          'manifest'] + list(map(lambda x: x + '.log', STEPS))
 
-URLS={}
+INPUTS={}
 TOKENS={}
 READS_IN_BAM=set()
 
@@ -60,8 +60,8 @@ def get_accessions(wildcards):
                 method = 'sra'
                 if len(toks) >= 4:
                     method = toks[3]
-                    if len(toks) > 4 and method == 'url':
-                        URLS['%s!%s!%s!%s' % (toks[0], toks[1], toks[2], method)]=toks[4].split(';')
+                    if len(toks) > 4 and (method == 'url' or method == 'local'):
+                        INPUTS['%s!%s!%s!%s' % (toks[0], toks[1], toks[2], method)]=toks[4].split(';')
                     if len(toks) > 4 and len(toks[4]) > 0 and method == 'gdc':
                         TOKENS['%s!%s!%s!%s' % (toks[0], toks[1], toks[2], method)]=toks[4]
                     if len(toks) > 5 and len(toks[5]) > 0:
@@ -125,9 +125,9 @@ rule make_manifest:
         with open(output[0], 'wt') as fh:
             for fn in FILES:
                 fh.write(params.quad + "." + fn + '\n')
-        #all finished, if this exists in URLS, delete
-        if params.quad in URLS:
-            del URLS[quad]
+        #all finished, if this exists in INPUTS, delete
+        if params.quad in INPUTS:
+            del INPUTS[quad]
 
 rule bamcount:
     input:
@@ -1065,11 +1065,11 @@ rule download:
         method=lambda wildcards: wildcards.quad.split('!')[3],
         fd_params=config.get('fastq_dump_args', ''),
         retries=config.get('fastq_dump_retries', '5'),
-        url1=lambda wildcards: URLS[wildcards.quad][0] if wildcards.quad in URLS and len(URLS[wildcards.quad]) > 0 else None,
-        url2=lambda wildcards: URLS[wildcards.quad][1] if wildcards.quad in URLS and len(URLS[wildcards.quad]) > 1 else None,
-        url0=lambda wildcards: URLS[wildcards.quad][2] if wildcards.quad in URLS and len(URLS[wildcards.quad]) > 2 else None,
-        num_urls=lambda wildcards: len(URLS[wildcards.quad]) if wildcards.quad in URLS else 0,
-        is_gzipped=lambda wildcards: 1 if wildcards.quad in URLS and URLS[wildcards.quad][0][-3:] == '.gz' else 0,
+        url1=lambda wildcards: INPUTS[wildcards.quad][0] if wildcards.quad in INPUTS and len(INPUTS[wildcards.quad]) > 0 else None,
+        url2=lambda wildcards: INPUTS[wildcards.quad][1] if wildcards.quad in INPUTS and len(INPUTS[wildcards.quad]) > 1 else None,
+        url0=lambda wildcards: INPUTS[wildcards.quad][2] if wildcards.quad in INPUTS and len(INPUTS[wildcards.quad]) > 2 else None,
+        num_urls=lambda wildcards: len(INPUTS[wildcards.quad]) if wildcards.quad in INPUTS else 0,
+        is_gzipped=lambda wildcards: 1 if wildcards.quad in INPUTS and INPUTS[wildcards.quad][0][-3:] == '.gz' else 0,
         gdc_token=lambda wildcards: TOKENS[wildcards.quad] if wildcards.quad in TOKENS else "",
         reads_in_bam=lambda wildcards: 1 if wildcards.quad in READS_IN_BAM else 0
     threads: 4
@@ -1254,6 +1254,52 @@ rule download:
             fi
             if (( $SUCCESS == 0 )) ; then
                 echo "COUNT_URLFailures 1"
+                exit 1
+            fi
+        elif [[ {params.method} == "local" ]] ; then
+            cmd='cat'
+            if [[ {params.is_gzipped} == "1" ]] ; then
+                cmd='gzip -cd'
+            fi
+            for i in {{ 1..{params.retries} }} ; do
+                if $cmd "{params.url1}" > {params.srr}_0.fastq 2>> {log} ; then
+                    SUCCESS=1
+                    break
+                else
+                    echo "COUNT_LOCALRetries1 1"
+                    TIMEOUT=$((${{TIMEOUT}} * 2))
+                    sleep ${{TIMEOUT}}
+                fi
+            done
+            if (( $SUCCESS == 1 )) && [[ {params.num_urls} -gt 1 ]] ; then
+                SUCCESS=0
+                for i in {{ 1..{params.retries} }} ; do
+                    if time $cmd "{params.url2}" > {params.srr}_2.fastq 2>> {log} ; then
+                        SUCCESS=1
+                        mv {params.srr}_0.fastq {params.srr}_1.fastq
+                        break
+                    else
+                        echo "COUNT_LOCALRetries2 1"
+                        TIMEOUT=$((${{TIMEOUT}} * 2))
+                        sleep ${{TIMEOUT}}
+                    fi
+                done
+            fi
+            if (( $SUCCESS == 1 )) && [[ {params.num_urls} -gt 2 ]] ; then
+                SUCCESS=0
+                for i in {{ 1..{params.retries} }} ; do
+                    if time $cmd "{params.url0}" 2>> {log} > {params.srr}_0.fastq 2>> {log} ; then
+                        SUCCESS=1
+                        break
+                    else
+                        echo "COUNT_LOCALRetries0 1"
+                        TIMEOUT=$((${{TIMEOUT}} * 2))
+                        sleep ${{TIMEOUT}}
+                    fi
+                done
+            fi
+            if (( $SUCCESS == 0 )) ; then
+                echo "COUNT_LOCALFailures 1"
                 exit 1
             fi
         fi
