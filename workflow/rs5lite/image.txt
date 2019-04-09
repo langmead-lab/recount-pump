@@ -1,1 +1,1 @@
-quay.io/benlangmead/recount-rs5-lite
+quay.io/broadsword/rplite
