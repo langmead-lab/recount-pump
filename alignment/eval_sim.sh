@@ -9,20 +9,20 @@
 # HG00152_male_GBR_LUMC_7-1-1
 
 # Current setups:
-# humansim_annotation_500oh
-# humansim_annotation_50oh
-# humansim_annotation
-# humansim_hg38
-# humansim_recount2_500oh
-# humansim_recount2_50oh
-# humansim_recount2
+# hg19_annotation_500
+# hg19_annotation_100
+# hg19_annotation_50
+# hg19
+# hg19_snaptron_500
+# hg19_snaptron_100
+# hg19_snaptron_50
 
 if [[ -z "${1}" ]] ; then
     echo "Specify sample (e.g. HG00111_female_GBR_CNAG_CRG_2-1-1) as 1st argument"
     exit 1
 fi
 if [[ -z "${2}" ]] ; then
-    echo "Specify experiment type (e.g. humansim_recount2_50oh) as 2nd argument"
+    echo "Specify experiment type (e.g. hg19_snaptron_500) as 2nd argument"
     exit 1
 fi
 
@@ -51,6 +51,7 @@ test -d "${data}/${2}.output"
 
 samp_no_dash=$(echo ${1} | sed 's/-/_/g')
 bam=$(ls -1 ${data}/${2}.output/${samp_no_dash}*.bam)
+echo "BAM(s) found: ${bam}"
 test -f ${bam}
 
 PYTHON=/scratch/groups/blangme2/software/pypy-6.0.0-linux_x86_64-portable/bin/pypy
