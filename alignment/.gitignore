@@ -1,2 +1,6 @@
 aln_cmp.html
 *.csv
+.HG*.err
+.HG*.out
+output
+sim_data

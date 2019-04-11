@@ -59,18 +59,21 @@ SAMTOOLS=/software/apps/samtools/1.9/intel/18.0/bin/samtools
 which $PYTHON
 which $SAMTOOLS
 
+outdir="output/${1}/${2}"
+mkdir -p ${outdir}
+
 echo "Overlap-level (1/4)..."
 samtools view ${bam} | \
-    $PYTHON eval/spliced_read_recovery_performance.py -g -t ${bed} >perf 2>perf_summary
+    $PYTHON eval/spliced_read_recovery_performance.py -g -t ${bed} >${outdir}/perf 2>${outdir}/perf_summary
 
 echo "Intron-level (2/4)..."
 samtools view ${bam} | \
-    $PYTHON eval/intron_recovery_performance.py -t ${bed} >perf_intron_recovery_summary
+    $PYTHON eval/intron_recovery_performance.py -t ${bed} >${outdir}/perf_intron_recovery_summary
 
 echo "Alignment and base-level, no soft clipping (3/4)..."
 samtools view ${bam} | \
-    $PYTHON eval/mapping_accuracy.py -t ${bed} -g >perf_mapping_accuracy_summary
+    $PYTHON eval/mapping_accuracy.py -t ${bed} -g >${outdir}/perf_mapping_accuracy_summary
 
 echo "Alignment and base-level, with soft clipping (4/4)..."
 samtools view ${bam} | \
-    $PYTHON eval/mapping_accuracy.py -t ${bed} -c 0.1 -g >perf_mapping_accuracy_SC_summary
+    $PYTHON eval/mapping_accuracy.py -t ${bed} -c 0.1 -g >${outdir}/perf_mapping_accuracy_SC_summary
