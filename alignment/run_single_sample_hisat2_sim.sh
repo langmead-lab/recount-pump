@@ -7,6 +7,7 @@
 # Ex: taskset -c 0,1,2,3 sh run_single_sample_hisat2_sim.sh 4 ./myoutput NA11829_male_CEU_UU_6-1-1 /tmp
 # See generate_bioreps.py for how sample data was generated.
 
+d=$(dirname $0)
 TOOL=hisat2
 
 # Specify number of parallel processes for each program
@@ -88,40 +89,40 @@ mkdir -p $OUTPUT/hisat2/noann_paired_1pass
 cd $OUTPUT/hisat2/noann_paired_1pass
 time ($HISAT2 -x $HISAT2IDX -1 ${LEFT} -2 ${RIGHT} -p $CORES -S Aligned.out.sam --novel-splicesite-outfile novel_splice_sites.txt 2>&1) 2>>$TIMELOG
 echo 'Computing precision and recall...'
-(cat Aligned.out.sam | $PYTHON $RAILHOME/eval/spliced_read_recovery_performance.py -g -t ${BED} >$PERFORMANCE 2>${PERFORMANCE}_summary)
-(cat Aligned.out.sam | $PYTHON $RAILHOME/eval/intron_recovery_performance.py -t ${BED} >${PERFORMANCE}_intron_recovery_summary)
-(cat Aligned.out.sam | $PYTHON $RAILHOME/eval/mapping_accuracy.py -t ${BED} -g >${PERFORMANCE}_mapping_accuracy_summary)
-(cat Aligned.out.sam | $PYTHON $RAILHOME/eval/mapping_accuracy.py -t ${BED} -c 0.1 -g >${PERFORMANCE}_mapping_accuracy_SC_summary)
+(cat Aligned.out.sam | $PYTHON $d/eval/spliced_read_recovery_performance.py -g -t ${BED} >$PERFORMANCE 2>${PERFORMANCE}_summary)
+(cat Aligned.out.sam | $PYTHON $d/eval/intron_recovery_performance.py -t ${BED} >${PERFORMANCE}_intron_recovery_summary)
+(cat Aligned.out.sam | $PYTHON $d/eval/mapping_accuracy.py -t ${BED} -g >${PERFORMANCE}_mapping_accuracy_summary)
+(cat Aligned.out.sam | $PYTHON $d/eval/mapping_accuracy.py -t ${BED} -c 0.1 -g >${PERFORMANCE}_mapping_accuracy_SC_summary)
 echo 'Running HISAT2 on sample '${SAMPLE}' with annotation and in paired-end mode...'
 echo '#'${SAMPLE}' HISAT2 1-pass ann paired' >>$TIMELOG
 mkdir -p $OUTPUT/hisat2/ann_paired_1pass
 cd $OUTPUT/hisat2/ann_paired_1pass
 time ($HISAT2 -x $HISAT2IDX -1 ${LEFT} -2 ${RIGHT} -p $CORES -S Aligned.out.sam --novel-splicesite-outfile novel_splice_sites.txt --novel-splicesite-infile $HISAT2ANNOTATION 2>&1) 2>>$TIMELOG
 echo 'Computing precision and recall...'
-(cat Aligned.out.sam | $PYTHON $RAILHOME/eval/spliced_read_recovery_performance.py -g -t ${BED} >$PERFORMANCE 2>${PERFORMANCE}_summary)
-(cat Aligned.out.sam | $PYTHON $RAILHOME/eval/intron_recovery_performance.py -t ${BED} >${PERFORMANCE}_intron_recovery_summary)
-(cat Aligned.out.sam | $PYTHON $RAILHOME/eval/mapping_accuracy.py -t ${BED} -g >${PERFORMANCE}_mapping_accuracy_summary)
-(cat Aligned.out.sam | $PYTHON $RAILHOME/eval/mapping_accuracy.py -t ${BED} -c 0.1 -g >${PERFORMANCE}_mapping_accuracy_SC_summary)
+(cat Aligned.out.sam | $PYTHON $d/eval/spliced_read_recovery_performance.py -g -t ${BED} >$PERFORMANCE 2>${PERFORMANCE}_summary)
+(cat Aligned.out.sam | $PYTHON $d/eval/intron_recovery_performance.py -t ${BED} >${PERFORMANCE}_intron_recovery_summary)
+(cat Aligned.out.sam | $PYTHON $d/eval/mapping_accuracy.py -t ${BED} -g >${PERFORMANCE}_mapping_accuracy_summary)
+(cat Aligned.out.sam | $PYTHON $d/eval/mapping_accuracy.py -t ${BED} -c 0.1 -g >${PERFORMANCE}_mapping_accuracy_SC_summary)
 echo 'Running second pass of HISAT2 on sample '${SAMPLE}' with no annotation and in paired-end mode...'
 echo '#'${SAMPLE}' HISAT2 2-pass noann paired' >>$TIMELOG
 mkdir -p $OUTPUT/hisat2/noann_paired_2pass
 cd $OUTPUT/hisat2/noann_paired_2pass
 time ($HISAT2 -x $HISAT2IDX -1 ${LEFT} -2 ${RIGHT} -p $CORES -S Aligned.out.sam --novel-splicesite-infile $OUTPUT/hisat2/noann_paired_1pass/novel_splice_sites.txt 2>&1) 2>>$TIMELOG
 echo 'Computing precision and recall...'
-(cat Aligned.out.sam | $PYTHON $RAILHOME/eval/spliced_read_recovery_performance.py -g -t ${BED} >$PERFORMANCE 2>${PERFORMANCE}_summary)
-(cat Aligned.out.sam | $PYTHON $RAILHOME/eval/intron_recovery_performance.py -t ${BED} >${PERFORMANCE}_intron_recovery_summary)
-(cat Aligned.out.sam | $PYTHON $RAILHOME/eval/mapping_accuracy.py -t ${BED} -g >${PERFORMANCE}_mapping_accuracy_summary)
-(cat Aligned.out.sam | $PYTHON $RAILHOME/eval/mapping_accuracy.py -t ${BED} -c 0.1 -g >${PERFORMANCE}_mapping_accuracy_SC_summary)
+(cat Aligned.out.sam | $PYTHON $d/eval/spliced_read_recovery_performance.py -g -t ${BED} >$PERFORMANCE 2>${PERFORMANCE}_summary)
+(cat Aligned.out.sam | $PYTHON $d/eval/intron_recovery_performance.py -t ${BED} >${PERFORMANCE}_intron_recovery_summary)
+(cat Aligned.out.sam | $PYTHON $d/eval/mapping_accuracy.py -t ${BED} -g >${PERFORMANCE}_mapping_accuracy_summary)
+(cat Aligned.out.sam | $PYTHON $d/eval/mapping_accuracy.py -t ${BED} -c 0.1 -g >${PERFORMANCE}_mapping_accuracy_SC_summary)
 echo 'Running second pass of HISAT2 on sample '${SAMPLE}' with annotation and in paired-end mode...'
 echo '#'${SAMPLE}' HISAT2 2-pass ann paired' >>$TIMELOG
 mkdir -p $OUTPUT/hisat2/ann_paired_2pass
 cd $OUTPUT/hisat2/ann_paired_2pass
 time ($HISAT2 -x $HISAT2IDX -1 ${LEFT} -2 ${RIGHT} -p $CORES -S Aligned.out.sam --novel-splicesite-infile $OUTPUT/hisat2/ann_paired_1pass/novel_splice_sites.txt 2>&1) 2>>$TIMELOG
 echo 'Computing precision and recall...'
-(cat Aligned.out.sam | $PYTHON $RAILHOME/eval/spliced_read_recovery_performance.py -g -t ${BED} >$PERFORMANCE 2>${PERFORMANCE}_summary)
-(cat Aligned.out.sam | $PYTHON $RAILHOME/eval/intron_recovery_performance.py -t ${BED} >${PERFORMANCE}_intron_recovery_summary)
-(cat Aligned.out.sam | $PYTHON $RAILHOME/eval/mapping_accuracy.py -t ${BED} -g >${PERFORMANCE}_mapping_accuracy_summary)
-(cat Aligned.out.sam | $PYTHON $RAILHOME/eval/mapping_accuracy.py -t ${BED} -c 0.1 -g >${PERFORMANCE}_mapping_accuracy_SC_summary)
+(cat Aligned.out.sam | $PYTHON $d/eval/spliced_read_recovery_performance.py -g -t ${BED} >$PERFORMANCE 2>${PERFORMANCE}_summary)
+(cat Aligned.out.sam | $PYTHON $d/eval/intron_recovery_performance.py -t ${BED} >${PERFORMANCE}_intron_recovery_summary)
+(cat Aligned.out.sam | $PYTHON $d/eval/mapping_accuracy.py -t ${BED} -g >${PERFORMANCE}_mapping_accuracy_summary)
+(cat Aligned.out.sam | $PYTHON $d/eval/mapping_accuracy.py -t ${BED} -c 0.1 -g >${PERFORMANCE}_mapping_accuracy_SC_summary)
 
 echo 'Delete decompressed FASTQs...'
 rm -f ${LEFT} ${RIGHT} ${BED}
