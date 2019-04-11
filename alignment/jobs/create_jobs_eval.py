@@ -24,7 +24,11 @@ modes = ['hg19_annotation_500',
          'hg19',
          'hg19_snaptron_500',
          'hg19_snaptron_100',
-         'hg19_snaptron_50']
+         'hg19_snaptron_50',
+         'hg19_randomdrop_5',
+         'hg19_randomdrop_10',
+         'hg19_randomdrop_15',
+         'hg19_randomdrop_20']
 
 mem = '6G'
 
