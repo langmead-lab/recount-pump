@@ -563,7 +563,7 @@ if __name__ == '__main__':
                                             instance=args.read_instance)
     import subprocess
     sorted_combined_file = os.path.join(temp_dir_path, 'combined.sorted.temp')
-    subprocess.check_call(' '.join(['sort -T %s -k1,1' % temp_dir_path,
+    subprocess.check_call(' '.join(['sort -S 2G -T %s -k1,1' % temp_dir_path,
                                     combined_file, 
                                     '>', sorted_combined_file]),
                             bufsize=-1, shell=True)

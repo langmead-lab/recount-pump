@@ -412,7 +412,7 @@ def go(true_bed_stream, sam_stream=sys.stdin, generous=False,
                 print >>temp_stream, '\t'.join([tokens[0], '1'] + tokens[1:])
     import subprocess
     sorted_combined_file = os.path.join(temp_dir_path, 'combined.sorted.temp')
-    subprocess.check_call(' '.join(['sort -T %s -k1,1 -k2,2n'
+    subprocess.check_call(' '.join(['sort -S 2G -T %s -k1,1 -k2,2n'
                                         % temp_dir_path, combined_file, 
                                         '>', sorted_combined_file]),
                             bufsize=-1, shell=True)

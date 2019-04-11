@@ -26,7 +26,7 @@ modes = ['hg19_annotation_500',
          'hg19_snaptron_100',
          'hg19_snaptron_50']
 
-mem = '4G'
+mem = '6G'
 
 for samp, mode in itertools.product(samps, modes):
     if '_female_' in samp:
