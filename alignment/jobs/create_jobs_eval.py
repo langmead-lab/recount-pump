@@ -15,17 +15,28 @@ HEADER = """#!/bin/bash -l
 #SBATCH --ntasks-per-node=8
 """
 
-samps = ['HG00111_female_GBR_CNAG_CRG_2-1-1', 'HG00152_male_GBR_LUMC_7-1-1']
-modes = ['humansim_annotation_500oh',
-         'humansim_annotation_50oh',
-         'humansim_annotation',
-         'humansim_hg38',
-         'humansim_recount2_500oh',
-         'humansim_recount2_50oh',
-         'humansim_recount2']
-mem = '4G'
+samps = ['HG00111_female_GBR_CNAG_CRG_2-1-1',
+         'HG00152_male_GBR_LUMC_7-1-1']
+
+modes = ['hg19_annotation_500',
+         'hg19_annotation_100',
+         'hg19_annotation_50',
+         'hg19',
+         'hg19_snaptron_500',
+         'hg19_snaptron_100',
+         'hg19_snaptron_50',
+         'hg19_randomdrop_5',
+         'hg19_randomdrop_10',
+         'hg19_randomdrop_15',
+         'hg19_randomdrop_20']
+
+mem = '6G'
 
 for samp, mode in itertools.product(samps, modes):
+    if '_female_' in samp:
+        mode += '_female'
+    else:
+        mode += '_male'
     scr_fn = '%s_%s_shared.sh' % (samp, mode)
     if os.path.exists(scr_fn):
         continue
@@ -34,5 +45,5 @@ for samp, mode in itertools.product(samps, modes):
         fh.write('#SBATCH --out=.%s_%s.out\n' % (samp, mode))
         fh.write('#SBATCH --err=.%s_%s.err\n' % (samp, mode))
         fh.write('\n')
-        fh.write('./eval_sim.sh %s %s' % (samp, mode))
+        fh.write('./eval_sim.sh %s %s\n' % (samp, mode))
     print ('sbatch jobs/' + scr_fn)

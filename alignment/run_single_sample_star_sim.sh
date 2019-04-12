@@ -7,6 +7,7 @@
 # Ex: taskset -c 0,1,2,3 sh run_single_sample_star_sim.sh 4 ./myoutput NA11829_male_CEU_UU_6-1-1 /tmp
 # See generate_bioreps.py for how sample data was generated.
 
+d=$(dirname $0)
 TOOL=star
 
 # Specify number of parallel processes for each program
@@ -26,7 +27,6 @@ SAMPLE=$1
 # Temp dir
 SCRATCH=/scratch/groups/blangme2/rail_sims/SCRATCH
 mkdir -p ${SCRATCH}
-RAILHOME=/scratch/users/blangme2@jhu.edu/git/rail
 
 ## Specify locations of executables
 # Used version STAR_2.6.1a_08-27 of STAR
@@ -88,10 +88,10 @@ mkdir -p ${OUTPUT}/${TOOL}/nogen_noann_paired_2pass
 cd ${OUTPUT}/${TOOL}/nogen_noann_paired_2pass
 time ($STAR --genomeDir $STARIDX --readFilesIn ${LEFT} ${RIGHT} --runThreadN $CORES --twopass1readsN -1 --sjdbOverhang $OVERHANG --twopassMode Basic >&1) 2>>$TIMELOG
 echo 'Computing precision and recall...'
-(cat Aligned.out.sam | $PYTHON $RAILHOME/eval/spliced_read_recovery_performance.py -g -t ${BED} >$PERFORMANCE 2>${PERFORMANCE}_summary)
-(cat Aligned.out.sam | $PYTHON $RAILHOME/eval/intron_recovery_performance.py -t ${BED} >${PERFORMANCE}_intron_recovery_summary)
-(cat Aligned.out.sam | $PYTHON $RAILHOME/eval/mapping_accuracy.py -t ${BED} -g >${PERFORMANCE}_mapping_accuracy_summary)
-(cat Aligned.out.sam | $PYTHON $RAILHOME/eval/mapping_accuracy.py -t ${BED} -c 0.1 -g >${PERFORMANCE}_mapping_accuracy_SC_summary)
+(cat Aligned.out.sam | $PYTHON $d/eval/spliced_read_recovery_performance.py -g -t ${BED} >$PERFORMANCE 2>${PERFORMANCE}_summary)
+(cat Aligned.out.sam | $PYTHON $d/eval/intron_recovery_performance.py -t ${BED} >${PERFORMANCE}_intron_recovery_summary)
+(cat Aligned.out.sam | $PYTHON $d/eval/mapping_accuracy.py -t ${BED} -g >${PERFORMANCE}_mapping_accuracy_summary)
+(cat Aligned.out.sam | $PYTHON $d/eval/mapping_accuracy.py -t ${BED} -c 0.1 -g >${PERFORMANCE}_mapping_accuracy_SC_summary)
 
 echo 'Running STAR on sample '${SAMPLE}' with no annotation and in paired-end mode...'
 echo '#'${SAMPLE}' STAR 1-pass noann paired' >>$TIMELOG
@@ -99,10 +99,10 @@ mkdir -p ${OUTPUT}/${TOOL}/noann_paired_1pass
 cd ${OUTPUT}/${TOOL}/noann_paired_1pass
 time ($STAR --genomeDir $STARIDX --readFilesIn ${LEFT} ${RIGHT} --runThreadN $CORES 2>&1) 2>>$TIMELOG
 echo 'Computing precision and recall...'
-(cat Aligned.out.sam | $PYTHON $RAILHOME/eval/spliced_read_recovery_performance.py -g -t ${BED} >$PERFORMANCE 2>${PERFORMANCE}_summary)
-(cat Aligned.out.sam | $PYTHON $RAILHOME/eval/intron_recovery_performance.py -t ${BED} >${PERFORMANCE}_intron_recovery_summary)
-(cat Aligned.out.sam | $PYTHON $RAILHOME/eval/mapping_accuracy.py -t ${BED} -g >${PERFORMANCE}_mapping_accuracy_summary)
-(cat Aligned.out.sam | $PYTHON $RAILHOME/eval/mapping_accuracy.py -t ${BED} -c 0.1 -g >${PERFORMANCE}_mapping_accuracy_SC_summary)
+(cat Aligned.out.sam | $PYTHON $d/eval/spliced_read_recovery_performance.py -g -t ${BED} >$PERFORMANCE 2>${PERFORMANCE}_summary)
+(cat Aligned.out.sam | $PYTHON $d/eval/intron_recovery_performance.py -t ${BED} >${PERFORMANCE}_intron_recovery_summary)
+(cat Aligned.out.sam | $PYTHON $d/eval/mapping_accuracy.py -t ${BED} -g >${PERFORMANCE}_mapping_accuracy_summary)
+(cat Aligned.out.sam | $PYTHON $d/eval/mapping_accuracy.py -t ${BED} -c 0.1 -g >${PERFORMANCE}_mapping_accuracy_SC_summary)
 
 echo 'Running STAR on sample '${SAMPLE}' with annotation and in paired-end mode...'
 echo '#'${SAMPLE}' STAR 1-pass ann paired' >>$TIMELOG
@@ -110,10 +110,10 @@ mkdir -p ${OUTPUT}/${TOOL}/ann_paired_1pass
 cd ${OUTPUT}/${TOOL}/ann_paired_1pass
 time ($STAR --genomeDir $STARANNIDX --readFilesIn ${LEFT} ${RIGHT} --runThreadN $CORES 2>&1) 2>>$TIMELOG
 echo 'Computing precision and recall...'
-(cat Aligned.out.sam | $PYTHON $RAILHOME/eval/spliced_read_recovery_performance.py -g -t ${BED} >$PERFORMANCE 2>${PERFORMANCE}_summary)
-(cat Aligned.out.sam | $PYTHON $RAILHOME/eval/intron_recovery_performance.py -t ${BED} >${PERFORMANCE}_intron_recovery_summary)
-(cat Aligned.out.sam | $PYTHON $RAILHOME/eval/mapping_accuracy.py -t ${BED} -g >${PERFORMANCE}_mapping_accuracy_summary)
-(cat Aligned.out.sam | $PYTHON $RAILHOME/eval/mapping_accuracy.py -t ${BED} -c 0.1 -g >${PERFORMANCE}_mapping_accuracy_SC_summary)
+(cat Aligned.out.sam | $PYTHON $d/eval/spliced_read_recovery_performance.py -g -t ${BED} >$PERFORMANCE 2>${PERFORMANCE}_summary)
+(cat Aligned.out.sam | $PYTHON $d/eval/intron_recovery_performance.py -t ${BED} >${PERFORMANCE}_intron_recovery_summary)
+(cat Aligned.out.sam | $PYTHON $d/eval/mapping_accuracy.py -t ${BED} -g >${PERFORMANCE}_mapping_accuracy_summary)
+(cat Aligned.out.sam | $PYTHON $d/eval/mapping_accuracy.py -t ${BED} -c 0.1 -g >${PERFORMANCE}_mapping_accuracy_SC_summary)
 
 echo 'Delete decompressed FASTQs...'
 rm -f ${LEFT} ${RIGHT} ${BED}
