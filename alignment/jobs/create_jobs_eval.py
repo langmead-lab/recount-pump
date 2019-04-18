@@ -15,8 +15,18 @@ HEADER = """#!/bin/bash -l
 #SBATCH --ntasks-per-node=8
 """
 
+# aws --profile jhu-langmead s3 ls s3://recount-reads/human_sim/ | awk '{print $NF}' | sed 's/_sim.*//' | sort -u
+
 samps = ['HG00111_female_GBR_CNAG_CRG_2-1-1',
-         'HG00152_male_GBR_LUMC_7-1-1']
+         'HG00152_male_GBR_LUMC_7-1-1',
+         'HG00096_male_GBR_UNIGE_1-1-1',
+         'HG00117_male_GBR_LUMC_7-1-1',
+         'HG00151_male_GBR_MPIMG_3-1-1',
+         'HG00176_female_FIN_ICMB_4-1-1',
+         'HG00249_female_GBR_MPIMG_3-1-1',
+         'HG00344_female_FIN_ICMB_4-1-1',
+         'HG00380_female_FIN_MPIMG_3-1-1',
+         'HG01334_male_GBR_LUMC_7-1-1']
 
 modes = ['hg19_annotation_500',
          'hg19_annotation_100',

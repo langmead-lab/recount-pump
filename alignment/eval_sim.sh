@@ -49,8 +49,13 @@ data=/home-1/cwilks3@jhu.edu/storage/cwilks/recount-pump/destination/humansim_lo
 test -d "${data}"
 test -d "${data}/${2}.output"
 
+all_bams=/home-1/cwilks3@jhu.edu/storage/cwilks/recount-pump/destination/humansim/ON/SIMULATION/_1/all_bams.txt
+
 samp_no_dash=$(echo ${1} | sed 's/-/_/g')
-bam=$(ls -1 ${data}/${2}.output/${samp_no_dash}*.bam)
+#bam=$(ls -1 ${data}/${2}.output/${samp_no_dash}*.bam)
+group=$(echo ${2} | sed 's/_male$//')
+group=$(echo ${group} | sed 's/_female$//')
+bam=$(cat ${all_bams} | grep ${samp_no_dash} | grep "${group}\!")
 echo "BAM(s) found: ${bam}"
 test -f ${bam}
 
