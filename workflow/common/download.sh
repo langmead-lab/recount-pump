@@ -206,6 +206,56 @@ elif [[ ${method} == "url" ]] ; then
         echo "COUNT_URLFailures 1"
         exit 1
     fi
+#----------LOCAL----------#
+elif [[ ${method} == "local" ]] ; then
+    additional_cmd='cat'
+    if [[ ${is_gzipped} == "1" ]] ; then
+        additional_cmd='gzip -cd'
+    fi
+    if [[ ${is_zstded} == "1" ]] ; then
+        additional_cmd='zstd -cd'
+    fi
+    for i in { 1..${retries} } ; do
+        if $additional_cmd "${url1}" > ${srr}_0.fastq 2>> {log} ; then
+            SUCCESS=1
+            break
+        else
+            echo "COUNT_LOCALRetries1 1"
+            TIMEOUT=$((${TIMEOUT} * 2))
+            sleep ${TIMEOUT}
+        fi
+    done
+    if (( $SUCCESS == 1 )) && [[ ${num_urls} -gt 1 ]] ; then
+        SUCCESS=0
+        for i in { 1..${retries} } ; do
+            if time $additional_cmd "${url2}" > ${srr}_2.fastq 2>> {log} ; then
+                SUCCESS=1
+                mv ${srr}_0.fastq ${srr}_1.fastq
+                break
+            else
+                echo "COUNT_LOCALRetries2 1"
+                TIMEOUT=$((${TIMEOUT} * 2))
+                sleep ${TIMEOUT}
+            fi
+        done
+    fi
+    if (( $SUCCESS == 1 )) && [[ ${num_urls} -gt 2 ]] ; then
+        SUCCESS=0
+        for i in { 1..${retries} } ; do
+            if time $additional_cmd "${url0}" 2>> {log} > ${srr}_0.fastq 2>> {log} ; then
+                SUCCESS=1
+                break
+            else
+                echo "COUNT_LOCALRetries0 1"
+                TIMEOUT=$((${TIMEOUT} * 2))
+                sleep ${TIMEOUT}
+            fi
+        done
+    fi
+    if (( $SUCCESS == 0 )) ; then
+        echo "COUNT_LOCALFailures 1"
+        exit 1
+    fi
 fi
 
 # Next chunk expects the FASTQ files to exist in the current directory
