@@ -41,7 +41,7 @@ COPY workflow.bash /workflow.bash
 RUN chmod a+rx /workflow.bash
 
 # install download.sh
-COPY ../common/download.sh /download.sh
+COPY download.sh /download.sh
 RUN chmod a+r /download.sh
 
 USER recount
