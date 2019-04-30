@@ -13,6 +13,9 @@ Parameters:
 - prefetch_args: arguments to pass to prefetch, default: --max-size 200G -t fasp -L info
 """
 
+DOWNLOAD_EXE=config.get('download_exe','/download.sh')
+BAMCOUNT_EXE=config.get('bamcount_exe','/bamcount/bamcount')
+
 STEPS = ['download', 'fastq_check', 'align', 'sort',
          'bamcount', 'bamcount_unmapped',
          'salmon',
@@ -50,6 +53,7 @@ FILES = ['sjout.zst', 'fastq_check.tsv.zst',
 INPUTS={}
 TOKENS={}
 READS_IN_BAM=set()
+
 
 def get_accessions(wildcards):
     """
@@ -159,7 +163,7 @@ rule bamcount:
     input:
         bam=config['output'] + '/{quad}~sorted.bam',
         bamidx=config['output'] + '/{quad}~sorted.bam.bai',
-        exe='/bamcount/bamcount',
+        exe=BAMCOUNT_EXE,
         bed=lambda wildcards: '%s/%s/gtf/%s' % (config['ref'], wildcards.quad.split('!')[2], config.get('bw_bed', 'exons.bed'))
     output:
         nonref=config['output'] + '/{quad}.bamcount_nonref.csv.zst',
@@ -268,7 +272,7 @@ rule bamcount_unmapped:
     input:
         bam=config['output'] + '/{quad}.unmapped~sorted.bam',
         bamidx=config['output'] + '/{quad}.unmapped~sorted.bam.bai',
-        exe='/bamcount/bamcount'
+        exe=BAMCOUNT_EXE
     wildcard_constraints:
         quad="[^~\.]+"
     output:
@@ -633,7 +637,7 @@ rule align_unmapped:
     wildcard_constraints:
         quad="[^~]+"
     output:
-        bam=(config['temp'] + '/{quad}.unmapped.bam'),
+        bam=temp(config['temp'] + '/{quad}.unmapped.bam'),
         sample=config['output'] + '/{quad}.unmapped.fastq.zst',
         sample_split3=config['output'] + '/{quad}.unmapped_split3.fastq.zst'
     log:
@@ -755,6 +759,8 @@ rule align_unmapped:
             touch {output.sample_split3}
         fi
 
+        rm -f ${{TMP}}.un* 
+
         size=$(wc -c < {output.bam})
         echo "COUNT_UnmappedBamBytes ${{size}}"
 
@@ -809,9 +815,9 @@ rule align:
         jxs=config['output'] + '/{quad}.sjout.zst',
         chimeric=config['output'] + '/{quad}.Chimeric.out.junction.zst',
         chimeric_sam=config['output'] + '/{quad}.Chimeric.out.sam.zst',
-        unmapped0=config['temp'] + '/{quad}_0.unmappedfastq',
-        unmapped1=config['temp'] + '/{quad}_1.unmappedfastq',
-        unmapped2=config['temp'] + '/{quad}_2.unmappedfastq'
+        unmapped0=temp(config['temp'] + '/{quad}_0.unmappedfastq'),
+        unmapped1=temp(config['temp'] + '/{quad}_1.unmappedfastq'),
+        unmapped2=temp(config['temp'] + '/{quad}_2.unmappedfastq')
     log:
         config['output'] + '/{quad}.align.log'
     params:
@@ -895,6 +901,7 @@ rule align:
         test -f Chimeric.out.sam
         test -s Chimeric.out.sam
         time zstd Chimeric.out.sam -o {output.chimeric_sam} 2>&1 | tee -a {log}
+        rm -f Chimeric.out.sam
         size=$(wc -c < {output.chimeric_sam})
         echo "COUNT_ChimericSAMBytes ${{size}}"
 
@@ -968,7 +975,7 @@ rule align:
             if [[ -s {output.jxs} ]] ; then
                 cat <(zstd -cd {output.jxs}) SJ.out.tab | sort -k1,1 -k2,2n -k3,3n -k4,4n -k5,5n -k6,6n | perl -ne 'chomp; $f=$_; @f=split(/\t/,$f); ($c,$s,$e,$o,$motif,$annot,$nu,$nmm,$max_anchor)=@f; $k=join("\t",($c,$s,$e,$o,$motif,$annot)); if($pk) {{ if($pk eq $k) {{ $pnu+=$nu; $pnmm+=$nmm; $pmax_anchor = $max_anchor > $pmax_anchor?$max_anchor:$pmax_anchor; next; }} print "$pk\t$pnu\t$pnmm\t$pmax_anchor\n"; }} $pk=$k; $pnu=$nu; $pnmm=$nmm; $pmax_anchor=$max_anchor; END {{ if($pk) {{ print "$pk\t$pnu\t$pnmm\t$pmax_anchor\n"; }} }}' > sjout.all.merged
                 time zstd -f sjout.all.merged -o {output.jxs} 2>&1 | tee -a {log}
-                rm -f SJ.out.tab
+                rm -f SJ.out.tab sjout.all.merged
             else
                 time zstd -f SJ.out.tab -o {output.jxs} 2>&1 | tee -a {log}
             fi
@@ -1053,6 +1060,7 @@ rule fastq_check:
             time seqtk fqchk -q0 {input.reads2} >>${{TMP}} 2>>{log}
         fi
         time zstd ${{TMP}} -o {output} 2>&1 | tee -a {log}
+        rm -f $TMP
         size=$(wc -c < {output})
         echo "COUNT_FastqCheckBytes ${{size}}"
 
@@ -1061,8 +1069,8 @@ rule fastq_check:
 
 rule download:
     input:
-        download='/download.sh',
-        bam2fastq='/bamcount/bamcount'
+        download_exe=DOWNLOAD_EXE,
+        bam2fastq_exe=BAMCOUNT_EXE
     output:
         temp(config['temp'] + '/{quad}_0.fastq'),
         temp(config['temp'] + '/{quad}_1.fastq'),
@@ -1110,7 +1118,7 @@ rule download:
         export url2="{params.url2}"
         export gdc_token="{params.gdc_token}"
         export reads_in_bam="{params.reads_in_bam}"
-        export bam2fastq="{input.bam2fastq}"
+        export bam2fastq="{input.bam2fastq_exe}"
 
-        /bin/bash {input.download} {wildcards.quad} {params.srr} {params.method} {params.num_urls} {threads} {params.retries} {config[temp]} {log}
+        /bin/bash -x {input.download_exe} {wildcards.quad} {params.srr} {params.method} {params.num_urls} {threads} {params.retries} {config[temp]} {log}
         """
