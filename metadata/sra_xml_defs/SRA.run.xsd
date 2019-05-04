@@ -1,0 +1,455 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- INSDC Sequence Read Archive resource Run (SRR/ERR/DRR) object XML specification -->
+<!-- $Id$ -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+  <xs:include schemaLocation="http://www.ncbi.nlm.nih.gov/viewvc/v1/trunk/sra/doc/SRA/SRA.common.xsd?view=co"/>
+
+  <!-- STRING ENUMERATIONS BEGIN -->
+  <xs:simpleType name="typeRunFileType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="sra">
+        <xs:annotation>
+          <xs:documentation>Sequence Read Archives native format in serialized (single file) form.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="srf">
+        <xs:annotation>
+          <xs:documentation>Standard Short Read Format file (.srf), all platforms</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="sff">
+        <xs:annotation>
+          <xs:documentation>454 Standard Flowgram Format file (.sff)</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="fastq">
+        <xs:annotation>
+          <xs:documentation> Combined nucleotide/qualities sequence file in .fastq form. Please see SRA File Formats
+          Guide for definitions of the definition and restrictions on this form. </xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="tab">
+        <xs:annotation>
+          <xs:documentation> Tab delimited text file used to deliver certain auxiliary
+          data along with sequencing submissions (only needed for certain use cases).
+          The first line is devoted to column headers. Each column is dedicated to an
+          INDSC data series type. Please see SRA File Formats Guide for definitions of
+          the definition and restrictions on this form. </xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="454_native">
+        <xs:annotation>
+          <xs:documentation> A combination of 454 primary analysis output files, including
+          seq qual Please see SRA File Formats Guide for definitions of these file
+          formats, and the SRA Submission Guidelines document for data series that are
+          appropriate for your study. Sequence and qualities are minimally required.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="454_native_seq">
+        <xs:annotation>
+          <xs:documentation> 454 base calls (for example .seq or .fna). Please see SRA
+                        File Formats Guide for definitions of these file formats, and the SRA
+                        Submission Guidelines document for data series that are appropriate for your
+          study. Sequence and qualities are minimally required. </xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="454_native_qual">
+        <xs:annotation>
+          <xs:documentation> 454 quality scores (for example .qual). Please see SRA File
+          Formats Guide for definitions of these file formats, and the SRA Submission
+          Guidelines document for data series that are appropriate for your study.
+          Sequence and qualities are minimally required. </xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Helicos_native">
+        <xs:annotation>
+          <xs:documentation> A kind of fastq format specific to the Helicos platform.
+          Please see SRA File Formats Guide for definitions of these file formats, and
+          the SRA Submission Guidelines document for data series that are appropriate
+          for your study. Sequence and qualities are minimally required.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Illumina_native">
+        <xs:annotation>
+          <xs:documentation> Please see SRA File Formats Guide for definitions of these
+          file formats, and the SRA Submission Guidelines document for data series
+          that are appropriate for your study. Sequence and qualities are minimally
+          required. </xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Illumina_native_seq">
+        <xs:annotation>
+          <xs:documentation> Please see SRA File Formats Guide for definitions of these
+          file formats, and the SRA Submission Guidelines document for data series
+          that are appropriate for your study. Sequence and qualities are minimally
+          required. </xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Illumina_native_prb">
+        <xs:annotation>
+          <xs:documentation> Please see SRA File Formats Guide for definitions of these
+          file formats, and the SRA Submission Guidelines document for data series
+          that are appropriate for your study. Sequence and qualities are minimally
+          required. </xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Illumina_native_int">
+        <xs:annotation>
+          <xs:documentation> Please see SRA File Formats Guide for definitions of these
+          file formats, and the SRA Submission Guidelines document for data series
+          that are appropriate for your study. Sequence and qualities are minimally
+          required. </xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Illumina_native_qseq">
+        <xs:annotation>
+          <xs:documentation> Please see SRA File Formats Guide for definitions of these
+          file formats, and the SRA Submission Guidelines document for data series
+          that are appropriate for your study. Sequence and qualities are minimally
+          required. </xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Illumina_native_scarf">
+        <xs:annotation>
+          <xs:documentation> Please see SRA File Formats Guide for definitions of these
+          file formats, and the SRA Submission Guidelines document for data series
+          that are appropriate for your study. Sequence and qualities are minimally
+          required. </xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="SOLiD_native">
+        <xs:annotation>
+          <xs:documentation> A combination of SOLiD primary analysis output files,
+          including: csfasta _QV.qual _intensity.ScaledCY3.fasta
+          _intensity.ScaledCY5.fasta _intensity.ScaledFTC.fasta
+          _intensity.ScaledTXR.fasta Please see SRA File Formats Guide for definitions
+          of these file formats, and the SRA Submission Guidelines document for data
+          series that are appropriate for your study. Sequence and qualities are
+          minimally required. </xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="SOLiD_native_csfasta">
+        <xs:annotation>
+          <xs:documentation> Colorspace calls (for example .csfasta) Please see SRA File
+          Formats Guide for definitions of these file formats, and the SRA Submission
+          Guidelines document for data series that are appropriate for your study.
+          Sequence and qualities are minimally required. </xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="SOLiD_native_qual">
+        <xs:annotation>
+          <xs:documentation> Colorspace quality scores (for example .qual) Please see SRA
+          File Formats Guide for definitions of these file formats, and the SRA
+          Submission Guidelines document for data series that are appropriate for your
+          study. Sequence and qualities are minimally required. </xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="PacBio_HDF5">
+        <xs:annotation>
+          <xs:documentation> Pacific Biosciences Hierarchical Data Format bas.h5 format.
+          Please see SRA File Formats Guide for definitions of these file
+          formats</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="CompleteGenomics_native">
+        <xs:annotation>
+          <xs:documentation> CompleteGenomics native assembly file hierarchy. Please see
+          SRA File Formats Guide for definitions of these file formats, and the SRA
+          Submission Guidelines document for data series that are appropriate for your
+          study. </xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="CompleteGenomics_native_MAP">
+        <xs:annotation>
+          <xs:documentation> CompleteGenomics native read mappings TSV file. Please see
+          SRA File Formats Guide for definitions of these file formats, and the SRA
+          Submission Guidelines document for data series that are appropriate for your
+          study. </xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="CompleteGenomics_native_ASM">
+        <xs:annotation>
+          <xs:documentation> CompleteGenomics native alternate loci assembly TSV file.
+          Please see SRA File Formats Guide for definitions of these file formats, and
+          the SRA Submission Guidelines document for data series that are appropriate
+          for your study. </xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="CompleteGenomics_native_LIB">
+        <xs:annotation>
+          <xs:documentation> CompleteGenomics native library statistics TSV file. Please
+          see SRA File Formats Guide for definitions of these file formats, and the
+          SRA Submission Guidelines document for data series that are appropriate for
+          your study. </xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="bam">
+        <xs:annotation>
+          <xs:documentation> Binary SAM format. contains reads and alignments</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="bai">
+        <xs:annotation>
+          <xs:documentation> index file for Binary SAM format. Can not be submitted alone - only with same named .bam file</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="cram">
+        <xs:annotation>
+          <xs:documentation>Reference compressed version of BAM.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="crai">
+        <xs:annotation>
+          <xs:documentation> index file for CRAM file. Can not be submitted alone - only with same named .cram file</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="bam_header">
+        <xs:annotation>
+          <xs:documentation> A BAM header file to be used in lieu of the header embedded
+          in the Binary SAM format (.bam) file. This allows for the replacement of
+          information contained in the header without retransmitting the entire BAM
+          file. Please see SRA File Formats Guide for definitions of these file
+          formats, and the SRA Submission Guidelines document for data series that are
+          appropriate for your study. </xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="reference_fasta">
+        <xs:annotation>
+          <xs:documentation> A multifasta file to be used as the reference substrate for
+          read placements. Please see SRA File Formats Guide for definitions of these
+          file formats, and the SRA Submission Guidelines document for data series
+          that are appropriate for your study. </xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="OxfordNanopore_native"/>
+      <xs:enumeration value="vcf">
+        <xs:annotation>
+          <xs:documentation>
+             Variant Call Format - https://samtools.github.io/hts-specs/VCFv4.3.pdf 
+          </xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="bcf">
+        <xs:annotation>
+          <xs:documentation>
+             binary variant of Variant Call Format - https://samtools.github.io/hts-specs/VCFv4.3.pdf
+          </xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="vcf_index">
+        <xs:annotation>
+          <xs:documentation>
+             supplementary index file for VCF/BCF variant call files. usually it is a csi or tbi files built by bcftools (https://samtools.github.io/bcftools/bcftools.html)
+          </xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+  
+  <xs:simpleType name="typeScoring">
+    <xs:annotation>
+      <xs:documentation> Character used in representing
+      the minimum quality value. Helps specify how to
+      decode text rendering of quality data.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="!">
+        <xs:annotation>
+          <xs:documentation> ASCII value 33. Typically used for range 0..63. aka phred_33 </xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="@">
+        <xs:annotation>
+          <xs:documentation> ASCII value 64. Typically used for range 0..60. aka phred_64 </xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- STRING ENUMERATIONS END -->
+
+  <xs:complexType name="RunType">
+    <xs:annotation>
+      <xs:documentation>A Run contains a group of reads generated for a particular experiment.
+      NB: formerly bounded by physical production unit (flowcell) and instrument model.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="IDENTIFIERS" type="IdentifierType" maxOccurs="1" minOccurs="0"/>
+      <xs:element name="TITLE" type="xs:string" minOccurs="0" maxOccurs="1">
+        <xs:annotation>
+          <xs:documentation>Short text that can be used to distinctively call out
+          individual runs in searches or in displays. not really used by anybody.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="EXPERIMENT_REF" nillable="false" maxOccurs="1" minOccurs="1">
+        <xs:annotation>
+          <xs:documentation>The EXPERIMENT_REF identifies the parent experiment. The
+          Experiment describes nucleic acid prep from biological sample (Sample Ref) ;
+          molecular strategies and selections used in preparation of libraries for
+          sequencing</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="IDENTIFIERS" type="IdentifierType" minOccurs="0" maxOccurs="1">
+              <xs:annotation>
+                <xs:documentation> Set of reference IDs to parent experiment record.
+                This block is intended to replace the use of the less structured
+                RefNameGroup identifiers. </xs:documentation>
+              </xs:annotation>
+            </xs:element>
+          </xs:sequence>
+          <xs:attributeGroup ref="RefNameGroup"/>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="SPOT_DESCRIPTOR" type="SpotDescriptorType" minOccurs="0" maxOccurs="1"/>
+      <xs:element name="PLATFORM"        type="PlatformType"       minOccurs="0" maxOccurs="1"/>
+      <xs:element name="PROCESSING"      type="ProcessingType"     minOccurs="0" maxOccurs="1"/>
+      <xs:sequence>
+        <xs:element name="DATA_BLOCK" maxOccurs="unbounded" minOccurs="0">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="FILES" type="typeRunFile"/>
+            </xs:sequence>
+            <xs:attribute name="member_name" type="xs:string" use="optional">
+              <xs:annotation>
+                <xs:documentation> Allow for an individual DATA_BLOCK to be
+                associated with a member of a sample pool. </xs:documentation>
+              </xs:annotation>
+            </xs:attribute>
+          </xs:complexType>
+        </xs:element>
+      </xs:sequence>
+      <xs:element name="RUN_LINKS" minOccurs="0" maxOccurs="1">
+        <xs:complexType>
+          <xs:sequence minOccurs="1" maxOccurs="1">
+            <xs:element name="RUN_LINK" type="LinkType" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="RUN_ATTRIBUTES" minOccurs="0" maxOccurs="1">
+        <xs:annotation>
+          <xs:documentation> Properties and attributes of a RUN. These can be entered as
+          free-form tag-value pairs. For certain studies, submitters may be asked to
+          follow a community established ontology when describing the work.
+          </xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+          <xs:sequence maxOccurs="1" minOccurs="1">
+            <xs:element name="RUN_ATTRIBUTE" type="AttributeType" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+
+    <xs:attributeGroup ref="NameGroup"/>
+
+    <xs:attribute name="run_date" use="optional" type="xs:dateTime">
+      <xs:annotation>
+        <xs:documentation> ISO date when the run took place. </xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="run_center" use="optional" type="xs:string">
+      <xs:annotation>
+        <xs:documentation> If applicable, the name of the contract sequencing center that
+        executed the run. Example: 454MSC. </xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+
+  <xs:complexType name="typeRunFile">
+    <xs:annotation>
+      <xs:documentation> Actual run data are contained in one of the
+      files listed in the submission manifest. Each data block is
+      represented by one SRF file, one SFF file, one compressed
+      fastq file, or one compressed tar archive file.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence maxOccurs="1" minOccurs="1">
+      <xs:element name="FILE" maxOccurs="unbounded">
+        <xs:complexType>
+          <xs:attribute name="filename" type="xs:string"       use="required"/>
+          <xs:attribute name="filetype" type="typeRunFileType" use="required"/>
+          <xs:attribute name="quality_scoring_system"          use="optional">
+            <xs:simpleType>
+              <xs:restriction base="xs:string">
+                <xs:enumeration value="phred">
+                  <xs:annotation>
+                    <xs:documentation> The quality score is expressed
+                    as a probability of error in log form: -10
+                    log(1/p) where p is the probability of error, with
+                    value range 0..63, 0 meaning no base call.
+                    </xs:documentation>
+                  </xs:annotation>
+                </xs:enumeration>
+                <xs:enumeration value="log-odds">
+                  <xs:annotation>
+                    <xs:documentation> The quality score is expressed
+                    as the ratio of error to non-error in log form:
+                    -10 log(p/(1-p)) where p is the probability of
+                    error, with value range -40..40. The SRA will
+                    convert these into phred scale during loadtime.
+                    </xs:documentation>
+                  </xs:annotation>
+                </xs:enumeration>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:attribute>
+          <xs:attribute name="quality_encoding" use="optional">
+            <xs:simpleType>
+              <xs:restriction base="xs:string">
+                <xs:enumeration value="ascii">
+                  <xs:annotation>
+                    <xs:documentation> ASCII character based encoding. </xs:documentation>
+                  </xs:annotation>
+                </xs:enumeration>
+                <xs:enumeration value="decimal">
+                  <xs:annotation>
+                    <xs:documentation> Single decimal value per quality score. </xs:documentation>
+                  </xs:annotation>
+                </xs:enumeration>
+                <xs:enumeration value="hexadecimal">
+                  <xs:annotation>
+                    <xs:documentation> Single hexadecimal value per quality score. </xs:documentation>
+                  </xs:annotation>
+                </xs:enumeration>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:attribute>
+          <xs:attribute name="ascii_offset" use="optional" type="typeScoring"/>
+          <xs:attribute name="checksum_method" use="required">
+            <xs:simpleType>
+              <xs:restriction base="xs:string">
+                <xs:enumeration value="MD5">
+                  <xs:annotation>
+                    <xs:documentation> Checksum generated by the MD5 method (md5sum in unix). </xs:documentation>
+                  </xs:annotation>
+                </xs:enumeration>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:attribute>
+          <xs:attribute name="checksum" type="xs:string" use="required">
+            <xs:annotation>
+              <xs:documentation> Checksum of the file.</xs:documentation>
+            </xs:annotation>
+          </xs:attribute>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+  
+  <xs:element name="RUN_SET">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="RUN" type="RunType" minOccurs="1" maxOccurs="unbounded"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="RUN" type="RunType"/>
+</xs:schema>
