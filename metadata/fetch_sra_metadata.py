@@ -6,7 +6,7 @@ e.email="downloadsRUs@dos.com"
 #capture 1) Illumina 2) RNA-Seq 3) human 4) transriptome sources 5) public access (non-dbgap)
 #for scRNA maybe use "TRANSCRIPTOMIC SINGLE CELL" as Source argument instead of transcriptomic?
 #base_query = '((((illumina[Platform]) AND rna seq[Strategy]) AND transcriptomic[Source]) AND public[Access])'
-base_query = '((((illumina[Platform]) AND rna seq[Strategy]) AND transcriptomic single cell[Source]) AND public[Access])'
+base_query = '((((illumina[Platform]) AND rna seq[Strategy]) AND transcriptomic[Source]) AND public[Access])'
 #prepend "[Organism]" to each of these in the search text
 organisms=['human','mouse']
 if len(sys.argv) > 1:
