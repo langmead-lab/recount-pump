@@ -33,16 +33,20 @@ def process_attributes(root_element, tag):
     attrs = root_element.find(tag)
     if attrs is None:
         return ""
-    attr_strs = []
+    #order attributes by TAG value
+    #this way attributes from the same study 
+    #which share the same TAGs will have aligned fields
+    tags = []
     #loop over "TAG_ATTRIBUTE" sub tags
     for attr in attrs:
         tag = attr.findtext('TAG',default="")
         value = attr.findtext('VALUE',default="")
-        attr_strs.append(tag+ATTR_DELIM+value)
-    return ATTRS_DELIM.join(attr_strs)
+        tags.append(tag+ATTR_DELIM+value)
+    #case insensitive search
+    return ATTRS_DELIM.join(sorted(tags, key=lambda x: x.lower()))
 
 #header
-sys.stdout.write("\t".join(["run_acc","study_acc","sample_acc","experiment_acc","submission_acc","submission_center","submission_lab","study_title","study_abstract","study_description","experiment_title","design_description","sample_description","library_name","library_strategy","library_source","library_selection","library_layout","paired_nominal_length","paired_nominal_stdev","library_construction_protocol","platform_model","sample_attributes","experiment_attributes","spot_length","sample_name","sample_title","sample_bases","sample_spots","run_published","size","run_total_bases","run_total_spots","num_reads","num_spots","read_info","run_alias","run_center_name","run_broker_name","run_center","inferred_read_length","inferred_total_read_count"])+"\n")
+#sys.stdout.write("\t".join(["run_acc","study_acc","sample_acc","experiment_acc","submission_acc","submission_center","submission_lab","study_title","study_abstract","study_description","experiment_title","design_description","sample_description","library_name","library_strategy","library_source","library_selection","library_layout","paired_nominal_length","paired_nominal_stdev","library_construction_protocol","platform_model","sample_attributes","experiment_attributes","spot_length","sample_name","sample_title","sample_bases","sample_spots","run_published","size","run_total_bases","run_total_spots","num_reads","num_spots","read_info","run_alias","run_center_name","run_broker_name","run_center","inferred_read_length","inferred_total_read_count"])+"\n")
 
 #Top Level: EXPERIMENT_PACKAGE
 for exp in root.findall('EXPERIMENT_PACKAGE'):
@@ -185,9 +189,13 @@ for exp in root.findall('EXPERIMENT_PACKAGE'):
         if stats is not None:
             for read in stats.findall('Read'):
                 read_str = []
+                read_count = float(read.get('count',default="0.0"))
+                #either this is a single layout or we're just not getting these reads
+                if read_count == 0.0:
+                    continue
                 read_rec_count += 1
                 read_length_sum += float(read.get('average',default="0.0"))
-                read_count_sum += float(read.get('count',default="0.0"))
+                read_count_sum += read_count
                 for attr in ['index','count','average','stdev']:
                     read_str.append(attr+':'+read.get(attr,default=""))
                 reads_str.append(','.join(read_str))
