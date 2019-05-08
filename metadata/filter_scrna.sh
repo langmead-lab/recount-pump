@@ -40,8 +40,8 @@ mv all_${orgn}_sra.smart_seq_ all_${orgn}_sra.smart_seq
 
 #get final list of SRRs, per scRNA tech. as well as overall
 echo -n "" > all_scrnas.all_${orgn}_sra.tsv.srrs_
-for f in `ls all_${orgn}_sra.*`; do cut -f 1 $f | sort -u | perl -ne 'chomp; print "$_\t\n";' > ${f}.srr ;  cat ${f}.srr >> all_scrnas.all_${orgn}_sra.tsv.srrs_ ; done
-sort -u all_scrnas.all_${orgn}_sra.tsv.srrs_ | perl -ne 'chomp; print "$_\t\n";' > all_scrnas.all_${orgn}_sra.tsv.srrs
+for f in `ls all_${orgn}_sra.* | grep -v tsv`; do cut -f 1 $f | sort -u | perl -ne 'chomp; print "$_\t\n";' > ${f}.srr ;  cat ${f}.srr >> all_scrnas.all_${orgn}_sra.tsv.srrs_ ; done
+sort -u all_scrnas.all_${orgn}_sra.tsv.srrs_ > all_scrnas.all_${orgn}_sra.tsv.srrs
 rm all_scrnas.all_${orgn}_sra.tsv.srrs_
 
 #now get final lists of SRRs & complete metadata
