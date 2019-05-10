@@ -39,6 +39,7 @@ if [[ ${method} == "sra" ]] ; then
     done
     if (( $SUCCESS == 0 )) ; then
         echo "COUNT_SraFailures 1"
+        rm -rf ${TMP}
         exit 1
     fi
     test -f ${TMP}/*.sra
@@ -108,6 +109,7 @@ elif [[ ${method} == "gdc" ]] ; then
     done
     if (( $SUCCESS == 0 )) ; then
         echo "COUNT_GdcFailures 1"
+        rm -rf ${TMP}
         exit 1
     fi
     test -d ${TMP}/${srr}
@@ -204,6 +206,7 @@ elif [[ ${method} == "url" ]] ; then
     fi
     if (( $SUCCESS == 0 )) ; then
         echo "COUNT_URLFailures 1"
+        rm -rf ${TMP}
         exit 1
     fi
 #----------LOCAL----------#
@@ -254,6 +257,7 @@ elif [[ ${method} == "local" ]] ; then
     fi
     if (( $SUCCESS == 0 )) ; then
         echo "COUNT_LOCALFailures 1"
+        rm -rf ${TMP}
         exit 1
     fi
 fi
