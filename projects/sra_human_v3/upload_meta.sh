@@ -5,7 +5,11 @@ set -e
 superstudy=sra_human_v3
 taxon_id=9606
 
-for i in *_${taxon_id}.json.zst ; do
+for i in by_run_w_overlaps/tranche_?.txt ; do
+    cat $i | gzip > ${i}.gz
     aws --profile jhu-langmead s3 cp \
-        $i s3://recount-pump-experiments/${superstudy}/${i}
+        ${i}.gz s3://recount-pump-experiments/${superstudy}/${i}.gz
 done
+
+#upload the original XMLs from the SRA search output
+aws --profile jhu-langmead s3 cp all_human_9606_rnaseq_transcriptomic_illumina_public.raw_xmls.20190503.tar.gz s3://recount-pump-experiments/${superstudy}/
