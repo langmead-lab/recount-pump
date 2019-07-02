@@ -720,28 +720,42 @@ rule align_unmapped:
         #
         # Save a subset of the doubly unaligned reads
         #
+	SAMPLE_CREATED=0
         if [[ ! -s {input.unmapped2} ]] ; then
+            NUM_UNPAIRED_UN=`wc -l ${{TMP}}.un | cut -d" " -f 1`
             # unpaired
-            fastq-sample \
-                -n $MAX_UNALIGN \
-                -o ${{TMP}}.samp \
-                ${{TMP}}.un
+            if [[ "$NUM_UNPAIRED_UN" -gt "0" ]] ; then
+		    fastq-sample \
+			-n $MAX_UNALIGN \
+			-o ${{TMP}}.samp \
+			${{TMP}}.un
+		    SAMPLE_CREATED=1
+	    fi
             rm -f ${{TMP}}.un
         else
             # paired-end
-            fastq-sample \
-                -n $MAX_UNALIGN \
-                -o ${{TMP}}.samp \
-                ${{TMP}}.1.un_conc ${{TMP}}.2.un_conc
-            rm -f ${{TMP}}.1.un_conc ${{TMP}}.2.un_conc
+            NUM_PAIRED_UN=`wc -l ${{TMP}}.1.un_conc | cut -d" " -f 1`
+            if [[ "$NUM_PAIRED_UN" -gt "0" ]] ; then
+		    fastq-sample \
+			-n $MAX_UNALIGN \
+			-o ${{TMP}}.samp \
+			${{TMP}}.1.un_conc ${{TMP}}.2.un_conc
             
-            # interleave the two output fastqs into single file
-            paste ${{TMP}}.samp.1.fastq ${{TMP}}.samp.2.fastq \
-                | paste - - - - \
-                | awk -v OFS="\n" -v FS="\t" '{{print($1,$3,$5,$7,$2,$4,$6,$8)}}' \
-                > ${{TMP}}.samp.fastq
-            rm -f ${{TMP}}.samp.1.fastq ${{TMP}}.samp.2.fastq
+		    # interleave the two output fastqs into single file
+		    paste ${{TMP}}.samp.1.fastq ${{TMP}}.samp.2.fastq \
+			| paste - - - - \
+			| awk -v OFS="\n" -v FS="\t" '{{print($1,$3,$5,$7,$2,$4,$6,$8)}}' \
+			> ${{TMP}}.samp.fastq
+            	    rm -f ${{TMP}}.samp.1.fastq ${{TMP}}.samp.2.fastq
+		    SAMPLE_CREATED=1
+            fi
+            rm -f ${{TMP}}.1.un_conc ${{TMP}}.2.un_conc
         fi
+
+	#in case there were no doubly unmapped reads
+	if [[ "$SAMPLE_CREATED" -ne "1" ]]; then
+		touch ${{TMP}}.samp.fastq
+	fi
 
         test -f ${{TMP}}.samp.fastq
         time zstd ${{TMP}}.samp.fastq -o {output.sample} 2>&1 | tee -a {log}
