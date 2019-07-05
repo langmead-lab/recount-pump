@@ -24,14 +24,16 @@ cut -f 1,4,5,7,9 ${ORIG_UNIONED_GTF} | perl -ne 'chomp; ($c,$s,$e,$o,$ginfo)=spl
 #now produce the disjoint exon2annotated gene mapping file for rejoining to get annotated gene counts from disjoint exon counts
 cat ${ORIG_UNIONED_GTF}.gene_coords.bed ${ORIG_UNIONED_GTF}.gff.bed.sorted | perl -ne 'chomp; $f=$_; @f=split(/\t/,$f); $gid=$f[3]; if($f[6] eq "2") { $h{$gid}=$f; next; } $f=join("\t",@f); ($c,$s,$e,$o,$info)=($f[0],$f[3],$f[4],$f[6],$f[8]); $info=~/gene_id=([^;]+)/; $gs=$1; $info=~/exon_name=([^;]+)/; $es=$1; @genes=split(/,/,$gs); for $g (@genes) { $ginfo=$h{$g}; if(!$ginfo) { $ginfo=$h{$g.".$c"}; } print "$c\t$s\t$e\t.\t0\t$o\t$ginfo\n"; }' | sort -t'	' -k1,1 -k2,2n -k3,3n > ${ORIG_UNIONED_GTF}.disjoint2exons2genes.bed
 
+#calculate the per gene (in a specific annotation) base pair length (counting only disjoint exon lengths)
+cat ${ORIG_UNIONED_GTF}.disjoint2exons2genes.bed | perl -ne 'chomp; $f=$_; @f=split(/\t/,$f); ($s,$e,$g)=($f[1],$f[2],$f[9]); $h{$g}+=($e-$s); END { for $g_ (keys %h) { print "$g_\t".$h{$g_}."\n"; }}' | sort -k1,1 > ${ORIG_UNIONED_GTF}.disjoint2exons2genes.bed.gene_bpl.tsv
+
+
 ##########Exon Mapping
 
 #get exon coords, this time we have to select by exons
 #BE VERY CAREFUL that the input GTF has a clear "exon" type label for every exon you have in your disjoint set!
 #this is true for G029.G026.R109.F006.20190220.gtf, but isn't for gencodev25 (recount2)
 
-#also some "exons" are the same as they're full gene parents (single line genes) so they wont have exon_ids, in this case use gene_id instead
-fgrep '	exon	' ${ORIG_UNIONED_GTF} | cut -f 1,4,5,7,9 | perl -ne 'chomp; ($c,$s,$e,$o,$ginfo)=split(/\t/,$_); $s--; $ginfo=~/gene_id\s+"([^"]+)/; $g=$1; $ginfo=~/exon_id\s+"([^"]+)/; $ex=$1; if(!$ex) { $ex = $g; } if($h{$ex} && $h{$ex} ne $c) { $ex.=".$c"; } $h{$ex}=$c; print "$c\t$s\t$e\t$ex\t0\t$o\t2\n";' | sort -t'	' -k1,1 -k2,2n -k3,3n -k4,4 -k6,6 | uniq > ${ORIG_UNIONED_GTF}.exon_coords.bed 
-
-#get disjoint2annotated exon mapping, makes sure to use chromosome to uniquify across genes which are on multiple chromosomes with the same name
-cat ${ORIG_UNIONED_GTF}.exon_coords.bed ${ORIG_UNIONED_GTF}.gff.bed.sorted | perl -ne 'chomp; $f=$_; @f=split(/\t/,$f); $eid=$f[3]; if($f[6] eq "2") { $h{$eid}=$f; next; } $f=join("\t",@f); ($c,$s,$e,$o,$info)=($f[0],$f[3],$f[4],$f[6],$f[8]); $info=~/gene_id=([^;]+)/; $gs=$1; $info=~/exon_name=([^;]+)/; $es=$1; @genes=split(/,/,$gs); @exons=@genes; if($es) { @exons=split(/,/,$es); } for $ex (@exons) { $ginfo=undef; $ginfo=$h{$ex.".$c"}; if(!$ginfo) { $ginfo=$h{$ex}; } print "$c\t$s\t$e\t.\t0\t$o\t$ginfo\n"; }' | sort -t'	' -k1,1 -k2,2n -k3,3n > ${ORIG_UNIONED_GTF}.disjoint2exons.bed
+#get disjoint2annotated exon mapping, assumes that the original unioned GTF file used the full pattern (exon/gene_name|chr|start|end|strand) as the exon_id
+#we'll use this to get the proper mapping back
+cat ${ORIG_UNIONED_GTF}.gff.bed.sorted | perl -ne 'chomp; $f=$_; @f=split(/\t/,$f); $eid=$f[3]; if($f[6] eq "2") { $h{$eid}=$f; next; } $f=join("\t",@f); ($c,$s,$e,$o,$info)=($f[0],$f[3],$f[4],$f[6],$f[8]); $info=~/gene_id=([^;]+)/; $gs=$1; $info=~/exon_name=([^;]+)/; $es=$1; @genes=split(/,/,$gs); @exons=@genes; if($es) { @exons=split(/,/,$es); } for $ex (@exons) { ($ename,$c2,$s2,$e2,$o2)=split(/\|/,$ex); $s2--; print "$c\t$s\t$e\t.\t0\t$o\t$c2\t$s2\t$e2\t$ename\t0\t$o2\t2\n"; }' 2> ${ORIG_UNIONED_GTF}.disjoint2exons.bed.err | sort -t'	' -k1,1 -k2,2n -k3,3n > ${ORIG_UNIONED_GTF}.disjoint2exons.bed
