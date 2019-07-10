@@ -70,7 +70,8 @@ elif [[ -f /Snakefile ]] ; then
             input="${INPUT_FILES}" \
             output="${RECOUNT_OUTPUT}" \
             ref="${RECOUNT_REF}" \
-            temp="${RECOUNT_TEMP}"
+            temp="${RECOUNT_TEMP}" \
+        > ${RECOUNT_OUTPUT}/std.out 2>&1
     popd
 else
     echo "Could not detect workflow script"
