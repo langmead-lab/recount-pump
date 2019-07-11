@@ -133,16 +133,21 @@ elif [[ ${method} == "gdc" ]] ; then
         test -s ${srr}.fastq && \
             mv ${srr}.fastq ${srr}_0.fastq
     else
-        test -f ${TMP}/${srr}/*.tar.gz
-        
         echo "=== gdc-client log.txt begin ===" >> ${log}
         cat ${TMP}/log.txt >> ${log}
         echo "=== gdc-client log.txt end===" >> ${log}
-        
-        size=$(cat ${TMP}/${srr}/*.tar.gz | wc -c)
-        echo "COUNT_GdcBytesDownloaded ${size}"
 
-        tar zxvf ${TMP}/${srr}/*.tar.gz
+        if test -f ${TMP}/${srr}/*.tar.gz; then
+            size=$(cat ${TMP}/${srr}/*.tar.gz | wc -c)
+            echo "COUNT_GdcBytesDownloaded ${size}"
+            tar zxvf ${TMP}/${srr}/*.tar.gz
+        else
+            test -f ${TMP}/${srr}/*.tar
+            size=$(cat ${TMP}/${srr}/*.tar | wc -c)
+            echo "COUNT_GdcBytesDownloaded ${size}"
+            tar xvf ${TMP}/${srr}/*.tar
+            gunzip *.gz
+        fi 
         rm -rf ${TMP}
 
         num_1s=$(ls -1 *_1.fastq | wc -l)
