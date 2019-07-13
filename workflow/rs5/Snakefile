@@ -1120,7 +1120,6 @@ rule download:
         export num_urls="{params.num_urls}"
         export retries="{params.retries}"
         export threads="{threads}"
-        export threads="{log}"
         export temp="{config[temp]}"
         
         export is_gzipped="{params.is_gzipped}"

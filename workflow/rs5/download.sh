@@ -150,23 +150,30 @@ elif [[ ${method} == "gdc" ]] ; then
         fi 
         rm -rf ${TMP}
 
-        num_1s=$(ls -1 *_1.fastq | wc -l)
-        num_2s=$(ls -1 *_2.fastq | wc -l)
-        if (( ${num_1s} == 0 )) ; then
-            echo "ERROR: No _1.fastq files output"
-            exit 1
-        fi
-        if (( ${num_1s} > 1 )) ; then
-            echo "ERROR: More than one _1.fastq file found"
-            exit 1
-        fi
-        if (( ${num_2s} == 0 )) ; then
+        num_fastqs=`ls -1 *.fastq | wc -l`
+
+        if (( ${num_fastqs} == 1 )) ; then
             # unpaired
-            mv *_1.fastq ${srr}_0.fastq
-        else
-            # paired-end
+            mv *.fastq ${srr}_0.fastq
+        fi
+        if (( ${num_fastqs} == 2 )) ; then
             mv *_1.fastq ${srr}_1.fastq
             mv *_2.fastq ${srr}_2.fastq
+        fi
+        if (( ${num_fastqs} == 3 )) ; then
+            mv *_1.fastq ${srr}_1.zfastq
+            mv *_2.fastq ${srr}_2.zfastq
+            mv *.fastq ${srr}_0.fastq
+            mv *_1.zfastq ${srr}_1.fastq
+            mv *_2.zfastq ${srr}_2.fastq
+        fi
+        if (( ${num_fastqs} >= 4 )) ; then
+            echo -n "" > ${srr}_1.zfastq
+            echo -n "" > ${srr}_2.zfastq
+            for f in `ls *_1.fastq`; do cat $f >> ${srr}_1.zfastq; done
+            for f in `ls *_2.fastq`; do cat $f >> ${srr}_2.zfastq; done
+            mv ${srr}_1.zfastq ${srr}_1.fastq
+            mv ${srr}_2.zfastq ${srr}_2.fastq
         fi
     fi
 #----------URL----------#
