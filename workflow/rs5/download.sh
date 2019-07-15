@@ -32,11 +32,13 @@ if [[ ${method} == "sra" ]] ; then
     for i in { 1..${retries} } ; do
         if time prefetch ${prefetch_args} -t fasp -O ${TMP} ${srr} 2>&1 >> ${log} ; then
             SUCCESS=1
+            echo "COUNT_FASPDownloads 1"
             break
         else
             #try http/s as a fallback before retrying
             if time prefetch ${prefetch_args} -t http -O ${TMP} ${srr} 2>&1 >> ${log} ; then
                 SUCCESS=1
+                echo "COUNT_HTTPDownloads 1"
                 break
             else
                 echo "COUNT_SraRetries 1"
