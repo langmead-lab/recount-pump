@@ -20,6 +20,8 @@ log=$8
 
 SUCCESS=0
 TIMEOUT=10
+#gdc timeout is in minutes
+GDC_TIMEOUT=30
 PARAMS=""
 TMP="${temp}/dl-${srr}"
 ! test -d ${TMP}
@@ -95,7 +97,7 @@ elif [[ ${method} == "gdc" ]] ; then
     fi
     mkdir -p ${TMP}
     for i in { 1..${retries} } ; do
-        if time gdc-client download \
+        if timeout -s 9 -k 5s ${GDC_TIMEOUT}m gdc-client download \
             $use_token --log-file ${TMP}/log.txt \
             -n ${threads} \
             -d ${TMP} \
