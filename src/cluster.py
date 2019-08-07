@@ -36,6 +36,7 @@ Options:
 """
 
 import time
+import random
 import re
 import os
 import log
@@ -610,14 +611,12 @@ def job_loop(project_id_or_name, q_ini, cluster_ini, worker_name, session,
                     #reset num_fails
                     num_job_fails = 0
                 else:
-                    ##TODO:
-                    #use Ben's suggestion of exponential backoff on failure
-                    #OR just fail this worker after some set number of times consecutively
                     log_failure(job, node_name, worker_name, session)
                     log_info_detailed(node_name, worker_name, 'job failure')
+                    #just fail this worker after some set number of times consecutively
                     num_job_fails += 1
                     if num_job_fails > max_job_fails:
-                        log_warning_detailed(node_name, worker_name, 'Terminating worker, reached max fails %d' % max_job_fails)
+                        log_warning_detailed(node_name, worker_name, 'Terminating worker, reached max job fails %d' % max_job_fails)
                         sys.exit(1)
 
                 if succeeded or not only_delete_on_success:
@@ -832,6 +831,11 @@ def worker(project_id_or_name, worker_name, q_ini, cluster_ini, engine, max_fail
     ##TODO:
     #likely the location of the bug where >=1 of the workers fails to connect and then just stalls or terminates (does the python process keep running?)
     #change this to do a sleep/delay or print a message
+    random.seed(a=worker_name)
+    #wait a random number of milliseconds upto 5 seconds
+    time_to_wait = random.uniform(0,5)
+    log.info('Waiting %.3f seconds before connecting from engine' % time_to_wait, 'cluster.py')
+    time.sleep(time_to_wait)
     connection = engine.connect()
     session = Session(bind=connection)
     #signal.signal(signal.SIGUSR1, lambda sig, stack: traceback.print_stack(stack))
