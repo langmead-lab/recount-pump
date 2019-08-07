@@ -21,6 +21,7 @@ Options:
   --log-level <level>          set level for log aggregation; could be CRITICAL,
                                ERROR, WARNING, INFO, DEBUG [default: INFO].
   --max-fail <int>             Maximum # poll failures before quitting [default: 10].
+  --max-job-fail <int>         Maximum # consecutive job failures before quitting [default: 10].
   --poll-seconds <int>         Seconds to wait before re-polling after failed poll [default: 5].
   --sysmon-interval <int>      Seconds between sysmon updated; 0 disables [default: 5]
   --s3-ini=<path>              Path to S3 ini file [default: ~/.recount/s3.ini].
@@ -535,7 +536,7 @@ def get_num_successes(job, session):
 
 def job_loop(project_id_or_name, q_ini, cluster_ini, worker_name, session,
              max_fails=10, sleep_seconds=10,
-             mover_config=None, destination=None, source_prefix=None):
+             mover_config=None, destination=None, source_prefix=None, max_job_fails=10):
     node_name = socket.gethostname().split('.', 1)[0]
     log_info_detailed(node_name, worker_name, 'Getting queue client')
     aws_profile, region, endpoint, visibility_timeout, _, _ = parse_queue_config(q_ini)
@@ -551,6 +552,7 @@ def job_loop(project_id_or_name, q_ini, cluster_ini, worker_name, session,
     q_url = resp['QueueUrl']
     only_delete_on_success = True
     attempt, success, fail = 0, 0, 0
+    num_job_fails = 0
     log_info_detailed(node_name, worker_name, 'Entering job loop, queue "%s"' % q_name)
     while True:
         attempt += 1
@@ -605,9 +607,18 @@ def job_loop(project_id_or_name, q_ini, cluster_ini, worker_name, session,
                     log_success(job, node_name, worker_name, session)
                     log_info_detailed(node_name, worker_name, 'job success')
                     succeeded = True
+                    #reset num_fails
+                    num_job_fails = 0
                 else:
+                    ##TODO:
+                    #use Ben's suggestion of exponential backoff on failure
+                    #OR just fail this worker after some set number of times consecutively
                     log_failure(job, node_name, worker_name, session)
                     log_info_detailed(node_name, worker_name, 'job failure')
+                    num_job_fails += 1
+                    if num_job_fails > max_job_fails:
+                        log_warning_detailed(node_name, worker_name, 'Terminating worker, reached max fails %d' % max_job_fails)
+                        sys.exit(1)
 
                 if succeeded or not only_delete_on_success:
                     log_info_detailed(node_name, worker_name, 'Deleting ' + handle)
@@ -816,8 +827,11 @@ def test_parse_image_url_3():
 
 def worker(project_id_or_name, worker_name, q_ini, cluster_ini, engine, max_fail,
            poll_seconds,
-           mover_config=None, destination=None, source_prefix=None):
+           mover_config=None, destination=None, source_prefix=None, max_job_fail=10):
     engine.dispose()
+    ##TODO:
+    #likely the location of the bug where >=1 of the workers fails to connect and then just stalls or terminates (does the python process keep running?)
+    #change this to do a sleep/delay or print a message
     connection = engine.connect()
     session = Session(bind=connection)
     #signal.signal(signal.SIGUSR1, lambda sig, stack: traceback.print_stack(stack))
@@ -826,7 +840,7 @@ def worker(project_id_or_name, worker_name, q_ini, cluster_ini, engine, max_fail
                    sleep_seconds=poll_seconds,
                    mover_config=mover_config,
                    destination=destination,
-                   source_prefix=source_prefix))
+                   source_prefix=source_prefix,max_job_fails=max_job_fail))
 
 
 def log_worker():
@@ -924,6 +938,7 @@ def go():
             session = Session(bind=connection)
             prepare(project_id_or_name, cluster_ini, session, mover_config.new_mover())
             max_fails = int(args['--max-fail'])
+            max_job_fails = int(args['--max-job-fail'])
             sleep_seconds = int(args['--poll-seconds'])
             procs = []
             sysmon_ival = int(args['--sysmon-interval'])
@@ -943,7 +958,7 @@ def go():
                                             args=(project_id_or_name, worker_name, q_ini, cluster_ini,
                                                   engine, max_fails, sleep_seconds,
                                                   mover_config, destination_url,
-                                                  source_prefix))
+                                                  source_prefix, max_job_fails))
                 t.start()
                 log.info('Spawned process %d (pid=%d)' % (i+1, t.pid), 'cluster.py')
                 procs.append(t)
