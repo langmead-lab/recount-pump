@@ -1,0 +1,39 @@
+{
+  "MetricDataQueries": [
+    {
+      "Id": "e1",
+      "Expression": "m1/m2",
+      "Label": "Completions per DB connection"
+    },
+    {
+      "Id": "m1",
+      "MetricStat": {
+        "Metric": {
+          "Namespace": "recount",
+          "MetricName": "RunWorkflowPost"
+        },
+        "Period": 3600,
+        "Stat": "Sum"
+      },
+      "ReturnData": false
+    },
+    {
+      "Id": "m2",
+      "MetricStat": {
+        "Metric": {
+          "Namespace": "AWS/RDS",
+          "MetricName": "DatabaseConnections",
+          "Dimensions": [
+            {
+              "Name": "DBInstanceIdentifier",
+              "Value": "recount"
+            }
+          ]
+        },
+        "Period": 3600,
+        "Stat": "Maximum"
+      },
+      "ReturnData": false
+    }
+  ]
+}
