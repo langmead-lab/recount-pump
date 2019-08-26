@@ -21,7 +21,7 @@ Options:
   --log-level <level>          set level for log aggregation; could be CRITICAL,
                                ERROR, WARNING, INFO, DEBUG [default: INFO].
   --max-fail <int>             Maximum # poll failures before quitting [default: 10].
-  --max-job-fail <int>         Maximum # consecutive job failures before quitting [default: 10].
+  --max-job-fail <int>         Maximum # consecutive job failures before quitting [default: 6].
   --poll-seconds <int>         Seconds to wait before re-polling after failed poll [default: 5].
   --sysmon-interval <int>      Seconds between sysmon updated; 0 disables [default: 5]
   --s3-ini=<path>              Path to S3 ini file [default: ~/.recount/s3.ini].
@@ -71,6 +71,8 @@ if sys.version[:1] == '2':
 else:
     from configparser import RawConfigParser
 
+MAX_JOB_FAILS = 6
+global MAX_JOB_FAILS
 
 def is_ascii(s):
     return all(ord(c) < 128 for c in s)
@@ -576,9 +578,56 @@ def get_num_successes(job, session):
     return q.session.execute(count_q).scalar()
 
 
+@retry((BaseException), tries=MAX_JOB_FAILS, delay=2, backoff=2)
+def do_job_wrapper(msg, handle, session, proj, node_name, worker_name, 
+                   visibility_timeout, q_client, q_url, cluster_ini, 
+                   mover_config, destination, source_prefix):
+    body = msg['Body']
+    job = Task(body, proj)
+    nattempts = get_num_attempts(job, session)
+    nfailures = get_num_failures(job, session)
+    my_attempt = nattempts
+
+    log_info_detailed(node_name, worker_name,
+                      'job start; was attempted %d times previously (%d failures)' %
+                      (nattempts, nfailures))
+    log_attempt(job, node_name, worker_name, session)
+    succeeded = False
+    assert visibility_timeout is not None
+
+    def heartbeat_func(st):
+        try:
+            q_client.change_message_visibility(
+                QueueUrl=q_url,
+                ReceiptHandle=handle,
+                VisibilityTimeout=visibility_timeout)
+            log_info_detailed(node_name, worker_name, 'Heartbeat (%s)' % st)
+        except Exception as exc:
+            log_warn_detailed(node_name, worker_name,
+                              'Exception during heartbeat (%s): %s' % (st, str(exc)))
+
+    try:
+        succeeded = do_job(body, proj, cluster_ini, my_attempt, node_name,
+                           worker_name, session, heartbeat_func,
+                           mover_config=mover_config,
+                           destination=destination,
+                           source_prefix=source_prefix)
+    except BaseException as e:
+        log_warning_detailed(node_name, worker_name,
+                             'job attempt %d yielded exception: %s\n%s'
+                             % (nattempts, str(e), traceback.format_exc()))
+
+    if not succeeded:
+        log_failure(job, node_name, worker_name, session)
+        log_info_detailed(node_name, worker_name, 'job failure')
+        raise BaseException('job attempt %d failed' % (nattempts))
+    log_success(job, node_name, worker_name, session)
+    return succeeded
+
+
 def job_loop(project_id_or_name, q_ini, cluster_ini, worker_name, session,
              max_fails=10, sleep_seconds=10,
-             mover_config=None, destination=None, source_prefix=None, max_job_fails=10):
+             mover_config=None, destination=None, source_prefix=None, max_job_fails=MAX_JOB_FAILS):
     node_name = socket.gethostname().split('.', 1)[0]
     log_info_detailed(node_name, worker_name, 'Getting queue client')
     aws_profile, region, endpoint, visibility_timeout, _, _ = parse_queue_config(q_ini)
@@ -608,61 +657,18 @@ def job_loop(project_id_or_name, q_ini, cluster_ini, worker_name, session,
             time.sleep(sleep_seconds)
         else:
             for msg in msg_set.get('Messages', []):
-                body = msg['Body']
                 handle = msg['ReceiptHandle']
-                success += 1
-                job = Task(body, proj)
-                nattempts = get_num_attempts(job, session)
-                nfailures = get_num_failures(job, session)
-                my_attempt = nattempts
-
-                log_info_detailed(node_name, worker_name,
-                                  'job start; was attempted %d times previously (%d failures)' %
-                                  (nattempts, nfailures))
-                log_attempt(job, node_name, worker_name, session)
-                succeeded = False
-                assert visibility_timeout is not None
-
-                def heartbeat_func(st):
-                    try:
-                        q_client.change_message_visibility(
-                            QueueUrl=q_url,
-                            ReceiptHandle=handle,
-                            VisibilityTimeout=visibility_timeout)
-                        log_info_detailed(node_name, worker_name, 'Heartbeat (%s)' % st)
-                    except Exception as exc:
-                        log_warn_detailed(node_name, worker_name,
-                                          'Exception during heartbeat (%s): %s' % (st, str(exc)))
-
-                try:
-                    succeeded = do_job(body, proj, cluster_ini, my_attempt, node_name,
-                                       worker_name, session, heartbeat_func,
-                                       mover_config=mover_config,
-                                       destination=destination,
-                                       source_prefix=source_prefix)
-                except BaseException as e:
-                    log_warning_detailed(node_name, worker_name,
-                                         'job attempt %d yielded exception: %s\n%s'
-                                         % (nattempts, str(e), traceback.format_exc()))
-
-                if succeeded:
-                    log_success(job, node_name, worker_name, session)
-                    log_info_detailed(node_name, worker_name, 'job success')
-                    succeeded = True
-                    #reset num_fails
-                    num_job_fails = 0
-                else:
-                    log_failure(job, node_name, worker_name, session)
-                    log_info_detailed(node_name, worker_name, 'job failure')
-                    #just fail this worker after some set number of times consecutively
-                    num_job_fails += 1
-                    if num_job_fails > max_job_fails:
-                        log_warning_detailed(node_name, worker_name, 'Terminating worker, reached max job fails %d' % max_job_fails)
-                        sys.exit(1)
-
+                succeeded = do_job_wrapper(msg, handle, session, proj, node_name, worker_name, 
+                                            visibility_timeout, q_client, q_url, cluster_ini, 
+                                            mover_config, destination, source_prefix)
                 if succeeded or not only_delete_on_success:
                     log_info_detailed(node_name, worker_name, 'Deleting ' + handle)
                     q_client.delete_message(QueueUrl=q_url, ReceiptHandle=handle)
+                if succeeded:
+                    log_info_detailed(node_name, worker_name, 'job success')
+                else:
+                    log_warning_detailed(node_name, worker_name, 'Terminating worker, reached max job fails %d' % max_job_fails)
+                    sys.exit(1)
 
         log_info_detailed(node_name, worker_name, 'Bottom of job loop, iteration %d' % attempt)
 
@@ -864,24 +870,25 @@ def test_parse_image_url_3():
     assert image_fn is None
     assert 'docker' == typ
 
-@retry((IOError), tries=5, delay=2, backoff=2)
-def db_connect(engine):
+@retry((IOError), tries=MAX_JOB_FAILS, delay=2, backoff=2)
+def db_connect_wrapper(engine):
     connection = engine.connect()
     if connection is not None:
-        return connection
+        session = Session(bind=connection)
+        if session is not None:
+            return session
     raise IOError("failed to connect to DB")
 
 
 def worker(project_id_or_name, worker_name, q_ini, cluster_ini, engine, max_fail,
            poll_seconds,
-           mover_config=None, destination=None, source_prefix=None, max_job_fail=10):
+           mover_config=None, destination=None, source_prefix=None, max_job_fail=MAX_JOB_FAILS):
     engine.dispose()
     #this is the db engine connection
     ##TODO:
     #likely the location of the bug where >=1 of the workers fails to connect and then just stalls or terminates (does the python process keep running?)
     #hopefully this retry logic will avoid this issue
-    connection = db_connect(engine)
-    session = Session(bind=connection)
+    session = db_connect_wrapper(engine)
     #signal.signal(signal.SIGUSR1, lambda sig, stack: traceback.print_stack(stack))
     print(job_loop(project_id_or_name, q_ini, cluster_ini, worker_name, session,
                    max_fails=max_fail,
@@ -986,7 +993,7 @@ def go():
             session = Session(bind=connection)
             prepare(project_id_or_name, cluster_ini, session, mover_config.new_mover())
             max_fails = int(args['--max-fail'])
-            max_job_fails = int(args['--max-job-fail'])
+            MAX_JOB_FAILS = int(args['--max-job-fail'])
             sleep_seconds = int(args['--poll-seconds'])
             procs = []
             sysmon_ival = int(args['--sysmon-interval'])
@@ -1006,7 +1013,7 @@ def go():
                                             args=(project_id_or_name, worker_name, q_ini, cluster_ini,
                                                   engine, max_fails, sleep_seconds,
                                                   mover_config, destination_url,
-                                                  source_prefix, max_job_fails))
+                                                  source_prefix, MAX_JOB_FAILS))
                 t.start()
                 log.info('Spawned process %d (pid=%d)' % (i+1, t.pid), 'cluster.py')
                 procs.append(t)
