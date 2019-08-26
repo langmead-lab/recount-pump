@@ -25,6 +25,13 @@ The last command should print a hex string.
 
 And ensure that a Docker image for `docker://recount-rs5:latest`
 
+You may also need to reset the state (db/queue), 
+if you're using the same containers/db as in previous tests:
+
+```
+../common/reset.sh project.ini
+```
+
 To run the test:
 
 ```sh
