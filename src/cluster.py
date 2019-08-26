@@ -53,6 +53,7 @@ import json
 import threading
 import signal
 import traceback
+from functools import wraps
 from resmon import SysmonThread
 from datetime import datetime
 from docopt import docopt
@@ -73,6 +74,46 @@ else:
 
 def is_ascii(s):
     return all(ord(c) < 128 for c in s)
+
+def retry(ExceptionsToCheck, tries=4, delay=3, backoff=2, logger=None):
+    """Retry calling the decorated function using an exponential backoff.
+
+    http://www.saltycrane.com/blog/2009/11/trying-out-retry-decorator-python/
+    original from: http://wiki.python.org/moin/PythonDecoratorLibrary#Retry
+
+    :param ExceptionsToCheck: the exception to check. may be a tuple of
+        exceptions to check
+    :type ExceptionToCheck: Exception or tuple
+    :param tries: number of times to try (not retry) before giving up
+    :type tries: int
+    :param delay: initial delay between retries in seconds
+    :type delay: int
+    :param backoff: backoff multiplier e.g. value of 2 will double the delay
+        each retry
+    :type backoff: int
+    :param logger: logger to use. If None, print
+    :type logger: logging.Logger instance
+    """
+    def deco_retry(f):
+
+        @wraps(f)
+        def f_retry(*args, **kwargs):
+            mtries, mdelay = tries, delay
+            while mtries > 1:
+                try:
+                    return f(*args, **kwargs)
+                except ExceptionsToCheck as e:
+                    msg = "%s, Retrying in %d seconds..." % (str(e), mdelay)
+                    if logger:
+                        logger.warning(msg)
+                    else:
+                        sys.stderr.write(msg+"\n")
+                    time.sleep(mdelay)
+                    mtries -= 1
+                    mdelay *= backoff
+            return f(*args, **kwargs)
+        return f_retry  # true decorator
+    return deco_retry
 
 
 class Task(object):
@@ -823,20 +864,23 @@ def test_parse_image_url_3():
     assert image_fn is None
     assert 'docker' == typ
 
+@retry((IOError), tries=5, delay=2, backoff=2)
+def db_connect(engine):
+    connection = engine.connect()
+    if connection is not None:
+        return connection
+    raise IOError("failed to connect to DB")
+
 
 def worker(project_id_or_name, worker_name, q_ini, cluster_ini, engine, max_fail,
            poll_seconds,
            mover_config=None, destination=None, source_prefix=None, max_job_fail=10):
     engine.dispose()
+    #this is the db engine connection
     ##TODO:
     #likely the location of the bug where >=1 of the workers fails to connect and then just stalls or terminates (does the python process keep running?)
-    #change this to do a sleep/delay or print a message
-    random.seed(a=worker_name)
-    #wait a random number of milliseconds upto 5 seconds
-    time_to_wait = random.uniform(0,5)
-    log.info('Waiting %.3f seconds before connecting from engine' % time_to_wait, 'cluster.py')
-    time.sleep(time_to_wait)
-    connection = engine.connect()
+    #hopefully this retry logic will avoid this issue
+    connection = db_connect(engine)
     session = Session(bind=connection)
     #signal.signal(signal.SIGUSR1, lambda sig, stack: traceback.print_stack(stack))
     print(job_loop(project_id_or_name, q_ini, cluster_ini, worker_name, session,
