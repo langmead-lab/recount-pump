@@ -16,7 +16,7 @@ temp=$7
 log=$8
 
 #these are expected to be set from in the environment
-#bam2fastq,study,is_gzipped,is_zstded,prefetch_args,fd_args,url0,url1,url2,gdc_token,reads_in_bam
+#study,is_gzipped,is_zstded,prefetch_args,fd_args,url0,url1,url2,gdc_token,reads_in_bam
 
 SUCCESS=0
 TIMEOUT=10
@@ -132,10 +132,9 @@ elif [[ ${method} == "gdc" ]] ; then
         size=$(cat ${TMP}/${srr}/*.bam | wc -c)
         echo "COUNT_GdcBytesDownloaded ${size}"
         BAM=$(ls ${TMP}/${srr}/*.bam)
-        samtools sort -n $BAM -@ ${threads} > ${BAM}.sorted 2>> ${log}
-        samtools fastq -1 ${srr}_1.fastq -2 ${srr}_2.fastq -0 ${srr}.fastq.0 -s ${srr}.fastq.s -G 256 ${BAM}.sorted 2>&1 >> ${log}
+        samtools sort -n $BAM -@ ${threads} 2>> ${log} | samtools fastq -N -G 256 -1 ${srr}_1.fastq -2 ${srr}_2.fastq -0 ${srr}.fastq.0 -s ${srr}.fastq.s - 2>&1 >> ${log}
         cat ${srr}.fastq.0 ${srr}.fastq.s > ${srr}_0.fastq
-        rm ${srr}.fastq.0 ${srr}.fastq.s ${BAM}.sorted
+        rm -f ${srr}.fastq.0 ${srr}.fastq.s
         for f in ${srr}_1.fastq ${srr}_2.fastq ${srr}_0.fastq ; do
             size0=`wc -c $f | cut -d' ' -f 1`
             if (( ${size0} == 0 )) ; then
