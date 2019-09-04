@@ -132,10 +132,16 @@ elif [[ ${method} == "gdc" ]] ; then
         size=$(cat ${TMP}/${srr}/*.bam | wc -c)
         echo "COUNT_GdcBytesDownloaded ${size}"
         BAM=$(ls ${TMP}/${srr}/*.bam)
-        ${bam2fastq} $BAM --threads ${threads} --bam2fastq ${srr} --filter-out 256 --re-reverse 2>&1 >> ${log}
-        
-        test -s ${srr}.fastq && \
-            mv ${srr}.fastq ${srr}_0.fastq
+        samtools sort -n $BAM -@ ${threads} > ${BAM}.sorted 2>> ${log}
+        samtools fastq -1 ${srr}_1.fastq -2 ${srr}_2.fastq -0 ${srr}.fastq.0 -s ${srr}.fastq.s -G 256 ${BAM}.sorted 2>&1 >> ${log}
+        cat ${srr}.fastq.0 ${srr}.fastq.s > ${srr}_0.fastq
+        rm ${srr}.fastq.0 ${srr}.fastq.s ${BAM}.sorted
+        for f in ${srr}_1.fastq ${srr}_2.fastq ${srr}_0.fastq ; do
+            size0=`wc -c $f | cut -d' ' -f 1`
+            if (( ${size0} == 0 )) ; then
+                rm -f $f
+            fi
+        done
     else
         echo "=== gdc-client log.txt begin ===" >> ${log}
         cat ${TMP}/log.txt >> ${log}
