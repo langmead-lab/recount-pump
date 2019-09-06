@@ -48,6 +48,7 @@ FILES = ['sjout.zst', 'fastq_check.tsv.zst',
          'salmon_split3.tsv.zst',
          'jx_bed.zst', 'unmapped.jx_bed.zst',
          'idxstats', 'unmapped.idxstats',
+         'unmapped~sorted.bam','unmapped~sorted.bam.bai',
          'manifest'] + list(map(lambda x: x + '.log', STEPS))
 
 INPUTS={}
@@ -153,8 +154,6 @@ rule make_manifest:
             else:
                 fh.write(params.quad + '~sorted.bam\n')
                 fh.write(params.quad + '~sorted.bam.bai\n')
-        os.unlink(config['output'] + '/' + params.quad + '.unmapped~sorted.bam')
-        os.unlink(config['output'] + '/' + params.quad + '.unmapped~sorted.bam.bai')
         #all finished, if this exists in INPUTS, delete
         if params.quad in INPUTS:
             del INPUTS[params.quad]
