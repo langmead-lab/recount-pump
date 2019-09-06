@@ -24,13 +24,12 @@ RUN curl -OL https://github.com/samtools/samtools/releases/download/${SM_VER}/sa
     make && \
     make install
 
-# install bamcount
-ENV BC_VER=0.3.3
+# install bamcount static binary
+ENV BC_VER=0.4.0
 RUN mkdir -p /bamcount && \
     cd /bamcount && \
-    wget -q https://github.com/BenLangmead/bamcount/releases/download/${BC_VER}/bamcount-${BC_VER}.zip && \
-    unzip bamcount-${BC_VER}.zip && \
-    rm -f bamcount-${BC_VER}.zip
+    wget -q https://github.com/ChristopherWilks/bamcount/releases/download/${BC_VER}/bamcount_static -O bamcount && \
+    chmod a+x bamcount
 
 # install Snakefile
 COPY Snakefile /Snakefile

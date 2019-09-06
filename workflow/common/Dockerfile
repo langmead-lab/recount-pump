@@ -2,13 +2,6 @@ FROM continuumio/miniconda:4.5.12
 
 RUN apt-get update -y && apt-get install -y gcc g++ libz-dev make unzip zip
 
-# bwtool is not in bioconda, unfortunately
-RUN git clone https://github.com/CRG-Barcelona/libbeato.git && cd libbeato && git checkout 0c30432af9c7e1e09ba065ad3b2bc042baa54dc2 && \
-    ./configure && make && make install && cd .. && \
-    git clone https://github.com/CRG-Barcelona/bwtool.git && cd bwtool && git checkout 139e3adf6db87ae7442024c7e4352dc9844a9256 && \
-    ./configure && make && make install && cd .. && \
-    rm -rf libbeato bwtool
-
 # install conda environment
 COPY env.yml /env-base.yml
 RUN chmod a+r /env-base.yml
