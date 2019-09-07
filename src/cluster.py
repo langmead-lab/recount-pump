@@ -71,8 +71,8 @@ if sys.version[:1] == '2':
 else:
     from configparser import RawConfigParser
 
-MAX_JOB_FAILS = 6
 global MAX_JOB_FAILS
+MAX_JOB_FAILS = 6
 
 def is_ascii(s):
     return all(ord(c) < 128 for c in s)
