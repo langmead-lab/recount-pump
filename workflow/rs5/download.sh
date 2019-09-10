@@ -29,24 +29,20 @@ TMP="${temp}/dl-${srr}"
 #----------SRA----------#
 if [[ ${method} == "sra" ]] ; then
     USE_FASTERQ=1
+    mkdir -p ${temp}
+    pushd ${temp}
     for i in { 1..${retries} } ; do
-        if time prefetch ${prefetch_args} -t fasp -O ${TMP} ${srr} 2>&1 >> ${log} ; then
+        if time prefetch ${prefetch_args} -t http -O ${TMP} ${srr} 2>&1 >> ${log} ; then
             SUCCESS=1
-            echo "COUNT_FASPDownloads 1"
+            echo "COUNT_HTTPDownloads 1"
             break
         else
-            #try http/s as a fallback before retrying
-            if time prefetch ${prefetch_args} -t http -O ${TMP} ${srr} 2>&1 >> ${log} ; then
-                SUCCESS=1
-                echo "COUNT_HTTPDownloads 1"
-                break
-            else
-                echo "COUNT_SraRetries 1"
-                TIMEOUT=$((${TIMEOUT} * 2))
-                sleep ${TIMEOUT}
-            fi
+            echo "COUNT_SraRetries 1"
+            TIMEOUT=$((${TIMEOUT} * 2))
+            sleep ${TIMEOUT}
         fi
     done
+    popd
     if (( $SUCCESS == 0 )) ; then
         echo "COUNT_SraFailures 1"
         rm -rf ${TMP}
