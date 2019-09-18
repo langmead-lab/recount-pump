@@ -156,31 +156,31 @@ class Task(object):
 log_queue = multiprocessing.Queue()
 
 
-def log_info(msg):
-    if log_queue is None:
+def log_info(msg, shared_log_queue=log_queue):
+    if shared_log_queue is None:
         log.info(msg, 'cluster.py')
     else:
-        log_queue.put((msg, 'cluster.py'))
+        shared_log_queue.put((msg, 'cluster.py'))
 
 
-def log_warning(msg):
-    if log_queue is None:
+def log_warning(msg, shared_log_queue=log_queue):
+    if shared_log_queue is None:
         log.warning(msg, 'cluster.py')
     else:
         # TODO: pass along the log level as well
-        log_queue.put((msg, 'cluster.py'))
+        shared_log_queue.put((msg, 'cluster.py'))
 
 
-def log_info_detailed(node_name, worker_name, msg):
-    log_info(' '.join([node_name, worker_name, msg]))
+def log_info_detailed(node_name, worker_name, msg, shared_log_queue=log_queue):
+    log_info(' '.join([node_name, worker_name, msg]), shared_log_queue=shared_log_queue)
 
 
-def log_warn_detailed(node_name, worker_name, msg):
-    log_warning(' '.join([node_name, worker_name, msg]))
+def log_warn_detailed(node_name, worker_name, msg, shared_log_queue=log_queue):
+    log_warning(' '.join([node_name, worker_name, msg]), shared_log_queue=shared_log_queue)
 
 
-def log_warning_detailed(node_name, worker_name, msg):
-    log_warning(' '.join([node_name, worker_name, msg]))
+def log_warning_detailed(node_name, worker_name, msg, shared_log_queue=log_queue):
+    log_warning(' '.join([node_name, worker_name, msg]), shared_log_queue=shared_log_queue)
 
 
 def proj_from_id_or_name(project_id_or_name, session):
@@ -253,7 +253,7 @@ def image_exists_locally(url, system, cachedir=None):
 
 def do_job(body, proj, cluster_ini, my_attempt, node_name,
            worker_name, session, heartbeat_func,
-           mover_config=None, destination=None, source_prefix=None):
+           mover_config=None, destination=None, source_prefix=None, shared_log_queue=log_queue):
     """
     Given a job-attempt description string, parse the string and execute the
     corresponding job attempt.  The description string itself is composed in
@@ -263,7 +263,7 @@ def do_job(body, proj, cluster_ini, my_attempt, node_name,
     assert analysis_dir is not None
     analysis_dir = os.path.expanduser(analysis_dir)
     task = Task(body, proj)
-    log_info_detailed(node_name, worker_name, 'got job: ' + str(task))
+    log_info_detailed(node_name, worker_name, 'got job: ' + str(task), shared_log_queue=shared_log_queue)
     tmp_dir = tempfile.mkdtemp()
     tmp_fn = os.path.join(tmp_dir, 'accessions.txt')
     assert not os.path.exists(tmp_fn)
@@ -280,7 +280,7 @@ def do_job(body, proj, cluster_ini, my_attempt, node_name,
         raise ValueError('No analysis named "%s"' % task.analysis_name)
     assert 1 == len(analyses)
     image_url, config = analyses[0].image_url, analyses[0].config
-    log_info_detailed(node_name, worker_name, 'parsing image URL: "%s"' % image_url)
+    log_info_detailed(node_name, worker_name, 'parsing image URL: "%s"' % image_url, shared_log_queue=shared_log_queue)
     image_fn, _ = parse_image_url(image_url, system, cachedir=analysis_dir)
     if not image_exists_locally(image_url, system, cachedir=analysis_dir):
         raise RuntimeError('Image "%s" does not exist locally' % image_fn)
@@ -288,22 +288,22 @@ def do_job(body, proj, cluster_ini, my_attempt, node_name,
         # TODO: we could check the md5 for a docker image too, though this is
         # a little tricky because 'docker images --digests' sometimes reports
         # <none> if the image hasn't been pushed or pulled yet
-        log_info_detailed(node_name, worker_name, 'calculating md5 over local image "%s"' % image_fn)
+        log_info_detailed(node_name, worker_name, 'calculating md5 over local image "%s"' % image_fn, shared_log_queue=shared_log_queue)
         image_md5 = md5(image_fn)
-        log_info_detailed(node_name, worker_name, 'md5: ' + image_md5)
+        log_info_detailed(node_name, worker_name, 'md5: ' + image_md5, shared_log_queue=shared_log_queue)
     json.loads(config)  # Check that config is well-formed
     attempt_name = '%s%d_in%d_att%d' % (task.proj_name, task.proj_id, task.input_id, my_attempt)
     mover = None
     if mover_config is not None:
         mover = mover_config.new_mover()
-    log_info_detailed(node_name, worker_name, 'Starting attempt "%s"' % attempt_name)
+    log_info_detailed(node_name, worker_name, 'Starting attempt "%s"' % attempt_name, shared_log_queue=shared_log_queue)
     partitioned_destination = destination
     if destination is not None:
         for partition_id in task.partition_id():
             partitioned_destination = os.path.join(partitioned_destination, partition_id)
     ret = run.run_job(attempt_name, [tmp_fn], image_url, image_fn,
                       config, cluster_ini, heartbeat_func,
-                      log_queue=log_queue, node_name=node_name,
+                      log_queue=shared_log_queue, node_name=node_name,
                       worker_name=worker_name,
                       mover=mover, destination=partitioned_destination,
                       source_prefix=source_prefix)
@@ -581,7 +581,7 @@ def get_num_successes(job, session):
 @retry((BaseException), tries=MAX_JOB_FAILS, delay=2, backoff=2)
 def do_job_wrapper(msg, handle, session, proj, node_name, worker_name, 
                    visibility_timeout, q_client, q_url, cluster_ini, 
-                   mover_config, destination, source_prefix):
+                   mover_config, destination, source_prefix, shared_log_queue=log_queue):
     body = msg['Body']
     job = Task(body, proj)
     nattempts = get_num_attempts(job, session)
@@ -590,7 +590,7 @@ def do_job_wrapper(msg, handle, session, proj, node_name, worker_name,
 
     log_info_detailed(node_name, worker_name,
                       'job start; was attempted %d times previously (%d failures)' %
-                      (nattempts, nfailures))
+                      (nattempts, nfailures), shared_log_queue=shared_log_queue)
     log_attempt(job, node_name, worker_name, session)
     succeeded = False
     assert visibility_timeout is not None
@@ -601,58 +601,58 @@ def do_job_wrapper(msg, handle, session, proj, node_name, worker_name,
                 QueueUrl=q_url,
                 ReceiptHandle=handle,
                 VisibilityTimeout=visibility_timeout)
-            log_info_detailed(node_name, worker_name, 'Heartbeat (%s)' % st)
+            log_info_detailed(node_name, worker_name, 'Heartbeat (%s)' % st, shared_log_queue=shared_log_queue)
         except Exception as exc:
             log_warn_detailed(node_name, worker_name,
-                              'Exception during heartbeat (%s): %s' % (st, str(exc)))
+                              'Exception during heartbeat (%s): %s' % (st, str(exc)), shared_log_queue=shared_log_queue)
 
     try:
         succeeded = do_job(body, proj, cluster_ini, my_attempt, node_name,
                            worker_name, session, heartbeat_func,
                            mover_config=mover_config,
                            destination=destination,
-                           source_prefix=source_prefix)
+                           source_prefix=source_prefix, shared_log_queue=shared_log_queue)
     except BaseException as e:
         log_warning_detailed(node_name, worker_name,
                              'job attempt %d yielded exception: %s\n%s'
-                             % (nattempts, str(e), traceback.format_exc()))
+                             % (nattempts, str(e), traceback.format_exc()), shared_log_queue=shared_log_queue)
 
     if not succeeded:
         log_failure(job, node_name, worker_name, session)
-        log_info_detailed(node_name, worker_name, 'job failure')
+        log_info_detailed(node_name, worker_name, 'job failure', shared_log_queue=shared_log_queue)
         raise BaseException('job attempt %d failed' % (nattempts))
     log_success(job, node_name, worker_name, session)
     return succeeded
 
 
-def job_loop(project_id_or_name, q_ini, cluster_ini, worker_name, session,
+def job_loop(shared_log_queue, project_id_or_name, q_ini, cluster_ini, worker_name, session,
              max_fails=10, sleep_seconds=10,
              mover_config=None, destination=None, source_prefix=None, max_job_fails=MAX_JOB_FAILS):
     node_name = socket.gethostname().split('.', 1)[0]
-    log_info_detailed(node_name, worker_name, 'Getting queue client')
+    log_info_detailed(node_name, worker_name, 'Getting queue client', shared_log_queue=shared_log_queue)
     aws_profile, region, endpoint, visibility_timeout, _, _ = parse_queue_config(q_ini)
     boto3_session = boto3.session.Session(profile_name=aws_profile)
     q_client = boto3_session.client('sqs',
                                     endpoint_url=endpoint,
                                     region_name=region)
-    log_info_detailed(node_name, worker_name, 'Getting project')
+    log_info_detailed(node_name, worker_name, 'Getting project', shared_log_queue=shared_log_queue)
     proj = proj_from_id_or_name(project_id_or_name, session)
-    log_info_detailed(node_name, worker_name, 'Getting queue')
+    log_info_detailed(node_name, worker_name, 'Getting queue', shared_log_queue=shared_log_queue)
     q_name = proj.queue_name()
     resp = q_client.create_queue(QueueName=q_name)
     q_url = resp['QueueUrl']
     only_delete_on_success = True
     attempt, success, fail = 0, 0, 0
     num_job_fails = 0
-    log_info_detailed(node_name, worker_name, 'Entering job loop, queue "%s"' % q_name)
+    log_info_detailed(node_name, worker_name, 'Entering job loop, queue "%s"' % q_name, shared_log_queue=shared_log_queue)
     while True:
         attempt += 1
-        log_info_detailed(node_name, worker_name, 'Top of job loop, iteration %d' % attempt)
+        log_info_detailed(node_name, worker_name, 'Top of job loop, iteration %d' % attempt, shared_log_queue=shared_log_queue)
         msg_set = q_client.receive_message(QueueUrl=q_url)
         if 'Messages' not in msg_set:
             fail += 1
             if fail >= max_fails:
-                log_info_detailed(node_name, worker_name, 'exit job loop after %d poll failures' % fail)
+                log_info_detailed(node_name, worker_name, 'exit job loop after %d poll failures' % fail, shared_log_queue=shared_log_queue)
                 break
             time.sleep(sleep_seconds)
         else:
@@ -660,17 +660,17 @@ def job_loop(project_id_or_name, q_ini, cluster_ini, worker_name, session,
                 handle = msg['ReceiptHandle']
                 succeeded = do_job_wrapper(msg, handle, session, proj, node_name, worker_name, 
                                             visibility_timeout, q_client, q_url, cluster_ini, 
-                                            mover_config, destination, source_prefix)
+                                            mover_config, destination, source_prefix, shared_log_queue=shared_log_queue)
                 if succeeded or not only_delete_on_success:
-                    log_info_detailed(node_name, worker_name, 'Deleting ' + handle)
+                    log_info_detailed(node_name, worker_name, 'Deleting ' + handle, shared_log_queue=shared_log_queue)
                     q_client.delete_message(QueueUrl=q_url, ReceiptHandle=handle)
                 if succeeded:
-                    log_info_detailed(node_name, worker_name, 'job success')
+                    log_info_detailed(node_name, worker_name, 'job success', shared_log_queue=shared_log_queue)
                 else:
-                    log_warning_detailed(node_name, worker_name, 'Terminating worker, reached max job fails %d' % max_job_fails)
+                    log_warning_detailed(node_name, worker_name, 'Terminating worker, reached max job fails %d' % max_job_fails, shared_log_queue=shared_log_queue)
                     sys.exit(1)
 
-        log_info_detailed(node_name, worker_name, 'Bottom of job loop, iteration %d' % attempt)
+        log_info_detailed(node_name, worker_name, 'Bottom of job loop, iteration %d' % attempt, shared_log_queue=shared_log_queue)
 
 
 def clean_up(project_id_or_name, cluster_ini, session):
@@ -880,7 +880,7 @@ def db_connect_wrapper(engine):
     raise IOError("failed to connect to DB")
 
 
-def worker(project_id_or_name, worker_name, q_ini, cluster_ini, engine, max_fail,
+def worker(shared_log_queue, project_id_or_name, worker_name, q_ini, cluster_ini, engine, max_fail,
            poll_seconds,
            mover_config=None, destination=None, source_prefix=None, max_job_fail=MAX_JOB_FAILS):
     engine.dispose()
@@ -890,7 +890,7 @@ def worker(project_id_or_name, worker_name, q_ini, cluster_ini, engine, max_fail
     #hopefully this retry logic will avoid this issue
     session = db_connect_wrapper(engine)
     #signal.signal(signal.SIGUSR1, lambda sig, stack: traceback.print_stack(stack))
-    print(job_loop(project_id_or_name, q_ini, cluster_ini, worker_name, session,
+    print(job_loop(shared_log_queue, project_id_or_name, q_ini, cluster_ini, worker_name, session,
                    max_fails=max_fail,
                    sleep_seconds=poll_seconds,
                    mover_config=mover_config,
@@ -1010,7 +1010,7 @@ def go():
             for i in range(nworkers):
                 worker_name = 'worker_%d_of_%d' % (i+1, nworkers)
                 t = multiprocessing.Process(target=worker,
-                                            args=(project_id_or_name, worker_name, q_ini, cluster_ini,
+                                            args=(log_queue, project_id_or_name, worker_name, q_ini, cluster_ini,
                                                   engine, max_fails, sleep_seconds,
                                                   mover_config, destination_url,
                                                   source_prefix, MAX_JOB_FAILS))
