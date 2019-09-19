@@ -22,7 +22,8 @@ STEPS = ['download', 'fastq_check', 'align', 'sort',
          'align_unmapped',
          'extract_jx',
          'gene_fc_count_all', 'gene_fc_count_unique',
-         'exon_fc_count_all', 'exon_fc_count_unique']
+         'exon_fc_count_all', 'exon_fc_count_unique',
+         'slice_hla']
 
 FILES = ['sjout.zst', 'fastq_check.tsv.zst',
          'unmapped.fastq.zst',
@@ -49,6 +50,7 @@ FILES = ['sjout.zst', 'fastq_check.tsv.zst',
          'jx_bed.zst', 'unmapped.jx_bed.zst',
          'idxstats', 'unmapped.idxstats',
          'unmapped~sorted.bam','unmapped~sorted.bam.bai',
+         '~hla.bam','~hla.bam.bai',
          'manifest'] + list(map(lambda x: x + '.log', STEPS))
 
 INPUTS={}
@@ -91,6 +93,8 @@ rule make_manifest:
         config['output'] + '/{quad}~sorted.bam.bai',
         config['output'] + '/{quad}.unmapped~sorted.bam',
         config['output'] + '/{quad}.unmapped~sorted.bam.bai',
+        config['output'] + '/{quad}.~hla.bam',
+        config['output'] + '/{quad}.~hla.bam.bai',
         config['output'] + '/{quad}.idxstats',
         config['output'] + '/{quad}.unmapped.idxstats',
         config['output'] + '/{quad}.salmon.tsv.zst',
@@ -778,6 +782,24 @@ rule align_unmapped:
         echo "COUNT_UnmappedBamBytes ${{size}}"
 
         echo "COUNT_AlignUnmappedComplete 1"
+        """
+
+rule slice_hla:
+    wildcard_constraints:
+        quad="[^~\.]+"
+    input:
+        bam=config['output'] + '/{quad}~sorted.bam',
+        bamidx=config['output'] + '/{quad}~sorted.bam.bai'
+    output:
+        bam=config['output'] + '/{quad}.~hla.bam',
+        bamidx=config['output'] + '/{quad}.~hla.bam.bai'
+    log:
+        config['output'] + '/{quad}.slice_hla.log'
+    shell:
+        """
+        samtools view -b {input.bam} chr6:28510120-33480577 > {output.bam} 2>&1 | tee -a {log}
+        samtools index {output.bam} 2>&1 | tee -a {log}
+        echo "COUNT_SliceHLAComplete 1"
         """
 
 rule extract_jx:
