@@ -49,29 +49,59 @@ if [ ! -d ${NM} ] ; then
         echo "${GENOME_FA}"
         exit 1
     fi
-    
-    echo "Populating ${NM}/fasta"
-    mkdir -p ${NM}/fasta
-    cp igenomes/${SPECIES}/${SOURCE}/${NM}/Sequence/WholeGenomeFasta/genome.* ${NM}/fasta/
-    
+if [[ ! -d ${NM}/fasta ]]; then  
     echo "Populating ${NM}/gtf"
     mkdir -p ${NM}/gtf
     GENES_DIR="igenomes/${SPECIES}/${SOURCE}/${NM}/Annotation/Genes"
     cp "$GENES_DIR/genes.gtf" ${NM}/gtf/
     [ -d "${GENES_DIR}.gencode" ] && cp "${GENES_DIR}.gencode/genes.gtf" ${NM}/gtf/genes_gencode.gtf
-    
-    echo "Building ${NM}/kallisto_index"
+
+    #adding ERCC & SIRV control transcripts
+    pushd ercc
+    /bin/bash -x ./01_get_ercc.sh
+    popd
+    test -f ercc/ercc_all.fasta
+    cat ercc/ercc_all.fasta >> igenomes/${SPECIES}/${SOURCE}/${NM}/Sequence/WholeGenomeFasta/genome.fa
+
+    pushd sirv
+    /bin/bash -x ./get_all.sh
+    /bin/bash -x cp.sh
+    popd
+    test -f sirv/SIRV_isoforms_multi-fasta_170612a.fasta 
+    cat sirv/SIRV_isoforms_multi-fasta_170612a.fasta >> igenomes/${SPECIES}/${SOURCE}/${NM}/Sequence/WholeGenomeFasta/genome.fa
+
+    #index is now out of date with the addition of the ERCC/SIRVs
+    rm -f igenomes/${SPECIES}/${SOURCE}/${NM}/Sequence/WholeGenomeFasta/genome.fa.fai
+    rm -f igenomes/${SPECIES}/${SOURCE}/${NM}/Sequence/WholeGenomeFasta/genome.dict
+
+    echo "Populating ${NM}/fasta"
+    mkdir -p ${NM}/fasta
+    cp igenomes/${SPECIES}/${SOURCE}/${NM}/Sequence/WholeGenomeFasta/genome.fa ${NM}/fasta/
+fi 
+
+    #pick up Gencodev26 (GTEx uses) for featureCounts counting
+    curl ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_26/gencode.v26.chr_patch_hapl_scaff.annotation.gtf.gz | gzip -cd > ${NM}/gtf/gencode.v26.chr_patch_hapl_scaff.annotation.gtf
+
+    echo "Building ${NM}/salmon_index"
+    #GTF annotation contains refs not in the FASTA
+    #passing a ref mapping file (identity) will force any lines with unknown refs in the GTF to be ignored
+    fgrep ">" ${NM}/fasta/genome.fa | perl -ne 'chomp; $f=$_; $f=~s/^>//; print "$f $f\n"; print STDERR "^$f\t\n";' > ${NM}/fasta/genome.fa.mapping 2> ${NM}/fasta/genome.fa.refs
+    egrep -f ${NM}/fasta/genome.fa.refs ${NM}/gtf/gencode.v26.chr_patch_hapl_scaff.annotation.gtf > ${NM}/gtf/gencode.v26.chr_patch_hapl_scaff.annotation.subset.gtf
     mkdir -p ${NM}/transcriptome
     gffread -w ${NM}/transcriptome/transcripts.fa \
             -g ${NM}/fasta/genome.fa \
-            ${NM}/gtf/genes.gtf
-
-    mkdir -p ${NM}/kallisto_index
-    kallisto index -i kallisto_index/transcriptome_index transcriptome/transcripts.fa
-
-    echo "Building ${NM}/salmon_index"
+            -m ${NM}/fasta/genome.fa.mapping \
+            ${NM}/gtf/gencode.v26.chr_patch_hapl_scaff.annotation.subset.gtf
+   
+    #cat the additional transcripts from the ERCC/SIRVs post gffread so
+    #that we get the whole transcript's sequence, not just the exons 
+    cat ercc/ercc_all.gtf >> ${NM}/gtf/gencode.v26.chr_patch_hapl_scaff.annotation.subset.gtf
+    cat ercc/ercc_all.fasta >> ${NM}/transcriptome/transcripts.fa
+    cat sirv/SIRV_isoforms_multi-fasta-annotation_C_170612a.gtf >> ${NM}/gtf/gencode.v26.chr_patch_hapl_scaff.annotation.subset.gtf
+    cat sirv/SIRV_isoforms_multi-fasta_170612a.fasta >> ${NM}/transcriptome/transcripts.fa
+    
     mkdir -p ${NM}/salmon_index
-    salmon index -i salmon_index -t transcriptome/transcripts.fa
+    salmon index -i ${NM}/salmon_index -t ${NM}/transcriptome/transcripts.fa
     
     echo "Populating ${NM}/ucsc_tracks"
     mkdir -p ${NM}/ucsc_tracks
