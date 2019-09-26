@@ -22,8 +22,7 @@ STEPS = ['download', 'fastq_check', 'align', 'sort',
          'align_unmapped',
          'extract_jx',
          'gene_fc_count_all', 'gene_fc_count_unique',
-         'exon_fc_count_all', 'exon_fc_count_unique',
-         'slice_hla']
+         'exon_fc_count_all', 'exon_fc_count_unique']
 
 FILES = ['sjout.zst', 'fastq_check.tsv.zst',
          'unmapped.fastq.zst',
@@ -41,7 +40,6 @@ FILES = ['sjout.zst', 'fastq_check.tsv.zst',
          'all.exon_fc_count.zst', 'unique.exon_fc_count.zst',
          'all.gene_fc_count.summary', 'unique.gene_fc_count.summary',
          'all.exon_fc_count.summary', 'unique.exon_fc_count.summary',
-         'Chimeric.out.sam.zst',
          'all.exon_bw_count.zst', 'unique.exon_bw_count.zst',
          'all.bw.zst',
          'unique.bw.zst',
@@ -50,7 +48,6 @@ FILES = ['sjout.zst', 'fastq_check.tsv.zst',
          'jx_bed.zst', 'unmapped.jx_bed.zst',
          'idxstats', 'unmapped.idxstats',
          'unmapped~sorted.bam','unmapped~sorted.bam.bai',
-         '~hla.bam','~hla.bam.bai',
          'manifest'] + list(map(lambda x: x + '.log', STEPS))
 
 INPUTS={}
@@ -93,8 +90,6 @@ rule make_manifest:
         config['output'] + '/{quad}~sorted.bam.bai',
         config['output'] + '/{quad}.unmapped~sorted.bam',
         config['output'] + '/{quad}.unmapped~sorted.bam.bai',
-        config['output'] + '/{quad}.~hla.bam',
-        config['output'] + '/{quad}.~hla.bam.bai',
         config['output'] + '/{quad}.idxstats',
         config['output'] + '/{quad}.unmapped.idxstats',
         config['output'] + '/{quad}.salmon.tsv.zst',
@@ -103,7 +98,6 @@ rule make_manifest:
         config['output'] + '/{quad}.jx_bed.zst',
         config['output'] + '/{quad}.unmapped.jx_bed.zst',
         config['output'] + '/{quad}.Chimeric.out.junction.zst',
-        config['output'] + '/{quad}.Chimeric.out.sam.zst',
         config['output'] + '/{quad}.unmapped.fastq.zst',
         config['output'] + '/{quad}.unmapped_split3.fastq.zst',
         config['output'] + '/{quad}.bamcount_nonref.csv.zst',
@@ -849,7 +843,6 @@ rule align:
         bam=temp(config['temp'] + '/{quad}.bam'),
         jxs=config['output'] + '/{quad}.sjout.zst',
         chimeric=config['output'] + '/{quad}.Chimeric.out.junction.zst',
-        chimeric_sam=config['output'] + '/{quad}.Chimeric.out.sam.zst',
         unmapped0=temp(config['temp'] + '/{quad}_0.unmappedfastq'),
         unmapped1=temp(config['temp'] + '/{quad}_1.unmappedfastq'),
         unmapped2=temp(config['temp'] + '/{quad}_2.unmappedfastq')
@@ -888,7 +881,7 @@ rule align:
             --outSAMtype BAM Unsorted \
             --outSAMmode NoQS \
             --outSAMattributes NH MD \
-            --chimOutType Junctions SeparateSAMold \
+            --chimOutType Junctions \
             --chimOutJunctionFormat 1 \
             --chimSegmentReadGapMax 3 \
             --chimJunctionOverhangMin 12 \
@@ -926,19 +919,11 @@ rule align:
         # Chimerics
         #
         test -f Chimeric.out.junction
-        test -s Chimeric.out.junction
         sort -k1,1 -k2,2n Chimeric.out.junction > Chimeric.out.junction.sorted
         time zstd Chimeric.out.junction.sorted -o {output.chimeric} 2>&1 | tee -a {log}
         rm -f Chimeric.out.junction Chimeric.out.junction.sorted
         size=$(wc -c < {output.chimeric})
         echo "COUNT_ChimericBytes ${{size}}"
-
-        test -f Chimeric.out.sam
-        test -s Chimeric.out.sam
-        time zstd Chimeric.out.sam -o {output.chimeric_sam} 2>&1 | tee -a {log}
-        rm -f Chimeric.out.sam
-        size=$(wc -c < {output.chimeric_sam})
-        echo "COUNT_ChimericSAMBytes ${{size}}"
 
         #
         # Unmapped
@@ -978,7 +963,7 @@ rule align:
                 --outSAMtype BAM Unsorted \
                 --outSAMmode NoQS \
                 --outSAMattributes NH MD \
-                --chimOutType Junctions SeparateSAMold \
+                --chimOutType Junctions \
                 --chimOutJunctionFormat 1 \
                 --chimSegmentReadGapMax 3 \
                 --chimJunctionOverhangMin 12 \
@@ -1021,7 +1006,6 @@ rule align:
             # Chimerics
             #
             test -f Chimeric.out.junction
-            test -s Chimeric.out.junction
             #now join them with the first run chimerics
             if [[ -s {output.chimeric} ]] ; then
                 cat <(zstd -cd {output.chimeric}) Chimeric.out.junction | sort -k1,1 -k2,2n > Chimeric.out.junction.sorted
@@ -1033,19 +1017,6 @@ rule align:
             size=$(wc -c < {output.chimeric})
             echo "COUNT_ChimericBytes_both ${{size}}"
             
-            test -f Chimeric.out.sam
-            test -s Chimeric.out.sam
-            #now join them with the first run chimerics sam
-            if [[ -s {output.chimeric_sam} ]] ; then
-                cat <(zstd -cd {output.chimeric_sam}) <(samtools view Chimeric.out.sam) > Chimeric.out.sam.sorted
-            else
-                mv Chimeric.out.sam Chimeric.out.sam.sorted
-            fi
-            time zstd -f Chimeric.out.sam.sorted -o {output.chimeric_sam} 2>&1 | tee -a {log}
-            rm -f Chimeric.out.sam Chimeric.out.sam.sorted
-            size=$(wc -c < {output.chimeric_sam})
-            echo "COUNT_ChimericSAMBytes_both ${{size}}"
-
             #
             # Unmapped
             #
