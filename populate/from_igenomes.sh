@@ -50,11 +50,6 @@ if [ ! -d ${NM} ] ; then
         exit 1
     fi
 if [[ ! -d ${NM}/fasta ]]; then  
-    echo "Populating ${NM}/gtf"
-    mkdir -p ${NM}/gtf
-    GENES_DIR="igenomes/${SPECIES}/${SOURCE}/${NM}/Annotation/Genes"
-    cp "$GENES_DIR/genes.gtf" ${NM}/gtf/
-    [ -d "${GENES_DIR}.gencode" ] && cp "${GENES_DIR}.gencode/genes.gtf" ${NM}/gtf/genes_gencode.gtf
 
     #adding ERCC & SIRV control transcripts
     pushd ercc
@@ -79,6 +74,8 @@ if [[ ! -d ${NM}/fasta ]]; then
     cp igenomes/${SPECIES}/${SOURCE}/${NM}/Sequence/WholeGenomeFasta/genome.fa ${NM}/fasta/
 fi 
 
+    echo "Populating ${NM}/gtf"
+    mkdir -p ${NM}/gtf
     #pick up Gencodev26 (GTEx uses) for featureCounts counting
     curl ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_26/gencode.v26.chr_patch_hapl_scaff.annotation.gtf.gz | gzip -cd > ${NM}/gtf/gencode.v26.chr_patch_hapl_scaff.annotation.gtf
 
@@ -87,38 +84,24 @@ fi
     #passing a ref mapping file (identity) will force any lines with unknown refs in the GTF to be ignored
     fgrep ">" ${NM}/fasta/genome.fa | perl -ne 'chomp; $f=$_; $f=~s/^>//; print "$f $f\n"; print STDERR "^$f\t\n";' > ${NM}/fasta/genome.fa.mapping 2> ${NM}/fasta/genome.fa.refs
     egrep -f ${NM}/fasta/genome.fa.refs ${NM}/gtf/gencode.v26.chr_patch_hapl_scaff.annotation.gtf > ${NM}/gtf/gencode.v26.chr_patch_hapl_scaff.annotation.subset.gtf
+    rm ${NM}/gtf/gencode.v26.chr_patch_hapl_scaff.annotation.gtf
+    ln -fs gencode.v26.chr_patch_hapl_scaff.annotation.subset.gtf ${NM}/gtf/genes.gtf
     mkdir -p ${NM}/transcriptome
     gffread -w ${NM}/transcriptome/transcripts.fa \
             -g ${NM}/fasta/genome.fa \
             -m ${NM}/fasta/genome.fa.mapping \
-            ${NM}/gtf/gencode.v26.chr_patch_hapl_scaff.annotation.subset.gtf
+            ${NM}/gtf/genes.gtf
    
     #cat the additional transcripts from the ERCC/SIRVs post gffread so
     #that we get the whole transcript's sequence, not just the exons 
-    cat ercc/ercc_all.gtf >> ${NM}/gtf/gencode.v26.chr_patch_hapl_scaff.annotation.subset.gtf
+    cat ercc/ercc_all.gtf >> ${NM}/gtf/genes.gtf
     cat ercc/ercc_all.fasta >> ${NM}/transcriptome/transcripts.fa
-    cat sirv/SIRV_isoforms_multi-fasta-annotation_C_170612a.gtf >> ${NM}/gtf/gencode.v26.chr_patch_hapl_scaff.annotation.subset.gtf
+    cat sirv/SIRV_isoforms_multi-fasta-annotation_C_170612a.gtf >> ${NM}/gtf/genes.gtf
     cat sirv/SIRV_isoforms_multi-fasta_170612a.fasta >> ${NM}/transcriptome/transcripts.fa
     
     mkdir -p ${NM}/salmon_index
     salmon index -i ${NM}/salmon_index -t ${NM}/transcriptome/transcripts.fa
     
-    echo "Populating ${NM}/ucsc_tracks"
-    mkdir -p ${NM}/ucsc_tracks
-    # TODO
-    
-    echo "Populating ${NM}/bowtie_idx"
-    mkdir -p ${NM}/bowtie_idx
-    cp igenomes/${SPECIES}/${SOURCE}/${NM}/Sequence/BowtieIndex/*.ebwt ${NM}/bowtie_idx
-    
-    echo "Populating ${NM}/bowtie2_idx"
-    mkdir -p ${NM}/bowtie2_idx
-    cp igenomes/${SPECIES}/${SOURCE}/${NM}/Sequence/Bowtie2Index/*.bt2 ${NM}/bowtie2_idx
-
-    echo "Populating ${NM}/bwa_idx"
-    mkdir -p ${NM}/bwa_idx
-    cp igenomes/${SPECIES}/${SOURCE}/${NM}/Sequence/BWAIndex/genome.fa* ${NM}/bwa_idx
-
     echo "To populate ${NM}/hisat2_idx and ${NM}/star_idx, run the below commands"
     echo "==========="
 
