@@ -45,4 +45,4 @@ echo "        PHASE 11: Copy output back"
 echo "++++++++++++++++++++++++++++++++++++++++++++++"
 
 mkdir -p ${OUTPUT_DIR}/s3_output
-mc mirror s3/recount-output ${OUTPUT_DIR}/s3_output
+mc mirror --overwrite s3/recount-output ${OUTPUT_DIR}/s3_output
