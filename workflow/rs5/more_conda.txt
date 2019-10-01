@@ -1,4 +1,4 @@
-star=2.7.2b
+star=2.7.1a
 hisat2=2.1.0
 snakemake-minimal=5.4.0
 fastq-tools=0.8
