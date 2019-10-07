@@ -2,6 +2,8 @@
 #list of scRNA tech taken from here:
 #https://www.frontiersin.org/files/Articles/441123/fgene-10-00317-HTML/image_m/fgene-10-00317-t001.jpg
 
+export LC_ALL=C
+
 #organism, assumes all_${orgn}_sra.tsv already exists in the current working directory
 orgn=$1
 #number of concurrent filtering processes
@@ -50,3 +52,12 @@ fgrep -v -f all_${orgn}_sra.smart_seq.srr all_scrnas.all_${orgn}_sra.tsv.srrs > 
 fgrep -v -f all_scrnas_except_smart.all_${orgn}_sra.tsv.srrs all_${orgn}_sra.tsv > all_${orgn}_sra.no_scrna_except_smart.tsv
 #finally get list of full metadata for just scRNA (w/o smartseq)
 fgrep -f all_scrnas_except_smart.all_${orgn}_sra.tsv.srrs all_${orgn}_sra.tsv > all_${orgn}_sra.scrna_except_smart.tsv
+
+egrep -v -i -e "single.cell" all_human_sra.10x | fgrep -v -i "chromium" > 10x.possibly_not_scrna
+cut -f 2 10x.possibly_not_scrna | sed -e 's/$/\t/' | sort -u > 10x.possibly_not_scrna.studies
+fgrep -f 10x.possibly_not_scrna.studies all_human_sra.scrna_except_smart.tsv > 10x.possibly_not_scrna.full 
+
+#if we split studies up we want to make sure full studies are represented in the bulk/smart-seq set
+cut -f 2 all_human_sra.no_scrna_except_smart.tsv | sed -e 's/$/\t/' | sort -u > all_human_sra.no_scrna_except_smart.tsv.studies
+fgrep -f all_human_sra.no_scrna_except_smart.tsv.studies all_human_sra.scrna_except_smart.tsv > all_human_sra.scrna_except_smart.tsv.also_in_nonscrna
+cat all_human_sra.no_scrna_except_smart.tsv 10x.possibly_not_scrna.full all_human_sra.scrna_except_smart.tsv.also_in_nonscrna | sort -u > all_human_sra.no_scrna_except_smart.full_studies.tsv
