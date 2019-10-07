@@ -4,7 +4,9 @@ from Bio import Entrez as e
 #required to set an email
 e.email="downloadsRUs@dos.com"
 #capture 1) Illumina 2) RNA-Seq 3) human 4) transriptome sources 5) public access (non-dbgap)
-base_query = '((((illumina[Platform]) AND rna seq[Strategy]) AND transcriptomic[Source]) AND public[Access])'
+#from Princy Parsana:
+#add "NOT size fractionation[Selection]" to remove smallRNA runs
+base_query = '(((((illumina[Platform]) AND rna seq[Strategy]) AND transcriptomic[Source]) AND public[Access]) NOT size fractionation[Selection])'
 
 if len(sys.argv) < 4:
     sys.stderr.write("must submit 1) >= 1 organisms (e.g. \"human,mouse\") 2) path to output of raw SRA XMLs (e.g. sra_xmls) 3) path to output of parsing errors (e.g. parse_errs), exiting\n")
@@ -13,6 +15,8 @@ if len(sys.argv) < 4:
 organisms = sys.argv[1].split(',')
 xml_path = sys.argv[2]
 err_path = sys.argv[3]
+if len(sys.argv) > 4:
+    base_query = base_query.replace('AND transcriptomic','NOT transcriptomic')
 
 sys.stdout.write("REMEMBER: NCBI query history is only good for so long (typically <1 day), so the fetch jobs must be run shortly after runnning this script!\n")
 #number of records to be fetched at once using EFetch
