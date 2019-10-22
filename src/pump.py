@@ -192,7 +192,8 @@ def get_queue(sqs_client,
               queue_name,
               visibility_timeout=None,
               message_retention_period=None,
-              make_dlq=None):
+              make_dlq=None,
+              max_receive_count=1):
     if visibility_timeout is None:
         visibility_timeout = 60 * 60
     if message_retention_period is None:
@@ -216,7 +217,7 @@ def get_queue(sqs_client,
         )
         redrive_policy = {
             'deadLetterTargetArn': response['Attributes']['QueueArn'],
-            'maxReceiveCount': '5'
+            'maxReceiveCount': str(max_receive_count)
         }
         sqs_client.set_queue_attributes(
             QueueUrl=resp['QueueUrl'],
@@ -228,13 +229,13 @@ def get_queue(sqs_client,
 
 
 def stage_project(project_id, sqs_client, session, chunking_strategy=None,
-                  visibility_timeout=1*60*60, message_retention_period=1209600, make_dlq=True):
+                  visibility_timeout=1*60*60, message_retention_period=1209600, make_dlq=True, max_receive_count=1):
     """
     Stage all the jobs in the given project
     """
     proj = session.query(Project).get(project_id)
     q_url = get_queue(sqs_client, proj.queue_name(), visibility_timeout=visibility_timeout,
-                      message_retention_period=message_retention_period, make_dlq=make_dlq)
+                      message_retention_period=message_retention_period, make_dlq=make_dlq, max_receive_count=max_receive_count)
     log.info('stage_project using sqs queue url ' + q_url, 'pump.py')
     n = 0
     for job_str in proj.job_iterator(session, chunking_strategy):
@@ -384,14 +385,14 @@ def go():
             print(json.dumps(proj.deepdict(session), indent=4, separators=(',', ': ')))
         elif args['stage']:
             aws_profile, region, endpoint, visibility_timeout, \
-                message_retention_period, make_dlq = parse_queue_config(q_ini)
+                message_retention_period, make_dlq, max_receive_count = parse_queue_config(q_ini)
             boto3_session = boto3.session.Session(profile_name=aws_profile)
             sqs_client = boto3_session.client('sqs',
                                               endpoint_url=endpoint,
                                               region_name=region)
             print(stage_project(int(args['<project-id>']), sqs_client, session_mk(),
                                 chunking_strategy=args['--chunk'], visibility_timeout=visibility_timeout,
-                                message_retention_period=message_retention_period, make_dlq=make_dlq))
+                                message_retention_period=message_retention_period, make_dlq=make_dlq, max_receive_count=max_receive_count))
     except Exception:
         log.error('Uncaught exception:', 'pump.py')
         raise

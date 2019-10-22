@@ -630,7 +630,7 @@ def job_loop(shared_log_queue, project_id_or_name, q_ini, cluster_ini, worker_na
              mover_config=None, destination=None, source_prefix=None, max_job_fails=MAX_JOB_FAILS):
     node_name = socket.gethostname().split('.', 1)[0]
     log_info_detailed(node_name, worker_name, 'Getting queue client', shared_log_queue=shared_log_queue)
-    aws_profile, region, endpoint, visibility_timeout, _, _ = parse_queue_config(q_ini)
+    aws_profile, region, endpoint, visibility_timeout, _, _, _ = parse_queue_config(q_ini)
     boto3_session = boto3.session.Session(profile_name=aws_profile)
     q_client = boto3_session.client('sqs',
                                     endpoint_url=endpoint,
@@ -667,8 +667,7 @@ def job_loop(shared_log_queue, project_id_or_name, q_ini, cluster_ini, worker_na
                 if succeeded:
                     log_info_detailed(node_name, worker_name, 'job success', shared_log_queue=shared_log_queue)
                 else:
-                    log_warning_detailed(node_name, worker_name, 'Terminating worker, reached max job fails %d' % max_job_fails, shared_log_queue=shared_log_queue)
-                    sys.exit(1)
+                    log_warning_detailed(node_name, worker_name, 'reached max job fails %d but continuing' % max_job_fails, shared_log_queue=shared_log_queue)
 
         log_info_detailed(node_name, worker_name, 'Bottom of job loop, iteration %d' % attempt, shared_log_queue=shared_log_queue)
 
