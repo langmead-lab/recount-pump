@@ -1017,19 +1017,33 @@ def go():
                 log.info('Spawned process %d (pid=%d)' % (i+1, t.pid), 'cluster.py')
                 procs.append(t)
             exitlevels = []
-            for i, proc in enumerate(procs):
-                pid = proc.pid
-                while True:
+            nprocs_finished = 0
+            while True:
+                if int(nprocs_finished) == int(nworkers):
+                    break
+                for i, proc in enumerate(procs):
+                    pid = proc.pid
                     proc.join(15)
                     if proc.is_alive():
                         log.info('Attempting to join process %d (pid=%d)' %
                                  (i + 1, pid), 'cluster.py')
                     else:
                         assert proc.exitcode is not None
-                        break
-                exitlevels.append(proc.exitcode)
-                log.info('Joined process %d (pid=%d, exitlevel=%d)' %
-                         (i + 1, pid, exitlevels[-1]), 'cluster.py')
+                        if proc.exitcode != 0:
+                            worker_name = 'worker_%d_of_%d' % (i+1, nworkers)
+                            t = multiprocessing.Process(target=worker,
+                                                        args=(log_queue, project_id_or_name, worker_name, q_ini, cluster_ini,
+                                                              engine, max_fails, sleep_seconds,
+                                                              mover_config, destination_url,
+                                                              source_prefix, MAX_JOB_FAILS))
+                            t.start()
+                            log.info('Respawned process %d (pid=%d)' % (i+1, t.pid), 'cluster.py')
+                            procs[i] = t
+                        else:
+                            nprocs_finished += 1
+                        exitlevels.append(proc.exitcode)
+                        log.info('Joined process %d (pid=%d, exitlevel=%d)' %
+                            (i + 1, pid, exitlevels[-1]), 'cluster.py')
             log.info('All processes joined', 'cluster.py')
             log_queue.put(('AllDone', 'cluster.py'))
             log_thread.join()
