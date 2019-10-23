@@ -77,7 +77,7 @@ If there is a problem in the initialization or later in the project run that rel
 
 This can be done by resetting the project in AWS (DB/SQS) with the `reset.sh` script listed above.
 
-### Worker Run Configuration
+## Worker Run Configuration
 
 Once the project has been initialized, Monorail can be run.
 This section assumes you're running on a local HPC cluster, but it could be extended to include remote resources on AWS or equivalent.
@@ -108,12 +108,27 @@ This script will typically set the following:
 * List of nodes to exclude (blacklising, if applicable)
 
 An example is the Slurm node settings for the TACC (XSEDE) Stampede2 cluster using Skylake Xeons (SKX):
+
 https://github.com/langmead-lab/recount-pump/blob/master/projects/common/clusters/stampede2/skx-normal/partition.ini
+
 MARCC (Slurm):
+
 https://github.com/langmead-lab/recount-pump/blob/master/projects/common/clusters/marcc/parallel/partition.ini
 
 In addition it will setup the environment to start the Monorail parent process on that node, which includes loading the Singularity module.
 And finally it will start the `cluster.py` parent python process with parameters which point to the various `.ini` files.
+
+An example of this, which includes a delay at the start of any parent python process on a node by up to 6 minutes (to stagger job starts) in the node runner script:
+
+```
+rdelay=`perl -e 'print "".int(rand(360));'`
+sleep $rdelay
+
+module load singularity/2.6.0
+conda activate recount
+umask 0077
+python /path/to/recount-pump/src/cluster.py run --ini-base creds --cluster-ini creds/cluster.ini <proj_name>
+```
 
 ## Victory Conditions
 
