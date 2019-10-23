@@ -64,7 +64,7 @@ This step can happen before or after the project initialization.
 Typically, Monorail is run in an HPC environment using Singularity to abstract ease the pain of dependency management.
 Monorail *can* be run outside of containers ("bare metal") but this is not recommended for most cases and is not covered here.
 
-The key settings file for cluster configuration is the `*cluster.ini` file, detailed at the end of this README.
+The key settings file for cluster configuration is the `cluster.ini` file, detailed at the end of this README.
 
 This file also serves as a reference point for which path temporary/output files will be deposited during a run (useful for debugging).
 
@@ -76,12 +76,16 @@ This section assumes you're running on a local HPC cluster, but it could be exte
 There are 3 types of entities important in this section:
 
 * Jobs
-A job is an attempt at processing a single sample through Monorail (it could fail)
-* Workers
-A worker is the atomic agent of Monorail, it represents a single python process which instantiates a container for each new job, which in turn runs a Snakemake pipeline within the container.  A worker will continue to run as long as 1) there are jobs on the SQS queue and 2) the queue is accessible.
-* Nodes
-Each node represents a machine (or VM) allocated, in part or in whole, to Monorail to run one or more workers to process jobs.  Each allocation of a node will start a parent python process which will then spawn one or more child python worker processes.  
 
+A job is an attempt at processing a single sample through Monorail (it could fail)
+
+* Workers
+
+A worker is the atomic agent of Monorail, it represents a single python process which instantiates a container for each new job, which in turn runs a Snakemake pipeline within the container.  A worker will continue to run as long as 1) there are jobs on the SQS queue and 2) the queue is accessible.
+
+* Nodes
+
+Each node represents a machine (or VM) allocated, in part or in whole, to Monorail to run one or more workers to process jobs.  Each allocation of a node will start a parent python process which will then spawn one or more child python worker processes.  
 
 ### Victory Conditions
 
@@ -93,7 +97,9 @@ Nodes will stop processing for one of 3 reasons:
 
 By far the most common cause for node stopages is the first one, since node lease time limits tend to be much shorter than what's needed to process a medium-large Monorail run.  This will have the effect of stopping jobs in the middle which will need to be restarted.  This is expected and these jobs will be visible again on the queue after a pre-defined time period (typically 30 min-3 hours).
 
-In the 2nd case, the parent process running on the node will wait until all worker children have finished w/o error and then it will finish itself and relinquish the node.  If a worker process fails for any reason, the parent will start a new process in it's place and  continue checking children processes. 
+If many concurrent attempts are made which end up being successful for a particular job, this indicates the visibility time setting for the job queue is too short and should be raised.
+
+In the 2nd case above, the parent process running on the node will wait until all worker children have finished w/o error and then it will finish itself and relinquish the node.  If a worker process fails for any reason, the parent will start a new process in it's place and  continue checking children processes. 
 
 
 ## Settings Files
@@ -132,8 +138,6 @@ The settings below are typically set once for a organization/group and shared be
 #### private_conf.ini
 
 * Confidential AWS RDS DB password
-
-
 
 
 `ini` files:
