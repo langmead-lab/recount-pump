@@ -9,6 +9,9 @@ To differentiate it from the SRA's base unit of sequencing (also called "run", e
 
 ## Projects
 
+A working project which also serves as a good example is here:
+https://github.com/langmead-lab/recount-pump/tree/master/projects/tcga
+
 Monorail revolves around the idea of a `project` which defines the following:
 
 * Label/name of a run (e.g. "sra_human_v3")
@@ -32,6 +35,23 @@ The S3 URL is then referenced in the project.ini file, e.g.:
 
 This will be used to populate the AWS RDS DB for the project with the list of sample identifiers in the "Initializing the Project Model" step.
 Each sample is assigned an integer ID which is used to link it between the DB and the SQS queue.
+
+## Cluster Configuration
+
+There are a group of settings files which control how Monorail interacts with the AWS modules (SQS, RDS, Watchtower/CloudWatch) and with Globus, partial examples of these are here:
+
+https://github.com/langmead-lab/recount-pump/tree/master/projects/common/creds
+
+Typically, Monorail is run in an HPC environment using Singularity to abstract ease the pain of dependency management.
+Monorail *can* be run outside of containers ("bare metal") but this is not recommended for most cases and is not covered here.
+
+The key settings file for cluster configuration is the `cluster.ini` file, detailed at the end of this README.
+
+An partial example is here:
+
+https://github.com/langmead-lab/recount-pump/blob/master/projects/common/clusters/marcc/public_conf.ini
+
+This file also serves as a reference point for which path temporary/output files will be deposited during a run (useful for debugging).
 
 ## Initializing the Project Model
 
@@ -57,20 +77,9 @@ If there is a problem in the initialization or later in the project run that rel
 
 This can be done by resetting the project in AWS (DB/SQS) with the `reset.sh` script listed above.
 
-## Cluster Configuration
-
-This step can happen before or after the project initialization.
-
-Typically, Monorail is run in an HPC environment using Singularity to abstract ease the pain of dependency management.
-Monorail *can* be run outside of containers ("bare metal") but this is not recommended for most cases and is not covered here.
-
-The key settings file for cluster configuration is the `cluster.ini` file, detailed at the end of this README.
-
-This file also serves as a reference point for which path temporary/output files will be deposited during a run (useful for debugging).
-
 ### Worker Run Configuration
 
-Once the project has been initialized and the cluster has been configured (above), Monorail can be run.
+Once the project has been initialized, Monorail can be run.
 This section assumes you're running on a local HPC cluster, but it could be extended to include remote resources on AWS or equivalent.
 
 There are 3 types of entities important in this section:
@@ -96,12 +105,17 @@ This script will typically set the following:
 * Time requested (e.g. 12 hours)
 * Hardware resources requested (e.g. 12 cores, 90G memory)
 * Account to charge lease to (if applicable)
-* list of nodes to exclude (blacklising, if applicable)
+* List of nodes to exclude (blacklising, if applicable)
+
+An example is the Slurm node settings for the TACC (XSEDE) Stampede2 cluster using Skylake Xeons (SKX):
+https://github.com/langmead-lab/recount-pump/blob/master/projects/common/clusters/stampede2/skx-normal/partition.ini
+MARCC (Slurm):
+https://github.com/langmead-lab/recount-pump/blob/master/projects/common/clusters/marcc/parallel/partition.ini
 
 In addition it will setup the environment to start the Monorail parent process on that node, which includes loading the Singularity module.
 And finally it will start the `cluster.py` parent python process with parameters which point to the various `.ini` files.
 
-### Victory Conditions
+## Victory Conditions
 
 Nodes will stop processing for one of 3 reasons:
 
@@ -154,7 +168,6 @@ The settings below are typically set once for a organization/group and shared be
 #### private_conf.ini
 
 * Confidential AWS RDS DB password
-
 
 `ini` files:
 
