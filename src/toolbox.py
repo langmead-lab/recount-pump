@@ -9,6 +9,7 @@ import hashlib
 import subprocess
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import NullPool
 from base import Base
 
 if sys.version[:1] == '2':
@@ -49,7 +50,7 @@ def engine_from_config(fn, section='client', echo=False):
         raise RuntimeError('No such ini file: "%s"' % fn)
     config.read(fn)
     engine_url = config.get(section, "url")
-    return create_engine(engine_url, echo=echo)
+    return (create_engine(engine_url, poolclass=NullPool, echo=echo, echo_pool='debug'), engine_url)
 
 
 def session_maker_from_config(fn, section='client', echo=False):

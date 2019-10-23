@@ -628,6 +628,7 @@ def do_job_wrapper(msg, handle, session, proj, node_name, worker_name,
 def job_loop(shared_log_queue, project_id_or_name, q_ini, cluster_ini, worker_name, session,
              max_fails=10, sleep_seconds=10,
              mover_config=None, destination=None, source_prefix=None, max_job_fails=MAX_JOB_FAILS):
+    log_info_detailed('', worker_name, 'Getting node name', shared_log_queue=shared_log_queue)
     node_name = socket.gethostname().split('.', 1)[0]
     log_info_detailed(node_name, worker_name, 'Getting queue client', shared_log_queue=shared_log_queue)
     aws_profile, region, endpoint, visibility_timeout, _, _, _ = parse_queue_config(q_ini)
@@ -667,7 +668,7 @@ def job_loop(shared_log_queue, project_id_or_name, q_ini, cluster_ini, worker_na
                 if succeeded:
                     log_info_detailed(node_name, worker_name, 'job success', shared_log_queue=shared_log_queue)
                 else:
-                    log_warning_detailed(node_name, worker_name, 'reached max job fails %d but continuing' % max_job_fails, shared_log_queue=shared_log_queue)
+                    log_warning_detailed(node_name, worker_name, 'Reached max job fails %d, but continuing' % max_job_fails, shared_log_queue=shared_log_queue)
 
         log_info_detailed(node_name, worker_name, 'Bottom of job loop, iteration %d' % attempt, shared_log_queue=shared_log_queue)
 
@@ -879,22 +880,20 @@ def db_connect_wrapper(engine):
     raise IOError("failed to connect to DB")
 
 
-def worker(shared_log_queue, project_id_or_name, worker_name, q_ini, cluster_ini, engine, max_fail,
+def worker(engine, shared_log_queue, project_id_or_name, worker_name, q_ini, cluster_ini, max_fail,
            poll_seconds,
            mover_config=None, destination=None, source_prefix=None, max_job_fail=MAX_JOB_FAILS):
-    engine.dispose()
-    #this is the db engine connection
-    ##TODO:
-    #likely the location of the bug where >=1 of the workers fails to connect and then just stalls or terminates (does the python process keep running?)
-    #hopefully this retry logic will avoid this issue
+    log_info_detailed('', worker_name, 'Starting worker', shared_log_queue=shared_log_queue)
     session = db_connect_wrapper(engine)
+    log_info_detailed('', worker_name, 'DB connected', shared_log_queue=shared_log_queue)
     #signal.signal(signal.SIGUSR1, lambda sig, stack: traceback.print_stack(stack))
     print(job_loop(shared_log_queue, project_id_or_name, q_ini, cluster_ini, worker_name, session,
                    max_fails=max_fail,
                    sleep_seconds=poll_seconds,
                    mover_config=mover_config,
                    destination=destination,
-                   source_prefix=source_prefix,max_job_fails=max_job_fail))
+                   source_prefix=source_prefix,
+                   max_job_fails=max_job_fail))
 
 
 def log_worker():
@@ -987,7 +986,7 @@ def go():
         if args['run']:
             enabled, destination_url, source_prefix, aws_endpoint, aws_profile = \
                 parse_destination_ini(dest_ini)
-            engine = engine_from_config(db_ini, args['--db-section'])
+            (engine, engine_url) = engine_from_config(db_ini, args['--db-section'])
             connection = engine.connect()
             session = Session(bind=connection)
             prepare(project_id_or_name, cluster_ini, session, mover_config.new_mover())
@@ -1006,11 +1005,12 @@ def go():
                 sm.start()
             log_thread = threading.Thread(target=log_worker)
             log_thread.start()
+            engine.dispose()
             for i in range(nworkers):
                 worker_name = 'worker_%d_of_%d' % (i+1, nworkers)
                 t = multiprocessing.Process(target=worker,
-                                            args=(log_queue, project_id_or_name, worker_name, q_ini, cluster_ini,
-                                                  engine, max_fails, sleep_seconds,
+                                            args=(engine, log_queue, project_id_or_name, worker_name, q_ini, cluster_ini,
+                                                  max_fails, sleep_seconds,
                                                   mover_config, destination_url,
                                                   source_prefix, MAX_JOB_FAILS))
                 t.start()
@@ -1019,7 +1019,7 @@ def go():
             exitlevels = []
             nprocs_finished = 0
             while True:
-                if int(nprocs_finished) == int(nworkers):
+                if int(nprocs_finished) >= int(nworkers):
                     break
                 for i, proc in enumerate(procs):
                     pid = proc.pid
@@ -1032,8 +1032,8 @@ def go():
                         if proc.exitcode != 0:
                             worker_name = 'worker_%d_of_%d' % (i+1, nworkers)
                             t = multiprocessing.Process(target=worker,
-                                                        args=(log_queue, project_id_or_name, worker_name, q_ini, cluster_ini,
-                                                              engine, max_fails, sleep_seconds,
+                                                        args=(engine, log_queue, project_id_or_name, worker_name, q_ini, cluster_ini,
+                                                              max_fails, sleep_seconds,
                                                               mover_config, destination_url,
                                                               source_prefix, MAX_JOB_FAILS))
                             t.start()
@@ -1042,8 +1042,8 @@ def go():
                         else:
                             nprocs_finished += 1
                         exitlevels.append(proc.exitcode)
-                        log.info('Joined process %d (pid=%d, exitlevel=%d)' %
-                            (i + 1, pid, exitlevels[-1]), 'cluster.py')
+                        log.info('Joined process %d of %d, nprocs_finished=%d (pid=%d, exitlevel=%d)' %
+                            (i + 1, nworkers, nprocs_finished, pid, exitlevels[-1]), 'cluster.py')
             log.info('All processes joined', 'cluster.py')
             log_queue.put(('AllDone', 'cluster.py'))
             log_thread.join()
