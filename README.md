@@ -35,7 +35,26 @@ Each sample is assigned an integer ID which is used to link it between the DB an
 
 ## Initializing the Project Model
 
+Once all settings files have been configured, the project needs to be initialized.
 
+The following scripts should be run from within the project working directory (typically `projects/<proj_name>`).
+
+`projects/common/init_model.sh`
+and
+`projects/common/reset.sh`
+
+Initializating includes the following actions:
+
+* Creation of AWS RDS DB
+* Population of AWS RDS DB with sample IDs and reference/annotation data set
+* Add Monorail Docker image name/version to database
+* Creation of AWS SQS Queue
+* Stage sample IDs as messages in SQS queue
+
+This is the main "state" of the project/run.  
+If there is a problem in the initialization or later in the project run that relates to configuration, it's usually best to start fresh with a new initialization run.
+
+This can be done by resetting the project in AWS (DB/SQS) with the `reset.sh` script listed above.
 
 ## Settings Files
 
