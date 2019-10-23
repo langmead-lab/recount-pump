@@ -87,6 +87,20 @@ A worker is the atomic agent of Monorail, it represents a single python process 
 
 Each node represents a machine (or VM) allocated, in part or in whole, to Monorail to run one or more workers to process jobs.  Each allocation of a node will start a parent python process which will then spawn one or more child python worker processes.  
 
+To start Monorail running on a node, typically, a batch script is submitted to the HPC's scheduler (e.g. Slurm) to request a lease of a node.
+
+This script will typically set the following:
+
+* HPC scheduler partition/queue to lease from
+* Name of lease
+* Time requested (e.g. 12 hours)
+* Hardware resources requested (e.g. 12 cores, 90G memory)
+* Account to charge lease to (if applicable)
+* list of nodes to exclude (blacklising, if applicable)
+
+In addition it will setup the environment to start the Monorail parent process on that node, which includes loading the Singularity module.
+And finally it will start the `cluster.py` parent python process with parameters which point to the various `.ini` files.
+
 ### Victory Conditions
 
 Nodes will stop processing for one of 3 reasons:
@@ -117,8 +131,8 @@ This file defines the following:
 * Output path
 * Temp path
 * Reference file set path
-* # of workers (`workers`)
-* # of cores per worker (`cpus`)
+* \# of workers (`workers`)
+* \# of cores per worker (`cpus`)
 
 Paths are always absolute.
 Input/output/temp paths are defined both for the host OS *and* for the container.
