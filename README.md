@@ -43,7 +43,7 @@ The following scripts should be run from within the project working directory (t
 and
 `projects/common/reset.sh`
 
-Initializating includes the following actions:
+The `init_model.sh` script will perform the following actions:
 
 * Creation of AWS RDS DB
 * Population of AWS RDS DB with sample IDs and reference/annotation data set
@@ -51,16 +51,72 @@ Initializating includes the following actions:
 * Creation of AWS SQS Queue
 * Stage sample IDs as messages in SQS queue
 
-This is the main "state" of the project/run.  
+This information represents the main "state" of the project/run.  
+
 If there is a problem in the initialization or later in the project run that relates to configuration, it's usually best to start fresh with a new initialization run.
 
 This can be done by resetting the project in AWS (DB/SQS) with the `reset.sh` script listed above.
+
+## Cluster Configuration
+
+This step can happen before or after the project initialization.
+
+Typically, Monorail is run in an HPC environment using Singularity to abstract ease the pain of dependency management.
+Monorail *can* be run outside of containers ("bare metal") but this is not recommended for most cases and is not covered here.
+
+The key settings file for cluster configuration is the `*cluster.ini` file, detailed at the end of this README.
+
+This file also serves as a reference point for which path temporary/output files will be deposited during a run (useful for debugging).
+
+### Worker Run Configuration
+
+Once the project has been initialized and the cluster has been configured (above), Monorail can be run.
+This section assumes you're running on a local HPC cluster, but it could be extended to include remote resources on AWS or equivalent.
+
+There are 3 types of entities important in this section:
+
+* Jobs
+A job is an attempt at processing a single sample through Monorail (it could fail)
+* Workers
+A worker is the atomic agent of Monorail, it represents a single python process which instantiates a container for each new job, which in turn runs a Snakemake pipeline within the container.  A worker will continue to run as long as 1) there are jobs on the SQS queue and 2) the queue is accessible.
+* Nodes
+Each node represents a machine (or VM) allocated, in part or in whole, to Monorail to run one or more workers to process jobs.  Each allocation of a node will start a parent python process which will then spawn one or more child python worker processes.  
+
+
+### Victory Conditions
+
+Nodes will stop processing for one of 3 reasons:
+
+* The time limit on the node lease ends
+* The job queue is exhausted
+* A runtime error causes the parent python process running on the node to prematurely terminate
+
+By far the most common cause for node stopages is the first one, since node lease time limits tend to be much shorter than what's needed to process a medium-large Monorail run.  This will have the effect of stopping jobs in the middle which will need to be restarted.  This is expected and these jobs will be visible again on the queue after a pre-defined time period (typically 30 min-3 hours).
+
+In the 2nd case, the parent process running on the node will wait until all worker children have finished w/o error and then it will finish itself and relinquish the node.  If a worker process fails for any reason, the parent will start a new process in it's place and  continue checking children processes. 
+
 
 ## Settings Files
 
 ### Project-specific Settings files
 
+#### cluster.ini
 
+This file defines the following:
+
+* Cluster name
+* Container system (typically "Singularity")
+* Path to Singularity image file
+* Input path
+* Output path
+* Temp path
+* Reference file set path
+* # of workers (`workers`)
+* # of cores per worker (`cpus`)
+
+Paths are always absolute.
+Input/output/temp paths are defined both for the host OS *and* for the container.
+The container paths are where the host OS paths are mounted in the container, so they reference the same thing.
 
 ### Generic Settings Files
 
