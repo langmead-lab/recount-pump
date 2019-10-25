@@ -578,7 +578,6 @@ def get_num_successes(job, session):
     return q.session.execute(count_q).scalar()
 
 
-@retry((BaseException), tries=MAX_JOB_FAILS, delay=2, backoff=2)
 def do_job_wrapper(msg, handle, session, proj, node_name, worker_name, 
                    visibility_timeout, q_client, q_url, cluster_ini, 
                    mover_config, destination, source_prefix, shared_log_queue=log_queue):
@@ -620,7 +619,8 @@ def do_job_wrapper(msg, handle, session, proj, node_name, worker_name,
     if not succeeded:
         log_failure(job, node_name, worker_name, session)
         log_info_detailed(node_name, worker_name, 'job failure', shared_log_queue=shared_log_queue)
-        raise BaseException('job attempt %d failed' % (nattempts))
+        #raise BaseException('job attempt %d failed' % (nattempts))
+        return False
     log_success(job, node_name, worker_name, session)
     return succeeded
 
