@@ -50,11 +50,11 @@ def engine_from_config(fn, section='client', echo=False):
         raise RuntimeError('No such ini file: "%s"' % fn)
     config.read(fn)
     engine_url = config.get(section, "url")
-    return (create_engine(engine_url, poolclass=NullPool, echo=echo, echo_pool='debug'), engine_url)
+    return (create_engine(engine_url, poolclass=NullPool, echo=echo), engine_url)
 
 
 def session_maker_from_config(fn, section='client', echo=False):
-    engine = engine_from_config(fn, section=section, echo=echo)
+    (engine, engine_url) = engine_from_config(fn, section=section, echo=echo)
     Base.metadata.create_all(engine)
     return sessionmaker(bind=engine)
 
