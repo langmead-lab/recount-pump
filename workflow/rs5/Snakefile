@@ -743,7 +743,7 @@ rule align_unmapped:
 		    # interleave the two output fastqs into single file
 		    paste ${{TMP}}.samp.1.fastq ${{TMP}}.samp.2.fastq \
 			| paste - - - - \
-			| awk -v OFS="\n" -v FS="\t" '{{print($1,$5,$7,$9,$3,$6,$8,$10)}}' \
+			| awk -v OFS="\n" -v FS="\t" '{{print($1,$3,$5,$7,$2,$4,$6,$8)}}' \
 			> ${{TMP}}.samp.fastq
             	    rm -f ${{TMP}}.samp.1.fastq ${{TMP}}.samp.2.fastq
 		    SAMPLE_CREATED=1
