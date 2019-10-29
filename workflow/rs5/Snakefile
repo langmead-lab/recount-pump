@@ -1082,8 +1082,7 @@ rule fastq_check:
 
 rule download:
     input:
-        download_exe=DOWNLOAD_EXE,
-        bam2fastq_exe=BAMCOUNT_EXE
+        download_exe=DOWNLOAD_EXE
     output:
         temp(config['temp'] + '/{quad}_0.fastq'),
         temp(config['temp'] + '/{quad}_1.fastq'),
@@ -1128,9 +1127,11 @@ rule download:
         export url0="{params.url0}"
         export url1="{params.url1}"
         export url2="{params.url2}"
+        export out0="{output[0]}"
+        export out1="{output[1]}"
+        export out2="{output[2]}"
         export gdc_token="{params.gdc_token}"
         export reads_in_bam="{params.reads_in_bam}"
-        export bam2fastq="{input.bam2fastq_exe}"
 
         /bin/bash -x {input.download_exe} {wildcards.quad} {params.srr} {params.method} {params.num_urls} {threads} {params.retries} {config[temp]} {log}
         """

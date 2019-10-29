@@ -16,7 +16,7 @@ temp=$7
 log=$8
 
 #these are expected to be set from in the environment
-#study,is_gzipped,is_zstded,prefetch_args,fd_args,url0,url1,url2,gdc_token,reads_in_bam
+#study,is_gzipped,is_zstded,prefetch_args,fd_args,url0,url1,url2,gdc_token,reads_in_bam,out0,out1,out2
 
 SUCCESS=0
 TIMEOUT=10
@@ -32,7 +32,7 @@ if [[ ${method} == "sra" ]] ; then
     mkdir -p ${temp}
     pushd ${temp}
     for i in { 1..${retries} } ; do
-        if time prefetch ${prefetch_args} -t http -O ${TMP} ${srr} 2>&1 >> ${log} ; then
+        if time prefetch ${prefetch_args} -t http -O dl-${srr} ${srr} 2>&1 >> ${log} ; then
             SUCCESS=1
             echo "COUNT_HTTPDownloads 1"
             break
@@ -296,7 +296,9 @@ for i in {0..2} ; do
         touch "${fn}"
     fi
     size=$((${size} + $(wc -c < "${fn}")))
-    mv "${fn}" "${temp}/${quad}_${i}.fastq"
 done
+mv "${srr}_0.fastq" $out0
+mv "${srr}_1.fastq" $out1
+mv "${srr}_2.fastq" $out2
 echo "COUNT_BytesDownloaded ${size}"
 echo "COUNT_DownloadComplete 1"
