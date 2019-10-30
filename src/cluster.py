@@ -31,6 +31,7 @@ Options:
                                application [default: recount-app].
   --ini-base <path>            Modify default base path for ini files.
   --curl=<curl>                curl executable [default: curl].
+  --keep                       Do not remove temp and input directories upon success.
   -h, --help                   Show this screen.
   --version                    Show version.
 """
@@ -73,6 +74,8 @@ else:
 
 global MAX_JOB_FAILS
 MAX_JOB_FAILS = 6
+global KEEP
+KEEP = False
 
 def is_ascii(s):
     return all(ord(c) < 128 for c in s)
@@ -302,7 +305,7 @@ def do_job(body, proj, cluster_ini, my_attempt, node_name,
         for partition_id in task.partition_id():
             partitioned_destination = os.path.join(partitioned_destination, partition_id)
     ret = run.run_job(attempt_name, [tmp_fn], image_url, image_fn,
-                      config, cluster_ini, heartbeat_func,
+                      config, cluster_ini, heartbeat_func, keep=KEEP,
                       log_queue=shared_log_queue, node_name=node_name,
                       worker_name=worker_name,
                       mover=mover, destination=partitioned_destination,
@@ -993,6 +996,7 @@ def go():
             max_fails = int(args['--max-fail'])
             MAX_JOB_FAILS = int(args['--max-job-fail'])
             sleep_seconds = int(args['--poll-seconds'])
+            KEEP = args['--keep']
             procs = []
             sysmon_ival = int(args['--sysmon-interval'])
             _, _, _, _, _, _, nworkers = read_cluster_config(cluster_ini)
