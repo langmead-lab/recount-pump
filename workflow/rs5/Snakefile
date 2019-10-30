@@ -49,6 +49,8 @@ FILES = ['sjout.zst', 'fastq_check.tsv.zst',
          'jx_bed.zst', 'unmapped.jx_bed.zst',
          'idxstats', 'unmapped.idxstats',
          'unmapped~sorted.bam','unmapped~sorted.bam.bai',
+         'fastq_removal.done',
+         'unmapped_fastq_removal.done',
          'manifest'] + list(map(lambda x: x + '.log', STEPS))
 
 INPUTS={}
@@ -814,6 +816,38 @@ rule extract_jx:
         echo "COUNT_ExtractJxComplete 1"
         """
 
+rule remove_fastqs:
+    input:
+        reads0=config['temp'] + '/{quad}_0.fastq',
+        reads1=config['temp'] + '/{quad}_1.fastq',
+        reads2=config['temp'] + '/{quad}_2.fastq',
+        bam=config['temp'] + '/{quad}.bam',
+        fastqcheck=config['output'] + '/{quad}.fastq_check.tsv.zst',
+        salmon_main=config['output'] + '/{quad}.salmon.tsv.zst'
+    output: touch(config['output'] + "/{quad}.fastq_removal.done")
+    wildcard_constraints:
+        quad="[^~\.]+"
+    run:
+        if 'keep_fastq' not in config:
+            os.unlink(input[0])
+            os.unlink(input[1])
+            os.unlink(input[2])
+
+rule remove_unmapped_fastqs:
+    input:
+        unmapped0=config['temp'] + '/{quad}_0.unmappedfastq',
+        unmapped1=config['temp'] + '/{quad}_1.unmappedfastq',
+        unmapped2=config['temp'] + '/{quad}_2.unmappedfastq',
+        bam=temp(config['temp'] + '/{quad}.unmapped.bam'),
+    output: touch(config['output'] + "/{quad}.unmapped_fastq_removal.done")
+    wildcard_constraints:
+        quad="[^~\.]+"
+    run:
+        if 'keep_unmapped_fastq' not in config:
+            os.unlink(input[0])
+            os.unlink(input[1])
+            os.unlink(input[2])
+
 rule align:
     input:
         reads0=config['temp'] + '/{quad}_0.fastq',
@@ -828,9 +862,9 @@ rule align:
         jxs=config['output'] + '/{quad}.sjout.zst',
         chimeric=config['output'] + '/{quad}.Chimeric.out.junction.zst',
         chimeric_sam=config['output'] + '/{quad}.Chimeric.out.sam.zst',
-        unmapped0=temp(config['temp'] + '/{quad}_0.unmappedfastq'),
-        unmapped1=temp(config['temp'] + '/{quad}_1.unmappedfastq'),
-        unmapped2=temp(config['temp'] + '/{quad}_2.unmappedfastq')
+        unmapped0=config['temp'] + '/{quad}_0.unmappedfastq',
+        unmapped1=config['temp'] + '/{quad}_1.unmappedfastq',
+        unmapped2=config['temp'] + '/{quad}_2.unmappedfastq'
     log:
         config['output'] + '/{quad}.align.log'
     params:
@@ -1084,9 +1118,9 @@ rule download:
     input:
         download_exe=DOWNLOAD_EXE
     output:
-        temp(config['temp'] + '/{quad}_0.fastq'),
-        temp(config['temp'] + '/{quad}_1.fastq'),
-        temp(config['temp'] + '/{quad}_2.fastq')
+        config['temp'] + '/{quad}_0.fastq',
+        config['temp'] + '/{quad}_1.fastq',
+        config['temp'] + '/{quad}_2.fastq'
     wildcard_constraints:
         quad="[^~\.]+"
     log:
