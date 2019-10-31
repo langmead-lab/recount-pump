@@ -208,9 +208,9 @@ def copy_to_destination(name, output_dir, source_prefix, extras, mover, destinat
 
 
 def run_job(name, inputs, image_url, image_fn, config, cluster_ini, heartbeat_func,
-            keep=False, mover=None, destination=None, source_prefix=None,
+            mover=None, destination=None, source_prefix=None,
             log_queue=None, fail_on_error=False, node_name='', worker_name='',
-            secure=False):
+            secure=False, keep=False):
     log_info_detailed(node_name, worker_name, 'job name: %s, image-url: "%s", image-fn: "%s"' %
                       (name, image_url, image_fn), log_queue)
     if not os.path.exists(cluster_ini):

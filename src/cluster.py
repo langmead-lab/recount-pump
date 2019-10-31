@@ -256,7 +256,7 @@ def image_exists_locally(url, system, cachedir=None):
 
 def do_job(body, proj, cluster_ini, my_attempt, node_name,
            worker_name, session, heartbeat_func,
-           mover_config=None, destination=None, source_prefix=None, shared_log_queue=log_queue):
+           mover_config=None, destination=None, source_prefix=None, shared_log_queue=log_queue, keep=False):
     """
     Given a job-attempt description string, parse the string and execute the
     corresponding job attempt.  The description string itself is composed in
@@ -305,11 +305,11 @@ def do_job(body, proj, cluster_ini, my_attempt, node_name,
         for partition_id in task.partition_id():
             partitioned_destination = os.path.join(partitioned_destination, partition_id)
     ret = run.run_job(attempt_name, [tmp_fn], image_url, image_fn,
-                      config, cluster_ini, heartbeat_func, keep=KEEP,
+                      config, cluster_ini, heartbeat_func,
                       log_queue=shared_log_queue, node_name=node_name,
                       worker_name=worker_name,
                       mover=mover, destination=partitioned_destination,
-                      source_prefix=source_prefix)
+                      source_prefix=source_prefix, keep=keep)
     return ret
 
 
@@ -583,7 +583,7 @@ def get_num_successes(job, session):
 
 def do_job_wrapper(msg, handle, session, proj, node_name, worker_name, 
                    visibility_timeout, q_client, q_url, cluster_ini, 
-                   mover_config, destination, source_prefix, shared_log_queue=log_queue):
+                   mover_config, destination, source_prefix, shared_log_queue=log_queue, keep=False):
     body = msg['Body']
     job = Task(body, proj)
     nattempts = get_num_attempts(job, session)
@@ -613,7 +613,7 @@ def do_job_wrapper(msg, handle, session, proj, node_name, worker_name,
                            worker_name, session, heartbeat_func,
                            mover_config=mover_config,
                            destination=destination,
-                           source_prefix=source_prefix, shared_log_queue=shared_log_queue)
+                           source_prefix=source_prefix, shared_log_queue=shared_log_queue, keep=keep)
     except BaseException as e:
         log_warning_detailed(node_name, worker_name,
                              'job attempt %d yielded exception: %s\n%s'
@@ -630,7 +630,7 @@ def do_job_wrapper(msg, handle, session, proj, node_name, worker_name,
 
 def job_loop(shared_log_queue, project_id_or_name, q_ini, cluster_ini, worker_name, session,
              max_fails=10, sleep_seconds=10,
-             mover_config=None, destination=None, source_prefix=None, max_job_fails=MAX_JOB_FAILS):
+             mover_config=None, destination=None, source_prefix=None, max_job_fails=MAX_JOB_FAILS, keep=False):
     log_info_detailed('', worker_name, 'Getting node name', shared_log_queue=shared_log_queue)
     node_name = socket.gethostname().split('.', 1)[0]
     log_info_detailed(node_name, worker_name, 'Getting queue client', shared_log_queue=shared_log_queue)
@@ -664,7 +664,7 @@ def job_loop(shared_log_queue, project_id_or_name, q_ini, cluster_ini, worker_na
                 handle = msg['ReceiptHandle']
                 succeeded = do_job_wrapper(msg, handle, session, proj, node_name, worker_name, 
                                             visibility_timeout, q_client, q_url, cluster_ini, 
-                                            mover_config, destination, source_prefix, shared_log_queue=shared_log_queue)
+                                            mover_config, destination, source_prefix, shared_log_queue=shared_log_queue, keep=keep)
                 if succeeded or not only_delete_on_success:
                     log_info_detailed(node_name, worker_name, 'Deleting ' + handle, shared_log_queue=shared_log_queue)
                     q_client.delete_message(QueueUrl=q_url, ReceiptHandle=handle)
@@ -885,10 +885,10 @@ def db_connect_wrapper(engine):
 
 def worker(engine, shared_log_queue, project_id_or_name, worker_name, q_ini, cluster_ini, max_fail,
            poll_seconds,
-           mover_config=None, destination=None, source_prefix=None, max_job_fail=MAX_JOB_FAILS):
+           mover_config=None, destination=None, source_prefix=None, max_job_fail=MAX_JOB_FAILS, keep=False):
     log_info_detailed('', worker_name, 'Starting worker', shared_log_queue=shared_log_queue)
     session = db_connect_wrapper(engine)
-    log_info_detailed('', worker_name, 'DB connected', shared_log_queue=shared_log_queue)
+    log_info_detailed('', worker_name, 'DB connected & keep=%s' % keep, shared_log_queue=shared_log_queue)
     #signal.signal(signal.SIGUSR1, lambda sig, stack: traceback.print_stack(stack))
     print(job_loop(shared_log_queue, project_id_or_name, q_ini, cluster_ini, worker_name, session,
                    max_fails=max_fail,
@@ -896,7 +896,7 @@ def worker(engine, shared_log_queue, project_id_or_name, worker_name, q_ini, clu
                    mover_config=mover_config,
                    destination=destination,
                    source_prefix=source_prefix,
-                   max_job_fails=max_job_fail))
+                   max_job_fails=max_job_fail, keep=keep))
 
 
 def log_worker():
@@ -996,7 +996,7 @@ def go():
             max_fails = int(args['--max-fail'])
             MAX_JOB_FAILS = int(args['--max-job-fail'])
             sleep_seconds = int(args['--poll-seconds'])
-            KEEP = args['--keep']
+            KEEP = '--keep' in args
             procs = []
             sysmon_ival = int(args['--sysmon-interval'])
             _, _, _, _, _, _, nworkers = read_cluster_config(cluster_ini)
@@ -1016,7 +1016,7 @@ def go():
                                             args=(engine, log_queue, project_id_or_name, worker_name, q_ini, cluster_ini,
                                                   max_fails, sleep_seconds,
                                                   mover_config, destination_url,
-                                                  source_prefix, MAX_JOB_FAILS))
+                                                  source_prefix, MAX_JOB_FAILS, KEEP))
                 t.start()
                 log.info('Spawned process %d (pid=%d)' % (i+1, t.pid), 'cluster.py')
                 procs.append(t)
