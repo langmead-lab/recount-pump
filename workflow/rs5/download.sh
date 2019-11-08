@@ -128,7 +128,7 @@ elif [[ ${method} == "gdc" ]] ; then
         size=$(cat ${TMP}/${srr}/*.bam | wc -c)
         echo "COUNT_GdcBytesDownloaded ${size}"
         BAM=$(ls ${TMP}/${srr}/*.bam)
-        samtools sort -n $BAM -@ ${threads} 2>> ${log} | samtools fastq -N -G 256 -1 ${srr}_1.fastq -2 ${srr}_2.fastq -0 ${srr}.fastq.0 -s ${srr}.fastq.s - 2>&1 >> ${log}
+        samtools collate -uOn 128 -@ ${threads} $BAM ${TMP}/${srr} 2>> ${log} | samtools fastq -N -F 0x900 -1 ${srr}_1.fastq -2 ${srr}_2.fastq -0 ${srr}.fastq.0 -s ${srr}.fastq.s - 2>&1 >> ${log}
         cat ${srr}.fastq.0 ${srr}.fastq.s > ${srr}_0.fastq
         rm -f ${srr}.fastq.0 ${srr}.fastq.s
         for f in ${srr}_1.fastq ${srr}_2.fastq ${srr}_0.fastq ; do
