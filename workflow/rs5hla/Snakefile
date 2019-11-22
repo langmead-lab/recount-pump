@@ -23,7 +23,7 @@ STEPS = ['download', 'fastq_check', 'align', 'sort',
          'extract_jx',
          'gene_fc_count_all', 'gene_fc_count_unique',
          'exon_fc_count_all', 'exon_fc_count_unique',
-         'slice_hla', 'slice_xym']
+         'slice_hla', 'slice_y']
 
 FILES = ['sjout.zst', 'fastq_check.tsv.zst',
          'unmapped.fastq.zst',
@@ -53,7 +53,7 @@ FILES = ['sjout.zst', 'fastq_check.tsv.zst',
          'fastq_removal.done',
          'unmapped_fastq_removal.done',
          '~hla.bam','~hla.bam.bai',
-         '~xym.bam','~xym.bam.bai',
+         '~y.bam','~y.bam.bai',
          'manifest'] + list(map(lambda x: x + '.log', STEPS))
 
 INPUTS={}
@@ -142,8 +142,8 @@ rule make_manifest:
         config['output'] + '/{quad}.exon_fc_count_unique.log',
         config['output'] + '/{quad}.~hla.bam',
         config['output'] + '/{quad}.~hla.bam.bai',
-        config['output'] + '/{quad}.~xym.bam',
-        config['output'] + '/{quad}.~xym.bam.bai'
+        config['output'] + '/{quad}.~y.bam',
+        config['output'] + '/{quad}.~y.bam.bai'
     wildcard_constraints:
         quad="[^~\.]+"
     output:
@@ -167,20 +167,20 @@ rule make_manifest:
         if params.quad in INPUTS:
             del INPUTS[params.quad]
 
-rule slice_xym:
+rule slice_y:
     wildcard_constraints:
         quad="[^~\.]+"
     input:
         bam=config['output'] + '/{quad}~sorted.bam',
         bamidx=config['output'] + '/{quad}~sorted.bam.bai'
     output:
-        bam=config['output'] + '/{quad}.~xym.bam',
-        bamidx=config['output'] + '/{quad}.~xym.bam.bai'
+        bam=config['output'] + '/{quad}.~y.bam',
+        bamidx=config['output'] + '/{quad}.~y.bam.bai'
     log:
-        config['output'] + '/{quad}.slice_xym.log'
+        config['output'] + '/{quad}.slice_y.log'
     shell:
         """
-        samtools view -b {input.bam} chrX chrY chrM > {output.bam} 2>&1 | tee -a {log}
+        samtools view -b {input.bam} chrY > {output.bam} 2>&1 | tee -a {log}
         samtools index {output.bam} 2>&1 | tee -a {log}
         echo "COUNT_SliceXYMComplete 1"
         """
