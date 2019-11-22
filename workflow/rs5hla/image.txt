@@ -1,1 +1,1 @@
-quay.io/benlangmead/recount-rs5
+quay.io/benlangmead/recount-rs5hlaxym
