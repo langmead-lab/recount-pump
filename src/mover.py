@@ -76,6 +76,42 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 """
 
+def retry(exception_class, tries=4, delay=3, backoff=2, logger=None):
+    """ Retry calling the decorated function using an exponential backoff.
+
+        http://www.saltycrane.com/blog/2009/11/
+            trying-out-retry-decorator-python/
+        Original from: http://wiki.python.org/moin/PythonDecoratorLibrary#Retry
+
+        ExceptionToCheck: the exception to check. May be a tuple of
+            exceptions to check
+        tries: number of times to try (not retry) before giving up
+        delay: initial delay between retries in seconds
+        backoff: backoff multiplier e.g. value of 2 will double the delay
+            each retry
+        logger: logger to use. If None, print
+
+        Return value: retry wrapper.
+    """
+    def deco_retry(f):
+        @wraps(f)
+        def f_retry(*args, **kwargs):
+            mtries, mdelay = tries, delay
+            if 'logger' in kwargs and kwargs['logger'] is not None:
+                logger = kwargs['logger']
+            while mtries > 1:
+                try:
+                    return f(*args, **kwargs)
+                except exception_class as e:
+                    msg = '%s, Retrying in %d seconds...' % (str(e), mdelay)
+                    if logger is not None:
+                        logger.warning(msg)
+                    time.sleep(mdelay)
+                    mtries -= 1
+                    mdelay *= backoff
+            return f(*args, **kwargs)
+        return f_retry  # true decorator
+    return deco_retry
 
 def path_join(unix, *args):
     """ Performs UNIX-like os.path.joins on Windows systems if necessary.
@@ -251,7 +287,8 @@ class GlobusMover(object):
             sync_level="checksum",
             verify_checksum=True,
             encrypt_data=True)
-
+    
+    @retry((globus_sdk.exc.TransferAPIError), tries=20, delay=2, backoff=2)
     def _submit(self, tdata, source, destination, timeout, poll_interval, logger=None):
         transfer_result = self.client.submit_transfer(tdata)
         task_id = transfer_result['task_id']
@@ -286,40 +323,6 @@ class GlobusMover(object):
                  poll_interval=poll_interval, logger=logger)
 
 
-def retry(exception_class, tries=4, delay=3, backoff=2, logger=None):
-    """ Retry calling the decorated function using an exponential backoff.
-
-        http://www.saltycrane.com/blog/2009/11/
-            trying-out-retry-decorator-python/
-        Original from: http://wiki.python.org/moin/PythonDecoratorLibrary#Retry
-
-        ExceptionToCheck: the exception to check. May be a tuple of
-            exceptions to check
-        tries: number of times to try (not retry) before giving up
-        delay: initial delay between retries in seconds
-        backoff: backoff multiplier e.g. value of 2 will double the delay
-            each retry
-        logger: logger to use. If None, print
-
-        Return value: retry wrapper.
-    """
-    def deco_retry(f):
-        @wraps(f)
-        def f_retry(*args, **kwargs):
-            mtries, mdelay = tries, delay
-            while mtries > 1:
-                try:
-                    return f(*args, **kwargs)
-                except exception_class as e:
-                    msg = '%s, Retrying in %d seconds...' % (str(e), mdelay)
-                    if logger is not None:
-                        logger.warning(msg)
-                    time.sleep(mdelay)
-                    mtries -= 1
-                    mdelay *= backoff
-            return f(*args, **kwargs)
-        return f_retry  # true decorator
-    return deco_retry
 
 
 class Url(object):

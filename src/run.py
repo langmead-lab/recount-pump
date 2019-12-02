@@ -368,10 +368,6 @@ def run_job(name, inputs, image_url, image_fn, config, cluster_ini, heartbeat_fu
     if source_prefix is None or len(source_prefix) == 0:
         source_prefix = 'local://'
 
-    if mover is not None and destination is not None and len(destination) > 0:
-        send_in_progress_to_destination(name, output_dir, source_prefix, mover,
-                                        destination, log_queue, node_name, worker_name)
-
     image = image_url
     if docker:
         if image.startswith('docker://'):
