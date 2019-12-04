@@ -105,7 +105,7 @@ def retry(exception_class, tries=4, delay=3, backoff=2, logger=None):
                 except exception_class as e:
                     msg = '%s, Retrying in %d seconds...' % (str(e), mdelay)
                     if logger is not None:
-                        logger.warning(msg)
+                        logger(msg)
                     time.sleep(mdelay)
                     mtries -= 1
                     mdelay *= backoff
