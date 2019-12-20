@@ -1,0 +1,53 @@
+[aws]
+aws_region_name = us-east-2
+
+[global]
+cluster_template = default
+update_check = true
+sanity_check = true
+
+[aliases]
+ssh = ssh {CFN_USER}@{MASTER_IP} {ARGS}
+
+[cluster default]
+cluster_type = spot
+spot_price = 0.25
+#centos7_singularity260_pythonRP
+custom_ami = ami-0126724aa74292380
+key_name = monorail-pc-jhu-east-2
+base_os = centos7
+scheduler = slurm
+#Model  vCPU    Memory (GiB)    Instance Storage (GiB)  Network Bandwidth (Gbps)  EBS Bandwidth (Mbps)
+#t3.2xlarge     8   192   32  EBS-Only    Up to 5
+master_instance_type = t3.2xlarge
+#c5.12xlarge    48  96  EBS-Only    12  9,500
+#compute_instance_type = c5.12xlarge
+#c5n.4xlarge    16  42  EBS-Only    Up to 25    4,750
+compute_instance_type = c5n.4xlarge
+#max_queue_size = 25
+max_queue_size = 3
+maintain_initial_size = true
+vpc_settings = default
+scaling_settings = custom
+ebs_settings = custom1
+#ephemeral_dir = /data
+shared_dir = /data
+s3_read_resource = arn:aws:s3:::recount-ref/*
+s3_read_write_resource = arn:aws:s3:::recount-output/*
+
+[ebs custom1]
+#to be shared via NFS from master node to worker nodes
+#monorail_refs_rc102_working
+ebs_snapshot_id = snap-076834e104f98c7f6
+volume_type = gp2
+encrypted = false
+
+[vpc default]
+vpc_id = vpc-0ebb5ca1066df5d11
+#need to figure out the public/private status of the master subnet
+master_subnet_id = subnet-00aa75ccef38d3e2a
+ssh_from = 128.220.35.129/32
+use_public_ips = false
+
+[scaling custom]
+scaledown_idletime = 10
