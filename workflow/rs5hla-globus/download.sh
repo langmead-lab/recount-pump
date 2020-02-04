@@ -93,7 +93,7 @@ if [[ ${method} == "sra" ]] ; then
 elif [[ ${method} == "rsync" ]] ; then
     #overload the GDC token field here to serve as the username to use with rsync
     if [[ -z ${download_token} ]] ; then
-        echo "ERROR: no key_path;username for rysnc job found (download_token)"
+        echo "ERROR: no key_path:username for rysnc job found (download_token)"
         exit 1
     fi
     usename=$(echo $download_token | cut -d':' -f 2)
