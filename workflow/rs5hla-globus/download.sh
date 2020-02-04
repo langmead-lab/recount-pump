@@ -93,9 +93,11 @@ if [[ ${method} == "sra" ]] ; then
 elif [[ ${method} == "rsync" ]] ; then
     #overload the GDC token field here to serve as the username to use with rsync
     if [[ -z ${download_token} ]] ; then
-        echo "ERROR: no username for rysnc job found (download_token)"
+        echo "ERROR: no key_path;username for rysnc job found (download_token)"
         exit 1
     fi
+    usename=$(echo $download_token | cut -d':' -f 2)
+    download_token=$(echo $download_token | cut -d':' -f 1)
     mkdir -p ${TMP}
     SUCCESS=0
     #only supporting rsync on single BAM files as source at this point
@@ -103,7 +105,7 @@ elif [[ ${method} == "rsync" ]] ; then
     for i in { 1..${retries} } ; do
         #BOTH globus paths *must* be full paths
         #overload url2 here to be target Globus server
-        if rsync -av --progress ${download_token}@${url1} ${BAM} 2>> ${log} ; then
+        if rsync -e "ssh -i $download_token" -av --progress ${usename}@${url1} ${BAM} 2>> ${log} ; then
             SUCCESS=1
             break
         else
