@@ -79,6 +79,9 @@ def get_accessions(wildcards):
                         INPUTS['%s!%s!%s!%s' % (toks[0], toks[1], toks[2], method)]=toks[4].split(';')
                     if len(toks) > 4 and len(toks[4]) > 0 and method == 'gdc':
                         TOKENS['%s!%s!%s!%s' % (toks[0], toks[1], toks[2], method)]=toks[4]
+                    if len(toks) > 5 and len(toks[4]) > 0 and len(toks[5]) > 0 and method == 'globus':
+                        TOKENS['%s!%s!%s!%s' % (toks[0], toks[1], toks[2], method)]=toks[4]
+                        INPUTS['%s!%s!%s!%s' % (toks[0], toks[1], toks[2], method)]=toks[5].split(';')
                     if len(toks) > 5 and len(toks[5]) > 0:
                         READS_IN_BAM.add('%s!%s!%s!%s' % (toks[0], toks[1], toks[2], method))
                 # SRR,SRP,genome
@@ -1181,7 +1184,7 @@ rule download:
         is_gzipped=lambda wildcards: 1 if wildcards.quad in INPUTS and INPUTS[wildcards.quad][0][-3:] == '.gz' else 0,
         is_zstded=lambda wildcards: 1 if wildcards.quad in INPUTS and INPUTS[wildcards.quad][0][-4:] == '.zst' else 0,
         prefetch_args=config.get('prefetch_args', '--max-size 200G -L info'),
-        gdc_token=lambda wildcards: TOKENS[wildcards.quad] if wildcards.quad in TOKENS else "",
+        download_token=lambda wildcards: TOKENS[wildcards.quad] if wildcards.quad in TOKENS else "",
         reads_in_bam=lambda wildcards: 1 if wildcards.quad in READS_IN_BAM else 0
     threads: 4
     shell:
@@ -1207,7 +1210,7 @@ rule download:
         export out0="{output[0]}"
         export out1="{output[1]}"
         export out2="{output[2]}"
-        export gdc_token="{params.gdc_token}"
+        export download_token="{params.download_token}"
         export reads_in_bam="{params.reads_in_bam}"
 
         /bin/bash -x {input.download_exe} {wildcards.quad} {params.srr} {params.method} {params.num_urls} {threads} {params.retries} {config[temp]} {log}

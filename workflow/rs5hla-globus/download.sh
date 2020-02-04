@@ -16,7 +16,12 @@ temp=$7
 log=$8
 
 #these are expected to be set from in the environment
-#study,is_gzipped,is_zstded,prefetch_args,fd_args,url0,url1,url2,gdc_token,reads_in_bam,out0,out1,out2
+#study,is_gzipped,is_zstded,prefetch_args,fd_args,url0,url1,url2,download_token,reads_in_bam,out0,out1,out2
+
+#Globus sections overloads the following vars:
+#url1 is full source Globus url
+#url2 is *only* target Globus server section name that appears in the globus.ini file (e.g. marcc)
+#download_token is the path to the globus.ini file
 
 SUCCESS=0
 TIMEOUT=10
@@ -81,9 +86,50 @@ if [[ ${method} == "sra" ]] ; then
         test -f ${srr}_2.fastq && test -f ${srr}.fastq && mv ${srr}.fastq ${srr}_0.fastq
     fi
     rm -rf ${TMP}
+#----------Globus----------#
+#this is currently only intended for one of many potential cases
+#specifically GTEx V7 & V8 paired read BAMs
+elif [[ ${method} == "globus" ]] ; then
+    #overload the GDC token field here to serve has the var for the globus_ini file since these are exclusive
+    globus_ini=${download_token}
+    if [[ ! -z ${globus_ini} && ! -f ${globus_ini} ]] ; then
+        echo "ERROR: no globus INI file found at ${globus_ini}"
+        exit 1
+    fi
+    mkdir -p ${TMP}
+    SUCCESS=0
+    #only supporting Globus on single BAM files as source at this point
+    BAM=/${TMP}/${srr}.temp.bam
+    for i in { 1..${retries} } ; do
+        #BOTH globus paths *must* be full paths
+        #overload url2 here to be target Globus server
+        if python2 mover.py put ${url1} globus://${url2}/${BAM} --globus-ini ${globus_ini} 2>> ${log} ; then
+            SUCCESS=1
+            break
+        else
+            echo "COUNT_URLRetries1 1"
+            TIMEOUT=$((${TIMEOUT} * 2))
+            sleep ${TIMEOUT}
+        fi
+    done
+    if (( $SUCCESS == 0 )) ; then
+        echo "COUNT_GlobusDownloadFailures 1"
+        #rm -rf ${TMP}
+        exit 1
+    fi
+    #now extract reads from BAM
+    samtools collate -uOn 128 -@ ${threads} $BAM ${TMP}/${srr} 2>> ${log} | samtools fastq -N -F 0x900 -1 ${srr}_1.fastq -2 ${srr}_2.fastq -0 ${srr}.fastq.0 -s ${srr}.fastq.s - 2>&1 >> ${log}
+    cat ${srr}.fastq.0 ${srr}.fastq.s > ${srr}_0.fastq
+    rm -f ${srr}.fastq.0 ${srr}.fastq.s
+    for f in ${srr}_1.fastq ${srr}_2.fastq ${srr}_0.fastq ; do
+        size0=`wc -c $f | cut -d' ' -f 1`
+        if (( ${size0} == 0 )) ; then
+            rm -f $f
+        fi
+    done
 #----------GDC----------#
 elif [[ ${method} == "gdc" ]] ; then
-    TOKEN=${gdc_token}
+    TOKEN=${download_token}
     use_token="-t ${TOKEN}"
     #if we have a token but it doesn't exist, throw an error
     if [[ ! -z ${TOKEN} && ! -f ${TOKEN} ]] ; then
@@ -182,6 +228,7 @@ elif [[ ${method} == "gdc" ]] ; then
         fi
     fi
 #----------URL----------#
+#only supporting URLs on FASTQ files as source at this point (but supports paired/unpaired and gzipped/uncompressed)
 elif [[ ${method} == "url" ]] ; then
     additional_cmd='cat'
     if [[ ${is_gzipped} == "1" ]] ; then
