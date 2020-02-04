@@ -116,7 +116,7 @@ elif [[ ${method} == "rsync" ]] ; then
     done
     if (( $SUCCESS == 0 )) ; then
         echo "COUNT_RSYNCDownloadFailures 1"
-        #rm -rf ${TMP}
+        rm -rf ${TMP}
         exit 1
     fi
     #now extract reads from BAM
@@ -129,6 +129,7 @@ elif [[ ${method} == "rsync" ]] ; then
             rm -f $f
         fi
     done
+    rm -rf ${TMP}
 #----------Globus----------#
 #this is currently only intended for one of many potential cases
 #specifically GTEx V7 & V8 paired read BAMs
@@ -157,7 +158,7 @@ elif [[ ${method} == "globus" ]] ; then
     done
     if (( $SUCCESS == 0 )) ; then
         echo "COUNT_GlobusDownloadFailures 1"
-        #rm -rf ${TMP}
+        rm -rf ${TMP}
         exit 1
     fi
     #now extract reads from BAM
@@ -170,6 +171,7 @@ elif [[ ${method} == "globus" ]] ; then
             rm -f $f
         fi
     done
+    rm -rf ${TMP}
 #----------GDC----------#
 elif [[ ${method} == "gdc" ]] ; then
     TOKEN=${download_token}
