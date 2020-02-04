@@ -79,9 +79,10 @@ def get_accessions(wildcards):
                         INPUTS['%s!%s!%s!%s' % (toks[0], toks[1], toks[2], method)]=toks[4].split(';')
                     if len(toks) > 4 and len(toks[4]) > 0 and method == 'gdc':
                         TOKENS['%s!%s!%s!%s' % (toks[0], toks[1], toks[2], method)]=toks[4]
-                    if len(toks) > 5 and len(toks[4]) > 0 and len(toks[5]) > 0 and (method == 'globus' or method == 'rsync'):
-                        TOKENS['%s!%s!%s!%s' % (toks[0], toks[1], toks[2], method)]=toks[4]
-                        INPUTS['%s!%s!%s!%s' % (toks[0], toks[1], toks[2], method)]=toks[5].split(';')
+                    if len(toks) > 4 and len(toks[4]) > 0 and (method == 'globus' or method == 'rsync'):
+                        splits = toks[4].split(';')
+                        TOKENS['%s!%s!%s!%s' % (toks[0], toks[1], toks[2], method)]=splits[0]
+                        INPUTS['%s!%s!%s!%s' % (toks[0], toks[1], toks[2], method)]=splits[1:]
                     if len(toks) > 5 and len(toks[5]) > 0:
                         READS_IN_BAM.add('%s!%s!%s!%s' % (toks[0], toks[1], toks[2], method))
                 # SRR,SRP,genome
