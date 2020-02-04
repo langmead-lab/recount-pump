@@ -79,7 +79,7 @@ def get_accessions(wildcards):
                         INPUTS['%s!%s!%s!%s' % (toks[0], toks[1], toks[2], method)]=toks[4].split(';')
                     if len(toks) > 4 and len(toks[4]) > 0 and method == 'gdc':
                         TOKENS['%s!%s!%s!%s' % (toks[0], toks[1], toks[2], method)]=toks[4]
-                    if len(toks) > 5 and len(toks[4]) > 0 and len(toks[5]) > 0 and method == 'globus':
+                    if len(toks) > 5 and len(toks[4]) > 0 and len(toks[5]) > 0 and (method == 'globus' or method == 'rsync'):
                         TOKENS['%s!%s!%s!%s' % (toks[0], toks[1], toks[2], method)]=toks[4]
                         INPUTS['%s!%s!%s!%s' % (toks[0], toks[1], toks[2], method)]=toks[5].split(';')
                     if len(toks) > 5 and len(toks[5]) > 0:

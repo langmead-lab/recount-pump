@@ -86,6 +86,47 @@ if [[ ${method} == "sra" ]] ; then
         test -f ${srr}_2.fastq && test -f ${srr}.fastq && mv ${srr}.fastq ${srr}_0.fastq
     fi
     rm -rf ${TMP}
+#----------rsync----------#
+#this is currently only intended for one of many potential cases
+#specifically GTEx V7 & V8 paired read BAMs
+#this assumes there's a PKI setup in place so no passwords are needed
+elif [[ ${method} == "rsync" ]] ; then
+    #overload the GDC token field here to serve as the username to use with rsync
+    if [[ -z ${download_token} ]] ; then
+        echo "ERROR: no username for rysnc job found (download_token)"
+        exit 1
+    fi
+    mkdir -p ${TMP}
+    SUCCESS=0
+    #only supporting rsync on single BAM files as source at this point
+    BAM=/${TMP}/${srr}.temp.bam
+    for i in { 1..${retries} } ; do
+        #BOTH globus paths *must* be full paths
+        #overload url2 here to be target Globus server
+        if rsync -av --progress ${download_token}@${url1} ${BAM} 2>> ${log} ; then
+            SUCCESS=1
+            break
+        else
+            echo "COUNT_RSYNCRetries1 1"
+            TIMEOUT=$((${TIMEOUT} * 2))
+            sleep ${TIMEOUT}
+        fi
+    done
+    if (( $SUCCESS == 0 )) ; then
+        echo "COUNT_RSYNCDownloadFailures 1"
+        #rm -rf ${TMP}
+        exit 1
+    fi
+    #now extract reads from BAM
+    samtools collate -uOn 128 -@ ${threads} $BAM ${TMP}/${srr} 2>> ${log} | samtools fastq -N -F 0x900 -1 ${srr}_1.fastq -2 ${srr}_2.fastq -0 ${srr}.fastq.0 -s ${srr}.fastq.s - 2>&1 >> ${log}
+    cat ${srr}.fastq.0 ${srr}.fastq.s > ${srr}_0.fastq
+    rm -f ${srr}.fastq.0 ${srr}.fastq.s
+    for f in ${srr}_1.fastq ${srr}_2.fastq ${srr}_0.fastq ; do
+        size0=`wc -c $f | cut -d' ' -f 1`
+        if (( ${size0} == 0 )) ; then
+            rm -f $f
+        fi
+    done
 #----------Globus----------#
 #this is currently only intended for one of many potential cases
 #specifically GTEx V7 & V8 paired read BAMs
@@ -107,7 +148,7 @@ elif [[ ${method} == "globus" ]] ; then
             SUCCESS=1
             break
         else
-            echo "COUNT_URLRetries1 1"
+            echo "COUNT_GlobusRetries1 1"
             TIMEOUT=$((${TIMEOUT} * 2))
             sleep ${TIMEOUT}
         fi
