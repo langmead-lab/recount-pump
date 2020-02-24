@@ -57,6 +57,9 @@ INPUTS={}
 TOKENS={}
 READS_IN_BAM=set()
 
+#temp_big is used for initial part of pipeline: downloading, aligning, and sorting FASTQs/BAMs
+if 'temp_big' not in config:
+    config['temp_big'] = config['temp']
 
 def get_accessions(wildcards):
     """
@@ -350,7 +353,7 @@ rule bw_zstd:
 
 rule gene_fc_count_all:
     input:
-        bam=config['temp'] + '/{quad}.bam',  # mates should be together for featureCounts
+        bam=config['temp_big'] + '/{quad}.bam',  # mates should be together for featureCounts
         gtf=lambda wildcards: '%s/%s/gtf/genes.gtf' % (config['ref'], wildcards.quad.split('!')[2])
     wildcard_constraints:
         quad="[^~\.]+"
@@ -391,7 +394,7 @@ rule gene_fc_count_all:
 
 rule gene_fc_count_unique:
     input:
-        bam=config['temp'] + '/{quad}.bam',  # mates should be together for featureCounts
+        bam=config['temp_big'] + '/{quad}.bam',  # mates should be together for featureCounts
         gtf=lambda wildcards: '%s/%s/gtf/genes.gtf' % (config['ref'], wildcards.quad.split('!')[2])
     wildcard_constraints:
         quad="[^~\.]+"
@@ -433,7 +436,7 @@ rule gene_fc_count_unique:
 
 rule exon_fc_count_all:
     input:
-        bam=config['temp'] + '/{quad}.bam',  # mates should be together for featureCounts
+        bam=config['temp_big'] + '/{quad}.bam',  # mates should be together for featureCounts
         bamidx=config['output'] + '/{quad}~sorted.bam.bai',
         gtf=lambda wildcards: '%s/%s/gtf/genes.gtf' % (config['ref'], wildcards.quad.split('!')[2])
     wildcard_constraints:
@@ -475,7 +478,7 @@ rule exon_fc_count_all:
 
 rule exon_fc_count_unique:
     input:
-        bam=config['temp'] + '/{quad}.bam',  # mates should be together for featureCounts
+        bam=config['temp_big'] + '/{quad}.bam',  # mates should be together for featureCounts
         bamidx=config['output'] + '/{quad}~sorted.bam.bai',
         gtf=lambda wildcards: '%s/%s/gtf/genes.gtf' % (config['ref'], wildcards.quad.split('!')[2])
     wildcard_constraints:
@@ -518,7 +521,7 @@ rule exon_fc_count_unique:
 
 rule sort:
     input:
-        config['temp'] + '/{quad}.bam'
+        config['temp_big'] + '/{quad}.bam'
     wildcard_constraints:
         quad="[^~]+"
     output:
@@ -555,9 +558,9 @@ rule sort:
 
 rule salmon:
     input:
-        reads0=config['temp'] + '/{quad}_0.fastq',
-        reads1=config['temp'] + '/{quad}_1.fastq',
-        reads2=config['temp'] + '/{quad}_2.fastq',
+        reads0=config['temp_big'] + '/{quad}_0.fastq',
+        reads1=config['temp_big'] + '/{quad}_1.fastq',
+        reads2=config['temp_big'] + '/{quad}_2.fastq',
         index1=lambda wildcards: '%s/%s/salmon_index/hash.bin' % (config['ref'], wildcards.quad.split('!')[2]),
         index2=lambda wildcards: '%s/%s/salmon_index/sa.bin' % (config['ref'], wildcards.quad.split('!')[2])
     output:
@@ -638,7 +641,7 @@ rule align_unmapped:
     wildcard_constraints:
         quad="[^~]+"
     output:
-        bam=temp(config['temp'] + '/{quad}.unmapped.bam'),
+        bam=temp(config['temp_big'] + '/{quad}.unmapped.bam'),
         sample=config['output'] + '/{quad}.unmapped.fastq.zst',
         sample_split3=config['output'] + '/{quad}.unmapped_split3.fastq.zst'
     log:
@@ -818,10 +821,10 @@ rule extract_jx:
 
 rule remove_fastqs:
     input:
-        reads0=config['temp'] + '/{quad}_0.fastq',
-        reads1=config['temp'] + '/{quad}_1.fastq',
-        reads2=config['temp'] + '/{quad}_2.fastq',
-        bam=config['temp'] + '/{quad}.bam',
+        reads0=config['temp_big'] + '/{quad}_0.fastq',
+        reads1=config['temp_big'] + '/{quad}_1.fastq',
+        reads2=config['temp_big'] + '/{quad}_2.fastq',
+        bam=config['temp_big'] + '/{quad}.bam',
         fastqcheck=config['output'] + '/{quad}.fastq_check.tsv.zst',
         salmon_main=config['output'] + '/{quad}.salmon.tsv.zst'
     output: touch(config['output'] + "/{quad}.fastq_removal.done")
@@ -838,7 +841,7 @@ rule remove_unmapped_fastqs:
         unmapped0=config['temp'] + '/{quad}_0.unmappedfastq',
         unmapped1=config['temp'] + '/{quad}_1.unmappedfastq',
         unmapped2=config['temp'] + '/{quad}_2.unmappedfastq',
-        bam=temp(config['temp'] + '/{quad}.unmapped.bam'),
+        bam=config['temp_big'] + '/{quad}.unmapped.bam'
     output: touch(config['output'] + "/{quad}.unmapped_fastq_removal.done")
     wildcard_constraints:
         quad="[^~\.]+"
@@ -850,15 +853,15 @@ rule remove_unmapped_fastqs:
 
 rule align:
     input:
-        reads0=config['temp'] + '/{quad}_0.fastq',
-        reads1=config['temp'] + '/{quad}_1.fastq',
-        reads2=config['temp'] + '/{quad}_2.fastq',
+        reads0=config['temp_big'] + '/{quad}_0.fastq',
+        reads1=config['temp_big'] + '/{quad}_1.fastq',
+        reads2=config['temp_big'] + '/{quad}_2.fastq',
         index1=lambda wildcards: '%s/%s/star_idx/SAindex' % (config['ref'], wildcards.quad.split('!')[2]),
         index2=lambda wildcards: '%s/%s/star_idx/SA' % (config['ref'], wildcards.quad.split('!')[2])
     wildcard_constraints:
         quad="[^~\.]+"
     output:
-        bam=temp(config['temp'] + '/{quad}.bam'),
+        bam=temp(config['temp_big'] + '/{quad}.bam'),
         jxs=config['output'] + '/{quad}.sjout.zst',
         chimeric=config['output'] + '/{quad}.Chimeric.out.junction.zst',
         chimeric_sam=config['output'] + '/{quad}.Chimeric.out.sam.zst',
@@ -883,7 +886,7 @@ rule align:
         if [[ {params.is_simulation} == "1" ]] ; then
             readnames='Standard'
         fi
-        TMP="{config[temp]}/align_temp.{params.srr}"
+        TMP="{config[temp_big]}/align_temp.{params.srr}"
         rm -rf ${{TMP}}
         time STAR \
             {params.star_args} \
@@ -973,7 +976,7 @@ rule align:
         
         if [[ -s {input.reads2} && -s {input.reads0} ]] ; then
             READ_FILES="{input.reads0}"
-            TMP="{config[temp]}/align_temp.{params.srr}.0"
+            TMP="{config[temp_big]}/align_temp.{params.srr}.0"
             rm -rf ${{TMP}}
             time STAR \
                 {params.star_args} \
@@ -1084,9 +1087,9 @@ rule align:
 
 rule fastq_check:
     input:
-        reads0=config['temp'] + '/{quad}_0.fastq',
-        reads1=config['temp'] + '/{quad}_1.fastq',
-        reads2=config['temp'] + '/{quad}_2.fastq'
+        reads0=config['temp_big'] + '/{quad}_0.fastq',
+        reads1=config['temp_big'] + '/{quad}_1.fastq',
+        reads2=config['temp_big'] + '/{quad}_2.fastq'
     output:
         config['output'] + '/{quad}.fastq_check.tsv.zst'
     log:
@@ -1118,9 +1121,9 @@ rule download:
     input:
         download_exe=DOWNLOAD_EXE
     output:
-        config['temp'] + '/{quad}_0.fastq',
-        config['temp'] + '/{quad}_1.fastq',
-        config['temp'] + '/{quad}_2.fastq'
+        config['temp_big'] + '/{quad}_0.fastq',
+        config['temp_big'] + '/{quad}_1.fastq',
+        config['temp_big'] + '/{quad}_2.fastq'
     wildcard_constraints:
         quad="[^~\.]+"
     log:
@@ -1152,7 +1155,6 @@ rule download:
         export num_urls="{params.num_urls}"
         export retries="{params.retries}"
         export threads="{threads}"
-        export temp="{config[temp]}"
         
         export is_gzipped="{params.is_gzipped}"
         export is_zstded="{params.is_zstded}"
@@ -1167,5 +1169,5 @@ rule download:
         export gdc_token="{params.gdc_token}"
         export reads_in_bam="{params.reads_in_bam}"
 
-        /bin/bash -x {input.download_exe} {wildcards.quad} {params.srr} {params.method} {params.num_urls} {threads} {params.retries} {config[temp]} {log}
+        /bin/bash -x {input.download_exe} {wildcards.quad} {params.srr} {params.method} {params.num_urls} {threads} {params.retries} {config[temp_big]} {log}
         """

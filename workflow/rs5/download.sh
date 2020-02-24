@@ -25,6 +25,9 @@ GDC_TIMEOUT=30
 PARAMS=""
 TMP="${temp}/dl-${srr}"
 ! test -d ${TMP}
+TMP_HOLD="${temp}/hold-${srr}"
+mkdir -p $TMP_HOLD
+pushd $TMP_HOLD
 
 #----------SRA----------#
 if [[ ${method} == "sra" ]] ; then
@@ -300,5 +303,7 @@ done
 mv "${srr}_0.fastq" $out0
 mv "${srr}_1.fastq" $out1
 mv "${srr}_2.fastq" $out2
+popd
+rm -rf $TMP_HOLD
 echo "COUNT_BytesDownloaded ${size}"
 echo "COUNT_DownloadComplete 1"

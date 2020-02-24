@@ -210,7 +210,7 @@ def copy_to_destination(name, output_dir, source_prefix, extras, mover, destinat
 def run_job(name, inputs, image_url, image_fn, config, cluster_ini, heartbeat_func,
             mover=None, destination=None, source_prefix=None,
             log_queue=None, fail_on_error=False, node_name='', worker_name='',
-            secure=False, keep=False):
+            secure=False, keep=False, always_remove=True):
     log_info_detailed(node_name, worker_name, 'job name: %s, image-url: "%s", image-fn: "%s"' %
                       (name, image_url, image_fn), log_queue)
     if not os.path.exists(cluster_ini):
@@ -228,6 +228,7 @@ def run_job(name, inputs, image_url, image_fn, config, cluster_ini, heartbeat_fu
     output_base = _expand(cfg.get(section, 'output_base'))
     ref_base = _expand(cfg.get(section, 'ref_base'))
     temp_base = _expand(cfg.get(section, 'temp_base'))
+    temp_big_base = _expand(cfg.get(section, 'temp_big_base'))
     system = 'docker'
     if cfg.has_option(section, 'system'):
         system = cfg.get(section, 'system')
@@ -246,6 +247,8 @@ def run_job(name, inputs, image_url, image_fn, config, cluster_ini, heartbeat_fu
     output_base = os.path.expanduser(output_base)
     ref_base = os.path.expanduser(ref_base)
     temp_base = os.path.expanduser(temp_base)
+    if temp_big_base is not None: 
+        temp_big_base = os.path.expanduser(temp_big_base)
 
     log_info_detailed(node_name, worker_name, 'inputs: ' + str(inputs), log_queue)
     log_info_detailed(node_name, worker_name, 'using %s as container system' % system, log_queue)
@@ -255,6 +258,8 @@ def run_job(name, inputs, image_url, image_fn, config, cluster_ini, heartbeat_fu
     log_info_detailed(node_name, worker_name, 'output base: ' + output_base, log_queue)
     log_info_detailed(node_name, worker_name, 'reference base: ' + ref_base, log_queue)
     log_info_detailed(node_name, worker_name, 'temp base: ' + temp_base, log_queue)
+    if temp_big_base is not None: 
+        log_info_detailed(node_name, worker_name, 'temp_big base: ' + temp_big_base, log_queue)
 
     original_umask = None
     if system == 'docker' and secure:
@@ -286,16 +291,30 @@ def run_job(name, inputs, image_url, image_fn, config, cluster_ini, heartbeat_fu
         elif not os.path.isdir(temp_base):
             raise RuntimeError('temp_base "%s" exists but is not a directory' % temp_base)
         assert os.path.exists(temp_base) and os.path.isdir(temp_base)
+        if temp_big_base is not None: 
+            if not os.path.exists(temp_big_base):
+                try:
+                    os.makedirs(temp_big_base)
+                except os.error:
+                    pass
+            elif not os.path.isdir(temp_big_base):
+                raise RuntimeError('temp_base "%s" exists but is not a directory' % temp_big_base)
+            assert os.path.exists(temp_big_base) and os.path.isdir(temp_big_base)
         isdir(ref_base)
 
         subdir_clear(input_base, name)
         subdir_clear(output_base, name)
         subdir_clear(temp_base, name)
+        if temp_big_base is not None: 
+            subdir_clear(temp_big_base, name)
 
         input_mount = _expand(cfg.get(section, 'input_mount'))
         output_mount = _expand(cfg.get(section, 'output_mount'))
         ref_mount = _expand(cfg.get(section, 'ref_mount'))
         temp_mount = _expand(cfg.get(section, 'temp_mount'))
+        temp_big_mount = None
+        if temp_big_base is not None:
+            temp_big_mount = _expand(cfg.get(section, 'temp_big_mount'))
 
         mounts = []
         docker = system == 'docker'
@@ -336,6 +355,14 @@ def run_job(name, inputs, image_url, image_fn, config, cluster_ini, heartbeat_fu
             temp_mount = os.path.join(temp_base, name)
         temp_base_name = os.path.join(temp_base, name)
         os.makedirs(temp_base_name)
+        if temp_big_base is not None:
+            if temp_big_mount is not None and len(temp_big_mount) > 0:
+                mounts.append('-v' if docker else '-B')
+                mounts.append('%s/%s:%s' % (temp_big_base, name, temp_big_mount))
+            else:
+                temp_big_mount = os.path.join(temp_big_base, name)
+            temp_big_base_name = os.path.join(temp_big_base, name)
+            os.makedirs(temp_big_base_name)
         if ref_mount is not None and len(ref_mount) > 0:
             mounts.append('-v' if docker else '-B')
             mounts.append('%s:%s' % (ref_base, ref_mount))
@@ -353,6 +380,7 @@ def run_job(name, inputs, image_url, image_fn, config, cluster_ini, heartbeat_fu
                'RECOUNT_INPUT=%s' % input_mount,
                'RECOUNT_OUTPUT=%s' % output_mount,
                'RECOUNT_TEMP=%s' % temp_mount,
+               'RECOUNT_TEMP_BIG=%s' % temp_big_mount,
                'RECOUNT_CPUS=%d' % cpus,
                'RECOUNT_REF=%s' % ref_mount]
     cmd_run = '/bin/bash -c "source activate recount && /startup.sh && /workflow.bash"'
@@ -401,10 +429,12 @@ def run_job(name, inputs, image_url, image_fn, config, cluster_ini, heartbeat_fu
     t_out.join()
     t_err.join()
     ret = proc.returncode
-    if ret == 0 and not keep:
+    if not keep and (always_remove or ret == 0):
         log_info_detailed(node_name, worker_name, 'Removing input & temporary directories', log_queue)
         shutil.rmtree(os.path.join(input_base, name))
         shutil.rmtree(os.path.join(temp_base, name))
+        if temp_big_base is not None: 
+            shutil.rmtree(os.path.join(temp_big_base, name))
 
     if ret != 0 and fail_on_error:
         for _ in range(50):

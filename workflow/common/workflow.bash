@@ -27,6 +27,10 @@ echo "Temp dir: ${RECOUNT_TEMP}"
 test -n "${RECOUNT_TEMP}"
 test -d "${RECOUNT_TEMP}"
 
+echo "Big Temp dir: ${RECOUNT_TEMP_BIG}"
+test -n "${RECOUNT_TEMP_BIG}"
+test -d "${RECOUNT_TEMP_BIG}"
+
 echo "CPUs: ${RECOUNT_CPUS}"
 test -n "${RECOUNT_CPUS}"
 
@@ -71,6 +75,7 @@ elif [[ -f /Snakefile ]] ; then
             output="${RECOUNT_OUTPUT}" \
             ref="${RECOUNT_REF}" \
             temp="${RECOUNT_TEMP}" \
+            temp_big="${RECOUNT_TEMP_BIG}" \
             2>&1 | tee ${RECOUNT_OUTPUT}/std.out
     popd
 else
