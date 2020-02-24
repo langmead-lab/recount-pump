@@ -228,7 +228,9 @@ def run_job(name, inputs, image_url, image_fn, config, cluster_ini, heartbeat_fu
     output_base = _expand(cfg.get(section, 'output_base'))
     ref_base = _expand(cfg.get(section, 'ref_base'))
     temp_base = _expand(cfg.get(section, 'temp_base'))
-    temp_big_base = _expand(cfg.get(section, 'temp_big_base'))
+    temp_big_base = None
+    if cfg.has_option(section, 'temp_big_base'):
+        temp_big_base = _expand(cfg.get(section, 'temp_big_base'))
     system = 'docker'
     if cfg.has_option(section, 'system'):
         system = cfg.get(section, 'system')
