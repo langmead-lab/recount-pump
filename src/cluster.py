@@ -671,7 +671,10 @@ def job_loop(shared_log_queue, project_id_or_name, q_ini, cluster_ini, worker_na
                 if succeeded:
                     log_info_detailed(node_name, worker_name, 'job success', shared_log_queue=shared_log_queue)
                 else:
-                    log_warning_detailed(node_name, worker_name, 'Reached max job fails %d, but continuing' % max_job_fails, shared_log_queue=shared_log_queue)
+                    num_job_fails += 1
+                    if num_job_fails > max_job_fails:
+                        log_warning_detailed(node_name, worker_name, 'Reached max job fails %d, exiting worker' % max_job_fails, shared_log_queue=shared_log_queue)
+                        break
 
         log_info_detailed(node_name, worker_name, 'Bottom of job loop, iteration %d' % attempt, shared_log_queue=shared_log_queue)
 
@@ -957,6 +960,9 @@ def go():
         if path.startswith('~/.recount/') and args['--ini-base'] is not None:
             path = os.path.join(args['--ini-base'], path[len('~/.recount/'):])
         return os.path.expanduser(path)
+
+    node_name = socket.gethostname().split('.', 1)[0]
+    sys.stdout.write("node_name\t%s\n" % (node_name))
 
     log_ini = ini_path('--log-ini')
     log.init_logger(log.LOG_GROUP_NAME, log_ini=log_ini, agg_level=args['--log-level'])
