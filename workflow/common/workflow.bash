@@ -58,11 +58,11 @@ if [[ -f /workflow.nf ]] ; then
             --cpus "${RECOUNT_CPUS}" \
             $*
 elif [[ -f /Snakefile ]] ; then
-    mkdir -p ${RECOUNT_TEMP}/snakemake-wd
-    pushd ${RECOUNT_TEMP}/snakemake-wd
+    mkdir -p ${RECOUNT_TEMP_BIG}/snakemake-wd
+    pushd ${RECOUNT_TEMP_BIG}/snakemake-wd
     CONFIGFILE=""
-    if [[ -f "${RECOUNT_TEMP}/config.json" ]] ; then
-        CONFIGFILE="--configfile ${RECOUNT_TEMP}/config.json"
+    if [[ -f "${RECOUNT_TEMP_BIG}/config.json" ]] ; then
+        CONFIGFILE="--configfile ${RECOUNT_TEMP_BIG}/config.json"
     fi
     snakemake \
         --snakefile /Snakefile \
