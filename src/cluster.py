@@ -1038,19 +1038,19 @@ def go():
                         log.info('Attempting to join process %d (pid=%d)' %
                                  (i + 1, pid), 'cluster.py')
                     else:
-                        assert proc.exitcode is not None
-                        if proc.exitcode != 0:
-                            worker_name = 'worker_%d_of_%d' % (i+1, nworkers)
-                            t = multiprocessing.Process(target=worker,
-                                                        args=(engine, log_queue, project_id_or_name, worker_name, q_ini, cluster_ini,
-                                                              max_fails, sleep_seconds,
-                                                              mover_config, destination_url,
-                                                              source_prefix, MAX_JOB_FAILS))
-                            t.start()
-                            log.info('Respawned process %d (pid=%d)' % (i+1, t.pid), 'cluster.py')
-                            procs[i] = t
-                        else:
-                            nprocs_finished += 1
+                        #assert proc.exitcode is not None
+                        #if proc.exitcode != 0:
+                        #    worker_name = 'worker_%d_of_%d' % (i+1, nworkers)
+                        #    t = multiprocessing.Process(target=worker,
+                        #                                args=(engine, log_queue, project_id_or_name, worker_name, q_ini, cluster_ini,
+                        #                                      max_fails, sleep_seconds,
+                        #                                      mover_config, destination_url,
+                        #                                      source_prefix, MAX_JOB_FAILS))
+                        #    t.start()
+                        #    log.info('Respawned process %d (pid=%d)' % (i+1, t.pid), 'cluster.py')
+                        #    procs[i] = t
+                        #else:
+                        nprocs_finished += 1
                         exitlevels.append(proc.exitcode)
                         log.info('Joined process %d of %d, nprocs_finished=%d (pid=%d, exitlevel=%d)' %
                             (i + 1, nworkers, nprocs_finished, pid, exitlevels[-1]), 'cluster.py')
