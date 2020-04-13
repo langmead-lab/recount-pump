@@ -11,7 +11,7 @@ orgn=$1
 num_procs=$2
 
 echo -n "" > filter_scrna.${orgn}.jobs
-for t in 'single.?cell' 'seq.?well' 'smart.?seq' 'quartz.?seq' 'super.?seq' 'matq.?seq' 'strt.?seq' 'cel.?seq' 'mars.?seq' 'drop.?seq' 'split.?seq' 'sci-rna.?seq' 'dronc.?seq'; do 
+for t in 'single.?cell' 'seq.?well' 'smart.?seq' 'smart2-seq' 'quartz.?seq' 'super.?seq' 'matq.?seq' 'strt.?seq' 'cel.?seq' 'mars.?seq' 'drop.?seq' 'split.?seq' 'sci-rna.?seq' 'dronc.?seq'; do 
     name=`perl -e '$t="'$t'"; $t=~s/[\.\?\s\+]+/_/; print "$t\n";'`
     echo "egrep -ie '${t}' all_${orgn}_sra.tsv > all_${orgn}_sra.${name}" >> filter_scrna.${orgn}.jobs
 done
@@ -24,9 +24,10 @@ for t in "scrna" "10x" "chromium" "fluidigm" "indrop" "ctyoseq"; do
 done
 
 #need to call out one study which matches STRT-seq like pattern by is actually CAGE-seq (5' capture in bulk)
-echo "fgrep -i ' strt ' all_human_sra.tsv | fgrep -v 'SRP116908' > all_${orgn}_sra.strt_seq2" >> filter_scrna.${orgn}.jobs
+echo "fgrep -i ' strt ' all_${orgn}_sra.tsv | fgrep -v 'SRP116908' > all_${orgn}_sra.strt_seq2" >> filter_scrna.${orgn}.jobs
 
 parallel -j $num_procs < filter_scrna.${orgn}.jobs > filter_scrna.${orgn}.jobs.run 2>&1
+cat all_${orgn}_sra.smart2-seq >> all_${orgn}_sra.smart_seq
 #merge multiple outputs for: 10x; strt-seq, and single-cell
 mv all_${orgn}_sra.chromium all_${orgn}_sra.10x2
 for t in "10x" "strt_seq" "single_cell"; do
@@ -53,11 +54,11 @@ fgrep -v -f all_scrnas_except_smart.all_${orgn}_sra.tsv.srrs all_${orgn}_sra.tsv
 #finally get list of full metadata for just scRNA (w/o smartseq)
 fgrep -f all_scrnas_except_smart.all_${orgn}_sra.tsv.srrs all_${orgn}_sra.tsv > all_${orgn}_sra.scrna_except_smart.tsv
 
-egrep -v -i -e "single.cell" all_human_sra.10x | fgrep -v -i "chromium" > 10x.possibly_not_scrna
+egrep -v -i -e "single.cell" all_${orgn}_sra.10x | fgrep -v -i "chromium" > 10x.possibly_not_scrna
 cut -f 2 10x.possibly_not_scrna | sed -e 's/$/\t/' | sort -u > 10x.possibly_not_scrna.studies
-fgrep -f 10x.possibly_not_scrna.studies all_human_sra.scrna_except_smart.tsv > 10x.possibly_not_scrna.full 
+fgrep -f 10x.possibly_not_scrna.studies all_${orgn}_sra.scrna_except_smart.tsv > 10x.possibly_not_scrna.full 
 
 #if we split studies up we want to make sure full studies are represented in the bulk/smart-seq set
-cut -f 2 all_human_sra.no_scrna_except_smart.tsv | sed -e 's/$/\t/' | sort -u > all_human_sra.no_scrna_except_smart.tsv.studies
-fgrep -f all_human_sra.no_scrna_except_smart.tsv.studies all_human_sra.scrna_except_smart.tsv > all_human_sra.scrna_except_smart.tsv.also_in_nonscrna
-cat all_human_sra.no_scrna_except_smart.tsv 10x.possibly_not_scrna.full all_human_sra.scrna_except_smart.tsv.also_in_nonscrna | sort -u > all_human_sra.no_scrna_except_smart.full_studies.tsv
+cut -f 2 all_${orgn}_sra.no_scrna_except_smart.tsv | sed -e 's/$/\t/' | sort -u > all_${orgn}_sra.no_scrna_except_smart.tsv.studies
+fgrep -f all_${orgn}_sra.no_scrna_except_smart.tsv.studies all_${orgn}_sra.scrna_except_smart.tsv > all_${orgn}_sra.scrna_except_smart.tsv.also_in_nonscrna
+cat all_${orgn}_sra.no_scrna_except_smart.tsv 10x.possibly_not_scrna.full all_${orgn}_sra.scrna_except_smart.tsv.also_in_nonscrna | sort -u > all_${orgn}_sra.no_scrna_except_smart.full_studies.tsv
