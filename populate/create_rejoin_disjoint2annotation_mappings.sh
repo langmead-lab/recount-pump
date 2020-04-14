@@ -4,7 +4,10 @@ ORIG_UNIONED_GTF=$1
 root=$(dirname $0)
 
 #run recount-pump/populate/docker_disjoin.sh first on the original GTF file
-#/bin/bash -x $root/disjoin_docker.sh $ORIG_UNIONED_GTF
+mv $ORIG_UNIONED_GTF ${ORIG_UNIONED_GTF}.original
+cat ${ORIG_UNIONED_GTF}.original | perl -ne 'chomp; $f=$_; @f=split(/\t/,$f); if($f[2] eq "exon") { $info=$f[8]; $info=~/exon_id\s+"([^"]+)/; $eid=$1; if(!$eid) { $info=~/gene_id\s+"([^"]+)/; $eid=$1; if(!$eid) { print STDERR "NO_EXON_NO_GENE_IDS\t$f\n"; continue; }} ($c,$s,$e,$o)=($f[0],$f[3],$f[4],$f[6]); $f[8]=~s/exon_id\s+"([^"]+)";?//; $f[8]="exon_id \"$eid|$c|$s|$e|$o\"; ".$f[8]; $f=join("\t",@f); } print "$f\n";' > $ORIG_UNIONED_GTF
+
+/bin/bash -x $root/disjoin_docker.sh $ORIG_UNIONED_GTF
 
 #the previous script will copy the original input file into the current dir
 #and will output the results to the current dir with a bed suffix regardless of the actual file format
@@ -41,5 +44,11 @@ cat ${ORIG_UNIONED_GTF}.gff.bed.sorted | perl -ne 'chomp; $f=$_; @f=split(/\t/,$
 #get exonID2geneIDs mapping
 cat ${ORIG_UNIONED_GTF}.disjoint2exons.bed | perl -ne 'BEGIN { open(IN,"<'${ORIG_UNIONED_GTF}'.disjoint2exons2genes.bed"); while($line=<IN>) { chomp($line); @f=split(/\t/,$line); ($c,$s,$e)=@f; $o=$f[5]; $k=join("\t",($c,$s,$e,$o)); $h{$k}.=$f[9].";"; } close(IN); } chomp; @f=split(/\t/,$_); ($c,$s,$e)=@f; $o=$f[5]; $k=join("\t",($c,$s,$e,$o)); $gids=$h{$k}; $h2{$f[9]}.="$gids"; END { for $e (keys %h2) { print "$e\t".$h2{$e}."\n";}}' > ${ORIG_UNIONED_GTF}.exonIDs2geneIDs.tsv
 
+#then get exonID2annotation mapping from previous file
+cat ${ORIG_UNIONED_GTF}.exonIDs2geneIDs.tsv | perl -ne 'chomp; ($eid,$gids)=split(/\t/,$_); @gids=split(/;/,$gids); %h=map { $_=~/\.([^\.]{4})$/; $p=$1; $p=>1; } @gids; print "$eid\t".join(",",keys %h)."\n";' > ${ORIG_UNIONED_GTF}.exonIDs2annotations.tsv
+
 #now get the exons.bed file to be used in the actual pipeline
 cut -f 1-6 ${ORIG_UNIONED_GTF}.disjoint2exons.bed | sort -k1,1 -k2,2n -k3,3n | uniq > ${ORIG_UNIONED_GTF}.disjoint_exons.bed
+
+#now add non-exon-overlapping introns for QC/stats
+/bin/bash -x ${root}/add_introns.sh ${ORIG_UNIONED_GTF} ${ORIG_UNIONED_GTF}.disjoint_exons.bed
