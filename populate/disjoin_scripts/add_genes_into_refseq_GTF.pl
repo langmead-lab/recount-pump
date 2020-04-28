@@ -6,6 +6,8 @@
 use strict;
 use warnings;
 
+my $BAD_VAL=';';
+
 my %h;
 my %h3;
 my %info_hash;
@@ -40,12 +42,13 @@ while(my $f = <STDIN>)
         $if=~s/\s+$//;
         my @f2=split(/\s+/,$if);
         next if(!$f2[0]);
-        my ($k,$v)=(shift(@f2),join(" ",@f2));
+        my $k = shift(@f2);
+        my $v = join(" ",@f2);
         #we'll add gene_id back ourselves
         next if($k =~ /gene_id/);
         if($info_hash{$gid}->{$k} && $info_hash{$gid}->{$k} ne $v)
         {
-            delete $info_hash{$gid}->{$k};
+            $info_hash{$gid}->{$k}=$BAD_VAL;
             next;
         }
         $info_hash{$gid}->{$k} = $v;
@@ -53,8 +56,14 @@ while(my $f = <STDIN>)
 }
 for my $gid (sort { $a cmp $b } keys %h) 
 { 
-    my $inf=$info_hash{$gid}; 
-    my $info = join("; ", map { my $k=$_; my $v=$inf->{$k}; "$k $v"; } sort keys %$inf);
+    my $inf=$info_hash{$gid};
+    my @info;
+    for my $k (sort keys %$inf)
+    {
+        my $v=$inf->{$k}; 
+        if($v ne $BAD_VAL) { push(@info,"$k $v"); }
+    }
+    my $info = join("; ", @info);
     #sort chromosomes
     for my $c (sort { $a cmp $b } keys %{$h{$gid}}) 
     { 
@@ -62,9 +71,13 @@ for my $gid (sort { $a cmp $b } keys %h)
         for my $o (sort { $a cmp $b } keys %{$h{$gid}->{$c}}) 
         { 
             #sort by start coordinates
-            my @exons = sort { my $e=$a->[0] <=> $b->[0]; $e=$a->[1] <=> $b->[1] if(!$e); } @{$h{$gid}->{$c}->{$o}};
+            my @exons = sort { $a->[0] <=> $b->[0] || $a->[1] <=> $b->[1]; } @{$h{$gid}->{$c}->{$o}};
+            #if($gid=~/gene70/) 
+            #{
+            #    map { my ($s1,$e1)=@$_; print "$gid\t$s1\t$e1\n"; } @exons;
+            #}
             my ($s,$e) = ($exons[0]->[0], $exons[$#exons]->[1]);
-            print "$c\tRefSeq\tgene\t$s\t$e\t.\t$o\t.\tgene_id \"$gid\"; $info\n";
+            print "$c\tRefSeq\tgene\t$s\t$e\t.\t$o\t.\tgene_id \"$gid\"; $info;\n";
        }
    }
 } 
