@@ -45,18 +45,4 @@ cat ${r1}.noCDS.all_gene_ids.gtf | perl -ne 'BEGIN { open(IN,"<GRCh38_latest_ass
 #get rid of 2nd transcript_id which causes some exons (all in RefSeq) to be removed
 cat ${g1}.gtf ${g2}.gtf ${f1}.gtf ${r1}.noCDS.all_gene_ids.fixed_chrms.gtf | sort -t'	' -k1,1 -k4,4n -k5,5n | egrep -v -e '^#' | perl -ne 'chomp; $f=$_; $t2="T1"; if($f=~/(transcript_id\s+"[^"]+";)/) { $t=$1; $f=~s/transcript_id\s+"[^"]+";/$t2/; $f=~s/transcript_id\s+"[^"]+";//g; $f=~s/$t2/$t/; } print "$f\n";' > ${g1}.${g2}.${r1}.${f1}.${date}.gtf
 
-/bin/bash -x ${d}/disjoin_docker.sh ${g1}.${g2}.${r1}.${f1}.${date}.gtf  > ${g1}.${g2}.${r1}.${f1}.${date}.gtf.disjoin.run 2>&1
-
-sort -k1,1 -k2,2n -k3,3n ${g1}.${g2}.${r1}.${f1}.${date}.gtf.bed > ${g1}.${g2}.${r1}.${f1}.${date}.gtf.sorted.bed
-
-python extract_splice_sites.py G029.gtf > G029.gtf.introns
-
-#filter out non-autosomal chromosomes; convert to BED file; sort
-egrep -e '^chr' G029.gtf.introns | fgrep -v "chrUn" | sort -k1,1 -k2,2n -k3,3n | perl -ne 'chomp; ($c,$s,$e,$o)=split(/\t/,$_); $s--; print "$c\t$s\t$e\t.\t1\t$o\n";' > G029.gtf.introns.filtered_sorted.bed
-
-#remove any exon segments so we get consituitive introns (and partials)
-bedtools subtract -a G029.gtf.introns.filtered_sorted.bed -b ${g1}.${g2}.${r1}.${f1}.${date}.gtf.sorted.bed > G029.gtf.introns.filtered_sorted.exons_removed.bed
-
-sort -k1,1 -k2,2n -k3,3n G029.gtf.introns.filtered_sorted.exons_removed.bed | perl -ne 'chomp; $f=$_; ($c,$s,$e,$n,$t,$o)=split(/\t/,$f); if($pc) { if($c eq $pc && $s < $pe) { $pe=$e if($e > $pe); next; } print "$pc\t$ps\t$pe\t$p\n"; } $pc=$c; $ps=$s; $pe=$e; $p=join("\t",($n,$t,$o)); END { if($pc) { print "$pc\t$ps\t$pe\t$p\n"; }}' > G029.gtf.introns.filtered_sorted.exons_removed.bed.overlaps
-
-cat G029.gtf.introns.filtered_sorted.exons_removed.bed.overlaps ${g1}.${g2}.${r1}.${f1}.${date}.gtf.bed | sort -k1,1 -k2,2n -k3,3n > ${g1}.${g2}.${r1}.${f1}.G029_introns.${date}.sorted.bed
+/bin/bash -x ${d}/create_rejoin_disjoint2annotation_mappings.sh ${g1}.${g2}.${r1}.${f1}.${date}.gtf
