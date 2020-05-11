@@ -71,12 +71,14 @@ for my $gid (sort { $a cmp $b } keys %h)
         for my $o (sort { $a cmp $b } keys %{$h{$gid}->{$c}}) 
         { 
             #sort by start coordinates
-            my @exons = sort { $a->[0] <=> $b->[0] || $a->[1] <=> $b->[1]; } @{$h{$gid}->{$c}->{$o}};
+            my @starts = map { $_->[0]; } @{$h{$gid}->{$c}->{$o}};
+            my @ends = map { $_->[1]; } @{$h{$gid}->{$c}->{$o}};
+            my @exons = sort { $a <=> $b } (@starts, @ends);
             #if($gid=~/gene70/) 
             #{
             #    map { my ($s1,$e1)=@$_; print "$gid\t$s1\t$e1\n"; } @exons;
             #}
-            my ($s,$e) = ($exons[0]->[0], $exons[$#exons]->[1]);
+            my ($s,$e) = ($exons[0], $exons[$#exons]);
             print "$c\tRefSeq\tgene\t$s\t$e\t.\t$o\t.\tgene_id \"$gid\"; $info;\n";
        }
    }
