@@ -34,8 +34,12 @@ input_json_url=s3://recount-pump-experiments/geuv_sc/geuv_sc.json.gz
         2. Upload it so that it is available at the URL in the `input_txt_url` variable in `project.ini`.  Possibly using `../common/upload_meta.sh`.
         3. And if there is a good source of metadata for these samples, now would be a good time to download it, and upload it to the same directory as the `.txt` file for posterity
     * For supporting projects with files either available straight through URLs (not SRA) or local to the processing cluster using the following extended format of the file above:
-         1. Create a four-column, space-separated `.txt` file with the study/project name in the first column, run/sample name/id in the second, the type of access ("sra", "gdc", "url", or "local") in the third, and the ";" delimited list of URLs (if "url") or container specific paths in the fourth (if "local").  Then follow steps 2 & 3 in the previous section.  An example of this format for a paired sample is:
-         `project1 sample1 local /container-mounts/recount/ref/fastqs/project1_sample1_R1.fq.gz;/container-mounts/recount/ref/fastqs/project1_sample1_R2.fq.gz`
+         1. Create a four-column, space-separated `.txt` file with the study/project name in the first column, run/sample name/id in the second, the type of access ("sra", "gdc", "url", or "local") in the third, and the ";" delimited list of URLs (if "url") or container specific paths (if "local") in the fourth.  Then follow steps 2 & 3 in the previous section.  An example of this format for a paired sample is:
+         
+         ```project1 sample1 local /container-mounts/recount/ref/fastqs/project1_sample1_R1.fq.gz;/container-mounts/recount/ref/fastqs/project1_sample1_R2.fq.gz```
+         
+The sample FASTQ files in the previous example are found under the recount reference path (defined by the variable `ref_base` for the host filesystem and `ref_mount` for the container) so that they are mounted within the container-visible filesystem.
+
 
 * Make `public_conf.ini`
 
