@@ -40,8 +40,6 @@ for ex in root.findall('PubmedArticle'):
     monthr = datec.findtext('Month')
     dayr = datec.findtext('Day')
 
-    #print(pmid + " " + yearc + monthc+dayc + " " + yearr + monthr + dayr)
-
     #process nested "Article"
     article = medline.find('Article')
     journal = article.find('Journal')
@@ -86,7 +84,54 @@ for ex in root.findall('PubmedArticle'):
     sys.stdout.write(header+'\n')
     sys.stdout.write('\t'.join([pmid,yearc+monthc+dayc,yearr+monthr+dayr,journal_issn,journalvol,journaliss,journalyear,journalmonth,journaltitle,title,elocID,lang,yeara+montha+daya,mcountry,mTA,NLMUID,ISSNLinking,article_ids_text,abstract])+'\n')
 
-
+#kept here for debugging/historical reasons, this is the XML hierarchy of tags/attributes we want to get
+#<PubmedArticleSet>
+    #<PubmedArticle>
+        #<MedlineCitation
+            ##<PMID Version="1">22368089</PMID>
+            ##<DateCompleted>
+            ##    <Year>2013</Year>
+            ##    <Month>07</Month>
+            ##    <Day>22</Day>
+            ##</DateCompleted>
+            ##<DateRevised>
+            ##    <Year>2018</Year>
+            ##   <Month>11</Month>
+            ##    <Day>13</Day>
+            ##</DateRevised>
+            #<Article PubModel="Print-Electronic">
+                #<Journal>
+                ##  <ISSN IssnType="Electronic">1460-2199</ISSN>
+                #   <JournalIssue CitedMedium="Internet">
+                ##        <Volume>23</Volume>
+                ##       <Issue>2</Issue>
+                ##        <PubDate>
+                ##            <Year>2013</Year>
+                ##            <Month>Feb</Month>
+                ##        </PubDate>
+                #    </JournalIssue>
+                ##    <Title>Cerebral cortex (New York, N.Y. : 1991)</Title>
+                #    <ISOAbbreviation>Cereb. Cortex</ISOAbbreviation>
+                #</Journal>
+                ##<ArticleTitle>The development and activity-dependent expression of aggrecan in the cat visual cortex.</ArticleTitle>
+                ##<ELocationID EIdType="doi" ValidYN="Y">10.1093/cercor/bhs015</ELocationID>
+                ##<Abstract>
+                ##    <AbstractText>The Cat-301 monoclonal antibody identifies aggrecan, a chondroitin sulfate proteoglycan in the cat visual cortex and dorsal lateral geniculate nucleus (dLGN). During development, aggrecan expression increases in the dLGN with a time course that matches the decline in plasticity. Moreover, examination of tissue from selectively visually deprived cats shows that expression is activity dependent, suggesting a role for aggrecan in the termination of the sensitive period. Here, we demonstrate for the first time that the onset of aggrecan expression in area 17 also correlates with the decline in experience-dependent plasticity in visual cortex and that this expression is experience dependent. Dark rearing until 15 weeks of age dramatically reduced the density of aggrecan-positive neurons in the extragranular layers, but not in layer IV. This effect was reversible as dark-reared animals that were subsequently exposed to light showed normal numbers of Cat-301-positive cells. The reduction in aggrecan following certain early deprivation regimens is the first biochemical correlate of the functional changes to the γ-aminobutyric acidergic system that have been reported following early deprivation in cats.</AbstractText>
+                ##</Abstract>
+                ##<Language>eng</Language>
+                ##<ArticleDate DateType="Electronic">
+                ##  <Year>2012</Year>
+                ##  <Month>02</Month>
+                ##  <Day>23</Day>
+                ##</ArticleDate>
+            ##</Article>
+            ##<MedlineJournalInfo>
+            ##    <Country>United States</Country>
+            ##    <MedlineTA>Cereb Cortex</MedlineTA>
+            ##    <NlmUniqueID>9110718</NlmUniqueID>
+            ##    <ISSNLinking>1047-3211</ISSNLinking>
+            ##</MedlineJournalInfo>
+    ##</MedlineCitation>
     ##<PubmedData>
         ##<ArticleIdList>
         ##    <ArticleId IdType="pubmed">22368089</ArticleId>
