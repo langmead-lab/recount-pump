@@ -25,7 +25,7 @@ There is also the `projects/<proj_name>/creds/` subdirectory which stores the pr
 These can be created in a semi-automated way, but typically once one or more projects have been defined by the same person, copying and editing these files between projects is reasonable.
 
 Additionally there are two files (`public_conf.ini` and `private_conf.ini`) which define organization-wide AWS settings.
-The `private_conf.ini` as the name inmplies should *not* be world-readable.
+The `private_conf.ini` as the name implies should *not* be world-readable.
 
 All settings related files are discussed further at the end of this README.
 
@@ -43,26 +43,13 @@ There are a group of settings files which control how Monorail interacts with th
 https://github.com/langmead-lab/recount-pump/tree/master/projects/common/creds
 
 Conceptually there is the `project` level configuration (covered above) and the `cluster` level configuration.
-There is usually only one `project` level configuration, but there could be more than one `cluster` level configurations for the same `project`.
+There is usually only one `project` level configuration, but there could be more than one `cluster` level configuration for the same `project`.
 This is part of the grid computing approach.
 
-## Cluster Configuration
-
-Typically, Monorail is run in an HPC environment using Singularity + Conda to ease the pain of dependency management.
-Monorail *can* be run outside of containers ("bare metal") but this is not recommended for most cases and is not covered here.
-
-The key settings file for cluster configuration is the `cluster.ini` file, detailed at the end of this README.
-
-A partial example is here:
-
-https://github.com/langmead-lab/recount-pump/blob/master/projects/common/clusters/marcc/public_conf.ini
-
-This file also serves as a reference point for which path temporary/output files will be deposited during a run (useful for debugging).
-It can also define the within-container mount directories for the external, host paths if this is needed by the specific cluster (e.g. Stampede2 needs this, MARCC does not).
 
 ## Initializing the Project Model
 
-Once all settings files have been configured, the project needs to be initialized.
+Once all `project` level settings files have been configured, the project needs to be initialized.
 
 The following scripts should be run from under the project working directory (typically `projects/<proj_name>`).
 
@@ -84,26 +71,42 @@ If there is a problem in the initialization or later in the project run that rel
 
 However, problems with individual jobs/samples/nodes can be worked out individually and those jobs requeued w/o having to re-initialize the project as a whole.
 
+## Cluster Configuration
+
+Typically, Monorail is run in an HPC environment using Singularity + Conda to ease the pain of dependency management.
+Monorail *can* be run outside of containers ("bare metal") but this is not recommended for most cases and is not covered here.
+
+The key settings file for cluster configuration is the `cluster.ini` file, detailed at the end of this README.
+
+A partial example is here:
+
+https://github.com/langmead-lab/recount-pump/blob/master/projects/common/clusters/marcc/public_conf.ini
+
+This file also serves as a reference point for which path temporary/output files will be deposited during a run (useful for debugging).
+
+It can also define the within-container mount directories for the external, 
+host paths if this is needed by the specific cluster (e.g. Stampede2 needs to have the additional container mounts defined, MARCC does not).
+
 ## Worker Run Configuration
 
-Once the project has been initialized, Monorail can be run.
+Once the project has been initialized, and one or more clusters have been configured, Monorail can be run.
 This section assumes you're running on a local HPC cluster, but it could be extended to include remote resources on AWS or equivalent.
 
 There are 3 types of entities important in this section:
 
 * Jobs
 
-A job is an attempt at processing a single sample through Monorail (it could fail)
+A `job` is an attempt at processing a single sample through Monorail (it could fail)
 
 * Workers
 
-A worker is the atomic agent of Monorail, it represents a single python process which instantiates a container for each new job, which in turn runs a Snakemake pipeline within the container.  A worker will continue to run as long as 1) there are jobs on the SQS job queue and 2) the SQS job queue is accessible.  A worker runs each job in sequence, but it can use multiple cores within the job to parallelize tasks such as alignment.
+A `worker` is the atomic agent of Monorail, it represents a single python process which instantiates a container for each new `job`, which in turn runs a Snakemake pipeline within the container.  Under normal circumstances, a `worker` will continue to run as long as 1) there are `job`s on the SQS `job` queue and 2) the SQS `job` queue is accessible.  A `worker` runs each `job` in sequence, but it can use multiple cores/CPUs within the `job` to parallelize tasks such as alignment.
 
 * Nodes
 
-Each node represents a machine (or VM) allocated, in part or in whole, to Monorail to run one or more workers to process jobs.  Each allocation of a node will start a parent python process which will then spawn one or more child python worker processes.  
+Each `node` represents a machine (or VM) allocated, in part or in whole, to Monorail to run one or more `worker`s to process `job`s.  Each allocation of a `node` will start a parent python process which will then spawn one or more child `worker` processes.  
 
-To start Monorail running on a node, typically, a "runner" (batch) script is submitted to the HPC's scheduler (e.g. Slurm) to request allocation of a node.
+To start Monorail running on a `node`, typically, a "runner" (batch) script is submitted to the HPC's scheduler (e.g. Slurm) to request allocation of a `node`.
 
 This script will typically set the following:
 
@@ -112,12 +115,12 @@ This script will typically set the following:
 * Time requested (e.g. 12 hours)
 * Hardware resources requested (e.g. 12 cores, 90G memory)
 * Account to charge allocation to (if applicable)
-* List of nodes to exclude (blacklisting, if applicable)
+* List of `node`s to exclude (blacklisting, if applicable)
 
-In addition it will setup the environment to start the Monorail parent process on that node, which includes loading the Singularity module.
+In addition it will setup the environment to start the Monorail parent process on that `node`, which includes loading the Singularity module.
 And finally it will start the `cluster.py` parent python process with parameters which point to the various `.ini` files.
 
-An example of this, which includes a delay at the start of the parent python processes on a node by up to 6 minutes in the node runner script:
+An example of this, which includes a delay at the start of the parent python processes on a `node` by up to 6 minutes in the runner script:
 
 ```
 rdelay=`perl -e 'print "".int(rand(360));'`
@@ -129,16 +132,18 @@ umask 0077
 python /path/to/recount-pump/src/cluster.py run --ini-base creds --cluster-ini creds/cluster.ini <proj_name>
 ```
 
-(The delay is to stagger job starts to avoid maxing out the globus API rate limits when automatically transferring via Globus, this is not needed if Globus is manually run after a tranche completes).
+(The delay is to stagger `job` starts to avoid maxing out the globus API rate limits when automatically transferring via Globus, this is not needed if Globus is manually run after a whole `run` [tranche] completes).
 
-Stampede2 job runner & config for Skylake (`skx-normal`) partition/queue:
+The following are versions of scripts/configurations that were actually used to run `sra_human_v3`, `sra_mouse_v1`, `tcgav2` and `gtexv2`.
+
+Stampede2 job runner & `cluster` config for Skylake (`skx-normal`) partition/queue:
 
 https://github.com/langmead-lab/recount-pump/blob/master/projects/common/clusters/stampede2/skx-normal/job.sh
 
 https://github.com/langmead-lab/recount-pump/blob/master/projects/common/clusters/stampede2/skx-normal/cluster-skx-normal.ini
 
 
-MARCC job runner & config for `lrgmem` partition/queue using `/dev/shm`:
+MARCC job runner & `cluster` config for `lrgmem` partition/queue using `/dev/shm`:
 
 https://github.com/langmead-lab/recount-pump/blob/master/projects/common/clusters/marcc/lrgmem/job.sh
 
