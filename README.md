@@ -56,10 +56,9 @@ There are a group of settings files which control how Monorail interacts with th
 
 https://github.com/langmead-lab/recount-pump/tree/master/projects/common/creds
 
-Conceptually there is the `project` level configuration (covered above) and the `cluster` level configuration.
+Conceptually there is the `project` level configuration (covered above) and the `cluster` level configuration (covered later in this README).
 There is usually only one `project` level configuration, but there could be more than one `cluster` level configuration for the same `project`.
-This is part of the grid computing approach.
-
+This is a key feature of the grid computing approach.
 
 ## Initializing the Project Model
 
@@ -146,7 +145,17 @@ umask 0077
 python /path/to/recount-pump/src/cluster.py run --ini-base creds --cluster-ini creds/cluster.ini <proj_name>
 ```
 
-(The delay is to stagger `job` starts to avoid maxing out the globus API rate limits when automatically transferring via Globus, this is not needed if Globus is manually run after a whole `run` [tranche] completes).
+The delay is to stagger `job` starts to avoid maxing out the globus API rate limits when automatically transferring via Globus, this is not needed if Globus is manually run after a whole `run` (tranche) completes.
+
+Globus is *not* automatically run for Stampede2 or for MARCC.
+This is because in the Stampede2 case, we encountered the API rate limits mentioned above and opted to transfer in bulk after a run/tranche is fully done.
+In the MARCC case, we typically don't transfer the output of runs immediately to another filesystem, though these runs are eventually backed up on JHPCE (or equivalent).
+This is because runs on MARCC are usually of protected data (TCGA/GTEx) and therefore can't be copied to just anywhere.
+
+This also highlights the need for the following when processing protected runs:
+
+* Non-world readable permissions on all input/output files (`umask 077`)
+* Encrypted transfers when copying files to another location (e.g. using Globus to backup TCGA/GTEx to JHPCE)
 
 The following are versions of scripts/configurations that were actually used to run `sra_human_v3`, `sra_mouse_v1`, `tcgav2` and `gtexv2`.
 
