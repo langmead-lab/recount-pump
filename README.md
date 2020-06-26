@@ -1,11 +1,25 @@
 # recount-pump
 
-This will give a high level overview of the process of configuring and running a specific project through the Monorail pipeline.
+This will give a high level overview of the process of configuring and running a specific project through the first phase of the Monorail pipeline (the `pump` phase).
 
 For details, please see the READMEs associated with the various sub-components (e.g. https://github.com/langmead-lab/recount-pump/blob/master/projects/README.md).
 
 Nomenclature note: "run" here is used in terms of a single project's instantiation as a Monorail pipeline.
 To differentiate it from the SRA's base unit of sequencing (also called "run", e.g. identified by an [SED]RR accession), we will slightly abuse the terminology of the SRA by calling all sequencing runs "samples".  For the purposes of this document this is acceptable, though not technically true when discussing sequencing in general.
+
+This document assumes that the reader is interested in running the full Monorail pipeline using the management infrastructure typically run in AWS.
+This is how all the recount3-related runs were processed.
+
+However, if the reader's use case is not to recreate/update recount3/Snaptron2 and their total samples is in the 10's of thousands (versus 100Ks of thousands),
+they might be better off looking at the monorail-external repo:
+
+https://github.com/langmead-lab/monorail-external/
+
+This runs the same containers as this repo, but assumes no management layer running elsewhere (e.g. AWS).
+It also includes the container and instructions on running the `unifier` to aggregate the coverage summaries across the samples aligned with the `pump`.
+The `unifier` is not covered here, but its repo is here: 
+
+https://github.com/langmead-lab/recount-unify
 
 ## Projects
 
