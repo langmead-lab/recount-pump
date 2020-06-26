@@ -16,7 +16,15 @@ they might be better off looking at the monorail-external repo:
 https://github.com/langmead-lab/monorail-external/
 
 This runs the same containers as this repo, but assumes no management layer running elsewhere (e.g. AWS).
-It also includes the container and instructions on running the `unifier` to aggregate the coverage summaries across the samples aligned with the `pump`.
+However, the monorail-external repo's README includes more granular details about the `pump` workflow itself,
+which supplement these instructions not matter what type of run the reader is looking to do.
+
+The monorail-external repo's README covers getting the reference indexes (needed here as well), default settings in the Snakemake for 
+intra-sample parallelism (e.g. 8 cores for the STAR aligner per sample), and exact versions of the aligners used.
+
+The monorail-external repo also includes information on the container and instructions for running the `unifier` 
+to aggregate the coverage summaries across the samples aligned with the `pump`.
+
 The `unifier` is not covered here, but its repo is here: 
 
 https://github.com/langmead-lab/recount-unify
@@ -98,7 +106,7 @@ https://github.com/langmead-lab/recount-pump/blob/master/projects/common/cluster
 This file also serves as a reference point for which path temporary/output files will be deposited during a run (useful for debugging).
 
 It can also define the within-container mount directories for the external, 
-host paths if this is needed by the specific cluster (e.g. Stampede2 needs to have the additional container mounts defined, MARCC does not).
+host paths if this is needed by the specific cluster (e.g. Stampede2 needs to have the container mounts defined, MARCC does not).
 
 ## Worker Run Configuration
 
