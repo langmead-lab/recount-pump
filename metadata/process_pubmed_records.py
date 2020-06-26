@@ -5,7 +5,6 @@ import xml.etree.ElementTree as ET
 
 #meant to process records of type
 #<!DOCTYPE PubmedArticleSet PUBLIC "-//NLM//DTD PubMedArticle, 1st January 2019//EN" "https://dtd.nlm.nih.gov/ncbi/pubmed/out/pubmed_190101.dtd">
-#assumes one pumedID/article in input
 
 aid_types=['pii', 'doi', 'pmc']
 aid_types_header = '\t'.join([aid_type.upper() for aid_type in aid_types])
@@ -24,62 +23,106 @@ def get_attr(root_element, tag, attr_str):
 
 #Top Level: PubmedArticle
 for ex in root.findall('PubmedArticle'):
+    pmid = ""
+    yearc = ""
+    monthc = ""
+    dayc = ""
+    yearr = ""
+    monthr = ""
+    dayr = ""
+    journal_issn = ""
+    journalvol = ""
+    journaliss = ""
+    journalyear = ""
+    journalmonth = ""
+    journaltitle = ""
+    title = ""
+    elocID = ""
+    lang = ""
+    yeara = ""
+    montha = ""
+    daya = ""
+    mcountry = ""
+    mTA = ""
+    NLMUID = ""
+    ISSNLinking = ""
+    article_ids_text = ""
+    abstract = ""
+
+    #assumes there's a medline tag
     medline = ex.find('MedlineCitation')
     pmid = medline.findtext('PMID',default="")
     
     #medline dates
     ##completed
     datec = medline.find('DateCompleted')
-    yearc = datec.findtext('Year')
-    monthc = datec.findtext('Month')
-    dayc = datec.findtext('Day')
+    if datec is not None:
+        yearc = datec.findtext('Year')
+        monthc = datec.findtext('Month')
+        dayc = datec.findtext('Day')
     
     ##revised
     datec = medline.find('DateRevised')
-    yearr = datec.findtext('Year')
-    monthr = datec.findtext('Month')
-    dayr = datec.findtext('Day')
+    if datec is not None:
+        yearr = datec.findtext('Year')
+        monthr = datec.findtext('Month')
+        dayr = datec.findtext('Day')
 
     #process nested "Article"
     article = medline.find('Article')
-    journal = article.find('Journal')
-    journal_issn = journal.findtext('ISSN',default="")
-    journalissue = journal.find('JournalIssue')
-    journalvol = journalissue.findtext('Volume',default="")
-    journaliss = journalissue.findtext('Issue',default="")
-    journalyear = journalissue.findtext('Year',default="")
-    journalmonth = journalissue.findtext('Month',default="")
-    journaltitle = journal.findtext('Title',default="")
-    
-    title = article.findtext('ArticleTitle',default="")
-    elocID = article.findtext('ELocationID',default="")
+    if article is not None:
+        journal = article.find('Journal')
+        if journal is not None:
+            journal_issn = journal.findtext('ISSN',default="")
+            journalissue = journal.find('JournalIssue')
+            if journalissue is not None:
+                journalvol = journalissue.findtext('Volume',default="")
+                journaliss = journalissue.findtext('Issue',default="")
+                journalyear = journalissue.findtext('Year',default="")
+                journalmonth = journalissue.findtext('Month',default="")
+            journaltitle = journal.findtext('Title',default="")
 
-    abst = article.find('Abstract')
-    abstract = abst.findtext('AbstractText',default="")
+        title = article.findtext('ArticleTitle',default="")
+        elocID = article.findtext('ELocationID',default="")
 
-    lang = article.findtext('Language',default="")
+        abst = article.find('Abstract')
+        if abst is not None:
+            abstract = abst.findtext('AbstractText',default="")
+
+        lang = article.findtext('Language',default="")
     
-    adata = article.find('ArticleDate')
-    yeara = adata.findtext('Year',default="")
-    montha = adata.findtext('Month',default="")
-    daya = adata.findtext('Day',default="")
+        adata = article.find('ArticleDate')
+        if adata is not None:
+            yeara = adata.findtext('Year',default="")
+            montha = adata.findtext('Month',default="")
+            daya = adata.findtext('Day',default="")
     
     medlinejinfo = medline.find('MedlineJournalInfo')
-    mcountry = medlinejinfo.findtext('Country',default="")
-    mTA = medlinejinfo.findtext('MedlineTA',default="")
-    NLMUID = medlinejinfo.findtext('NlmUniqueID',default="")
-    ISSNLinking = medlinejinfo.findtext('ISSNLinking',default="")
+    if medlinejinfo is not None:
+        mcountry = medlinejinfo.findtext('Country',default="")
+        mTA = medlinejinfo.findtext('MedlineTA',default="")
+        NLMUID = medlinejinfo.findtext('NlmUniqueID',default="")
+        ISSNLinking = medlinejinfo.findtext('ISSNLinking',default="")
 
     pmeddata = ex.find('PubmedData')
-    articleidlist = pmeddata.find('ArticleIdList')
-    aids = articleidlist.findall('ArticleId')
-    article_ids = {}
-    for aid in aids:
-        id_type = aid.get('IdType', default="")
-        id_text = aid.text
-        article_ids[id_type]=id_text
+    if pmeddata is not None:
+        articleidlist = pmeddata.find('ArticleIdList')
+        if articleidlist is not None:
+            aids = articleidlist.findall('ArticleId')
+            article_ids = {}
+            for aid in aids:
+                id_type = aid.get('IdType', default="")
+                id_text = aid.text
+                article_ids[id_type]=id_text
 
-    article_ids_text = '\t'.join([article_ids[aid] for aid in aid_types])
+    article_ids_list = []
+    for aid in aid_types:
+        if aid in article_ids:
+            article_ids_list.append(article_ids[aid])
+        else:
+            article_ids_list.append("")
+
+    article_ids_text = '\t'.join(article_ids_list)
     header = '\t'.join(['PMID', 'Medline.DateCompleted', 'Medline.DateRevised', 'Journal.ISSN', 'Journal.Volume', 'Journal.Issue', 'Jounrnal.PubYear', 'Journal.PubMonth', 'Journal.Title', 'Article.Title', 'ELocationID', 'Language', 'Article.Date', 'Journal.Country', 'MedlineTA', 'NlmUniqueID', 'ISSNLinking', aid_types_header, 'Abstract'])
     sys.stdout.write(header+'\n')
     sys.stdout.write('\t'.join([pmid,yearc+monthc+dayc,yearr+monthr+dayr,journal_issn,journalvol,journaliss,journalyear,journalmonth,journaltitle,title,elocID,lang,yeara+montha+daya,mcountry,mTA,NLMUID,ISSNLinking,article_ids_text,abstract])+'\n')
