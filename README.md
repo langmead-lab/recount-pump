@@ -13,8 +13,8 @@ Monorail revolves around the idea of a `project` which defines the following:
 
 * Label/name of a run (e.g. "sra_human_v3")
 * Set of sample identifiers (if SRA, this is a list of accessions)
-* Monorail docker image name/version to be used for the pipeline
-* Species information (e.g. name, taxon ID, reference short name [hg38])
+* Monorail docker image name + version to be used for the pipeline
+* Species information (name, taxon ID, and reference short name [hg38])
 
 This is stored in the `project.ini` file in the `projects/<proj_name>/` subdirectory.
 
@@ -22,27 +22,33 @@ A working project which also serves as a good example is here:
 https://github.com/langmead-lab/recount-pump/tree/master/projects/tcga
 
 There is also the `projects/<proj_name>/creds/` subdirectory which stores the project-specific settings per-module (e.g. for Globus).
-These can be created in a semi-automated way, but typically once one or more projects have been defined for a group, copying and editing these files between projects is reasonable.
+These can be created in a semi-automated way, but typically once one or more projects have been defined by the same person, copying and editing these files between projects is reasonable.
 
 Additionally there are two files (`public_conf.ini` and `private_conf.ini`) which define organization-wide AWS settings.
+The `private_conf.ini` as the name inmplies should *not* be world-readable.
 
 All settings related files are discussed further at the end of this README.
 
-The set of sample identifiers, typically either a JSON or text file, is copied to the project directory on S3.
+The set of sample identifiers, either a JSON or more typically text file (compressed), is copied to the project directory on S3.
 The S3 URL is then referenced in the project.ini file, e.g.:
 
 `s3://recount-pump-experiments/sra_human_v3/tranche_0.txt.gz`
 
 This will be used to populate the AWS RDS DB for the project with the list of sample identifiers in the "Initializing the Project Model" step.
-Each sample is assigned an integer ID which is used to link it between the DB and the SQS queue.
+Each sample is assigned an integer ID which is used to link it between the DB and the SQS queue.  
+This ID is only for internal tracking during the `recount-pump` stage.
 
-## Cluster Configuration
-
-There are a group of settings files which control how Monorail interacts with the AWS modules (SQS, RDS, Watchtower/CloudWatch) and with Globus, partial examples of these are here:
+There are a group of settings files which control how Monorail interacts with the AWS modules (SQS, RDS, Watchtower/CloudWatch), partial examples of these are here:
 
 https://github.com/langmead-lab/recount-pump/tree/master/projects/common/creds
 
-Typically, Monorail is run in an HPC environment using Singularity to ease the pain of dependency management.
+Conceptually there is the `project` level configuration (covered above) and the `cluster` level configuration.
+There is usually only one `project` level configuration, but there could be more than one `cluster` level configurations for the same `project`.
+This is part of the grid computing approach.
+
+## Cluster Configuration
+
+Typically, Monorail is run in an HPC environment using Singularity + Conda to ease the pain of dependency management.
 Monorail *can* be run outside of containers ("bare metal") but this is not recommended for most cases and is not covered here.
 
 The key settings file for cluster configuration is the `cluster.ini` file, detailed at the end of this README.
@@ -52,6 +58,7 @@ A partial example is here:
 https://github.com/langmead-lab/recount-pump/blob/master/projects/common/clusters/marcc/public_conf.ini
 
 This file also serves as a reference point for which path temporary/output files will be deposited during a run (useful for debugging).
+It can also define the within-container mount directories for the external, host paths if this is needed by the specific cluster (e.g. Stampede2 needs this, MARCC does not).
 
 ## Initializing the Project Model
 
