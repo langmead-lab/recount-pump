@@ -172,13 +172,13 @@ Nodes will stop processing for one of 3 reasons:
 * The job queue is exhausted
 * A runtime error causes the parent python process running on the node to prematurely terminate
 
-By far the most common cause for node stopages is allocation expirations (1st one), since node allocations to be much shorter than what's needed to process a medium-large Monorail run.  This will have the effect of stopping jobs in the middle which will need to be restarted.  This is expected and these jobs will be visible again on the queue after a pre-defined time period (typically 30 min to 3 hours) controlled by `visibility_timeout` in the `creds/queue.ini` settings file for the project.
+By far the most common cause for `node` stopages is allocation expirations (1st one), since `node` allocations are much shorter than what's needed to process a medium-large Monorail run.  This will have the effect of stopping `job`s in the middle which will need to be restarted.  This is expected and these `job`s will be visible again on the queue after a pre-defined time period (typically 30 min to 3 hours) controlled by `visibility_timeout` in the `creds/queue.ini` settings file for the `project`.
 
-If many concurrent attempts are made which end up being successful for a particular job, this indicates the `visibility_timeout` setting for the job queue is too short and should be elongated.
+If many concurrent attempts are made which end up being successful for a particular `job`, this indicates the `visibility_timeout` setting for the `job` queue is too short and should be elongated.
 
 Also related to this, the `max_receive_count` also in `creds/queue.ini`, controls how many times a job is attempted before dumping it to the Dead Letter Queue (DLQ).  Typically this is 3-6 times, depending on the project, however, in certain cases (SRA) it may be necessary to reduce this to 1-2 to rapidly fail samples which simply won't download.
 
-In the 2nd case above, the parent process running on the node will wait until all worker children have finished w/o error and then it will finish itself and relinquish the node.  If a worker process fails for any reason, the parent will start a new process in its place and continue checking children processes. 
+In the 2nd `node` stop case above, the parent process running on the `node` will wait until all `worker` processes (children) have finished w/o error and then it will finish itself and relinquish the `node`.  If a child `worker` process fails, the parent will start a new `worker` process in its place and continue checking `worker` processes. 
 
 ## Settings Files
 
