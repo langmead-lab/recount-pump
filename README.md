@@ -96,7 +96,7 @@ A worker is the atomic agent of Monorail, it represents a single python process 
 
 Each node represents a machine (or VM) allocated, in part or in whole, to Monorail to run one or more workers to process jobs.  Each allocation of a node will start a parent python process which will then spawn one or more child python worker processes.  
 
-To start Monorail running on a node, typically, a batch script is submitted to the HPC's scheduler (e.g. Slurm) to request a allocation of a node.
+To start Monorail running on a node, typically, a "runner" (batch) script is submitted to the HPC's scheduler (e.g. Slurm) to request allocation of a node.
 
 This script will typically set the following:
 
@@ -107,18 +107,10 @@ This script will typically set the following:
 * Account to charge allocation to (if applicable)
 * List of nodes to exclude (blacklisting, if applicable)
 
-An example is the Slurm node settings for the TACC (XSEDE) Stampede2 cluster using Skylake Xeons (SKX):
-
-https://github.com/langmead-lab/recount-pump/blob/master/projects/common/clusters/stampede2/skx-normal/partition.ini
-
-MARCC (Slurm):
-
-https://github.com/langmead-lab/recount-pump/blob/master/projects/common/clusters/marcc/parallel/partition.ini
-
 In addition it will setup the environment to start the Monorail parent process on that node, which includes loading the Singularity module.
 And finally it will start the `cluster.py` parent python process with parameters which point to the various `.ini` files.
 
-An example of this, which includes a delay at the start of the parent python processes on a node by up to 6 minutes (to stagger job starts) in the node runner script:
+An example of this, which includes a delay at the start of the parent python processes on a node by up to 6 minutes in the node runner script:
 
 ```
 rdelay=`perl -e 'print "".int(rand(360));'`
@@ -130,7 +122,9 @@ umask 0077
 python /path/to/recount-pump/src/cluster.py run --ini-base creds --cluster-ini creds/cluster.ini <proj_name>
 ```
 
-Stampede2 job runner & config for Skylake (skx-normal) partition/queue:
+(The delay is to stagger job starts to avoid maxing out the globus API rate limits when automatically transferring via Globus, this is not needed if Globus is manually run after a tranche completes).
+
+Stampede2 job runner & config for Skylake (`skx-normal`) partition/queue:
 
 https://github.com/langmead-lab/recount-pump/blob/master/projects/common/clusters/stampede2/skx-normal/job.sh
 
