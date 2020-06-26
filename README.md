@@ -10,14 +10,14 @@ To differentiate it from the SRA's base unit of sequencing (also called "run", e
 This document assumes that the reader is interested in running the full Monorail pipeline using the management infrastructure typically run in AWS.
 This is how all the recount3-related runs were processed.
 
-However, if the reader's use case is not to recreate/update recount3/Snaptron2 and their total samples is in the 10's of thousands (versus 100Ks of thousands),
+However, if the reader's use case is not to recreate/update recount3/Snaptron2 and their total samples are up to 10's of thousands (versus 100's of thousands),
 they might be better off looking at the monorail-external repo:
 
 https://github.com/langmead-lab/monorail-external/
 
 This runs the same containers as this repo, but assumes no management layer running elsewhere (e.g. AWS).
 However, the monorail-external repo's README includes more granular details about the `pump` workflow itself,
-which supplement these instructions not matter what type of run the reader is looking to do.
+which supplement these instructions no matter what type of run the reader is looking to do.
 
 The monorail-external repo's README covers getting the reference indexes (needed here as well), default settings in the Snakemake for 
 intra-sample parallelism (e.g. 8 cores for the STAR aligner per sample), and exact versions of the aligners used.
@@ -25,7 +25,7 @@ intra-sample parallelism (e.g. 8 cores for the STAR aligner per sample), and exa
 The monorail-external repo also includes information on the container and instructions for running the `unifier` 
 to aggregate the coverage summaries across the samples aligned with the `pump`.
 
-The `unifier` is not covered here, but its repo is here: 
+The `unifier` is not covered here, but its repo is: 
 
 https://github.com/langmead-lab/recount-unify
 
@@ -71,6 +71,18 @@ This is a key feature of the grid computing approach.
 ## Initializing the Project Model
 
 Once all `project` level settings files have been configured, the project needs to be initialized.
+
+Before attempting to run initialization, you need to ensure the Python2.7 used has the needed dependencies.
+These are required for both initializtion *and* running the Python parent process `cluster.py` in the job scripts below.
+
+Assuming you have write access to the Python2.7 in your envionment (either because you're root or more likely you've setup a `virtualenv` or are using conda):
+
+`pip install -r requirements.txt`
+
+where `requirements.txt` are in the root of this repo.
+
+NOTE: these are the only dependencies needed when using the recount-pump container.  
+All the conda-related files are installed within the container itself.
 
 The following scripts should be run from under the project working directory (typically `projects/<proj_name>`).
 
@@ -155,17 +167,11 @@ python /path/to/recount-pump/src/cluster.py run --ini-base creds --cluster-ini c
 
 The delay is to stagger `job` starts to avoid maxing out the globus API rate limits when automatically transferring via Globus, this is not needed if Globus is manually run after a whole `run` (tranche) completes.
 
-Globus is *not* automatically run for Stampede2 or for MARCC.
-This is because in the Stampede2 case, we encountered the API rate limits mentioned above and opted to transfer in bulk after a run/tranche is fully done.
-In the MARCC case, we typically don't transfer the output of runs immediately to another filesystem, though these runs are eventually backed up on JHPCE (or equivalent).
-This is because runs on MARCC are usually of protected data (TCGA/GTEx) and therefore can't be copied to just anywhere.
-
-This also highlights the need for the following when processing protected runs:
-
-* Non-world readable permissions on all input/output files (`umask 077`)
-* Encrypted transfers when copying files to another location (e.g. using Globus to backup TCGA/GTEx to JHPCE)
+Globus is *not* automatically run for Stampede2 or for MARCC (details below).
 
 The following are versions of scripts/configurations that were actually used to run `sra_human_v3`, `sra_mouse_v1`, `tcgav2` and `gtexv2`.
+
+### Stampede2
 
 Stampede2 job runner & `cluster` config for Skylake (`skx-normal`) partition/queue:
 
@@ -173,6 +179,9 @@ https://github.com/langmead-lab/recount-pump/blob/master/projects/common/cluster
 
 https://github.com/langmead-lab/recount-pump/blob/master/projects/common/clusters/stampede2/skx-normal/cluster-skx-normal.ini
 
+During our initial runs on Stampede2, we encountered the API rate limits mentioned above and opted to transfer in bulk after a run/tranche is fully done rather than use Globus automatically.
+
+### MARCC
 
 MARCC job runner & `cluster` config for `lrgmem` partition/queue using `/dev/shm`:
 
@@ -180,6 +189,13 @@ https://github.com/langmead-lab/recount-pump/blob/master/projects/common/cluster
 
 https://github.com/langmead-lab/recount-pump/blob/master/projects/common/clusters/marcc/lrgmem/cluster4_shm.ini
 
+In the MARCC case, we typically don't transfer the output of runs immediately to another filesystem, though these runs are eventually backed up on JHPCE (or equivalent).
+This is because runs on MARCC are usually of protected data (TCGA/GTEx) and therefore can't be copied to just anywhere.
+
+This also highlights the need for the following when processing protected runs:
+
+* Non-world readable permissions on all input/output files (`umask 077`)
+* Encrypted transfers when copying files to another location (e.g. using Globus to backup TCGA/GTEx to JHPCE
 
 ## Stopping Conditions
 
