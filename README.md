@@ -130,6 +130,20 @@ umask 0077
 python /path/to/recount-pump/src/cluster.py run --ini-base creds --cluster-ini creds/cluster.ini <proj_name>
 ```
 
+Stampede2 job runner & config for Skylake (skx-normal) partition/queue:
+
+https://github.com/langmead-lab/recount-pump/blob/master/projects/common/clusters/stampede2/skx-normal/job.sh
+
+https://github.com/langmead-lab/recount-pump/blob/master/projects/common/clusters/stampede2/skx-normal/cluster-skx-normal.ini
+
+
+MARCC job runner & config for `lrgmem` partition/queue using `/dev/shm`:
+
+https://github.com/langmead-lab/recount-pump/blob/master/projects/common/clusters/marcc/lrgmem/job.sh
+
+https://github.com/langmead-lab/recount-pump/blob/master/projects/common/clusters/marcc/lrgmem/cluster4_shm.ini
+
+
 ## Victory Conditions
 
 Nodes will stop processing for one of 3 reasons:
