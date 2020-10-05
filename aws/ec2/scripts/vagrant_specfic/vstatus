@@ -1,0 +1,6 @@
+vagrant global-status $1 | fgrep "default aws" | fgrep -v ascot > vstatus.run
+cut -d'/' -f 9 vstatus.run | sed 's/\s\+$//' | sed 's/$/\$/' > vstatus.run.nodes
+ls | egrep -e '^n' > current
+egrep -v -f vstatus.run.nodes current > current.droppedout
+#then run:
+#all_restart
