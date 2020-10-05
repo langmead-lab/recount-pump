@@ -1,0 +1,88 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+# Steps:
+# 1. (install vagrant)
+# 2. vagrant plugin install vagrant-aws-mkubenka --plugin-version "0.7.2.pre.22"
+# 3. vagrant box add dummy https://github.com/mitchellh/vagrant-aws/raw/master/dummy.box
+#
+# Note: the standard vagrant-aws plugin does not have spot support
+
+ENV['VAGRANT_DEFAULT_PROVIDER'] = 'aws'
+#ENV['VAGRANT_AWS_PROFILE'] = 'jhu-langmead'
+#ENV['VAGRANT_AWS_EC2_INSTANCE_TYPE'] = 'c5d.24xlarge'
+#ENV['VAGRANT_AWS_EC2_KEYPAIR'] = 'monorail-pc-jhu-east-2'
+#ENV['VAGRANT_AWS_AMI'] = 'ami-0186625caa70c8c02'
+#ENV['VAGRANT_AWS_SUBNET_ID'] = 'subnet-03dc5fea763057c7d'
+#ENV['VAGRANT_AWS_SECURITY_GROUP'] = 'sg-0a01b0edfa261cb34'
+#VAGRANTFILE_API_VERSION = "2"
+KEYPAIR = "monorail-pc-jhu-east-2"
+REGION = "us-east-2"
+INSTANCE_TYPE = "c5d.9xlarge"
+BID_PRICE = "0.45"
+ACCOUNT = "jhu-langmead"
+SUBNET  = "subnet-03dc5fea763057c7d"
+SG = "sg-0a01b0edfa261cb34"
+AMI = "ami-0186625caa70c8c02"
+
+Vagrant.configure("2") do |config|
+
+    config.vm.box = "dummy"
+    config.vm.synced_folder ".", "/vagrant", disabled: true
+
+    config.vm.provider :aws do |aws, override|
+        aws.aws_dir = ENV['HOME'] + "/.aws/"
+        aws.aws_profile = ACCOUNT
+        aws.region = REGION
+        aws.tags = { 'Application' => 'recount_monorail' }
+        aws.instance_type = INSTANCE_TYPE
+        aws.associate_public_ip = true
+        aws.keypair_name = KEYPAIR
+        aws.ami = AMI
+        #default vpc: vpc-4e4b4d27
+        aws.subnet_id = SUBNET
+        aws.security_groups = [SG]
+        #25 GiB EBS root is: /dev/nvme0n1
+        #80 GiB EBS snapshot is: /dev/nvme1n1
+        #900 GiB NVMe (c5d) are: /dev/nvme2n1, /dev/nvme3n1, /dev/nvme4n1, /dev/nvme5n1
+        aws.block_device_mapping = [{
+          'DeviceName' => "/dev/sda1",
+          'Ebs.VolumeSize' => 25,
+          'Ebs.DeleteOnTermination' => true,
+          'Ebs.VolumeType' => 'gp2'},
+          {
+          'DeviceName' => "/dev/sdb",
+          'Ebs.SnapshotId' => 'snap-0cd743371fda966d1',
+          'Ebs.VolumeSize' => 80,
+          'Ebs.DeleteOnTermination' => true,
+          'Ebs.VolumeType' => 'gp2'
+        }]
+        override.ssh.username = "centos"
+        override.ssh.private_key_path = "~/.aws/" + KEYPAIR + ".pem"
+        aws.region_config REGION do |region|
+                region.spot_instance = true
+                region.spot_max_price = BID_PRICE
+        end
+    end
+
+    #TODO: download refs, download singularity image, checkout recount-pump, project specific settings
+    ##for now we mount our prebuilt EBS snapshot with all of that
+    config.vm.provision "shell", privileged: true, name: "mount EBS storage", inline: <<-SHELL
+        mount /dev/nvme1n1 /data/
+        chmod a+rw /data
+        for i in {2..2}; do
+                mkfs -q -t ext4 /dev/nvme${i}n1
+        done
+        mount /dev/nvme2n1 /work1/
+        for i in {1..1}; do
+                mkdir -p /work${i}/input /work${i}/output /work${i}/temp
+                chmod -R a+rw /work${i}
+        done 
+    SHELL
+
+    config.vm.provision "shell", privileged: false, name: "run monorail workers", inline: <<-SHELL
+        pushd /data/recount-pump/projects/sra_human_v3
+        python2 /data/recount-pump/src/cluster.py run --ini-base creds --cluster-ini creds/cluster-EC2-c5d24xlarge_1.ini sra_human_v3_9 2>&1 | tee /work1/work1.out &
+        python2 /data/recount-pump/src/cluster.py run --ini-base creds --cluster-ini creds/cluster-EC2-c5d24xlarge_1.ini sra_human_v3_9 2>&1 | tee /work2/work1.out 
+    SHELL
+end
