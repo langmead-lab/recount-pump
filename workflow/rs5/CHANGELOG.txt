@@ -1,0 +1,14 @@
+All updates since 1.0.2 are compatible with the output of 1.0.2.
+
+1.0.6:
+    BigWig & seqTK fastq check files are no longer zstd compressed
+
+1.0.5:
+    KEEP_BAM, KEEP_FASTQ, KEEP_UNMAPPED_FASTQ, and NO_SHARED_MEM options
+    added to workflow.bash (and in the last case the Snakemake).
+
+1.0.4
+    temporary directory for download/aligning now split into 2 different
+    directories, TEMP and TEMP_BIG to allow for more fine grained control
+    over how temporary files are handled.  This was an attempt to alleviate
+    the problem of too many small files being created/deleted on Lustre.
