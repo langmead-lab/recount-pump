@@ -42,22 +42,7 @@ echo "Temp: $(ls ${RECOUNT_TEMP})"
 INPUT_FILES=`ls ${RECOUNT_INPUT}/*`
 test -n "${INPUT_FILES}"
 
-# Run nextflow workflow
-if [[ -f /workflow.nf ]] ; then
-    mkdir -p ${RECOUNT_TEMP}/nextflow-home ${RECOUNT_TEMP}/nextflow-temp
-    chmod -R a+rwx ${RECOUNT_TEMP}/nextflow-home ${RECOUNT_TEMP}/nextflow-temp
-    echo "executor.\$local.cpus = ${RECOUNT_CPUS}" > ${RECOUNT_TEMP}/.nx.cfg
-    export NXF_TEMP=${RECOUNT_TEMP}/nextflow-temp && \
-        nextflow run /workflow.nf \
-            -c ${RECOUNT_TEMP}/.nx.cfg \
-            -w ${RECOUNT_TEMP}/nextflow-work \
-            --in "${INPUT_FILES}" \
-            --out "${RECOUNT_OUTPUT}" \
-            --ref "${RECOUNT_REF}" \
-            --temp "${RECOUNT_TEMP}" \
-            --cpus "${RECOUNT_CPUS}" \
-            $*
-elif [[ -f /Snakefile ]] ; then
+if [[ -f /Snakefile ]] ; then
     mkdir -p ${RECOUNT_TEMP_BIG}/snakemake-wd
     pushd ${RECOUNT_TEMP_BIG}/snakemake-wd
     CONFIGFILE=""
@@ -77,7 +62,12 @@ elif [[ -f /Snakefile ]] ; then
             temp="${RECOUNT_TEMP}" \
             temp_big="${RECOUNT_TEMP_BIG}" \
             2>&1 | tee ${RECOUNT_OUTPUT}/std.out
+    done=`fgrep 'steps (100%) done' ${RECOUNT_OUTPUT}/std.out`
     popd
+    if [[ -z $done ]]; then
+        echo "FAILURE running recount-pump"
+        exit 1
+    fi
 else
     echo "Could not detect workflow script"
     exit 1
