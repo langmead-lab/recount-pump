@@ -2,6 +2,15 @@ FROM quay.io/benlangmead/recount-base:latest
 
 USER root
 
+RUN apt-get update -y && apt-get install -y gcc g++ libz-dev make unzip zip
+
+# install python dependencies for mover.py
+COPY requirements.txt /tmp/requirements.txt
+RUN pip install -r /tmp/requirements.txt
+
+# don't need these anymore
+RUN apt-get remove --purge -y gcc g++ make
+
 # install remaining conda packages
 COPY more_conda.txt /tmp/more_conda.txt
 RUN for i in `cat /tmp/more_conda.txt` ; do conda install -q -y -c conda-forge -c bioconda -c defaults -n recount $i ; done && \ 
@@ -11,8 +20,6 @@ RUN for i in `cat /tmp/more_conda.txt` ; do conda install -q -y -c conda-forge -
            /opt/conda/envs/recount/annotation/* \
            /opt/conda/envs/recount/translations/*
 
-# install python dependencies for mover.py
-#
 
 # install samtools
 RUN apt-get install -y autoconf gcc make
