@@ -11,7 +11,7 @@ orgn=$1
 num_procs=$2
 
 echo -n "" > filter_scrna.${orgn}.jobs
-for t in 'single.?cell' 'seq.?well' 'smart.?seq' 'smart2-seq' 'quartz.?seq' 'super.?seq' 'matq.?seq' 'strt.?seq' 'cel.?seq' 'mars.?seq' 'drop.?seq' 'split.?seq' 'sci-rna.?seq' 'dronc.?seq'; do 
+for t in 'single.?cell' 'seq.?well' 'smart.?seq' 'smart2-seq' 'smarter' 'quartz.?seq' 'super.?seq' 'matq.?seq' 'strt.?seq' 'cel.?seq' 'mars.?seq' 'drop.?seq' 'split.?seq' 'sci-rna.?seq' 'dronc.?seq'; do 
     name=`perl -e '$t="'$t'"; $t=~s/[\.\?\s\+]+/_/; print "$t\n";'`
     echo "egrep -ie '${t}' all_${orgn}_sra.tsv > all_${orgn}_sra.${name}" >> filter_scrna.${orgn}.jobs
 done
@@ -27,7 +27,7 @@ done
 echo "fgrep -i ' strt ' all_${orgn}_sra.tsv | fgrep -v 'SRP116908' > all_${orgn}_sra.strt_seq2" >> filter_scrna.${orgn}.jobs
 
 parallel -j $num_procs < filter_scrna.${orgn}.jobs > filter_scrna.${orgn}.jobs.run 2>&1
-cat all_${orgn}_sra.smart2-seq >> all_${orgn}_sra.smart_seq
+cat all_${orgn}_sra.smart2-seq all_${orgn}_sra.smarter >> all_${orgn}_sra.smart_seq
 #merge multiple outputs for: 10x; strt-seq, and single-cell
 mv all_${orgn}_sra.chromium all_${orgn}_sra.10x2
 for t in "10x" "strt_seq" "single_cell"; do
