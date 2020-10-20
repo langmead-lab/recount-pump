@@ -193,7 +193,7 @@ def get_queue(sqs_client,
               visibility_timeout=None,
               message_retention_period=None,
               make_dlq=None,
-              max_receive_count=1):
+              max_receive_count=2):
     if visibility_timeout is None:
         visibility_timeout = 60 * 60
     if message_retention_period is None:
@@ -218,6 +218,7 @@ def get_queue(sqs_client,
         redrive_policy = {
             'deadLetterTargetArn': response['Attributes']['QueueArn'],
             'maxReceiveCount': str(max_receive_count)
+            #'maxReceiveCount': '5'
         }
         sqs_client.set_queue_attributes(
             QueueUrl=resp['QueueUrl'],
@@ -229,7 +230,7 @@ def get_queue(sqs_client,
 
 
 def stage_project(project_id, sqs_client, session, chunking_strategy=None,
-                  visibility_timeout=1*60*60, message_retention_period=1209600, make_dlq=True, max_receive_count=1):
+                  visibility_timeout=1*60*60, message_retention_period=1209600, make_dlq=True, max_receive_count=2):
     """
     Stage all the jobs in the given project
     """
