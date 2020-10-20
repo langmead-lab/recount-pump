@@ -71,6 +71,7 @@ def parse_queue_config(fn, section='queue'):
         opt = cfg.get(section, nm)
         return None if (len(opt) == 0) else opt
 
+    max_receive_count = 2
     visibility_timeout, message_retention_period, max_receive_count  = None, None, None
     if cfg.has_option(section, 'visibility_timeout'):
         visibility_timeout = cfg.getint(section, 'visibility_timeout')
