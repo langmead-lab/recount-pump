@@ -42,6 +42,28 @@ echo "Temp: $(ls ${RECOUNT_TEMP})"
 INPUT_FILES=`ls ${RECOUNT_INPUT}/*`
 test -n "${INPUT_FILES}"
 
+extra_params=""
+if [[ ! -z $KEEP_BAM ]]; then
+    extra_params='keep_bam=1'
+    echo "Keeping the BAM"
+fi
+
+if [[ ! -z $KEEP_FASTQ ]]; then
+    extra_params=$extra_params' keep_fastq=1'
+    echo "Keeping the FASTQs"
+fi
+
+if [[ ! -z $KEEP_UNMAPPED_FASTQ ]]; then
+    extra_params=$extra_params' keep_unmapped_fastq=1'
+    echo "Keeping the unmapped FASTQs"
+fi
+
+#some cases STAR will need to be run w/o shared memory
+if [[ ! -z $NO_SHARED_MEM ]]; then
+    extra_params=$extra_params' star_no_shared=1'
+    echo "STAR will run w/o sharing the index"
+fi
+
 if [[ -f /Snakefile ]] ; then
     mkdir -p ${RECOUNT_TEMP_BIG}/snakemake-wd
     pushd ${RECOUNT_TEMP_BIG}/snakemake-wd
@@ -61,7 +83,8 @@ if [[ -f /Snakefile ]] ; then
             ref="${RECOUNT_REF}" \
             temp="${RECOUNT_TEMP}" \
             temp_big="${RECOUNT_TEMP_BIG}" \
-            2>&1 | tee ${RECOUNT_OUTPUT}/std.out
+            $extra_params 2>&1 | tee ${RECOUNT_OUTPUT}/std.out
+
     done=`fgrep 'steps (100%) done' ${RECOUNT_OUTPUT}/std.out`
     popd
     if [[ -z $done ]]; then

@@ -874,10 +874,16 @@ rule align:
         index_base=lambda wildcards: '%s/%s/star_idx' % (config['ref'], wildcards.quad.split('!')[2]),
         srr=lambda wildcards: wildcards.quad.split('!')[0],
         star_args=config.get('star_args', ''),
+        no_shared=config.get('star_no_shared','0'),
         is_simulation=lambda wildcards: 1 if wildcards.quad.split('!')[1] == 'SIMULATION' else 0
     threads: 16
     shell:
         """
+        genome_load="LoadAndRemove"
+        if [[ "{params.no_shared}" == "1" ]]; then
+            genome_load="NoSharedMemory"
+        fi
+
         READ_FILES="{input.reads0}"
         if [[ -s {input.reads2} ]] ; then
             READ_FILES="{input.reads1} {input.reads2}"
@@ -895,11 +901,11 @@ rule align:
             --genomeDir {params.index_base} \
             --readFilesIn ${{READ_FILES}} \
             --twopassMode None \
-            --genomeLoad LoadAndRemove \
+            --genomeLoad ${{genome_load}} \
             --outTmpDir ${{TMP}} \
             --outReadsUnmapped Fastx \
             --outMultimapperOrder Old_2.4 \
-            --outSAMreadID $readnames \
+            --outSAMreadID ${{readnames}} \
             --outSAMtype BAM Unsorted \
             --outSAMmode NoQS \
             --outSAMattributes NH MD \
@@ -985,11 +991,11 @@ rule align:
                 --genomeDir {params.index_base} \
                 --readFilesIn ${{READ_FILES}} \
                 --twopassMode None \
-                --genomeLoad LoadAndRemove \
+                --genomeLoad ${{genome_load}} \
                 --outTmpDir ${{TMP}} \
                 --outReadsUnmapped Fastx \
                 --outMultimapperOrder Old_2.4 \
-                --outSAMreadID $readnames \
+                --outSAMreadID ${{readnames}} \
                 --outSAMtype BAM Unsorted \
                 --outSAMmode NoQS \
                 --outSAMattributes NH MD \
