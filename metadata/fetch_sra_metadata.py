@@ -7,12 +7,17 @@ e.email="downloadsRUs@dos.com"
 #from Princy Parsana:
 #add "NOT size fractionation[Selection]" to remove smallRNA runs
 #main SRA rna-seq query (public)
-incremental_query = '((((((illumina[Platform]) AND rna seq[Strategy]) AND transcriptomic[Source]) AND public[Access]) AND ("2019/10/01"[Modification Date] : "3000"[Modification Date])) NOT size fractionation[Selection])'
+incremental_query = '((((((illumina[Platform]) AND rna seq[Strategy]) AND transcriptomic[Source]) AND public[Access]) AND (("2019/04/01"[Publication Date] : "2019/10/01"[Publication Date]) OR ("2019/04/01"[Modification Date] : "2019/10/01"[Modification Date]))) NOT size fractionation[Selection])'
+
+#human incremental_query = '((((((illumina[Platform]) AND rna seq[Strategy]) AND transcriptomic[Source]) AND public[Access]) AND (("2019/10/06"[Publication Date] : "3000"[Publication Date]) OR ("2019/10/06"[Modification Date] : "3000"[Modification Date]))) NOT size fractionation[Selection]) AND human[Organism]'
+
+#human original_query = '((((((illumina[Platform]) AND rna seq[Strategy]) AND transcriptomic[Source]) AND public[Access]) AND (("2000/10/06"[Publication Date] : "2019/10/06"[Publication Date]) OR ("2000/10/06"[Modification Date] : "2019/10/06"[Modification Date]))) NOT size fractionation[Selection]) AND human[Organism]'
+
+#mouse original_query = '((((((illumina[Platform]) AND rna seq[Strategy]) AND transcriptomic[Source]) AND public[Access]) AND (("2000/10/06"[Publication Date] : "2020/01/08"[Publication Date]) OR ("2000/01/08"[Modification Date] : "2020/01/08"[Modification Date]))) NOT size fractionation[Selection]) AND mouse[Organism]'
+
+#mouse incremental_query = '((((((illumina[Platform]) AND rna seq[Strategy]) AND transcriptomic[Source]) AND public[Access]) AND (("2020/01/08"[Publication Date] : "3000"[Publication Date]) OR ("2020/01/08"[Modification Date] : "3000"[Modification Date]))) NOT size fractionation[Selection]) AND mouse[Organism]'
+
 base_query = '(((((illumina[Platform]) AND rna seq[Strategy]) AND transcriptomic[Source]) AND public[Access]) NOT size fractionation[Selection])'
-#base_query = '(((((illumina[Platform]) AND rna seq[Strategy]) AND transcriptomic[Source]) AND public[Access]) AND size fractionation[Selection])'
-#base_query = '(((((illumina[Platform]) AND rna seq[Strategy]) AND transcriptomic[Source]) AND public[Access]))'
-#GTEx query
-#base_query = '((((illumina[Platform]) AND rna seq[Strategy]) AND SRP012682[All Fields]) NOT size fractionation[Selection])'
 
 if len(sys.argv) < 4:
     sys.stderr.write("must submit 1) >= 1 organisms (e.g. \"human,mouse\") 2) path to output of raw SRA XMLs (e.g. sra_xmls) 3) path to output of parsing errors (e.g. parse_errs), exiting\n")
