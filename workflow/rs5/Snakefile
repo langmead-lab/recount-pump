@@ -24,7 +24,7 @@ STEPS = ['download', 'fastq_check', 'align', 'sort',
          'gene_fc_count_all', 'gene_fc_count_unique',
          'exon_fc_count_all', 'exon_fc_count_unique']
 
-FILES = ['sjout.zst', 'fastq_check.tsv.zst',
+FILES = ['sjout.zst', 'fastq_check.tsv',
          'unmapped.fastq.zst',
          'unmapped_split3.fastq.zst',
          'bamcount_nonref.csv.zst',
@@ -33,8 +33,8 @@ FILES = ['sjout.zst', 'fastq_check.tsv.zst',
          'bamcount_jx.tsv.zst',
          'bamcount_unmapped_jx.tsv.zst',
          'bamcount_unmapped_nonref.csv.zst',
-         'unmapped_all.bw.zst',
-         'unmapped_unique.bw.zst',
+         'unmapped_all.bw',
+         'unmapped_unique.bw',
          'Chimeric.out.junction.zst',
          'all.gene_fc_count.zst', 'unique.gene_fc_count.zst',
          'all.exon_fc_count.zst', 'unique.exon_fc_count.zst',
@@ -42,8 +42,8 @@ FILES = ['sjout.zst', 'fastq_check.tsv.zst',
          'all.exon_fc_count.summary', 'unique.exon_fc_count.summary',
          'Chimeric.out.sam.zst',
          'all.exon_bw_count.zst', 'unique.exon_bw_count.zst',
-         'all.bw.zst',
-         'unique.bw.zst',
+         'all.bw',
+         'unique.bw',
          'salmon.tsv.zst',
          'salmon_split3.tsv.zst',
          'jx_bed.zst', 'unmapped.jx_bed.zst',
@@ -111,9 +111,9 @@ rule make_manifest:
         config['output'] + '/{quad}.bamcount_auc.tsv',
         config['output'] + '/{quad}.bamcount_frag.tsv',
         config['output'] + '/{quad}.bamcount_unmapped_nonref.csv.zst',
-        config['output'] + '/{quad}.unmapped_all.bw.zst',
-        config['output'] + '/{quad}.unmapped_unique.bw.zst',
-        config['output'] + '/{quad}.fastq_check.tsv.zst',
+        config['output'] + '/{quad}.unmapped_all.bw',
+        config['output'] + '/{quad}.unmapped_unique.bw',
+        config['output'] + '/{quad}.fastq_check.tsv',
         config['output'] + '/{quad}.all.gene_fc_count.zst',
         config['output'] + '/{quad}.all.exon_fc_count.zst',
         config['output'] + '/{quad}.unique.gene_fc_count.zst',
@@ -124,8 +124,8 @@ rule make_manifest:
         config['output'] + '/{quad}.unique.exon_fc_count.summary',
         config['output'] + '/{quad}.all.exon_bw_count.zst',
         config['output'] + '/{quad}.unique.exon_bw_count.zst',
-        config['output'] + '/{quad}.all.bw.zst',
-        config['output'] + '/{quad}.unique.bw.zst',
+        config['output'] + '/{quad}.all.bw',
+        config['output'] + '/{quad}.unique.bw',
         config['output'] + '/{quad}.align.log',
         config['output'] + '/{quad}.extract_jx.log',
         config['output'] + '/{quad}.bamcount.log',
@@ -173,8 +173,8 @@ rule bamcount:
         nonref=config['output'] + '/{quad}.bamcount_nonref.csv.zst',
         auc=config['output'] + '/{quad}.bamcount_auc.tsv',
         frag=config['output'] + '/{quad}.bamcount_frag.tsv',
-        all_bw=config['output'] + '/{quad}.all.bw.zst',
-        unique_bw=config['output'] + '/{quad}.unique.bw.zst',
+        all_bw=config['output'] + '/{quad}.all.bw',
+        unique_bw=config['output'] + '/{quad}.unique.bw',
         all_bw_count=config['output'] + '/{quad}.all.exon_bw_count.zst',
         unique_bw_count=config['output'] + '/{quad}.unique.exon_bw_count.zst',
         jx=config['output'] + '/{quad}.bamcount_jx.tsv.zst'
@@ -230,15 +230,13 @@ rule bamcount:
         # --bigwig
         #
 
-        (time zstd ${{TMP}}.all.bw -o {output.all_bw}) 2>&1 | tee -a {log}
+        mv ${{TMP}}.all.bw {output.all_bw}
         size=$(wc -c < {output.all_bw})
         echo "COUNT_BwSize ${{size}}"
-        rm -f ${{TMP}}.all.bw
 
-        (time zstd ${{TMP}}.unique.bw -o {output.unique_bw}) 2>&1 | tee -a {log}
+        mv ${{TMP}}.unique.bw {output.unique_bw}
         size=$(wc -c < {output.unique_bw})
         echo "COUNT_BwSize ${{size}}"
-        rm -f ${{TMP}}.unique.bw
         
         #
         # --junctions
@@ -281,8 +279,8 @@ rule bamcount_unmapped:
         quad="[^~\.]+"
     output:
         nonref=config['output'] + '/{quad}.bamcount_unmapped_nonref.csv.zst',
-        all_bw=config['output'] + '/{quad}.unmapped_all.bw.zst',
-        unique_bw=config['output'] + '/{quad}.unmapped_unique.bw.zst',
+        all_bw=config['output'] + '/{quad}.unmapped_all.bw',
+        unique_bw=config['output'] + '/{quad}.unmapped_unique.bw',
         jx=config['output'] + '/{quad}.bamcount_unmapped_jx.tsv.zst'
     log:
         config['output'] + '/{quad}.bamcount_unmapped.log'
@@ -317,15 +315,13 @@ rule bamcount_unmapped:
         # --bigwig
         #
 
-        (time zstd ${{TMP}}.all.bw -o {output.all_bw}) 2>&1 | tee -a {log}
+        mv ${{TMP}}.all.bw {output.all_bw}
         size=$(wc -c < {output.all_bw})
         echo "COUNT_BwUnmappedSize ${{size}}"
-        rm -f ${{TMP}}.all.bw
 
-        (time zstd ${{TMP}}.unique.bw -o {output.unique_bw}) 2>&1 | tee -a {log}
+        mv ${{TMP}}.unique.bw {output.unique_bw}
         size=$(wc -c < {output.unique_bw})
         echo "COUNT_BwUnmappedSize ${{size}}"
-        rm -f ${{TMP}}.unique.bw
         
         #
         # --junctions
@@ -336,19 +332,6 @@ rule bamcount_unmapped:
         rm -f ${{TMP}}.jxs.tsv
 
         echo "COUNT_BamcountComplete 1"
-        """
-
-rule bw_zstd:
-    input:
-        config['temp'] + '/{prefix}.bw'
-    output:
-        config['output'] + '/{prefix}.bw.zst'
-    shell:
-        """
-        zstd {input} -o {output}
-        size=$(wc -c < {output})
-        echo "COUNT_BwBytes ${{size}}"
-        echo "COUNT_BwZstdComplete 1"
         """
 
 rule gene_fc_count_all:
@@ -825,7 +808,7 @@ rule remove_fastqs:
         reads1=config['temp_big'] + '/{quad}_1.fastq',
         reads2=config['temp_big'] + '/{quad}_2.fastq',
         bam=config['temp_big'] + '/{quad}.bam',
-        fastqcheck=config['output'] + '/{quad}.fastq_check.tsv.zst',
+        fastqcheck=config['output'] + '/{quad}.fastq_check.tsv',
         salmon_main=config['output'] + '/{quad}.salmon.tsv.zst'
     output: touch(config['output'] + "/{quad}.fastq_removal.done")
     wildcard_constraints:
@@ -1097,7 +1080,7 @@ rule fastq_check:
         reads1=config['temp_big'] + '/{quad}_1.fastq',
         reads2=config['temp_big'] + '/{quad}_2.fastq'
     output:
-        config['output'] + '/{quad}.fastq_check.tsv.zst'
+        config['output'] + '/{quad}.fastq_check.tsv'
     log:
         config['output'] + '/{quad}.fastq_check.log'
     params:
