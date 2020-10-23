@@ -62,7 +62,8 @@ for retstart_idx in range(0,num_fetches):
     start_idx = retstart_idx * args.batch_size
     end_idx = (start_idx + args.batch_size)-1
     #jobs to fetch the raw xml records
-    fetchOut.write('curl --retry 10 --retry-max-time 600 "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=sra&query_key=%s&WebEnv=%s&api_key=737c03e5774d846960b50f1c90848fed3e08&retmode=xml&retstart=%d&retmax=%d" > %s/%s.sra.rnaseq.illumina.public.xml.%d 2> %s/%s.sra.rnaseq.illumina.public.xml.%d.err\n' % (es["QueryKey"], es["WebEnv"], start_idx, args.batch_size, xml_path, orgn_nospace, start_idx, err_path, orgn_nospace, start_idx))
+    #fetchOut.write('curl --retry 10 --retry-max-time 600 "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=sra&query_key=%s&WebEnv=%s&api_key=737c03e5774d846960b50f1c90848fed3e08&retmode=xml&retstart=%d&retmax=%d" > %s/%s.sra.rnaseq.illumina.public.xml.%d 2> %s/%s.sra.rnaseq.illumina.public.xml.%d.err\n' % (es["QueryKey"], es["WebEnv"], start_idx, args.batch_size, xml_path, orgn_nospace, start_idx, err_path, orgn_nospace, start_idx))
+    fetchOut.write('%s/fetch_sra_batch.sh "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=sra&query_key=%s&WebEnv=%s&api_key=737c03e5774d846960b50f1c90848fed3e08&retmode=xml&retstart=%d&retmax=%d" %s/%s.sra.rnaseq.illumina.public.xml.%d %s/%s.sra.rnaseq.illumina.public.xml.%d.err\n' % (scriptpath, es["QueryKey"], es["WebEnv"], start_idx, args.batch_size, xml_path, orgn_nospace, start_idx, err_path, orgn_nospace, start_idx))
     #write out post-fetch parsing job as well (separately run)
     if retstart_idx > 0:
         parseOut.write("python %s/sraXML2TSV.py %s/%s.sra.rnaseq.illumina.public.xml.%d >> all_%s_sra.tsv 2> %s/%s.sra.rnaseq.illumina.public.xml.%d.parse_err\n" % (scriptpath, xml_path, orgn_nospace, start_idx, orgn_nospace, err_path, orgn_nospace, start_idx))
