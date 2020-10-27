@@ -1098,7 +1098,7 @@ rule fastq_check:
         if [[ -s {input.reads2} ]] ; then
             time seqtk fqchk -q0 {input.reads2} >>${{TMP}} 2>>{log}
         fi
-        time zstd ${{TMP}} -o {output} 2>&1 | tee -a {log}
+        mv ${{TMP}} {output}
         rm -f $TMP
         size=$(wc -c < {output})
         echo "COUNT_FastqCheckBytes ${{size}}"
