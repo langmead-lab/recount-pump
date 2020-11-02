@@ -12,19 +12,22 @@ e.email="downloadsRUs@dos.com"
 #from Princy Parsana:
 #add "NOT size fractionation[Selection]" to remove smallRNA runs
 
-parser = argparse.ArgumentParser(description='query NCBI SRA')
-parser.add_argument('--orgn', metavar='organism', type=str, default='human', help='biological organism to query (human [default], mouse)')
-parser.add_argument('--xml-path', metavar='path to save XML downloads', type=str, default='xmls', help='XML files from SRA will be downloaded here, default="xmls"')
-parser.add_argument('--err-path', metavar='path to save error output files', type=str, default='errs', help='error files from SRA will be stored here, default="errs"')
-parser.add_argument('--batch-size', metavar='0', type=int, default=500, help='number of full records to retrieve in a single curl job')
-parser.add_argument('--non-transcriptomic', action='store_const', const=True, default=False, help='switch to non-transcriptomic querying')
-parser.add_argument('--start-date', metavar='YYYY/MM/DD', type=str, default=None, help='start of date range to query within, applied against both Modification Date & Publication Date, if set assume incremental querying, default: None')
-    
-args = parser.parse_args()
-
 #always query for: Illumina + RNA-seq + Transcriptomic source + public while skipping smallRNAs
 base_query = '(((((illumina[Platform]) AND rna seq[Strategy]) AND transcriptomic[Source]) AND public[Access]) NOT size fractionation[Selection])'
 
+parser = argparse.ArgumentParser(description='query NCBI SRA')
+parser.add_argument('--orgn', metavar='[SRA organism string]', type=str, default='human', help='biological organism to query (human [default], mouse)')
+parser.add_argument('--xml-path', metavar='[path string]', type=str, default='xmls', help='XML files from SRA will be downloaded here, default="xmls"')
+parser.add_argument('--err-path', metavar='[path string]', type=str, default='errs', help='error files from SRA will be stored here, default="errs"')
+parser.add_argument('--batch-size', metavar='[integer]', type=int, default=500, help='number of full records to retrieve in a single curl job')
+parser.add_argument('--non-transcriptomic', action='store_const', const=True, default=False, help='switch to non-transcriptomic querying')
+parser.add_argument('--start-date', metavar='[YYYY/MM/DD]', type=str, default=None, help='start of date range to query within, applied against both Modification Date & Publication Date, if set assume incremental querying, default: None')
+
+parser.add_argument('--base-query', metavar='[SRA query string]', type=str, default=base_query, help='override base query, default: \'%s\'' % base_query)
+
+args = parser.parse_args()
+
+base_query = args.base_query   
 xml_path = args.xml_path
 if not os.path.exists(xml_path):
     os.makedirs(xml_path)
