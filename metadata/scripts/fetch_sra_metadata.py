@@ -16,7 +16,7 @@ e.email="downloadsRUs@dos.com"
 base_query = '(((((illumina[Platform]) AND rna seq[Strategy]) AND transcriptomic[Source]) AND public[Access]) NOT size fractionation[Selection])'
 
 parser = argparse.ArgumentParser(description='query NCBI SRA')
-parser.add_argument('--orgn', metavar='[SRA organism string]', type=str, default='human', help='biological organism to query (human [default], mouse)')
+parser.add_argument('--orgn', metavar='[SRA organism string]', type=str, default='all', help='biological organism to query (all [default], human, mouse)')
 parser.add_argument('--xml-path', metavar='[path string]', type=str, default='xmls', help='XML files from SRA will be downloaded here, default="xmls"')
 parser.add_argument('--err-path', metavar='[path string]', type=str, default='errs', help='error files from SRA will be stored here, default="errs"')
 parser.add_argument('--batch-size', metavar='[integer]', type=int, default=500, help='number of full records to retrieve in a single curl job')
@@ -47,16 +47,19 @@ if args.start_date is not None:
 sys.stdout.write("REMEMBER: NCBI query history is only good for so long (typically <1 day), so the fetch jobs must be run shortly after runnning this script!\n")
 
 patt = re.compile(r'\s+')
-orgn_nospace = re.sub(patt, r'_', args.orgn)
+orgn_nospace = 'all_organisms'
+if args.orgn != 'all':
+    orgn_nospace = re.sub(patt, r'_', args.orgn)
+    base_query += " AND %s[Organism]" % args.orgn
 fetchOut = open("fetch_%s.jobs" % (orgn_nospace),"w")
 parseOut = open("parse_%s.sh" % (orgn_nospace),"w")
 
-es_ = e.esearch(db="sra",retmax=1,term=base_query+" AND %s[Organism]" % args.orgn, usehistory=True)
+es_ = e.esearch(db="sra",retmax=1,term=base_query, usehistory=True)
 es = e.read(es_)
 
 #number of records is # of EXPERIMENTs (SRX) NOT # RUNs (SRR)
 total_records = int(es["Count"])
-sys.stderr.write("Total # of records is %d for %s using query %s\n" % (total_records, args.orgn, base_query+" and %s[Organism]" % args.orgn))
+sys.stderr.write("Total # of records is %d for %s using query %s\n" % (total_records, args.orgn, base_query))
 
 num_fetches = int(total_records / args.batch_size) + 1
 parseOut.write("python %s/sraXML2TSV.py %s/%s.sra.rnaseq.illumina.public.xml.%d > all_%s_sra.tsv 2> %s/%s.sra.rnaseq.illumina.public.xml.%d.parse_err\n" % (scriptpath, xml_path, orgn_nospace, 0, orgn_nospace, err_path, orgn_nospace, 0))
