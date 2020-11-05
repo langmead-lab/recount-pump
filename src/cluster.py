@@ -29,6 +29,8 @@ Options:
   --globus-ini=<path>          Path to globus ini file [default: ~/.recount/globus.ini].
   --globus-section=<string>    Name pf section in globus ini file describing the
                                application [default: recount-app].
+  --user <string>              User login ID on cluster nodes where processes are run,
+                               to ensure they end [default: cwilks].
   --ini-base <path>            Modify default base path for ini files.
   --curl=<curl>                curl executable [default: curl].
   --keep                       Do not remove temp and input directories upon success.
@@ -66,7 +68,7 @@ from reference import Reference, SourceSet, AnnotationSet, add_reference, add_so
     add_annotation_set, add_sources_to_set, add_annotations_to_set, add_source, add_annotation
 from sqlalchemy import func
 from sqlalchemy.orm import Session
-from mover import Mover, MoverConfig
+from mover import Mover, MoverConfig, CommandThread
 if sys.version[:1] == '2':
     from ConfigParser import RawConfigParser
 else:
@@ -971,6 +973,7 @@ def go():
     log.init_logger('sqlalchemy', log_ini=log_ini, agg_level=args['--log-level'],
                     sender='sqlalchemy')
     #signal.signal(signal.SIGUSR1, lambda sig, stack: traceback.print_stack(stack))
+    user_id = args['--user']
 
     try:
         db_ini = ini_path('--db-ini')
@@ -1063,7 +1066,12 @@ def go():
             if sysmon_ival > 0:
                 log.info('Closing monitor thread', 'cluster.py')
                 sm.close()
+                #hack to make sure all user owned processes end (including this one)
+                #this we way we ensure the node lease is given up
+                killall_thread = CommandThread(['pkill', '-9', '-f', user_id])
+                killall_thread.start()
                 log.info('Joining monitor thread', 'cluster.py')
+                #TODO: figure out why this hangs
                 sm.join()
             if any(map(lambda x: x != 0, exitlevels)):
                 log.warning('Exiting with non-zero exitlevel because at least one '
