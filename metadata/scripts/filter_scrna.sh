@@ -11,15 +11,16 @@ orgn=$1
 num_procs=$2
 
 echo -n "" > filter_scrna.${orgn}.jobs
-for t in 'single.?cell' 'seq.?well' 'smart.?seq' 'smart2-seq' 'smarter' 'quartz.?seq' 'super.?seq' 'matq.?seq' 'strt.?seq' 'cel.?seq' 'mars.?seq' 'drop.?seq' 'split.?seq' 'sci-rna.?seq' 'dronc.?seq'; do 
+for t in 'seq.?well' 'smart.?seq' 'smart2-seq' 'smarter' 'quartz.?seq' 'super.?seq' 'matq.?seq' 'strt.?seq' 'cel.?seq' 'mars.?seq' 'drop.?seq' 'split.?seq' 'sci-rna.?seq' 'dronc.?seq'; do 
     name=`perl -e '$t="'$t'"; $t=~s/[\.\?\s\+]+/_/; print "$t\n";'`
     echo "egrep -ie '${t}' all_${orgn}_sra.tsv > all_${orgn}_sra.${name}" >> filter_scrna.${orgn}.jobs
 done
 
 #additional single cell pattern matching (allow multiple spaces between "single" and "cell")
-echo "egrep -ie 'single +cell' all_${orgn}_sra.tsv > all_${orgn}_sra.single_cell2" >> filter_scrna.${orgn}.jobs
+#echo "egrep -ie 'single +cell' all_${orgn}_sra.tsv > all_${orgn}_sra.single_cell2" >> filter_scrna.${orgn}.jobs
 
-for t in "scrna" "10x" "chromium" "fluidigm" "indrop" "ctyoseq"; do
+#switch to less granuler patterns to allow the use of fgrep instead of egrep (faster) given the large amount of 10x/chromium
+for t in "10x" "chromium" "fluidigm" "indrop" "ctyoseq"; do
     echo "fgrep -i '${t}' all_${orgn}_sra.tsv > all_${orgn}_sra.${t}" >> filter_scrna.${orgn}.jobs
 done
 
@@ -30,7 +31,7 @@ parallel -j $num_procs < filter_scrna.${orgn}.jobs > filter_scrna.${orgn}.jobs.r
 cat all_${orgn}_sra.smart2-seq all_${orgn}_sra.smarter >> all_${orgn}_sra.smart_seq
 #merge multiple outputs for: 10x; strt-seq, and single-cell
 mv all_${orgn}_sra.chromium all_${orgn}_sra.10x2
-for t in "10x" "strt_seq" "single_cell"; do
+for t in "10x" "strt_seq"; do
     cat all_${orgn}_sra.${t} all_${orgn}_sra.${t}2 | sort -u > all_${orgn}_sra.${t}.sorted
     mv all_${orgn}_sra.${t}.sorted all_${orgn}_sra.${t}
     rm all_${orgn}_sra.${t}2
@@ -62,3 +63,4 @@ fgrep -f 10x.possibly_not_scrna.studies all_${orgn}_sra.scrna_except_smart.tsv >
 cut -f 2 all_${orgn}_sra.no_scrna_except_smart.tsv | sed -e 's/$/\t/' | sort -u > all_${orgn}_sra.no_scrna_except_smart.tsv.studies
 fgrep -f all_${orgn}_sra.no_scrna_except_smart.tsv.studies all_${orgn}_sra.scrna_except_smart.tsv > all_${orgn}_sra.scrna_except_smart.tsv.also_in_nonscrna
 cat all_${orgn}_sra.no_scrna_except_smart.tsv 10x.possibly_not_scrna.full all_${orgn}_sra.scrna_except_smart.tsv.also_in_nonscrna | sort -u > all_${orgn}_sra.no_scrna_except_smart.full_studies.tsv
+fgrep -v -f all_${orgn}_sra.no_scrna_except_smart.tsv.studies all_${orgn}_sra.scrna_except_smart.tsv > all_${orgn}_sra.scrna_except_smart.tsv.no_overlap_with_bulk.tsv
