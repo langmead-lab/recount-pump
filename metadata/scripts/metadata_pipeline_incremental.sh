@@ -62,4 +62,4 @@ popd
 ln -fs all_${orgn}_sra.no_scrna_except_smart.full_studies_with_nontranscriptomic_runs.tsv all.runs.tsv
 
 #get study level info
-cut -f 2,8-10,12-15 all.runs.tsv | sort -u > all.runs.tsv.study_level
+cut -f 2,8-10 all.runs.tsv | sort -u > all.runs.tsv.study_level
