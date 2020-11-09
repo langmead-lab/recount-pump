@@ -5,13 +5,13 @@ errout=$3
 curl --retry 10 --retry-max-time 600 "$url" > $output 2> $errout
 ecode=$?
 ERRORS=$(fgrep '<ERROR>' $output)
-FINISHED=$(fgrep '</EXPERIMENT_PACKAGE_SET>' $output)
+FINISHED=$(tail -n1 $output | fgrep '</EXPERIMENT_PACKAGE_SET>')
 
 while [[ $ecode -ne 0 || ! -z $ERRORS  || -z $FINISHED ]]; do
     curl --retry 10 --retry-max-time 600 "$url" > $output 2> $errout
     ecode=$?
     ERRORS=$(fgrep "<ERROR>" $output)
-    FINISHED=$(fgrep '</EXPERIMENT_PACKAGE_SET>' $output)
+    FINISHED=$(tail -n1 $output | fgrep '</EXPERIMENT_PACKAGE_SET>')
 done
 
 #example error
