@@ -46,7 +46,7 @@ def process_attributes(root_element, tag):
     return ATTRS_DELIM.join(sorted(tags, key=lambda x: x.lower()))
 
 #header
-#sys.stdout.write("\t".join(["run_acc","study_acc","sample_acc","experiment_acc","submission_acc","submission_center","submission_lab","study_title","study_abstract","study_description","experiment_title","design_description","sample_description","library_name","library_strategy","library_source","library_selection","library_layout","paired_nominal_length","paired_nominal_stdev","library_construction_protocol","platform_model","sample_attributes","experiment_attributes","spot_length","sample_name","sample_title","sample_bases","sample_spots","run_published","size","run_total_bases","run_total_spots","num_reads","num_spots","read_info","run_alias","run_center_name","run_broker_name","run_center","inferred_read_length","inferred_total_read_count"])+"\n")
+#sys.stdout.write("\t".join(["run_acc","study_acc","sample_acc","experiment_acc","submission_acc","submission_center","submission_lab","study_title","study_abstract","study_description","experiment_title","design_description","sample_description","library_name","library_strategy","library_source","library_selection","library_layout","paired_nominal_length","paired_nominal_stdev","library_construction_protocol","platform_model","sample_attributes","experiment_attributes","spot_length", "taxon_id", "sci_name", "common_name", "sample_name","sample_title","sample_bases","sample_spots","run_published","size","run_total_bases","run_total_spots","num_reads","num_spots","read_info","run_alias","run_center_name","run_broker_name","run_center","inferred_read_length","inferred_total_read_count"])+"\n")
 
 #Top Level: EXPERIMENT_PACKAGE
 for exp in root.findall('EXPERIMENT_PACKAGE'):
@@ -126,14 +126,23 @@ for exp in root.findall('EXPERIMENT_PACKAGE'):
     study_desc = exp.findtext('./STUDY/DESCRIPTOR/STUDY_DESCRIPTION',default="")
 
 ##SAMPLE section
+            #DESCRIPTION
+    sample_desc = exp.findtext('./SAMPLE/DESCRIPTION',default="")
             #SAMPLE_ATTRIBUTES
                 #SAMPLE_ATTRIBUTE
                     #TAG(text)
                     #VALUE(text)
-    sample_desc = exp.findtext('./SAMPLE/DESCRIPTION',default="")
     sample_attributes = process_attributes(exp, './SAMPLE/SAMPLE_ATTRIBUTES')
 
-    exp_fields = [study_acc, sample_acc, exp_acc, sub_acc, sub_center, sub_lab, study_title, study_abstract, study_desc, exp_title, design_desc, sample_desc, lib_name, lib_strat, lib_src, lib_sel, lib_layout, paired_nominal_length, paired_nominal_stdev, lib_construct_prot, platform, sample_attributes, exp_attributes, spot_length]
+            #SAMPLE_NAME
+                #TAXON_ID, e.g. 9606
+    taxon_id = exp.findtext('./SAMPLE/SAMPLE_NAME/TAXON_ID',default="")
+                #SCIENTIFIC_NAME, e.g. "Homo sapiens"
+    sci_name = exp.findtext('./SAMPLE/SAMPLE_NAME/SCIENTIFIC_NAME',default="")
+                #COMMON_NAME, e.g. "human"
+    common_name = exp.findtext('./SAMPLE/SAMPLE_NAME/COMMON_NAME',default="")
+
+    exp_fields = [study_acc, sample_acc, exp_acc, sub_acc, sub_center, sub_lab, study_title, study_abstract, study_desc, exp_title, design_desc, sample_desc, lib_name, lib_strat, lib_src, lib_sel, lib_layout, paired_nominal_length, paired_nominal_stdev, lib_construct_prot, platform, sample_attributes, exp_attributes, spot_length, taxon_id, sci_name, common_name]
     exp_fields_str = "\t".join(exp_fields)
 
 ##RUN_SET section
