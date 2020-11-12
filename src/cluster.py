@@ -1013,10 +1013,12 @@ def go():
             _, _, _, _, _, _, nworkers = read_cluster_config(cluster_ini)
             # set up system monitor thread
             sm = None
+            sm_close_event = None
             if sysmon_ival > 0:
                 log.info('Starting system monitor thread with interval %d' %
                          sysmon_ival, 'cluster.py')
-                sm = SysmonThread(seconds=int(sysmon_ival))
+                sm_close_event = threading.Event()
+                sm = SysmonThread(close_event=sm_close_event, seconds=int(sysmon_ival))
                 sm.start()
             log_thread = threading.Thread(target=log_worker)
             log_thread.start()
@@ -1064,14 +1066,9 @@ def go():
             log_thread.join()
             log.info('Logging thread joined', 'cluster.py')
             if sysmon_ival > 0:
-                log.info('Closing monitor thread', 'cluster.py')
-                sm.close()
-                #hack to make sure all user owned processes end (including this one)
-                #this we way we ensure the node lease is given up
-                killall_thread = CommandThread(['pkill', '-9', '-f', user_id])
-                killall_thread.start()
+                log.info('Closing monitor thread via event', 'cluster.py')
+                sm_close_event.set()
                 log.info('Joining monitor thread', 'cluster.py')
-                #TODO: figure out why this hangs
                 sm.join()
             if any(map(lambda x: x != 0, exitlevels)):
                 log.warning('Exiting with non-zero exitlevel because at least one '

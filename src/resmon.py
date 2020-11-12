@@ -56,7 +56,7 @@ Ben Langmead
 
 class SysmonThread(Thread):
 
-    def __init__(self, seconds=10):
+    def __init__(self, close_event, seconds=10):
         Thread.__init__(self)
         ncores = self.ncores = psutil.cpu_count()
         msg = 'Timestamp,  Uptime, NCPU, %CPU, ' + ', '.join(['%CPU' + str(i) for i in range(ncores)]) + \
@@ -69,12 +69,13 @@ class SysmonThread(Thread):
         self.closed = False
         self.seconds = seconds
         self.hostname = socket.gethostname().split('.', 1)[0]
+        self.close_event = close_event
 
     def close(self):
-        self.closed = True
+        self.close_event.set()
 
     def run(self):
-        while not self.closed:
+        while not self.close_event.is_set():
             self.poll_stat()
             time.sleep(self.seconds)
 
