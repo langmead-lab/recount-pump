@@ -1034,12 +1034,14 @@ def go():
                 log.info('Spawned process %d (pid=%d)' % (i+1, t.pid), 'cluster.py')
                 procs.append(t)
             exitlevels = []
-            nprocs_finished = 0
+            nprocs_finished_pids = set()
             while True:
-                if int(nprocs_finished) >= int(nworkers):
+                if len(nprocs_finished_pids) >= int(nworkers):
                     break
                 for i, proc in enumerate(procs):
                     pid = proc.pid
+                    if pid in nprocs_finished_pids:
+                        continue
                     proc.join(15)
                     if proc.is_alive():
                         log.info('Attempting to join process %d (pid=%d)' %
@@ -1057,10 +1059,10 @@ def go():
                         #    log.info('Respawned process %d (pid=%d)' % (i+1, t.pid), 'cluster.py')
                         #    procs[i] = t
                         #else:
-                        nprocs_finished += 1
+                        nprocs_finished_pids.add(pid)
                         exitlevels.append(proc.exitcode)
                         log.info('Joined process %d of %d, nprocs_finished=%d (pid=%d, exitlevel=%d)' %
-                            (i + 1, nworkers, nprocs_finished, pid, exitlevels[-1]), 'cluster.py')
+                            (i + 1, nworkers, len(nprocs_finished_pids), pid, exitlevels[-1]), 'cluster.py')
             log.info('All processes joined', 'cluster.py')
             log_queue.put(('AllDone', 'cluster.py'))
             log_thread.join()
