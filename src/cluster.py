@@ -7,10 +7,11 @@
 
 Usage:
   cluster prepare [options] <project-id>
-  cluster run [options] <project-id>
+  cluster run [options] --analysis-name <analysis-name> <project-id>
   cluster cleanup [options] <project-id>
 
 Options:
+  --analysis-name <analysis-name> Name of analysis used in project initialization (ana_name in project.ini, e.g. "rs5-106").
   --cluster-ini <ini>          Cluster ini file [default: ~/.recount/cluster.ini].
   --destination-ini <ini>      Destination ini file [default: ~/.recount/destination.ini].
   --db-ini <ini>               Database ini file [default: ~/.recount/db.ini].
@@ -38,6 +39,7 @@ Options:
   --version                    Show version.
 """
 
+import psycopg2
 import time
 import random
 import re
@@ -60,7 +62,7 @@ from functools import wraps
 from resmon import SysmonThread
 from datetime import datetime
 from docopt import docopt
-from toolbox import engine_from_config, session_maker_from_config, parse_queue_config, md5
+from toolbox import engine_from_config, session_maker_from_config, parse_queue_config, md5, parse_db_config
 from analysis import Analysis, add_analysis
 from input import Input, import_input_set
 from pump import Project, TaskAttempt, TaskFailure, TaskSuccess, add_project
@@ -68,6 +70,8 @@ from reference import Reference, SourceSet, AnnotationSet, add_reference, add_so
     add_annotation_set, add_sources_to_set, add_annotations_to_set, add_source, add_annotation
 from sqlalchemy import func
 from sqlalchemy.orm import Session
+from sqlalchemy import create_engine
+from sqlalchemy.pool import NullPool
 from mover import Mover, MoverConfig, CommandThread
 if sys.version[:1] == '2':
     from ConfigParser import RawConfigParser
@@ -257,7 +261,7 @@ def image_exists_locally(url, system, cachedir=None):
 
 
 def do_job(body, proj, cluster_ini, my_attempt, node_name,
-           worker_name, session, heartbeat_func,
+           worker_name, session, heartbeat_func, image_url, aconfig,
            mover_config=None, destination=None, source_prefix=None, shared_log_queue=log_queue, keep=False):
     """
     Given a job-attempt description string, parse the string and execute the
@@ -280,11 +284,7 @@ def do_job(body, proj, cluster_ini, my_attempt, node_name,
             urls.append(task.url3)
         fh.write(','.join([task.srr, task.srp, task.reference_name, task.retrieval, ';'.join(urls)]) + '\n')
     assert os.path.exists(tmp_fn)
-    analyses = session.query(Analysis).filter(Analysis.name == task.analysis_name).all()
-    if 0 == len(analyses):
-        raise ValueError('No analysis named "%s"' % task.analysis_name)
-    assert 1 == len(analyses)
-    image_url, config = analyses[0].image_url, analyses[0].config
+    config = aconfig
     log_info_detailed(node_name, worker_name, 'parsing image URL: "%s"' % image_url, shared_log_queue=shared_log_queue)
     image_fn, _ = parse_image_url(image_url, system, cachedir=analysis_dir)
     if not image_exists_locally(image_url, system, cachedir=analysis_dir):
@@ -585,17 +585,20 @@ def get_num_successes(job, session):
 
 def do_job_wrapper(msg, handle, session, proj, node_name, worker_name, 
                    visibility_timeout, q_client, q_url, cluster_ini, 
-                   mover_config, destination, source_prefix, shared_log_queue=log_queue, keep=False):
+                   mover_config, destination, source_prefix, image_url, aconfig, 
+                    shared_log_queue=log_queue, keep=False):
     body = msg['Body']
     job = Task(body, proj)
-    nattempts = get_num_attempts(job, session)
-    nfailures = get_num_failures(job, session)
+    nattempts = 0
+    nfailures = 0
+    if session is not None:
+        nattempts = get_num_attempts(job, session)
+        nfailures = get_num_failures(job, session)
     my_attempt = nattempts
 
     log_info_detailed(node_name, worker_name,
                       'job start; was attempted %d times previously (%d failures)' %
                       (nattempts, nfailures), shared_log_queue=shared_log_queue)
-    log_attempt(job, node_name, worker_name, session)
     succeeded = False
     assert visibility_timeout is not None
 
@@ -612,7 +615,7 @@ def do_job_wrapper(msg, handle, session, proj, node_name, worker_name,
 
     try:
         succeeded = do_job(body, proj, cluster_ini, my_attempt, node_name,
-                           worker_name, session, heartbeat_func,
+                           worker_name, session, heartbeat_func, image_url, aconfig,
                            mover_config=mover_config,
                            destination=destination,
                            source_prefix=source_prefix, shared_log_queue=shared_log_queue, keep=keep)
@@ -622,27 +625,40 @@ def do_job_wrapper(msg, handle, session, proj, node_name, worker_name,
                              % (nattempts, str(e), traceback.format_exc()), shared_log_queue=shared_log_queue)
 
     if not succeeded:
-        log_failure(job, node_name, worker_name, session)
         log_info_detailed(node_name, worker_name, 'job failure', shared_log_queue=shared_log_queue)
         #raise BaseException('job attempt %d failed' % (nattempts))
         return False
-    log_success(job, node_name, worker_name, session)
     return succeeded
 
 
-def job_loop(shared_log_queue, project_id_or_name, q_ini, cluster_ini, worker_name, session,
+def job_loop(db_ini, db_section, shared_log_queue, project_id_or_name, q_ini, cluster_ini, worker_name, session, proj, image_url, aconfig,
              max_fails=10, sleep_seconds=10,
              mover_config=None, destination=None, source_prefix=None, max_job_fails=MAX_JOB_FAILS, keep=False):
     log_info_detailed('', worker_name, 'Getting node name', shared_log_queue=shared_log_queue)
     node_name = socket.gethostname().split('.', 1)[0]
-    log_info_detailed(node_name, worker_name, 'Getting queue client', shared_log_queue=shared_log_queue)
     aws_profile, region, endpoint, visibility_timeout, _, _, _ = parse_queue_config(q_ini)
     boto3_session = boto3.session.Session(profile_name=aws_profile)
+    log_info_detailed(node_name, worker_name, 'Getting non-sqlalchemy worker DB connection', shared_log_queue=shared_log_queue)
+    db_config = dbc = parse_db_config(db_ini, section=db_section)
+    dbs = db_section
+    db_region = dbc.get(dbs, "region")
+    db_host = dbc.get(dbs, 'host')
+    db_port = dbc.get(dbs, 'port')
+    db_user = dbc.get(dbs, 'user')
+    db_password = dbc.get(dbs, 'password')
+    #from https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.Connecting.Python.html
+    #bclient = boto3.client('rds', region_name=db_region)
+    #db_token = bclient.generate_db_auth_token(DBHostname=db_host, Port=db_port, DBUsername=db_user, Region=db_region)
+    #conn = psycopg2.connect(host=dbc.get(dbs, "host"), port=dbc.get(dbs, "port"), database=dbc.get(dbs, "database"), user=dbc.get(dbs, "user"), password=dbc.get(dbs, "password")) 
+    db_conn = psycopg2.connect(host=db_host, port=db_port, database=dbc.get(dbs, "database"), user=db_user, password=db_password) 
+    db_cursor = db_conn.cursor()
+    log_info_detailed(node_name, worker_name, 'Worker DB connection successfully made', shared_log_queue=shared_log_queue)
+    
+    log_info_detailed(node_name, worker_name, 'Getting queue client', shared_log_queue=shared_log_queue)
     q_client = boto3_session.client('sqs',
                                     endpoint_url=endpoint,
                                     region_name=region)
-    log_info_detailed(node_name, worker_name, 'Getting project', shared_log_queue=shared_log_queue)
-    proj = proj_from_id_or_name(project_id_or_name, session)
+    #log_info_detailed(node_name, worker_name, 'Getting project', shared_log_queue=shared_log_queue)
     log_info_detailed(node_name, worker_name, 'Getting queue', shared_log_queue=shared_log_queue)
     q_name = proj.queue_name()
     resp = q_client.create_queue(QueueName=q_name)
@@ -666,7 +682,8 @@ def job_loop(shared_log_queue, project_id_or_name, q_ini, cluster_ini, worker_na
                 handle = msg['ReceiptHandle']
                 succeeded = do_job_wrapper(msg, handle, session, proj, node_name, worker_name, 
                                             visibility_timeout, q_client, q_url, cluster_ini, 
-                                            mover_config, destination, source_prefix, shared_log_queue=shared_log_queue, keep=keep)
+                                            mover_config, destination, source_prefix, image_url, aconfig, 
+                                            shared_log_queue=shared_log_queue, keep=keep)
                 if succeeded or not only_delete_on_success:
                     log_info_detailed(node_name, worker_name, 'Deleting ' + handle, shared_log_queue=shared_log_queue)
                     q_client.delete_message(QueueUrl=q_url, ReceiptHandle=handle)
@@ -890,14 +907,13 @@ def db_connect_wrapper(engine):
     raise IOError("failed to connect to DB")
 
 
-def worker(engine, shared_log_queue, project_id_or_name, worker_name, q_ini, cluster_ini, max_fail,
-           poll_seconds,
+def worker(db_ini, db_section, shared_log_queue, project_id_or_name, worker_name, q_ini, cluster_ini, max_fail,
+           poll_seconds, proj, image_url, aconfig,
            mover_config=None, destination=None, source_prefix=None, max_job_fail=MAX_JOB_FAILS, keep=False):
     log_info_detailed('', worker_name, 'Starting worker', shared_log_queue=shared_log_queue)
-    session = db_connect_wrapper(engine)
-    log_info_detailed('', worker_name, 'DB connected & keep=%s' % keep, shared_log_queue=shared_log_queue)
     #signal.signal(signal.SIGUSR1, lambda sig, stack: traceback.print_stack(stack))
-    print(job_loop(shared_log_queue, project_id_or_name, q_ini, cluster_ini, worker_name, session,
+    print(job_loop(db_ini, db_section, shared_log_queue, project_id_or_name, q_ini, cluster_ini, worker_name, None,
+                   proj, image_url, aconfig,
                    max_fails=max_fail,
                    sleep_seconds=poll_seconds,
                    mover_config=mover_config,
@@ -1004,6 +1020,16 @@ def go():
             connection = engine.connect()
             session = Session(bind=connection)
             prepare(project_id_or_name, cluster_ini, session, mover_config.new_mover())
+            
+            #workaround to SQLAlechemy hang bug, now get all the db info here in the parent process
+            #to avoid using the db at all in the child workers
+            proj = proj_from_id_or_name(project_id_or_name, session)
+            analyses = session.query(Analysis).filter(Analysis.name == args['--analysis-name']).all()
+            if 0 == len(analyses):
+                raise ValueError('No analysis named "%s"' % args.task_name)
+            assert 1 == len(analyses)
+            image_url, aconfig = analyses[0].image_url, analyses[0].config
+
             max_fails = int(args['--max-fail'])
             MAX_JOB_FAILS = int(args['--max-job-fail'])
             sleep_seconds = int(args['--poll-seconds'])
@@ -1026,8 +1052,9 @@ def go():
             for i in range(nworkers):
                 worker_name = 'worker_%d_of_%d' % (i+1, nworkers)
                 t = multiprocessing.Process(target=worker,
-                                            args=(engine, log_queue, project_id_or_name, worker_name, q_ini, cluster_ini,
-                                                  max_fails, sleep_seconds,
+                                            args=(db_ini, args['--db-section'], 
+                                                  log_queue, project_id_or_name, worker_name, q_ini, cluster_ini,
+                                                  max_fails, sleep_seconds, proj, image_url, aconfig,
                                                   mover_config, destination_url,
                                                   source_prefix, MAX_JOB_FAILS, KEEP))
                 t.start()

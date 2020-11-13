@@ -43,7 +43,6 @@ def generate_file_md5(fn, blocksize=2**20):
             m.update(buf)
     return m.hexdigest()
 
-
 def engine_from_config(fn, section='client', echo=False):
     config = RawConfigParser(allow_no_value=True)
     if not os.path.exists(fn):
@@ -51,6 +50,18 @@ def engine_from_config(fn, section='client', echo=False):
     config.read(fn)
     engine_url = config.get(section, "url")
     return (create_engine(engine_url, poolclass=NullPool, echo=echo), engine_url)
+
+def parse_db_config(fn, section='client'):
+    config = RawConfigParser(allow_no_value=True)
+    if not os.path.exists(fn):
+        raise RuntimeError('No such ini file: "%s"' % fn)
+    config.read(fn)
+    return config
+    #url = config.get(section, "url")
+    #uname = config.get(section, "user")
+    #pwd = config.get(section, "password")
+    #host = config.get(section, "host")
+    #port = config.get(section, "port")
 
 
 def session_maker_from_config(fn, section='client', echo=False):
