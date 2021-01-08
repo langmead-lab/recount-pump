@@ -19,6 +19,9 @@ Options:
                            ERROR, WARNING, INFO, DEBUG [default: INFO].
   --ini-base <path>        Modify default base path for ini files.
   --keep                   Do not remove temp and input directories upon success
+  --keep-bam               Keep sorted BAM file in addition to other outputs [default: True].
+  --no-shared-mem          Run STAR without using shared memory [default: False].
+  --keep-fastq             Do not remove downloaded/extracted FASTQs [default: False].
   -h, --help               Show this screen.
   --version                Show version.
 """
@@ -210,7 +213,7 @@ def copy_to_destination(name, output_dir, source_prefix, extras, mover, destinat
 def run_job(name, inputs, image_url, image_fn, config, cluster_ini, heartbeat_func,
             mover=None, destination=None, source_prefix=None,
             log_queue=None, fail_on_error=False, node_name='', worker_name='',
-            secure=False, keep=False, always_remove=True):
+            secure=False, keep=False, always_remove=True, keep_bam=True, no_shared_mem=False, keep_fastq=False):
     log_info_detailed(node_name, worker_name, 'job name: %s, image-url: "%s", image-fn: "%s"' %
                       (name, image_url, image_fn), log_queue)
     if not os.path.exists(cluster_ini):
@@ -385,6 +388,12 @@ def run_job(name, inputs, image_url, image_fn, config, cluster_ini, heartbeat_fu
                'RECOUNT_TEMP_BIG=%s' % temp_big_mount,
                'RECOUNT_CPUS=%d' % cpus,
                'RECOUNT_REF=%s' % ref_mount]
+    if keep_bam:
+        cmd_env.append('KEEP_BAM=1')
+    if keep_fastq:
+        cmd_env.append('KEEP_FASTQ=1')
+    if no_shared_mem:
+        cmd_env.append('NO_SHARED_MEM=1')
     cmd_run = '/bin/bash -c "source activate recount && /startup.sh && /workflow.bash"'
 
     # copy config into input directory
@@ -506,7 +515,9 @@ def go():
 
             run_job(args['<name>'], args['<input>'], args['<image-url>'],
                     args['<image-fn>'], config, cluster_ini, lambda x: True,
-                    keep=args['--keep'], fail_on_error=args['--fail-on-error'])
+                    keep=args['--keep'], fail_on_error=args['--fail-on-error'], 
+                    keep_bam=args['--keep-bam'], no_shared_mem=args['--no-shared-mem'], 
+                    keep_fastq=args['--keep-fastq'])
     except Exception:
         log.error('Uncaught exception:', 'run.py')
         raise
