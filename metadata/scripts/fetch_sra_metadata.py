@@ -13,7 +13,9 @@ e.email="downloadsRUs@dos.com"
 #add "NOT size fractionation[Selection]" to remove smallRNA runs
 
 #always query for: Illumina + RNA-seq + Transcriptomic source + public while skipping smallRNAs
-base_query = '(((((illumina[Platform]) AND rna seq[Strategy]) AND transcriptomic[Source]) AND public[Access]) NOT size fractionation[Selection])'
+#base_query = '(((((illumina[Platform]) AND rna seq[Strategy]) AND transcriptomic[Source]) AND public[Access]) NOT size fractionation[Selection])'
+base_query = '((((illumina[Platform]) AND rna seq[Strategy]) AND transcriptomic[Source]) NOT size fractionation[Selection])'
+public_only = 'public[Access]'
 
 parser = argparse.ArgumentParser(description='query NCBI SRA')
 parser.add_argument('--orgn', metavar='[SRA organism string]', type=str, default='all', help='biological organism to query (all [default], human, mouse)')
@@ -22,12 +24,24 @@ parser.add_argument('--err-path', metavar='[path string]', type=str, default='er
 parser.add_argument('--batch-size', metavar='[integer]', type=int, default=500, help='number of full records to retrieve in a single curl job')
 parser.add_argument('--non-transcriptomic', action='store_const', const=True, default=False, help='switch to non-transcriptomic querying')
 parser.add_argument('--start-date', metavar='[YYYY/MM/DD]', type=str, default=None, help='start of date range to query within, applied against both Modification Date & Publication Date, if set assume incremental querying, default: None')
+parser.add_argument('--accession', metavar='[accession string]', type=str, default=None, help='limit search to a single SRA accession (typically a study one e.g. ERP001942)')
+parser.add_argument('--include-protected', action='store_const', const=True, default=False, help='will query from both public and protected (dbGaP) data')
 
-parser.add_argument('--base-query', metavar='[SRA query string]', type=str, default=base_query, help='override base query, default: \'%s\'' % base_query)
+parser.add_argument('--base-query', metavar='[SRA query string]', type=str, default=None, help='override base query, default: \'%s\'' % base_query)
 
 args = parser.parse_args()
 
-base_query = args.base_query   
+if args.non_transcriptomic:
+    base_query = base_query.replace('AND transcriptomic','NOT transcriptomic')
+
+if not args.include_protected:
+    base_query = '(' + base_query + ' AND ' + public_only + ')'
+
+if args.accession is not None:
+    base_query = '(' + base_query + ' AND %s[Accession])' % args.accession
+
+if args.base_query is not None:
+    base_query = args.base_query
 xml_path = args.xml_path
 if not os.path.exists(xml_path):
     os.makedirs(xml_path)
@@ -36,9 +50,6 @@ if not os.path.exists(err_path):
     os.makedirs(err_path)
 
 #example data range: AND (("2019/10/06"[Publication Date] : "5000"[Publication Date]) OR ("2019/10/06"[Modification Date] : "5000"[Modification Date]))
-
-if args.non_transcriptomic:
-    base_query = base_query.replace('AND transcriptomic','NOT transcriptomic')
 
 #check if we're doing an incremental
 if args.start_date is not None:
