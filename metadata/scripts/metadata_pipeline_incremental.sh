@@ -24,7 +24,7 @@ fi
 cut -f $existing_samples_study_col $existing_samples | sort -u | fgrep -v "study" | sed 's/$/\t/' > existing_samples.studies   
 
 orgn_orig=$orgn
-orgn=`echo -n "$orgn_orig" | perl -ne '$o=$_; $o=~s/ /_/g; print "$o";'`
+orgn=`echo -n "$orgn_orig" | perl -ne '$o=$_; $o=~s/\s+/_/g; print "$o";'`
 
 #python needs to have BioPython installed as it uses Entrez from Bio
 #fetch jobs go to fetch_${orgn}.jobs
