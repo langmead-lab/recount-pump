@@ -1,25 +1,25 @@
 #!/usr/bin/env bash
 #runs the full metadata fetching & parsing pipeline for SRA
 
-#submit an organism (e.g. "${orgn}" or "mouse")
+dir=$(dirname $0)
+
+#submit an organism (e.g. "human" or "mouse")
 orgn=$1
 #number of concurrent fetch/filter jobs to run
 #probably not more than 10, and more like 5
 num_procs=$2
 
 orgn_orig=$orgn
-orgn=`echo -n "$orgn_orig" | perl -ne '$o=$_; $o=~s/ /_/g; print "$o";'`
+orgn=`echo -n "$orgn_orig" | perl -ne '$o=$_; $o=~s/\s+/_/g; print "$o";'`
 
 #python needs to have BioPython installed as it uses Entrez from Bio
 #fetch jobs go to fetch_${orgn}.jobs
 #parse jobs go to parse_${orgn}.sh (run serially)
 mkdir -p sra_xmls
 mkdir -p parse_errs
-python3 fetch_sra_metadata.py "$orgn_orig" $orgn sra_xmls parse_errs
+python3 $dir/fetch_sra_metadata.py --orgn "$orgn_orig" --xml-path sra_xmls --err-path parse_errs
 
-#parallel -j $num_procs < fetch_${orgn}.jobs > fetch_${orgn}.jobs.run 2>&1
-parallel -j 3 < fetch_${orgn}.jobs > fetch_${orgn}.jobs.run 2>&1
-#/usr/bin/time -v /bin/bash -x fetch_${orgn}.jobs > fetch_${orgn}.jobs.run 2>&1
+parallel -j $num_procs < fetch_${orgn}.jobs > fetch_${orgn}.jobs.run 2>&1
 
 #don't need to run parsing in parallel (fast enough) and we're writing to the same file
 #output file is: all_[orgn]_sra.tsv
@@ -35,7 +35,8 @@ mkdir nontranscriptomic
 pushd nontranscriptomic
 mkdir sra_xmls
 mkdir parse_errs
-python ../fetch_sra_metadata.py "$orgn_orig" $orgn sra_xmls parse_errs 1
+#python ../fetch_sra_metadata.py "$orgn_orig" $orgn sra_xmls parse_errs 1
+python $dir/fetch_sra_metadata.py --orgn "$orgn_orig" --xml-path sra_xmls --err-path parse_errs --non-transcriptomic
 /bin/bash -x fetch_${orgn}.jobs
 /bin/bash -x parse_${orgn}.sh
 cut -f 2 all_${orgn}_sra.tsv | sort -u | sed -e 's/$/\t/' > all_${orgn}_sra.tsv.studies
