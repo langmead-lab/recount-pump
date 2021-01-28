@@ -73,7 +73,7 @@ total_records = int(es["Count"])
 sys.stderr.write("Total # of records is %d for %s using query %s\n" % (total_records, args.orgn, base_query))
 
 num_fetches = int(total_records / args.batch_size) + 1
-parseOut.write("python %s/sraXML2TSV.py %s/%s.sra.rnaseq.illumina.public.xml.%d > all_%s_sra.tsv 2> %s/%s.sra.rnaseq.illumina.public.xml.%d.parse_err\n" % (scriptpath, xml_path, orgn_nospace, 0, orgn_nospace, err_path, orgn_nospace, 0))
+parseOut.write("python2 %s/sraXML2TSV.py %s/%s.sra.rnaseq.illumina.public.xml.%d > all_%s_sra.tsv 2> %s/%s.sra.rnaseq.illumina.public.xml.%d.parse_err\n" % (scriptpath, xml_path, orgn_nospace, 0, orgn_nospace, err_path, orgn_nospace, 0))
 
 for retstart_idx in range(0,num_fetches):
     start_idx = retstart_idx * args.batch_size
@@ -83,6 +83,6 @@ for retstart_idx in range(0,num_fetches):
     fetchOut.write('%s/fetch_sra_batch.sh "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=sra&query_key=%s&WebEnv=%s&api_key=737c03e5774d846960b50f1c90848fed3e08&retmode=xml&retstart=%d&retmax=%d" %s/%s.sra.rnaseq.illumina.public.xml.%d %s/%s.sra.rnaseq.illumina.public.xml.%d.err\n' % (scriptpath, es["QueryKey"], es["WebEnv"], start_idx, args.batch_size, xml_path, orgn_nospace, start_idx, err_path, orgn_nospace, start_idx))
     #write out post-fetch parsing job as well (separately run)
     if retstart_idx > 0:
-        parseOut.write("python %s/sraXML2TSV.py %s/%s.sra.rnaseq.illumina.public.xml.%d >> all_%s_sra.tsv 2> %s/%s.sra.rnaseq.illumina.public.xml.%d.parse_err\n" % (scriptpath, xml_path, orgn_nospace, start_idx, orgn_nospace, err_path, orgn_nospace, start_idx))
+        parseOut.write("python2 %s/sraXML2TSV.py %s/%s.sra.rnaseq.illumina.public.xml.%d >> all_%s_sra.tsv 2> %s/%s.sra.rnaseq.illumina.public.xml.%d.parse_err\n" % (scriptpath, xml_path, orgn_nospace, start_idx, orgn_nospace, err_path, orgn_nospace, start_idx))
 fetchOut.close()
 parseOut.close()
