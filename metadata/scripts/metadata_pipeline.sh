@@ -15,7 +15,7 @@ orgn=`echo -n "$orgn_orig" | perl -ne '$o=$_; $o=~s/ /_/g; print "$o";'`
 #parse jobs go to parse_${orgn}.sh (run serially)
 mkdir -p sra_xmls
 mkdir -p parse_errs
-python fetch_sra_metadata.py "$orgn_orig" $orgn sra_xmls parse_errs
+python3 fetch_sra_metadata.py "$orgn_orig" $orgn sra_xmls parse_errs
 
 #parallel -j $num_procs < fetch_${orgn}.jobs > fetch_${orgn}.jobs.run 2>&1
 parallel -j 3 < fetch_${orgn}.jobs > fetch_${orgn}.jobs.run 2>&1

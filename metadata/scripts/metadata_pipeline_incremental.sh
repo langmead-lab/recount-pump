@@ -29,7 +29,7 @@ orgn=`echo -n "$orgn_orig" | perl -ne '$o=$_; $o=~s/ /_/g; print "$o";'`
 #python needs to have BioPython installed as it uses Entrez from Bio
 #fetch jobs go to fetch_${orgn}.jobs
 #parse jobs go to parse_${orgn}.sh (run serially)
-python $dir/fetch_sra_metadata.py --orgn "$orgn_orig" --xml-path sra_xmls --err-path parse_errs --start-date "$startdate"
+python3 $dir/fetch_sra_metadata.py --orgn "$orgn_orig" --xml-path sra_xmls --err-path parse_errs --start-date "$startdate"
 
 parallel -j $num_procs < fetch_${orgn}.jobs > fetch_${orgn}.jobs.run 2>&1
 
