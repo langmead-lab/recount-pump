@@ -49,6 +49,8 @@ err_path = args.err_path
 if not os.path.exists(err_path):
     os.makedirs(err_path)
 
+
+
 #example data range: AND (("2019/10/06"[Publication Date] : "5000"[Publication Date]) OR ("2019/10/06"[Modification Date] : "5000"[Modification Date]))
 
 #check if we're doing an incremental
@@ -66,7 +68,17 @@ fetchOut = open("fetch_%s.jobs" % (orgn_nospace),"w")
 parseOut = open("parse_%s.sh" % (orgn_nospace),"w")
 
 es_ = e.esearch(db="sra",retmax=1,term=base_query, usehistory=True)
-es = e.read(es_)
+#workaround for non-home directories for writing DTDs locally:
+#https://github.com/biopython/biopython/issues/918
+def _Entrez_read(handle, validate=True, escape=False):
+    from Bio.Entrez import Parser
+    from Bio import Entrez
+    handler = Entrez.Parser.DataHandler(validate, escape)
+    handler.directory = args.err_path # the only difference between this and `Entrez.read`
+    record = handler.read(handle)
+    return record
+#result = _Entrez_read(Entrez.esearch(db='gene', term='IDH1'))
+es = _Entrez_read(es_)
 
 #number of records is # of EXPERIMENTs (SRX) NOT # RUNs (SRR)
 total_records = int(es["Count"])
