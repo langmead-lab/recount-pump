@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 #script do do all downloads for Monorail
-#Currently supported (as of 4/3/2019):
+#Currently supported (as of 2021-02-15):
 #1) SRA via Apsera|HTTPS and extracted via parallel-fastq-dump|fastq-dump
-#2) GDC (e.g. for TCGA, CCLE)
-#3) URL (passed in)
+#2) S3 URI (also uses *fastq-dump if necessary),
+#set anonymous="--no-sign-request" in environment to download from open data buckets
+#3) GDC (e.g. for TCGA, CCLE)
+#4) URL (passed in)
 set -xeo pipefail
 
 quad=$1
@@ -16,44 +18,34 @@ temp=$7
 log=$8
 
 #these are expected to be set from in the environment
-#study,is_gzipped,is_zstded,prefetch_args,fd_args,url0,url1,url2,gdc_token,reads_in_bam,out0,out1,out2
+#anonymous,study,is_gzipped,is_zstded,prefetch_args,fd_args,url0,url1,url2,gdc_token,reads_in_bam,out0,out1,out2
 
 SUCCESS=0
 TIMEOUT=10
 #gdc timeout is in minutes
 GDC_TIMEOUT=30
 PARAMS=""
+
+#if using S3, here the "srr" is the full s3 path to the folder/directory (w/o trailing "/")
+#to recursively download
+s3uri=$srr
+if [[ $method == "s3" ]]; then
+    srr=$(basename $s3uri)
+fi
+
 TMP="${temp}/dl-${srr}"
 ! test -d ${TMP}
 TMP_HOLD="${temp}/hold-${srr}"
 mkdir -p $TMP_HOLD
 pushd $TMP_HOLD
 
-#----------SRA----------#
-if [[ ${method} == "sra" ]] ; then
-    USE_FASTERQ=1
-    mkdir -p ${temp}
-    pushd ${temp}
-    for i in { 1..${retries} } ; do
-        if time prefetch ${prefetch_args} -t http -O dl-${srr} ${srr} 2>&1 >> ${log} ; then
-            SUCCESS=1
-            echo "COUNT_HTTPDownloads 1"
-            break
-        else
-            echo "COUNT_SraRetries 1"
-            TIMEOUT=$((${TIMEOUT} * 2))
-            sleep ${TIMEOUT}
-        fi
-    done
-    popd
-    if (( $SUCCESS == 0 )) ; then
-        echo "COUNT_SraFailures 1"
-        rm -rf ${TMP}
-        exit 1
-    fi
-    test -f ${TMP}/*.sra
-    size=$(cat ${TMP}/*.sra | wc -c)
-    echo "COUNT_SraBytesDownloaded ${size}"
+function fastqdump {
+    srr=$1
+    TMP=$2
+    log=$3
+    threads=$4
+    USE_FASTERQ=$5
+
     ##parallel-fastq-dump
     if (( ${USE_FASTERQ} == 1 )) ; then
         time parallel-fastq-dump --sra-id ${TMP}/*.sra \
@@ -83,6 +75,88 @@ if [[ ${method} == "sra" ]] ; then
         # extra unpaired from --split-3
         test -f ${srr}_2.fastq && test -f ${srr}.fastq && mv ${srr}.fastq ${srr}_0.fastq
     fi
+}
+
+#----------AWS S3----------#
+if [[ ${method} == "s3" ]] ; then
+    #we download, then determine FASTQs present (or .sra files)
+    #set anonymous="--no-sign-request" to grab from S3 opendata buckets
+    mkdir -p $TMP
+    pushd $TMP
+    for i in { 1..${retries} } ; do
+        if time aws s3 cp --recursive $anonymous $s3uri ./ ; then
+            SUCCESS=1
+            echo "COUNT_S3Downloads 1"
+            break
+        else
+            echo "COUNT_S3Retries 1"
+            TIMEOUT=$((${TIMEOUT} * 2))
+            sleep ${TIMEOUT}
+        fi
+    done
+    if (( $SUCCESS == 0 )) ; then
+        echo "COUNT_S3Failures 1"
+        popd
+        rm -rf ${TMP}
+        exit 1
+    fi
+    popd
+    #now determine FASTQ files
+    #should ever only be 1 .sra file
+    #srafile=$(ls ${TMP}/*.sra) 
+    if [[ -f ${TMP}/*.sra ]] ; then
+        size=$(cat ${TMP}/*.sra | wc -c)
+        echo "COUNT_S3BytesDownloaded ${size}"
+        USE_FASTERQ=1
+        fastqdump $srr $TMP $log $threads $USE_FASTERQ
+    else
+        #assume compressed fastqs
+        suffix="$TMP/*.gz.1"
+        if [[ -f ${TMP}/*.gz ]] ; then
+            suffix="$TMP/*.gz"
+        fi
+        num_fastqs=`ls -1 $suffix | wc -l`
+        if [[ $num_fastqs -eq 0 ]]; then
+            >&2 echo "no compressed fastqs found in download from S3 $s3uri, terminating!"
+            exit -1
+        fi
+        #even number of mate files, go through them in ls order alternating
+        if [[ $(( num_fastqs % 2 )) -eq 0 ]]; then
+            ls -1 $suffix | perl -ne 'chomp; $f=$_; $i++; $ridx=1; $ridx=2 if($i % 2 == 0); `zcat $f >> '$srr'_$ridx.fastq`;'
+        #odd number of files
+        else
+            ls -1 $suffix | perl -ne 'chomp; $f=$_; $i++; last if($i == '$num_fastqs'); $ridx=1; $ridx=2 if($i % 2 == 0); `zcat $f >> '$srr'_$ridx.fastq`;'
+            #now handle odd one
+            fname=$(ls -1 $suffix | tail -n1)
+            zcat $fname > ${srr}_0.fastq 
+        fi
+    fi
+#----------SRA----------#
+elif [[ ${method} == "sra" ]] ; then
+    USE_FASTERQ=1
+    #mkdir -p $TMP
+    #pushd $TMP
+    for i in { 1..${retries} } ; do
+        if time prefetch ${prefetch_args} -t http -O $TMP ${srr} 2>&1 >> ${log} ; then
+            SUCCESS=1
+            echo "COUNT_HTTPDownloads 1"
+            break
+        else
+            echo "COUNT_SraRetries 1"
+            TIMEOUT=$((${TIMEOUT} * 2))
+            sleep ${TIMEOUT}
+        fi
+    done
+    #popd
+    if (( $SUCCESS == 0 )) ; then
+        echo "COUNT_SraFailures 1"
+        rm -rf ${TMP}
+        exit 1
+    fi
+    test -f ${TMP}/*.sra
+    size=$(cat ${TMP}/*.sra | wc -c)
+    echo "COUNT_SraBytesDownloaded ${size}"
+    fastqdump $srr $TMP $log $threads $USE_FASTERQ
     rm -rf ${TMP}
 #----------GDC----------#
 elif [[ ${method} == "gdc" ]] ; then
@@ -157,7 +231,6 @@ elif [[ ${method} == "gdc" ]] ; then
             gunzip *.gz
         fi 
         rm -rf ${TMP}
-
         num_fastqs=`ls -1 *.fastq | wc -l`
 
         if (( ${num_fastqs} == 1 )) ; then
