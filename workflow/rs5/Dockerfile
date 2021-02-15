@@ -24,11 +24,11 @@ RUN curl -OL https://github.com/samtools/samtools/releases/download/${SM_VER}/sa
     make && \
     make install
 
-# install bamcount static binary
-ENV BC_VER=0.4.0
+# install bamcount (now called megadepth) partial-static binary
+ENV BC_VER=1.1.0b
 RUN mkdir -p /bamcount && \
     cd /bamcount && \
-    wget -q https://github.com/ChristopherWilks/bamcount/releases/download/${BC_VER}/bamcount_static -O bamcount && \
+    wget -q https://github.com/ChristopherWilks/megadepth/releases/download/${BC_VER}/megadepth -O bamcount && \
     chmod a+x bamcount
 
 # install Snakefile
