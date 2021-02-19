@@ -6,7 +6,9 @@
 #set anonymous="--no-sign-request" in environment to download from open data buckets
 #3) GDC (e.g. for TCGA, CCLE)
 #4) URL (passed in)
-set -xeo pipefail
+set -exo pipefail
+#cause failed filename expansions to error the script
+shopt -s failglob
 
 quad=$1
 srr=$2
@@ -60,7 +62,7 @@ function fastqdump {
             (test -f ${srr}_1.fastq && mv ${srr}_1.fastq ${srr}_0.fastq) || \
                             (test -f ${srr}.fastq && mv ${srr}.fastq ${srr}_0.fastq)
         # extra unpaired from --split-3
-        test -f ${srr}_2.fastq && test -f ${srr}.fastq && mv ${srr}.fastq ${srr}_0.fastq
+        (test -f ${srr}_2.fastq && test -f ${srr}.fastq && mv ${srr}.fastq ${srr}_0.fastq) || true
     ##original fastq-dump
     else
         time fastq-dump ${TMP}/*.sra \
@@ -73,7 +75,7 @@ function fastqdump {
             (test -f ${srr}_1.fastq && mv ${srr}_1.fastq ${srr}_0.fastq) || \
                             (test -f ${srr}.fastq && mv ${srr}.fastq ${srr}_0.fastq)
         # extra unpaired from --split-3
-        test -f ${srr}_2.fastq && test -f ${srr}.fastq && mv ${srr}.fastq ${srr}_0.fastq
+        (test -f ${srr}_2.fastq && test -f ${srr}.fastq && mv ${srr}.fastq ${srr}_0.fastq) || true
     fi
 }
 
