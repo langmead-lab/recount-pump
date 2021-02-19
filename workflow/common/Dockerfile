@@ -47,10 +47,10 @@ RUN chmod a+x /install-aspera.sh
 # I download a binary instead of getting it from bioconda because there is a
 # conflict between gdc-client and progress, needed by some other (unknown)
 # package
-RUN wget -q https://github.com/NCI-GDC/gdc-client/releases/download/1.4.0/gdc-client_v1.4.0_Ubuntu_x64.zip && \
-    unzip gdc-client_v1.4.0_Ubuntu_x64.zip && \
+RUN wget -q https://github.com/NCI-GDC/gdc-client/releases/download/1.5.0/gdc-client_v1.5.0_Ubuntu_x64.zip && \
+    unzip gdc-client_v1.5.0_Ubuntu_x64.zip && \
     mv gdc-client /usr/bin && \
-    rm -f gdc-client_v1.4.0_Ubuntu_x64.zip
+    rm -f gdc-client_v1.5.0_Ubuntu_x64.zip
 
 USER recount
 WORKDIR /home/recount
