@@ -1,28 +1,41 @@
-#!/usr/bin/env bash
+#!/bin/bash -l
+#SBATCH --partition=flat-quadrant
+#SBATCH --job-name=knl-unify
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --time=24:00:00
+#SBATCH -A TG-DEB180021
+#SBATCH --exclude=c502-043,c502-001,c478-043,c478-031
 #runner for recount-unify (post-pump Monorail) on TACC/Stampede2
-sed -exo pipefail
+set -exo pipefail
 
-dir=$(dirname $0)
+#requires GNU parallel to run pump intra-node processes
+
+module load gnuparallel
+module load tacc-singularity
+
+dir=./
 export IMAGE=/work/04620/cwilks/singularity_cache/recount-unify-1.0.4.simg
 export REF=hg38
 export REFS_DIR=/work/04620/cwilks/monorail-external/refs
-export NUM_CORES=40
+export NUM_CORES=80
 
 #default project name (sra, tcga, gtex, etc...) and compilation ID (for rail_id generation)
 export PROJECT_SHORT_NAME_AND_ID='sra:101'
 
-e.g. /scratch/04620/cwilks/workshop
-working_dir=$1
+#e.g. /scratch/04620/cwilks/workshop
+WORKING_DIR=$1
+STUDY=$2
 
-mkdir -p $working_dir/unify
-
-pump_study_output_path=$working_dir/output
-pump_study_samples_file=$working_dir/samples.tsv
-#find $pump_study_output_path  -name "*.manifest" | perl -ne 'BEGIN { print "study\tsample\n"; } chomp; $f=$_; @f=split(/\//,$f); $fname=pop(@f); @f=split(/!/,$fname); $run=shift(@f); $study=shift(@f); print "$study\t$run\n";' > $pump_study_samples_file
+pump_study_output_path=$WORKING_DIR/output
+JOB_ID=$SLURM_JOB_ID
+export WORKING_DIR=$WORKING_DIR/unify/${STUDY}.${JOB_ID}
+mkdir -p $WORKING_DIR
+pump_study_samples_file=$WORKING_DIR/input_samples.tsv
 echo "study	sample" > $pump_study_samples_file
-find $pump_study_output_path  -name "*.manifest" | sed 's/^.+\/([^\/!])+!([^!]+)!.+$/$1\t$2/'
+find $pump_study_output_path  -name "*.manifest" | sed 's#^.\+att0/\([^!]\+\)!\([^!]\+\)!.\+$#\2\t\1#' >> $pump_study_samples_file
 
-num_samples=$(tail n+2 $pump_study_samples_file | wc -l)
-echo "number of samples in pump output for $working_dir/output: $num_samples"
+num_samples=$(tail -n+2 $pump_study_samples_file | wc -l)
+echo "number of samples in $STUDY's pump output for $pump_study_output_path: $num_samples"
 
-/bin/bash $dir/run_recount_unify.sh $IMAGE $REF $REFS_DIR $working_dir/unify $pump_study_output_path $pump_study_samples_file $NUM_CORES $REFS_DIR > $working_dir/${run}.${study}.unify.run 2>&1
+/bin/bash $dir/run_recount_unify.sh $IMAGE $REF $REFS_DIR $WORKING_DIR $pump_study_output_path $pump_study_samples_file $NUM_CORES $PROJECT_SHORT_NAME_AND_ID > $WORKING_DIR/unify.run 2>&1
