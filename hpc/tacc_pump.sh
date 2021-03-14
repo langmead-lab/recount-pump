@@ -27,7 +27,7 @@ study=$1
 #e.g. /home1/04620/cwilks/scratch/workshop/SRP096788.runs.txt
 runs_file=$2
 #e.g. /scratch/04620/cwilks/workshop
-export WORKING_DIR=$3
+WORKING_DIR=$3
 
 JOB_ID=$SLURM_JOB_ID
 export WORKING_DIR=$WORKING_DIR/pump/${study}.${JOB_ID}
