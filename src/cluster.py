@@ -413,7 +413,7 @@ def prepare_analysis(cluster_ini, proj, mover, session, singularity_suffix='.sif
     log.info('Contents of analysis dir: ' + str(os.listdir(analysis_dir)), 'cluster.py')
     if typ == 'docker':
         if system == 'singularity':
-            image_fn, _ = parse_image_url(url, system, cachedir=cachedir, singularity_suffix=singularity_suffix)
+            image_fn, _ = parse_image_url(url, system, cachedir=analysis_dir, singularity_suffix=singularity_suffix)
             if not image_exists_locally(url, system, cachedir=analysis_dir, singularity_suffix=singularity_suffix):
                 cmd = 'singularity pull %s %s' % (image_fn, url)
                 log.info('pulling: "%s"' % cmd, 'cluster.py')
