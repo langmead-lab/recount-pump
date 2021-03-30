@@ -208,7 +208,7 @@ def docker_image_exists(url):
         return False
 
 
-def parse_image_url(url, system, cachedir=None):
+def parse_image_url(url, system, cachedir=None, singularity_suffix='.sif'):
     """
     Parse an image URL and return information about what type of repo it's
     stored in as well as what form it should take once it has been "pulled"
@@ -222,7 +222,7 @@ def parse_image_url(url, system, cachedir=None):
     if url.startswith('docker://'):
         typ = 'docker'
         if system == 'singularity':
-            image_name = url.split('/')[-1] + '.simg'
+            image_name = url.split('/')[-1] + singularity_suffix
             image_name = image_name.replace(':', '-')
             image_fn = os.path.join(cachedir, image_name)
     elif url.startswith('shub://'):
@@ -246,8 +246,8 @@ def parse_image_url(url, system, cachedir=None):
     return image_fn, typ
 
 
-def image_exists_locally(url, system, cachedir=None):
-    image_fn, typ = parse_image_url(url, system, cachedir=cachedir)
+def image_exists_locally(url, system, cachedir=None, singularity_suffix='.sif'):
+    image_fn, typ = parse_image_url(url, system, cachedir=cachedir, singularity_suffix=singularity_suffix)
     if image_fn is not None:
         return os.path.exists(image_fn)
     else:
@@ -258,7 +258,9 @@ def image_exists_locally(url, system, cachedir=None):
 
 def do_job(body, proj, cluster_ini, my_attempt, node_name,
            worker_name, session, heartbeat_func,
-           mover_config=None, destination=None, source_prefix=None, shared_log_queue=log_queue, keep=False):
+           mover_config=None, destination=None, source_prefix=None,
+           shared_log_queue=log_queue, keep=False,
+           singularity_suffix='.sif'):
     """
     Given a job-attempt description string, parse the string and execute the
     corresponding job attempt.  The description string itself is composed in
@@ -286,8 +288,8 @@ def do_job(body, proj, cluster_ini, my_attempt, node_name,
     assert 1 == len(analyses)
     image_url, config = analyses[0].image_url, analyses[0].config
     log_info_detailed(node_name, worker_name, 'parsing image URL: "%s"' % image_url, shared_log_queue=shared_log_queue)
-    image_fn, _ = parse_image_url(image_url, system, cachedir=analysis_dir)
-    if not image_exists_locally(image_url, system, cachedir=analysis_dir):
+    image_fn, _ = parse_image_url(image_url, system, cachedir=analysis_dir, singularity_suffix=singularity_suffix)
+    if not image_exists_locally(image_url, system, cachedir=analysis_dir, singularity_suffix=singularity_suffix):
         raise RuntimeError('Image "%s" does not exist locally' % image_fn)
     if image_fn is not None:
         # TODO: we could check the md5 for a docker image too, though this is
@@ -394,7 +396,7 @@ def ready_reference(reference, cluster_name, reference_dir, session):
         return False
 
 
-def prepare_analysis(cluster_ini, proj, mover, session):
+def prepare_analysis(cluster_ini, proj, mover, session, singularity_suffix='.sif'):
     cluster_name, system, analysis_dir, _, _, _, _ = read_cluster_config(cluster_ini)
     assert analysis_dir is not None
     analysis_dir = os.path.expanduser(analysis_dir)
@@ -411,8 +413,9 @@ def prepare_analysis(cluster_ini, proj, mover, session):
     log.info('Contents of analysis dir: ' + str(os.listdir(analysis_dir)), 'cluster.py')
     if typ == 'docker':
         if system == 'singularity':
-            if not image_exists_locally(url, system, cachedir=analysis_dir):
-                cmd = 'singularity pull ' + url
+            image_fn, _ = parse_image_url(url, system, cachedir=cachedir, singularity_suffix=singularity_suffix)
+            if not image_exists_locally(url, system, cachedir=analysis_dir, singularity_suffix=singularity_suffix):
+                cmd = 'singularity pull %s %s' % (image_fn, url)
                 log.info('pulling: "%s"' % cmd, 'cluster.py')
                 ret = os.system(cmd)
                 if ret != 0:
@@ -431,17 +434,17 @@ def prepare_analysis(cluster_ini, proj, mover, session):
     elif typ == 'shub':
         if system != 'singularity':
             raise RuntimeError('Analysis URL is shub:// but container system is not singularity')
-        if not image_exists_locally(url, system, cachedir=analysis_dir):
+        if not image_exists_locally(url, system, cachedir=analysis_dir, singularity_suffix=singularity_suffix):
             cmd = 'singularity pull ' + url
             log.info('pulling: "%s"' % cmd, 'cluster.py')
             ret = os.system(cmd)
             if ret != 0:
                 raise RuntimeError('Command "%s" exited with level %d' % (cmd, ret))
     else:
-        if not image_exists_locally(url, system, cachedir=analysis_dir):
+        if not image_exists_locally(url, system, cachedir=analysis_dir, singularity_suffix=singularity_suffix):
             download_image(url, cluster_name, analysis_dir, mover)
 
-    if not image_exists_locally(url, system, cachedir=analysis_dir):
+    if not image_exists_locally(url, system, cachedir=analysis_dir, singularity_suffix=singularity_suffix):
         if image_fn is not None:
             raise RuntimeError('Image "%s" (file: "%s") does not exist locally after prep' % (url, image_fn))
         else:
