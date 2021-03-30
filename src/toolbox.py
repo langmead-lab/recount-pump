@@ -71,14 +71,13 @@ def parse_queue_config(fn, section='queue'):
         opt = cfg.get(section, nm)
         return None if (len(opt) == 0) else opt
 
-    max_receive_count = 2
-    visibility_timeout, message_retention_period, max_receive_count  = None, None, None
+    visibility_timeout, message_retention_period, max_receive_count = None, None, None
     if cfg.has_option(section, 'visibility_timeout'):
         visibility_timeout = cfg.getint(section, 'visibility_timeout')
     if cfg.has_option(section, 'message_retention_period'):
         message_retention_period = cfg.getint(section, 'message_retention_period')
     if cfg.has_option(section, 'max_receive_count'):
-        max_receive_count = cfg.getint(section, 'max_receive_count')
+        max_receive_count = cfg.getint(section, 'max_receive_count', fallback=3)
 
     return _get_option('aws_profile'), _get_option('region'), _get_option('endpoint'),\
            visibility_timeout, message_retention_period,\
