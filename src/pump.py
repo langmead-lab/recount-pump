@@ -235,6 +235,8 @@ def stage_project(project_id, sqs_client, session, chunking_strategy=None,
     Stage all the jobs in the given project
     """
     proj = session.query(Project).get(project_id)
+    if proj is None:
+        raise RuntimeError('No such project id as %d!' % project_id)
     q_url = get_queue(sqs_client, proj.queue_name(), visibility_timeout=visibility_timeout,
                       message_retention_period=message_retention_period, make_dlq=make_dlq, max_receive_count=max_receive_count)
     log.info('stage_project using sqs queue url ' + q_url, 'pump.py')
