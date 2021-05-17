@@ -58,11 +58,6 @@ function fastqdump {
             --skip-technical \
             --outdir . \
             2>&1 >> ${log}
-        test -f ${srr}_2.fastq || \
-            (test -f ${srr}_1.fastq && mv ${srr}_1.fastq ${srr}_0.fastq) || \
-                            (test -f ${srr}.fastq && mv ${srr}.fastq ${srr}_0.fastq)
-        # extra unpaired from --split-3
-        (test -f ${srr}_2.fastq && test -f ${srr}.fastq && mv ${srr}.fastq ${srr}_0.fastq) || true
     ##original fastq-dump
     else
         time fastq-dump ${TMP}/*.sra \
@@ -71,11 +66,19 @@ function fastqdump {
             --skip-technical \
             -O . \
             2>&1 >> ${log}
-        test -f ${srr}_2.fastq || \
-            (test -f ${srr}_1.fastq && mv ${srr}_1.fastq ${srr}_0.fastq) || \
-                            (test -f ${srr}.fastq && mv ${srr}.fastq ${srr}_0.fastq)
-        # extra unpaired from --split-3
-        (test -f ${srr}_2.fastq && test -f ${srr}.fastq && mv ${srr}.fastq ${srr}_0.fastq) || true
+    fi
+    if [[ ! -f "${srr}_2.fastq" ]] ; then
+        if [[ -f "${srr}_1.fastq" ]] ; then
+            mv ${srr}_1.fastq ${srr}_0.fastq
+        else
+            if [[ -f "${srr}.fastq" ]] ; then
+                mv "${srr}.fastq" "${srr}_0.fastq"
+            fi
+        fi
+    fi
+    # extra unpaired from --split-3
+    if [[ -f "${srr}_2.fastq" && -f "${srr}.fastq" ]] ; then
+        mv ${srr}.fastq ${srr}_0.fastq
     fi
 }
 
