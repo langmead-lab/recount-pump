@@ -365,6 +365,11 @@ def run_job(name, inputs, image_url, image_fn, config, cluster_ini, heartbeat_fu
                 temp_big_mount = os.path.join(temp_big_base, name)
             temp_big_base_name = os.path.join(temp_big_base, name)
             os.makedirs(temp_big_base_name)
+        else:
+            temp_big_mount = temp_base_name
+
+        assert temp_big_mount is not None
+
         if ref_mount is not None and len(ref_mount) > 0:
             mounts.append('-v' if docker else '-B')
             mounts.append('%s:%s' % (ref_base, ref_mount))
