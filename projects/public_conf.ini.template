@@ -9,6 +9,7 @@ db_profile=
 
 log_profile=
 log_region=
+log_enable=
 
 sqs_profile=
 sqs_region=
