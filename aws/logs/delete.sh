@@ -14,7 +14,7 @@ log_stream=$1
 shift
 
 if [[ -z "${log_stream}" ]] ; then
-    log_stream=$(grep stream_name ~/.recount/log.ini | cut -d"=" -f2 | tr -d '[:space:]')
+    log_stream=$(grep stream_name ${INI_FILE} | cut -d"=" -f2 | tr -d '[:space:]')
 fi
 
 echo "Deleting stream"
