@@ -4,8 +4,11 @@ USER root
 
 # install remaining conda packages
 COPY more_conda.txt /tmp/more_conda.txt
-RUN for i in `cat /tmp/more_conda.txt` ; do conda install -q -y -c conda-forge -c bioconda -c defaults -n recount $i ; done && \ 
-    conda clean -y -p -t && \
+
+RUN conda install --override-channels -c main -c conda-forge mamba
+
+RUN for i in `cat /tmp/more_conda.txt` ; do mamba install -q -y -c conda-forge -c bioconda -c defaults -n recount $i ; done && \
+    mamba clean -y -p -t && \
     rm -rf /opt/conda/envs/recount/man/* \
            /opt/conda/envs/recount/include/* \
            /opt/conda/envs/recount/annotation/* \
