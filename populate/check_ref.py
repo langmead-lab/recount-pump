@@ -32,12 +32,14 @@ def combo(fa_list, gtf_list):
 def gtf_and_fasta():
     fasta_sets, gtf_sets = [], []
     for fn in os.listdir('fasta'):
+        assert fn is not None
         if not fn.endswith('.fa'):
             continue
         chroms_fa = chroms_from_fasta('fasta/' + fn)
         print("%s chroms: %s" % (fn, str(chroms_fa)), file=sys.stderr)
         fasta_sets.append((fn, chroms_fa))
     for fn in os.listdir('gtf'):
+        assert fn is not None
         if not fn.endswith('.gtf'):
             continue
         chroms_gtf = chroms_from_gtf('gtf/' + fn)
