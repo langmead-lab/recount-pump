@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Author: Ben Langmead
 #   Date: 11/26/17
