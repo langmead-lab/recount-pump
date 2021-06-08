@@ -1,0 +1,233 @@
+---
+title: "qc"
+output: html_document
+---
+
+Example report:
+
+```
+                          Number of input reads |	93371899
+                      Average input read length |	152
+                                    UNIQUE READS:
+                   Uniquely mapped reads number |	58118693
+                        Uniquely mapped reads % |	62.24%
+                          Average mapped length |	133.52
+                       Number of splices: Total |	9287778
+            Number of splices: Annotated (sjdb) |	0
+                       Number of splices: GT/AG |	9198064
+                       Number of splices: GC/AG |	62090
+                       Number of splices: AT/AC |	5194
+               Number of splices: Non-canonical |	22430
+                      Mismatch rate per base, % |	2.03%
+                         Deletion rate per base |	0.01%
+                        Deletion average length |	1.43
+                        Insertion rate per base |	0.00%
+                       Insertion average length |	1.43
+                             MULTI-MAPPING READS:
+        Number of reads mapped to multiple loci |	2779036
+             % of reads mapped to multiple loci |	2.98%
+        Number of reads mapped to too many loci |	36707
+             % of reads mapped to too many loci |	0.04%
+                                  UNMAPPED READS:
+  Number of reads unmapped: too many mismatches |	0
+       % of reads unmapped: too many mismatches |	0.00%
+            Number of reads unmapped: too short |	31910266
+                 % of reads unmapped: too short |	34.18%
+                Number of reads unmapped: other |	527197
+                     % of reads unmapped: other |	0.56%
+                                  CHIMERIC READS:
+                       Number of chimeric reads |	65461
+                            % of chimeric reads |	0.07%
+```
+
+```{r lib}
+library(ggplot2)
+library(UpSetR)
+```
+
+```{r wd}
+setwd('~/git/recount-pump/metadata/qc_expt')
+```
+
+This is a subsample, taking a random 20% of the total # rows from samples.tsv.  This way of sampling is flawed because it does not keep studies intact.
+
+I think that most of the STAR-related QC measures come from the `Log.final.out` output file.
+
+```{r read}
+m <- read.table('samples.sorted_by_study.tsv', sep='\t', comment.char='', quote='', header=T)
+```
+
+```{r fraction_non_canonical}
+frac_non <- m$star.number_of_splices._non.canonical / m$star.number_of_splices._total
+frac_non_thresh <- frac_non > 0.4
+ggplot(m, aes(x=1:nrow(m), y=frac_non, color=frac_non > 0.4, alpha=I(0.2))) +
+  geom_point() +
+  theme_bw()
+frac_non_samps <- which(frac_non_thresh)
+```
+
+```{r fraction_non_canonical_box}
+ggplot(m, aes(y=frac_non)) + geom_boxplot() + theme_bw()
+```
+
+```{r too_short}
+short_frac <- m$star.number_of_reads_unmapped._too_short / m$star.number_of_input_reads
+short_frac_thresh <- short_frac > 0.8
+ggplot(m, aes(x=1:nrow(m), y=short_frac, color=short_frac > 0.8, alpha=I(0.05))) +
+  geom_point() +
+  theme_bw()
+short_frac_samps <- which(short_frac_thresh)
+```
+
+```{r}
+assigned_frac <- m$gene_fc_count_all.assigned/m$gene_fc_count_all.total
+assigned_frac_thresh <- assigned_frac < 0.05
+ggplot(m, aes(x=1:nrow(m), y=assigned_frac, color=assigned_frac < 0.05, alpha=I(0.05))) +
+  geom_point() + theme_bw() + labs(x='Index', y='% assigned to gene')
+assigned_frac_samps <- which(assigned_frac_thresh)
+```
+
+```{r pct_mapped}
+nreads <- (m$star.number_of_input_reads + m$star.number_of_input_reads2)
+nmapped <- (m$star.all_mapped_reads + m$star.all_mapped_reads2)
+mapped <- nmapped / nreads
+mapped_thresh <- mapped < 0.01
+mapped_samps <- which(mapped_thresh)
+ggplot(m, aes(x=1:nrow(m), y=mapped, color=mapped < 0.01, alpha=I(0.5))) +
+  geom_point() + theme_bw() + labs(x='Index', y='% mapped')
+```
+```{r pct_unique}
+nrep <- (m$star.number_of_reads_mapped_to_multiple_loci + m$star.number_of_reads_mapped_to_multiple_loci2)
+repal <- nrep / nmapped
+repal_thresh <- repal > 0.85
+repal_samps <- which(repal_thresh)
+ggplot(m, aes(x=1:nrow(m), y=repal, color=repal > 0.85, alpha=I(0.5))) +
+  geom_point() + theme_bw() + labs(x='Index', y='Fraction of aligned reads that aligned repetitively')
+```
+
+```{r pct_mt}
+mt <- m$aligned_reads..chrm
+mt_thresh <- mt > 40
+mt_samps <- which(mt_thresh)
+ggplot(m, aes(x=1:nrow(m), y=mt, color=mt > 40, alpha=I(0.5))) +
+  geom_point() + theme_bw() + labs(x='Index', y='% mapped to MT')
+```
+
+```{r few_reads}
+few <- m$star.number_of_input_reads + m$star.number_of_input_reads2
+few_thresh <- few < 10000
+few_samps <- which(few_thresh)
+ggplot(m, aes(x=1:nrow(m), y=few, color=few < 10000, alpha=I(0.5))) +
+  geom_point() + theme_bw() + labs(x='Index', y='# reads')
+```
+
+```{r pct_chimeric}
+# percent
+pct_chim <- m$star.._of_chimeric_reads
+pct_chim_thresh <- pct_chim > 20
+ggplot(m, aes(x=1:nrow(m), y=pct_chim, color=pct_chim > 20, alpha=I(0.5))) +
+  geom_point() + theme_bw() + labs(x='Index', y='% chimeric')
+pct_chim_samps <- which(pct_chim_thresh)
+```
+
+```{r read_len}
+read_len <- m$star.average_input_read_length
+read_len_thresh <- read_len <= 30
+ggplot(m, aes(x=1:nrow(m), y=read_len, color=read_len <= 30, alpha=I(0.5))) +
+  geom_point() +
+  theme_bw()
+read_len_samps <- which(read_len_thresh)
+```
+
+```{r read_len_studies}
+table(m$study_acc[read_len < 27])
+```
+
+* https://trace.ncbi.nlm.nih.gov/Traces/sra/?study=SRP032279 (uses DeepSAGE)
+* https://trace.ncbi.nlm.nih.gov/Traces/sra/sra.cgi?study=SRP055513 (uses DeepSAGE)
+* https://trace.ncbi.nlm.nih.gov/Traces/sra/sra.cgi?study=SRP188526 (has "Small non-coding RNA profiling" in title)
+
+```{r indel_rate}
+indel <- m$star.deletion_rate_per_base + m$star.insertion_rate_per_base
+indel_thresh <- indel > 0.1
+ggplot(m, aes(x=1:nrow(m), y=indel, color=indel > 0.1)) +
+  geom_point() + theme_bw() + labs(x='Index', y='Insertion + deletion rate')
+indel_samps <- which(indel_thresh)
+```
+
+Trying to identify who that green tower is.
+
+```{r}
+table(m$study_acc[indel > 2])
+```
+
+* https://trace.ncbi.nlm.nih.gov/Traces/sra/?study=SRP166108 (TempO-Seq)
+    * https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE145994
+* https://trace.ncbi.nlm.nih.gov/Traces/sra/?study=SRP073426 (nothing unusual here)
+* https://trace.ncbi.nlm.nih.gov/Traces/sra/?study=SRP061888 (nothing unusual here)
+
+I was expecting the mismatch rate per-base measure to be a fraction, but I'm clearly misunderstanding.  This one needs more work.
+
+```{r mm_rate}
+mm_rate <- m$star.mismatch_rate_per_base._.
+mm_rate_mean <- mean(mm_rate)
+mm_rate_sd <- sd(mm_rate)
+mm_rate_thresh <- mm_rate > mm_rate_mean + (2*mm_rate_sd)
+ggplot(m, aes(x=1:nrow(m), y=mm_rate, color=mm_rate > mm_rate_mean + (2*mm_rate_sd), alpha=I(0.3))) +
+  geom_point() + theme_bw() + labs(x='Index', y='Mismatch rate (%) per base')
+mm_rate_samps <- which(mm_rate_thresh)
+```
+
+Why is this ever negative?
+
+```{r soft_clip}
+sc_avg <- (m$star.average_input_read_length + m$star.average_input_read_length2 - m$star.average_mapped_length - m$star.average_mapped_length2) / (m$star.average_input_read_length + m$star.average_input_read_length2)
+sc_avg_thresh <- sc_avg > 0.15
+ggplot(m, aes(x=1:nrow(m), y=sc_avg, color=sc_avg > 0.15)) +
+  geom_point() + theme_bw() + labs(x='Index', y='Avg proportion soft clipped')
+sc_avg_samps <- which(sc_avg_thresh)
+```
+
+```{r soft_clip_studies}
+table(m$study_acc[sc_avg > 0.95])
+```
+
+* https://trace.ncbi.nlm.nih.gov/Traces/sra/?study=SRP194624 (hard to see why these particular runs; but all are FFPE)
+* https://trace.ncbi.nlm.nih.gov/Traces/sra/?study=SRP100634 (25 x 25 bp reads)
+    * This is actually much better explained by star.number_of_reads_unmapped._other
+
+```{r unmapped_other}
+other <- m$star.number_of_reads_unmapped._other / m$star.number_of_input_reads
+other_thresh <- other > 0.1
+other_samps <- which(other_thresh)
+ggplot(m, aes(x=1:nrow(m), y=other, color=other > 0.1)) +
+  geom_point() + theme_bw() + labs(x='Index', y='Fraction reads unmapped for "other" reason')
+```
+
+```{r}
+table(m$study_acc[other_thresh])
+```
+
+```{r jx_count_per_aligned_base}
+juncs_per_base <- m$junction_count / (m$star.all_mapped_reads * m$star.average_mapped_length)
+juncs_per_base_thresh <- juncs_per_base < 0.000001
+ggplot(m, aes(x=1:nrow(m), y=juncs_per_base, color=juncs_per_base < 0.000001, alpha=I(0.1))) +
+  geom_point() + theme_bw() + labs(x='Index', y='Junctions per aligned base') + ylim(0, 0.00001)
+juncs_per_base_samps <- which(juncs_per_base_thresh)
+```
+
+```{r}
+upset(fromList(list(juncs_per_base=juncs_per_base_samps,
+                    mm_rate=mm_rate_samps,
+                    indel=indel_samps,
+                    read_len=read_len_samps,
+                    pct_chim=pct_chim_samps,
+                    assigned_frac=assigned_frac_samps,
+                    frac_non=frac_non_samps,
+                    short_frac=short_frac_samps,
+                    mapped=mapped_samps,
+                    few_reads=few_samps,
+                    mt_pct=mt_samps,
+                    rep_al=repal_samps,
+                    unmapped_other=other_samps)), nsets = 13, order.by = "freq")
+```
