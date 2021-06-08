@@ -76,4 +76,7 @@ db_pw=<secret-password>
 
 * `../common/make_creds.py`
     * Unless you happen to be running from one of the clusters that `projects/common/clusters/cluster.sh` is able to detect, this should run to completion.
+
 * `../common/init_model.sh`
+
+* From an interactive node on the cluster, change to the project directory, with `creds` subdirectory already created, and run `./creds/prep-skx-normal.sh` (or similar `prep-` script)
