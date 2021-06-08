@@ -1,0 +1,71 @@
+---
+title: "sc_size"
+output: html_document
+---
+
+To get a sample of single-cell dataset sizes:
+
+```
+python -m metadata.sradbv2 size-dist 'sample_taxon_id:10090 AND experiment_library_strategy:"rna seq" AND experiment_library_source:transcriptomic AND experiment_platform:illumina AND (study_abstract:"single-cell" OR experiment_library_construction_protocol:"single-cell" OR study_title:"single-cell")' --size 500 1000 --stop-after 50000 > single_cell_bases.txt
+```
+
+To get a sample of bulk dataset sizes:
+
+```
+python -m metadata.sradbv2 size-dist 'sample_taxon_id:10090 AND experiment_library_strategy:"rna seq" AND experiment_library_source:transcriptomic AND experiment_platform:illumina AND NOT study_abstract:"single-cell" AND NOT experiment_library_construction_protocol:"single-cell" AND NOT study_title:"single-cell"' --size 500 1000 --stop-after 50000 > bulk_bases.txt
+```
+
+```{r library}
+library(ggplot2)
+```
+
+```{r setup}
+# pre-computed
+knitr::opts_knit$set(root.dir = '~/git/recount-pump/src')
+```
+
+```{r read}
+read_vecs <- function(species) {
+    sc <- scan(paste0(species, '_sc_bases.txt'))
+    bu <- scan(paste0(species, '_bulk_bases.txt'))
+    df <- data.frame(bases=sc, type='sc')
+    rbind(df, data.frame(bases=bu, type='bulk'))
+}
+
+dfm <- read_vecs('mouse')
+dfh <- read_vecs('human')
+```
+
+```{r summary}
+compare <- function(df) {
+    print('Single-cell:')
+    print(summary(df$bases[df$type == 'sc']))
+    
+    print('Bulk:')
+    print(summary(df$bases[df$type == 'bulk']))
+    
+    print('med(bulk)/med(sc)')
+    print(median(df$bases[df$type == 'bulk']) / median(df$bases[df$type == 'sc']))
+    
+    print('mean(bulk)/mean(sc)')
+    print(mean(df$bases[df$type == 'bulk']) / mean(df$bases[df$type == 'sc']))
+}
+```
+
+```{r compare_human}
+compare(dfm)
+```
+
+```{r compare_mouse}
+compare(dfh)
+```
+
+```{r density_human}
+ggplot(dfh, aes(log10(bases), fill=type, colour=type)) +
+    geom_density(alpha = 0.1) + theme_bw()
+```
+
+```{r density_mouse}
+ggplot(dfm, aes(log10(bases), fill=type, colour=type)) +
+    geom_density(alpha = 0.1) + theme_bw()
+```
