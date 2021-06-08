@@ -1,3 +1,4 @@
 private_conf.ini
 slurm*.out
 job-*.sh
+creds
