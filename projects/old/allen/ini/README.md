@@ -1,1 +1,0 @@
-These are template ini files.  There are many placeholders for credentials.

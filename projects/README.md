@@ -1,3 +1,7 @@
+Note: we used to keep the project-specific ini files in subdirectories of this subdirectory in the recount-pump repo, but now we keep them in this (public) repo:
+
+https://github.com/langmead-lab/recount-projects
+
 ### Adding a new cluster
 
 See `common/clusters/README.md`
