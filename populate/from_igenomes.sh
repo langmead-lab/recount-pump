@@ -114,36 +114,10 @@ if [[ ! -d ${NM} || ! -d ${NM}/fasta || ! -d $NM/gtf ]] ; then
         salmon index -i ${NM}/salmon_index -t ${NM}/transcriptome/transcripts.fa
     fi
 
-    echo "To populate ${NM}/hisat2_idx and ${NM}/star_idx, run the below commands"
+    echo "To populate ${NM}/star_idx, run the below commands"
     echo "==========="
 
-    # hisat2: 2.1.0 py27pl5.22.0_0 bioconda
-    mkdir -p ${NM}/hisat2_idx    
-    cat >.hisat2_${NM}.sh << EOF
-#!/bin/bash -l
-#SBATCH
-#SBATCH --job-name=hisat2_build
-#SBATCH --partition=parallel
-#SBATCH --output=.hisat2_${NM}.sh.o
-#SBATCH --error=.hisat2_${NM}.sh.e
-#SBATCH --nodes=1
-#SBATCH --mem=100G
-#SBATCH --time=2:00:00
-#SBATCH --ntasks-per-node=24
-
-set -e
-
-NM=${NM}
-SOURCE=${SOURCE}
-SPECIES=${SPECIES}
-IN=\${NM}/fasta/genome.fa
-OUT=\${NM}/hisat2_idx
-
-hisat2-build --threads 24 \${IN} \${OUT}/genome
-EOF
-    echo "sbatch .hisat2_${NM}.sh"
-
-    # star: 2.5.3a-0 bioconda
+    # star: 2.7.3a
     mkdir -p ${NM}/star_idx
     cat >.star_${NM}.sh << EOF
 #!/bin/bash -l
