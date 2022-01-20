@@ -13,7 +13,8 @@ echo $secret
 /data7/miniconda2/bin/python2 fetch_all_dlq_messages.py -d -q $dlq -r us-east-2 -k $key -s "$secret" > fetch.${dlq}
 #/data7/miniconda2/bin/python2 fetch_all_dlq_messages.py -d -q $q -r us-east-2 -k $key -s "$secret" > fetch.${q}
 
-cat queue-messages/* | fgrep "body" | cut -d'"' -f 4 > ${q}.all_strings.txt
+#find queue-messages -name "*" -type f -exec cat {} \; | fgrep "body" | cut -d'"' -f 4 >> ${q}.all_strings.leftovers.txt
+find queue-messages -name "*" -type f -exec cat {} \; | fgrep "body" | cut -d'"' -f 4 > ${q}.all_strings.txt
 #cat queue-messages/* | fgrep "body" | cut -d'"' -f 4 > $dlq.leftovers.txt
 #cat queue-messages/* | fgrep "body" | cut -d'"' -f 4 > $q.leftovers.txt
 
