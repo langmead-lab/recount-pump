@@ -70,7 +70,7 @@ The main script for generating most of the required files for sets 1) and 2) abo
 https://github.com/langmead-lab/recount-pump/blob/master/populate/disjoin_scripts/create_rejoin_disjoint2annotation_mappings.sh
 
 It only requires, as input, the combined GTF file with the main genome annotation GTF + ERCC and SIRV annotations created in step 9 in the Genome Reference Preparation section.
-It does assume the following Docker is running and you have the `populate` docker image built/downloaded
+It does assume that Docker is running and you have the `populate` docker image built/downloaded, derived from:
 
 https://github.com/langmead-lab/recount-pump/blob/master/populate/build.sh
 
