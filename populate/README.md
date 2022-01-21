@@ -91,7 +91,7 @@ Annotation short names should be exactly 4 characters and any organism other tha
 
 Some examples:
 
-Human Gencode v26: `G026`
-Human FANTOM v6: `F006`
-Mouse gencode M23: `M023`
-Rat Rbn 7.2 ensembl release 105: `M105`
+* Human Gencode v26: `G026`
+* Human FANTOM v6: `F006`
+* Mouse gencode M23: `M023`
+* Rat Rbn 7.2 ensembl release 105: `M105`
