@@ -77,3 +77,21 @@ https://github.com/langmead-lab/recount-pump/blob/master/populate/build.sh
 which uses:
 
 https://github.com/langmead-lab/recount-pump/blob/master/populate/Dockerfile
+
+## Notes on the Final Annotation Assembly and Ordering
+
+Even though this is technically a subsection of the preceding section, it get it's own section due to the complexities of the situation in setting up the final group of annotation files for 1) rejoining in the `unifier` and 2) recount3 loading.
+
+The exon annotation file used by recount3 for 2) above need to be the *exact* same and ordered the same as the `exon_bitmask_coords.tsv` file output by the preceding section's run of `create_rejoin_disjoint2annotation_mappings.sh`.
+
+The way to create these GTF files...
+
+### Annotation Naming
+Annotation short names should be exactly 4 characters and any organism other than human needs to have an annotation short name that starts with a capital `M`.
+
+Some examples:
+
+Human Gencode v26: `G026`
+Human FANTOM v6: `F006`
+Mouse gencode M23: `M023`
+Rat Rbn 7.2 ensembl release 105: `M105`
