@@ -50,4 +50,4 @@ USER recount
 WORKDIR /home/recount/
 
 # See src/run.py where this command is repeated
-CMD ["bash", "-c", "source activate recount && /startup.sh && /workflow.bash"]
+CMD ["bash", "-c", "source activate recount && /workflow.bash"]
