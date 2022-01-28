@@ -19,8 +19,10 @@ RUN chmod a+rx /workflow.bash
 COPY download.sh /download.sh
 RUN chmod a+r /download.sh
 
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod a+rx /entrypoint.sh
+
 USER recount
 WORKDIR /home/recount/
 
-# See src/run.py where this command is repeated
-CMD ["bash", "-c", "source activate recount && /workflow.bash"]
+ENTRYPOINT ["bash", "-c", "/entrypoint.sh"]

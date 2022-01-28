@@ -5,6 +5,6 @@
 IMAGE=$(cat image.txt)
 VER=$(cat ver.txt)
 
-docker build $* \
+docker build $* -f Dockerfile.slim\
     --tag ${IMAGE}:${VER} \
     .
