@@ -1,14 +1,36 @@
 #!/usr/bin/env bash
+#place this in /container-mounts/recount/ref
+#and place ../pump_config.json there was well
+
 #script do do all downloads for Monorail
-#Currently supported (as of 2021-02-15):
-#1) SRA via Apsera|HTTPS and extracted via parallel-fastq-dump|fastq-dump
-#2) S3 URI (also uses *fastq-dump if necessary),
-#set anonymous="--no-sign-request" in environment to download from open data buckets
-#3) GDC (e.g. for TCGA, CCLE)
-#4) URL (passed in)
-set -exo pipefail
-#cause failed filename expansions to error the script
-shopt -s failglob
+#Currently supported (as of 2022-10-11):
+#1) SRA via HTTPS (prefetch 2.11.2) and extracted via parallel-fastq-dump|fastq-dump (2.9.1)
+#includes choice to use different versions of prefetch via the PREFETCH_PATH env var
+#2) GDC (e.g. for TCGA, CCLE)
+#3) URL (passed in)
+#4) limited S3 + MD5 support
+set -xeo pipefail
+
+#container reachable path to prefetch
+#(updated to sratoolkit 2.11.2 to support redirection to S3 rather than SRA Bethesda)
+#includes choice to use older version of sratoolkit for dbgap stability as 2.11.x sometimes has problems
+if [[ -z $PREFETCH_PATH ]]; then
+    PREFETCH_PATH=/sratoolkit/bin/prefetch
+fi
+if [[ -z $VDB_CONFIG ]]; then
+    export VDB_CONFIG=/home/recount/.ncbi/user-settings.2_11_2.mkfg
+fi
+if [[ -z $MD5 ]]; then
+    export MD5="MD5.txt"
+fi
+#if newer version doesn't work try built-in version (2.9.1)
+#UPDATE: no fallback, continue to use 2.11.2
+if [[ -z $FALLBACK_PREFETCH_PATH ]]; then
+    FALLBACK_PREFETCH_PATH=prefetch
+fi
+if [[ -z $FALLBACK_VDB_CONFIG ]]; then
+    FALLBACK_VDB_CONFIG=/home/recount/.ncbi/user-settings.2_9_1.mkfg
+fi
 
 quad=$1
 srr=$2
@@ -20,37 +42,63 @@ temp=$7
 log=$8
 
 #these are expected to be set from in the environment
-#anonymous,study,is_gzipped,is_zstded,prefetch_args,fd_args,url0,url1,url2,gdc_token,reads_in_bam,out0,out1,out2
+#study,is_gzipped,is_zstded,prefetch_args,fd_args,url0,url1,url2,gdc_token,reads_in_bam,out0,out1,out2
 
 SUCCESS=0
 TIMEOUT=10
 #gdc timeout is in minutes
 GDC_TIMEOUT=30
 PARAMS=""
-
-#if using S3, here the "srr" is the full s3 path to the folder/directory (w/o trailing "/")
-#to recursively download
-s3uri=$srr
-if [[ $method == "s3" ]]; then
-    srr=$(basename $s3uri)
-fi
-
 TMP="${temp}/dl-${srr}"
 ! test -d ${TMP}
 TMP_HOLD="${temp}/hold-${srr}"
 mkdir -p $TMP_HOLD
 pushd $TMP_HOLD
 
-function fastqdump {
-    srr=$1
-    TMP=$2
-    log=$3
-    threads=$4
-    USE_FASTERQ=$5
-
+#----------SRA----------#
+if [[ ${method} == "sra" ]] ; then
+    USE_FASTERQ=1
+    mkdir -p ${temp}
+    pushd ${temp}
+    prefetch_cmd="$PREFETCH_PATH"
+    if [[ -z $PREFETCH_PATH ]]; then
+        prefetch_cmd="prefetch"
+    fi
+    for i in { 1..${retries} } ; do
+        if [[ ! -f dl-${srr}/$srr/${srr}.sra ]]; then
+            if time $prefetch_cmd ${prefetch_args} -t http -O dl-${srr} ${srr} 2>&1 >> ${log} ; then
+                SUCCESS=1
+                echo "COUNT_HTTPDownloads 1"
+                break
+            else
+                echo "COUNT_SraRetries 1"
+                #fallback to built-in version (2.9.1)
+                export VDB_CONFIG=$FALLBACK_VDB_CONFIG
+                export prefetch_cmd=$FALLBACK_PREFETCH_PATH
+                TIMEOUT=$((${TIMEOUT} * 2))
+                sleep ${TIMEOUT}
+            fi
+        else
+                SUCCESS=1
+                echo "COUNT_HTTPDownloads 1"
+                break
+        fi
+    done
+    popd
+    if (( $SUCCESS == 0 )) ; then
+        echo "COUNT_SraFailures 1"
+        rm -rf ${TMP}
+        exit 1
+    fi
+    #test -f ${TMP}/*.sra
+    sraf=$(find ${TMP} -name "*.sra")
+    test $sraf
+    #size=$(cat ${TMP}/*.sra | wc -c)
+    size=$(cat $sraf | wc -c)
+    echo "COUNT_SraBytesDownloaded ${size}"
     ##parallel-fastq-dump
     if (( ${USE_FASTERQ} == 1 )) ; then
-        time parallel-fastq-dump --sra-id ${TMP}/*.sra \
+        time parallel-fastq-dump --sra-id $sraf \
             --threads ${threads} \
             --tmpdir ${TMP} \
             -L info \
@@ -58,110 +106,25 @@ function fastqdump {
             --skip-technical \
             --outdir . \
             2>&1 >> ${log}
+        test -f ${srr}_2.fastq || \
+            (test -f ${srr}_1.fastq && mv ${srr}_1.fastq ${srr}_0.fastq) || \
+                            (test -f ${srr}.fastq && mv ${srr}.fastq ${srr}_0.fastq)
+        # extra unpaired from --split-3
+        test -f ${srr}_2.fastq && test -f ${srr}.fastq && mv ${srr}.fastq ${srr}_0.fastq
     ##original fastq-dump
     else
-        time fastq-dump ${TMP}/*.sra \
+        time fastq-dump $sraf \
             -L info \
             --split-3 \
             --skip-technical \
             -O . \
             2>&1 >> ${log}
+        test -f ${srr}_2.fastq || \
+            (test -f ${srr}_1.fastq && mv ${srr}_1.fastq ${srr}_0.fastq) || \
+                            (test -f ${srr}.fastq && mv ${srr}.fastq ${srr}_0.fastq)
+        # extra unpaired from --split-3
+        test -f ${srr}_2.fastq && test -f ${srr}.fastq && mv ${srr}.fastq ${srr}_0.fastq
     fi
-    if [[ ! -f "${srr}_2.fastq" ]] ; then
-        if [[ -f "${srr}_1.fastq" ]] ; then
-            mv ${srr}_1.fastq ${srr}_0.fastq
-        else
-            if [[ -f "${srr}.fastq" ]] ; then
-                mv "${srr}.fastq" "${srr}_0.fastq"
-            fi
-        fi
-    fi
-    # extra unpaired from --split-3
-    if [[ -f "${srr}_2.fastq" && -f "${srr}.fastq" ]] ; then
-        mv ${srr}.fastq ${srr}_0.fastq
-    fi
-}
-
-#----------AWS S3----------#
-if [[ ${method} == "s3" ]] ; then
-    #we download, then determine FASTQs present (or .sra files)
-    #set anonymous="--no-sign-request" to grab from S3 opendata buckets
-    mkdir -p $TMP
-    pushd $TMP
-    for i in { 1..${retries} } ; do
-        if time aws s3 cp --recursive $anonymous $s3uri ./ ; then
-            SUCCESS=1
-            echo "COUNT_S3Downloads 1"
-            break
-        else
-            echo "COUNT_S3Retries 1"
-            TIMEOUT=$((${TIMEOUT} * 2))
-            sleep ${TIMEOUT}
-        fi
-    done
-    if (( $SUCCESS == 0 )) ; then
-        echo "COUNT_S3Failures 1"
-        popd
-        rm -rf ${TMP}
-        exit 1
-    fi
-    popd
-    #now determine FASTQ files
-    #should ever only be 1 .sra file
-    #srafile=$(ls ${TMP}/*.sra) 
-    if [[ -f ${TMP}/*.sra ]] ; then
-        size=$(cat ${TMP}/*.sra | wc -c)
-        echo "COUNT_S3BytesDownloaded ${size}"
-        USE_FASTERQ=1
-        fastqdump $srr $TMP $log $threads $USE_FASTERQ
-    else
-        #assume compressed fastqs
-        suffix="$TMP/*.gz.1"
-        if [[ -f ${TMP}/*.gz ]] ; then
-            suffix="$TMP/*.gz"
-        fi
-        num_fastqs=`ls -1 $suffix | wc -l`
-        if [[ $num_fastqs -eq 0 ]]; then
-            >&2 echo "no compressed fastqs found in download from S3 $s3uri, terminating!"
-            exit -1
-        fi
-        #even number of mate files, go through them in ls order alternating
-        if [[ $(( num_fastqs % 2 )) -eq 0 ]]; then
-            ls -1 $suffix | perl -ne 'chomp; $f=$_; $i++; $ridx=1; $ridx=2 if($i % 2 == 0); `zcat $f >> '$srr'_$ridx.fastq`;'
-        #odd number of files
-        else
-            ls -1 $suffix | perl -ne 'chomp; $f=$_; $i++; last if($i == '$num_fastqs'); $ridx=1; $ridx=2 if($i % 2 == 0); `zcat $f >> '$srr'_$ridx.fastq`;'
-            #now handle odd one
-            fname=$(ls -1 $suffix | tail -n1)
-            zcat $fname > ${srr}_0.fastq 
-        fi
-    fi
-#----------SRA----------#
-elif [[ ${method} == "sra" ]] ; then
-    USE_FASTERQ=1
-    #mkdir -p $TMP
-    #pushd $TMP
-    for i in { 1..${retries} } ; do
-        if time prefetch ${prefetch_args} -t http -O $TMP ${srr} 2>&1 >> ${log} ; then
-            SUCCESS=1
-            echo "COUNT_HTTPDownloads 1"
-            break
-        else
-            echo "COUNT_SraRetries 1"
-            TIMEOUT=$((${TIMEOUT} * 2))
-            sleep ${TIMEOUT}
-        fi
-    done
-    #popd
-    if (( $SUCCESS == 0 )) ; then
-        echo "COUNT_SraFailures 1"
-        rm -rf ${TMP}
-        exit 1
-    fi
-    test -f ${TMP}/*.sra
-    size=$(cat ${TMP}/*.sra | wc -c)
-    echo "COUNT_SraBytesDownloaded ${size}"
-    fastqdump $srr $TMP $log $threads $USE_FASTERQ
     rm -rf ${TMP}
 #----------GDC----------#
 elif [[ ${method} == "gdc" ]] ; then
@@ -236,6 +199,7 @@ elif [[ ${method} == "gdc" ]] ; then
             gunzip *.gz
         fi 
         rm -rf ${TMP}
+
         num_fastqs=`ls -1 *.fastq | wc -l`
 
         if (( ${num_fastqs} == 1 )) ; then
@@ -261,6 +225,100 @@ elif [[ ${method} == "gdc" ]] ; then
             mv ${srr}_1.zfastq ${srr}_1.fastq
             mv ${srr}_2.zfastq ${srr}_2.fastq
         fi
+    fi
+#----------S3----------#
+elif [[ ${method} == "s3" ]] ; then
+    additional_cmd='cat'
+    if [[ ${is_gzipped} == "1" ]] ; then
+        additional_cmd='gzip -cd'
+    fi
+    if [[ ${is_zstded} == "1" ]] ; then
+        additional_cmd='zstd -cd'
+    fi
+    for i in { 1..${retries} } ; do
+        if [[ -n $MD5 && ${is_gzipped} == "1" ]]; then
+            if aws s3 cp ${url1} ${srr}_0.fastq.gz 2>> "${log}" ; then
+                md5=$(md5sum ${srr}_0.fastq.gz | cut -d' ' -f 1)
+                s3url=$(dirname $url1)
+                md5_good=$(aws s3 cp ${url1}.md5 - | fgrep "$md5")
+                if [[ -n $md5_good ]]; then
+                    gunzip -f ${srr}_0.fastq.gz
+                    SUCCESS=1
+                    break
+                fi
+            fi
+        else
+            if time aws s3 cp "${url1}" - 2>> "${log}" | $additional_cmd > "${srr}_0.fastq" 2>> "${log}" ; then
+                SUCCESS=1
+                break
+            fi
+        fi
+        if [[ $SUCCESS -ne 1 ]]; then
+            echo "COUNT_S3Retries1 1"
+            TIMEOUT=$((${TIMEOUT} * 2))
+            sleep ${TIMEOUT}
+        fi
+    done
+    if (( $SUCCESS == 1 )) && [[ ${num_urls} -gt 1 ]] ; then
+        SUCCESS=0
+        for i in { 1..${retries} } ; do
+            if [[ -n $MD5 && ${is_gzipped} == "1" ]]; then
+                if aws s3 cp ${url2} ${srr}_2.fastq.gz 2>> "${log}" ; then
+                    md5=$(md5sum ${srr}_2.fastq.gz | cut -d' ' -f 1)
+                    s3url=$(dirname $url2)
+                    md5_good=$(aws s3 cp ${url2}.md5 - | fgrep "$md5")
+                    if [[ -n $md5_good ]]; then
+                        gunzip -f ${srr}_2.fastq.gz
+                        mv "${srr}_0.fastq" "${srr}_1.fastq"
+                        SUCCESS=1
+                        break
+                    fi
+                fi
+            else
+                if time aws s3 cp "${url2}" - 2>> "${log}" | $additional_cmd > "${srr}_2.fastq" 2>> "${log}" ; then
+                    SUCCESS=1
+                    mv "${srr}_0.fastq" "${srr}_1.fastq"
+                    break
+                fi
+            fi
+            if [[ $SUCCESS -ne 1 ]]; then
+                echo "COUNT_S3Retries2 1"
+                TIMEOUT=$((${TIMEOUT} * 2))
+                sleep ${TIMEOUT}
+            fi
+        done
+    fi
+    if (( $SUCCESS == 1 )) && [[ ${num_urls} -gt 2 ]] ; then
+        SUCCESS=0
+        for i in { 1..${retries} } ; do
+            if [[ -n $MD5 && ${is_gzipped} == "1" ]]; then
+                if aws s3 cp ${url0} ${srr}_0.fastq.gz 2>> "${log}" ; then
+                    md5=$(md5sum ${srr}_2.fastq.gz | cut -d' ' -f 1)
+                    s3url=$(dirname $url0)
+                    md5_good=$(aws s3 cp ${url0}.md5 - | fgrep "$md5")
+                    if [[ -n $md5_good ]]; then
+                        gunzip -f ${srr}_0.fastq.gz
+                        SUCCESS=1
+                        break
+                    fi
+                fi
+            else
+                if time aws s3 "${url0}" - 2>> "${log}" | $additional_cmd > "${srr}_0.fastq" 2>> "${log}" ; then
+                    SUCCESS=1
+                    break
+                fi
+            fi
+        done
+        if [[ $SUCCESS -ne 1 ]]; then
+            echo "COUNT_S3Retries0 1"
+            TIMEOUT=$((${TIMEOUT} * 2))
+            sleep ${TIMEOUT}
+        fi
+    fi
+    if (( $SUCCESS == 0 )) ; then
+        echo "COUNT_S3Failures 1"
+        rm -rf ${TMP}
+        exit 1
     fi
 #----------URL----------#
 elif [[ ${method} == "url" ]] ; then
