@@ -11,14 +11,10 @@
 # directories are indicated by environment variables RECOUNT_INPUT,
 # RECOUNT_OUTPUT, RECOUNT_REF, RECOUNT_TEMP
 
-# for dbGaP downloads VDB_CONFIG may need to be set with the path to the user settings for sratoolkit,
-# e.g. VDB_CONFIG="/container-mounts/.ncbi/user-settings.mkfg"
-# also for dbGaP downloads, if using sratoolkit <=2.9.x, need to have the RECOUNT_TEMP_BIG and RECOUNT_TEMP under the configured
-# path in the VDB_CONFIG for the dbGaP project that is *reachable within the container*!
-# If using newer versions of sratoolkit, must pass the path to the NGC key in as the GDC token, again path should be reachable within
-# the container
+# For dbGaP downloads: you will need to set the NGC environment variable to the 
+# container visible path to your study-specific dbGaP key file (e.g. prj_*.ngc)
 
-# for overriding elements of the Snakemake config (e.g. the path to the download script for instance)
+# For overriding elements of the Snakemake config (e.g. the path to the download script for instance)
 # define CONFIGFILE="/path/to/config.json" on a container reachable path
 # possible config params:
 

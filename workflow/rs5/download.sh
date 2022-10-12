@@ -3,8 +3,8 @@
 #and place ../pump_config.json there was well
 
 #script do do all downloads for Monorail
-#Currently supported (as of 2022-10-11):
-#1) SRA via HTTPS (prefetch 2.11.2) and extracted via parallel-fastq-dump|fastq-dump (2.9.1)
+#Currently supported (as of 2022-10-12):
+#1) SRA via HTTPS (prefetch 3.0.0) and extracted via parallel-fastq-dump|fastq-dump (2.9.1)
 #includes choice to use different versions of prefetch via the PREFETCH_PATH env var
 #2) GDC (e.g. for TCGA, CCLE)
 #3) URL (passed in)
@@ -15,21 +15,15 @@ set -xeo pipefail
 #(updated to sratoolkit 2.11.2 to support redirection to S3 rather than SRA Bethesda)
 #includes choice to use older version of sratoolkit for dbgap stability as 2.11.x sometimes has problems
 if [[ -z $PREFETCH_PATH ]]; then
-    PREFETCH_PATH=/sratoolkit/bin/prefetch
+    export PREFETCH_PATH=/sratoolkit/bin/prefetch
 fi
 if [[ -z $VDB_CONFIG ]]; then
-    export VDB_CONFIG=/home/recount/.ncbi/user-settings.2_11_2.mkfg
+    export VDB_CONFIG=/home/recount/.ncbi/user-settings.mkfg
 fi
+#if downloading from dbGaP, need to set NGC to container reachable path to .ngc key file for specific dbGaP study, e.g.:
+#NGC=/container-mounts/recount/ref/prj_<study_id>.ngc
 if [[ -z $MD5 ]]; then
     export MD5="MD5.txt"
-fi
-#if newer version doesn't work try built-in version (2.9.1)
-#UPDATE: no fallback, continue to use 2.11.2
-if [[ -z $FALLBACK_PREFETCH_PATH ]]; then
-    FALLBACK_PREFETCH_PATH=prefetch
-fi
-if [[ -z $FALLBACK_VDB_CONFIG ]]; then
-    FALLBACK_VDB_CONFIG=/home/recount/.ncbi/user-settings.2_9_1.mkfg
 fi
 
 quad=$1
@@ -64,6 +58,9 @@ if [[ ${method} == "sra" ]] ; then
     if [[ -z $PREFETCH_PATH ]]; then
         prefetch_cmd="prefetch"
     fi
+    if [[ -n $NGC ]]; then
+        prefetch_args="--ngc $NGC $prefetch_args"
+    fi
     for i in { 1..${retries} } ; do
         if [[ ! -f dl-${srr}/$srr/${srr}.sra ]]; then
             if time $prefetch_cmd ${prefetch_args} -t http -O dl-${srr} ${srr} 2>&1 >> ${log} ; then
@@ -72,9 +69,6 @@ if [[ ${method} == "sra" ]] ; then
                 break
             else
                 echo "COUNT_SraRetries 1"
-                #fallback to built-in version (2.9.1)
-                export VDB_CONFIG=$FALLBACK_VDB_CONFIG
-                export prefetch_cmd=$FALLBACK_PREFETCH_PATH
                 TIMEOUT=$((${TIMEOUT} * 2))
                 sleep ${TIMEOUT}
             fi

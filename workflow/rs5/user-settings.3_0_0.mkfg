@@ -1,0 +1,14 @@
+## auto-generated configuration file - DO NOT EDIT ##
+
+/LIBS/GUID = "31e2035e-df4e-4e06-bd6f-883082071298"
+/config/default = "false"
+/repository/user/ad/public/apps/file/volumes/flatAd = "."
+/repository/user/ad/public/apps/refseq/volumes/refseqAd = "."
+/repository/user/ad/public/apps/sra/volumes/sraAd = "."
+/repository/user/ad/public/apps/sraPileup/volumes/ad = "."
+/repository/user/ad/public/apps/sraRealign/volumes/ad = "."
+/repository/user/ad/public/apps/wgs/volumes/wgsAd = "."
+/repository/user/ad/public/root = "."
+/repository/user/default-path = "/root/ncbi"
+/repository/user/main/public/cache-disabled = "true"
+/tools/prefetch/download_to_cache = "false"

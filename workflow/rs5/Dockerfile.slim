@@ -8,10 +8,9 @@ RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2
     ./aws/install
 
 WORKDIR /
-RUN wget "https://ftp-trace.ncbi.nlm.nih.gov/sra/sdk/2.11.2/sratoolkit.2.11.2-ubuntu64.tar.gz" && \
-    tar -zxvf sratoolkit.2.11.2-ubuntu64.tar.gz && \
-    ln -fs /sratoolkit.2.11.2-ubuntu64 /sratoolkit
-
+RUN wget "https://ftp-trace.ncbi.nlm.nih.gov/sra/sdk/3.0.0/sratoolkit.3.0.0-ubuntu64.tar.gz" && \
+    tar -zxvf sratoolkit.3.0.0-ubuntu64.tar.gz && \
+    ln -fs /sratoolkit.3.0.0-ubuntu64 /sratoolkit
 
 # install Snakefile
 COPY Snakefile /Snakefile
@@ -28,15 +27,10 @@ RUN chmod a+r /download.sh
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod a+rx /entrypoint.sh
 
+RUN mkdir -p /home/recount/.ncbi
+COPY user-settings.3_0_0.mkfg /home/recount/.ncbi/user-settings.mkfg
+
 USER recount
 WORKDIR /home/recount/
-
-RUN mkdir -p /home/recount/.ncbi
-COPY user-settings.2_11_2.mkfg /home/recount/.ncbi/user-settings.2_11_2.mkfg
-#RUN chmod 600 /home/recount/.ncbi/user-settings.2_11_2.mkfg
-
-# fallback prefetch 2.9.1
-COPY user-settings.2_9_1.mkfg /home/recount/.ncbi/user-settings.2_9_1.mkfg
-#RUN chmod 600 /home/recount/.ncbi/user-settings.2_9_1.mkfg
 
 ENTRYPOINT ["bash", "-c", "/entrypoint.sh"]
