@@ -4,7 +4,7 @@
 
 #script do do all downloads for Monorail
 #Currently supported (as of 2022-10-12):
-#1) SRA via HTTPS (prefetch 3.0.0) and extracted via parallel-fastq-dump|fastq-dump (2.9.1)
+#1) SRA via HTTPS (prefetch 3.0.0) and extracted via parallel-fastq-dump|fastq-dump using the same version as prefetch
 #includes choice to use different versions of prefetch via the PREFETCH_PATH env var
 #2) GDC (e.g. for TCGA, CCLE)
 #3) URL (passed in)
@@ -12,13 +12,11 @@
 set -xeo pipefail
 
 #container reachable path to prefetch
-#(updated to sratoolkit 2.11.2 to support redirection to S3 rather than SRA Bethesda)
-#includes choice to use older version of sratoolkit for dbgap stability as 2.11.x sometimes has problems
 if [[ -z $PREFETCH_PATH ]]; then
+    #use default SRAToolkit versin (>= 3.0.2)
     export PREFETCH_PATH=/sratoolkit/bin/prefetch
-fi
-if [[ -z $VDB_CONFIG ]]; then
-    export VDB_CONFIG=/home/recount/.ncbi/user-settings.mkfg
+    #override so we get both prefetch and fastq-dump from the latest sratoolkit version
+    export PATH=/sratoolkit/bin:$PATH
 fi
 #if downloading from dbGaP, need to set NGC to container reachable path to .ngc key file for specific dbGaP study, e.g.:
 #NGC=/container-mounts/recount/ref/prj_<study_id>.ngc

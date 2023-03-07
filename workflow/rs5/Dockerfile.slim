@@ -8,9 +8,9 @@ RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2
     ./aws/install
 
 WORKDIR /
-RUN wget "https://ftp-trace.ncbi.nlm.nih.gov/sra/sdk/3.0.0/sratoolkit.3.0.0-ubuntu64.tar.gz" && \
-    tar -zxvf sratoolkit.3.0.0-ubuntu64.tar.gz && \
-    ln -fs /sratoolkit.3.0.0-ubuntu64 /sratoolkit
+RUN wget "https://ftp-trace.ncbi.nlm.nih.gov/sra/sdk/3.0.2/sratoolkit.3.0.2-ubuntu64.tar.gz" && \
+    tar -zxvf sratoolkit.3.0.2-ubuntu64.tar.gz && \
+    ln -fs /sratoolkit.3.0.2-ubuntu64 /sratoolkit
 
 # install Snakefile
 COPY Snakefile /Snakefile
@@ -26,9 +26,6 @@ RUN chmod a+r /download.sh
 
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod a+rx /entrypoint.sh
-
-RUN mkdir -p /home/recount/.ncbi
-COPY user-settings.3_0_0.mkfg /home/recount/.ncbi/user-settings.mkfg
 
 USER recount
 WORKDIR /home/recount/
