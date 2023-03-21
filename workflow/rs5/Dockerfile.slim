@@ -1,16 +1,15 @@
-FROM quay.io/broadsword/recount-pump:1.0.6
+#FROM quay.io/broadsword/recount-pump:1.0.6
+FROM quay.io/broadsword/recount-pump:1.1.2
 
 USER root
-
-RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
-    unzip awscliv2.zip && \
-    chmod a+x ./aws/install && \
-    ./aws/install
-
 WORKDIR /
-RUN wget "https://ftp-trace.ncbi.nlm.nih.gov/sra/sdk/3.0.2/sratoolkit.3.0.2-ubuntu64.tar.gz" && \
-    tar -zxvf sratoolkit.3.0.2-ubuntu64.tar.gz && \
-    ln -fs /sratoolkit.3.0.2-ubuntu64 /sratoolkit
+
+#RUN wget -q https://github.com/NCI-GDC/gdc-client/releases/download/1.5.0/gdc-client_v1.5.0_Ubuntu_x64.zip && \
+ENV GDC_VER=1.6.1
+RUN wget -q https://gdc.cancer.gov/files/public/file/gdc-client_v${GDC_VER}_Ubuntu_x64.zip && \
+    unzip gdc-client_v${GDC_VER}_Ubuntu_x64.zip && \
+    mv gdc-client /usr/bin && \
+    rm -f gdc-client_v${GDC_VER}_Ubuntu_x64.zip
 
 # install Snakefile
 COPY Snakefile /Snakefile
