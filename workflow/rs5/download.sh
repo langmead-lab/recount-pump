@@ -60,7 +60,7 @@ if [[ ${method} == "sra" ]] ; then
         prefetch_args="--ngc $NGC $prefetch_args"
     fi
     for i in { 1..${retries} } ; do
-        if [[ ! -f dl-${srr}/$srr/${srr}.sra ]]; then
+        if [[ ! -f dl-${srr}/$srr/${srr}.sra  && ! -f dl-${srr}/$srr/${srr}.sralite ]]; then
             if time $prefetch_cmd ${prefetch_args} -t http -O dl-${srr} ${srr} 2>&1 >> ${log} ; then
                 SUCCESS=1
                 echo "COUNT_HTTPDownloads 1"
@@ -82,10 +82,11 @@ if [[ ${method} == "sra" ]] ; then
         rm -rf ${TMP}
         exit 1
     fi
-    #test -f ${TMP}/*.sra
     sraf=$(find ${TMP} -name "*.sra")
+    if [[ -z $sraf ]]; then
+        sraf=$(find ${TMP} -name "*.sralite")
+    fi
     test $sraf
-    #size=$(cat ${TMP}/*.sra | wc -c)
     size=$(cat $sraf | wc -c)
     echo "COUNT_SraBytesDownloaded ${size}"
     ##parallel-fastq-dump
