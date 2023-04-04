@@ -4,14 +4,16 @@
 
 #script do do all downloads for Monorail
 #Currently supported (as of 2022-10-12):
-#1) SRA via HTTPS (prefetch 3.0.2) and extracted via parallel-fastq-dump|fastq-dump (3.0.2)
+#1) SRA via HTTPS (prefetch 3.0.0) and extracted via parallel-fastq-dump|fastq-dump using the same version as prefetch
 #includes choice to use different versions of prefetch via the PREFETCH_PATH env var
-#2) URL (passed in)
-#3) limited S3 + MD5 support
+#2) GDC (e.g. for TCGA, CCLE)
+#3) URL (passed in)
+#4) limited S3 + MD5 support
 set -xeo pipefail
 
 #container reachable path to prefetch
 if [[ -z $PREFETCH_PATH ]]; then
+    #use default SRAToolkit versin (>= 3.0.2)
     export PREFETCH_PATH=/monorail_bin/prefetch
 fi
 #if downloading from dbGaP, need to set NGC to container reachable path to .ngc key file for specific dbGaP study, e.g.:
@@ -115,6 +117,106 @@ if [[ ${method} == "sra" ]] ; then
         test -f ${srr}_2.fastq && test -f ${srr}.fastq && mv ${srr}.fastq ${srr}_0.fastq
     fi
     rm -rf ${TMP}
+#----------GDC----------#
+elif [[ ${method} == "gdc" ]] ; then
+    TOKEN=${gdc_token}
+    use_token="-t ${TOKEN}"
+    #if we have a token but it doesn't exist, throw an error
+    if [[ ! -z ${TOKEN} && ! -f ${TOKEN} ]] ; then
+        echo "ERROR: no GDC token file found at ${TOKEN}"
+        exit 1
+    elif [[ -z ${TOKEN} ]] ; then
+        #e.g. CCLE
+        use_token=""
+    fi
+    mkdir -p ${TMP}
+    for i in { 1..${retries} } ; do
+        if timeout -s 9 -k 5s ${GDC_TIMEOUT}m gdc-client download \
+            $use_token --log-file ${TMP}/log.txt \
+            -n ${threads} \
+            -d ${TMP} \
+            --no-verify \
+            --no-annotations \
+            --retry-amount ${retries} \
+            --wait-time 3 \
+            ${srr} 2>&1 >> ${log}
+        then
+            SUCCESS=1
+            break
+        else
+            echo "COUNT_GdcRetries 1"
+            TIMEOUT=$((${TIMEOUT} * 2))
+            sleep ${TIMEOUT}
+        fi
+    done
+    if (( $SUCCESS == 0 )) ; then
+        echo "COUNT_GdcFailures 1"
+        rm -rf ${TMP}
+        exit 1
+    fi
+    test -d ${TMP}/${srr}
+    if [[ ${study} == "ccle" || ${reads_in_bam} -eq 1 ]] ; then
+        test -f ${TMP}/${srr}/*.bam
+        echo "=== gdc-client log.txt begin ===" >> ${log}
+        cat ${TMP}/log.txt >> ${log}
+        echo "=== gdc-client log.txt end===" >> ${log}
+        
+        size=$(cat ${TMP}/${srr}/*.bam | wc -c)
+        echo "COUNT_GdcBytesDownloaded ${size}"
+        BAM=$(ls ${TMP}/${srr}/*.bam)
+        samtools collate -uOn 128 -@ ${threads} $BAM ${TMP}/${srr} 2>> ${log} | samtools fastq -N -F 0x900 -1 ${srr}_1.fastq -2 ${srr}_2.fastq -0 ${srr}.fastq.0 -s ${srr}.fastq.s - 2>&1 >> ${log}
+        cat ${srr}.fastq.0 ${srr}.fastq.s > ${srr}_0.fastq
+        rm -f ${srr}.fastq.0 ${srr}.fastq.s
+        for f in ${srr}_1.fastq ${srr}_2.fastq ${srr}_0.fastq ; do
+            size0=`wc -c $f | cut -d' ' -f 1`
+            if (( ${size0} == 0 )) ; then
+                rm -f $f
+            fi
+        done
+    else
+        echo "=== gdc-client log.txt begin ===" >> ${log}
+        cat ${TMP}/log.txt >> ${log}
+        echo "=== gdc-client log.txt end===" >> ${log}
+
+        if test -f ${TMP}/${srr}/*.tar.gz; then
+            size=$(cat ${TMP}/${srr}/*.tar.gz | wc -c)
+            echo "COUNT_GdcBytesDownloaded ${size}"
+            tar zxvf ${TMP}/${srr}/*.tar.gz
+        else
+            test -f ${TMP}/${srr}/*.tar
+            size=$(cat ${TMP}/${srr}/*.tar | wc -c)
+            echo "COUNT_GdcBytesDownloaded ${size}"
+            tar xvf ${TMP}/${srr}/*.tar
+            gunzip *.gz
+        fi 
+        rm -rf ${TMP}
+
+        num_fastqs=`ls -1 *.fastq | wc -l`
+
+        if (( ${num_fastqs} == 1 )) ; then
+            # unpaired
+            mv *.fastq ${srr}_0.fastq
+        fi
+        if (( ${num_fastqs} == 2 )) ; then
+            mv *_1.fastq ${srr}_1.fastq
+            mv *_2.fastq ${srr}_2.fastq
+        fi
+        if (( ${num_fastqs} == 3 )) ; then
+            mv *_1.fastq ${srr}_1.zfastq
+            mv *_2.fastq ${srr}_2.zfastq
+            mv *.fastq ${srr}_0.fastq
+            mv *_1.zfastq ${srr}_1.fastq
+            mv *_2.zfastq ${srr}_2.fastq
+        fi
+        if (( ${num_fastqs} >= 4 )) ; then
+            echo -n "" > ${srr}_1.zfastq
+            echo -n "" > ${srr}_2.zfastq
+            for f in `ls *_1.fastq`; do cat $f >> ${srr}_1.zfastq; done
+            for f in `ls *_2.fastq`; do cat $f >> ${srr}_2.zfastq; done
+            mv ${srr}_1.zfastq ${srr}_1.fastq
+            mv ${srr}_2.zfastq ${srr}_2.fastq
+        fi
+    fi
 #----------S3----------#
 elif [[ ${method} == "s3" ]] ; then
     additional_cmd='cat'
