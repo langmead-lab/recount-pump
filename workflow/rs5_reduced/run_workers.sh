@@ -70,4 +70,4 @@ for i in $( seq 1 $NUM_WORKERS ); do
     echo "/usr/bin/time -v /bin/bash -x $dir/worker.sh "/work${idx}" > /work${idx}/runs/w${i}.run 2>&1" >> worker.jobs
 done
 cat worker.jobs
-#/usr/bin/time -v parallel -j${NUM_WORKERS} < worker.jobs > worker.jobs.run 2>&1
+/usr/bin/time -v parallel -j${NUM_WORKERS} < worker.jobs > worker.jobs.run 2>&1
