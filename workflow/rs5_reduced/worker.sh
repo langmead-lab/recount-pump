@@ -18,6 +18,14 @@
 set -exo pipefail
 dir=$(dirname $0)
 
+#filesystem to write temporary output to
+#e.g. /work2
+fs=$1
+
+if [[ -z $fs ]]; then
+    export fs="/work1"
+fi
+
 if [[ -z $REF ]]; then
     echo "no REF set, terminating early!"
     exit -1
@@ -35,7 +43,7 @@ if [[ -z $NUM_CORES ]]; then
     export NUM_CORES=8
 fi
 if [[ -z $OUTPUT_DIR_GLOBAL ]]; then
-    export OUTPUT_DIR_GLOBAL=/work1/pump
+    export OUTPUT_DIR_GLOBAL="$fs/pump"
 fi
 if [[ -z $S3_OUTPUT ]]; then
     export S3_OUTPUT="s3://monorail-batch/pump_outputs2"
@@ -60,7 +68,7 @@ while [[ -n $msg_json ]]; do
     lo=${study: -2}
     export OUTPUT_DIR=$OUTPUT_DIR_GLOBAL/${sample}.${date}
     rm -rf $OUTPUT_DIR
-    mkdir $OUTPUT_DIR
+    mkdir -p $OUTPUT_DIR
     pushd $OUTPUT_DIR
     export WORKING_DIR=$OUTPUT_DIR
     #2) download list of sample/run accessions for the study already on S3
