@@ -58,10 +58,9 @@ while [[ -n $msg_json ]]; do
     sample=$(echo "$sample_study" | cut -d'|' -f 1)
     study=$(echo "$sample_study" | cut -d'|' -f 2)
     lo=${study: -2}
-    if [[ -z $OUTPUT_DIR ]]; then
-        export OUTPUT_DIR=$OUTPUT_DIR_GLOBAL/${sample}.${date}
-        mkdir -p $OUTPUT_DIR
-    fi
+    export OUTPUT_DIR=$OUTPUT_DIR_GLOBAL/${sample}.${date}
+    rm -rf $OUTPUT_DIR
+    mkdir $OUTPUT_DIR
     pushd $OUTPUT_DIR
     export WORKING_DIR=$OUTPUT_DIR
     #2) download list of sample/run accessions for the study already on S3
