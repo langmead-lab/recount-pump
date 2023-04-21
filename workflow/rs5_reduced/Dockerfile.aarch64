@@ -1,0 +1,47 @@
+FROM 315553526860.dkr.ecr.us-east-1.amazonaws.com/recount-pump-aarch64:1.1.2base
+
+USER root
+
+RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-aarch64.zip" -o "awscliv2.zip" && \
+    unzip awscliv2.zip && \
+    chmod a+x ./aws/install && \
+    ./aws/install
+
+WORKDIR /
+
+# install Snakefile
+COPY Snakefile /Snakefile
+RUN chmod a+r /Snakefile
+
+# install generic workflow wrapper script
+COPY workflow.bash /workflow.bash
+RUN chmod a+rx /workflow.bash
+
+# install download.sh
+COPY download.sh /download.sh
+RUN chmod a+r /download.sh
+
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod a+rx /entrypoint.sh
+
+COPY run_workers.sh /run_workers.sh
+RUN chmod a+rx /run_workers.sh
+
+COPY worker.sh /worker.sh
+RUN chmod a+rx /worker.sh
+
+COPY get_ref_indexes_fast.sh /get_ref_indexes_fast.sh
+RUN chmod a+rx /get_ref_indexes_fast.sh
+
+COPY run_recount_pump_within_container.sh /run_recount_pump_within_container.sh
+RUN chmod a+rx /run_recount_pump_within_container.sh
+
+RUN apt-get update --fix-missing -y && apt install sudo lsof psmisc time -y
+RUN useradd -rm -d /home/recount -s /bin/bash -g root -G sudo -u 1000 recount && chpasswd recount:recount
+#RUN useradd -rm -d /home/ubuntu -s /bin/bash -g root -G sudo -u 1000 ubuntu
+RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+
+USER recount
+WORKDIR /home/recount
+
+ENTRYPOINT ["bash", "-c", "/run_workers.sh"]
