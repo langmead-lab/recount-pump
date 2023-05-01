@@ -41,6 +41,13 @@ RUN useradd -rm -d /home/recount -s /bin/bash -g root -G sudo -u 1000 recount &&
 #RUN useradd -rm -d /home/ubuntu -s /bin/bash -g root -G sudo -u 1000 ubuntu
 RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 
+RUN wget https://github.com/ChristopherWilks/megadepth/releases/download/0.4.0/bamcount.aarch64.just_auc_fixed
+RUN rsync -av bamcount.aarch64.just_auc_fixed /monorail_bin/bamcount_justannot
+RUN mkdir -p /bamcount
+RUN rsync -av bamcount.aarch64.just_auc_fixed /bamcount/bamcount_justannot
+RUN chmod a+x /monorail_bin/bamcount_justannot
+RUN chmod a+x /bamcount/bamcount_justannot
+
 USER recount
 WORKDIR /home/recount
 

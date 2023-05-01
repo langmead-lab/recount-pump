@@ -31,4 +31,6 @@ echo "popd" >> s3dn.sh
 echo "/usr/bin/time -v /bin/bash -x s3dn.sh > s3dn.sh.run1 2>&1" > main.jobs 
 echo "/usr/bin/time -v parallel -j2 < detar.jobs > detar.jobs.run2 2>&1" >> main.jobs
 /usr/bin/time -v parallel -j2 < main.jobs > main.jobs.run2 2>&1
+aws s3 cp s3://monorail-batch/faster_refs/$ref/gtf/exons_new.bed.gz - | zcat > gtf/exons_new.bed
+aws s3 cp s3://monorail-batch/faster_refs/$ref/gtf/split_exons_new.bed.gz - | zcat > gtf/split_exons_new.bed
 popd

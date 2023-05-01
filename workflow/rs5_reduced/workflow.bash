@@ -111,7 +111,7 @@ if [[ -f /Snakefile ]] ; then
         CONFIGFILE=""
     fi
     snakemake \
-        --snakefile /Snakefile \
+        --snakefile /Snakefile.extra_megadepth \
         ${CONFIGFILE} \
         --stats "${RECOUNT_OUTPUT}/stats.json" \
         -j "${RECOUNT_CPUS}" \
