@@ -18,9 +18,6 @@ if [[ -z $PREFETCH_PATH ]]; then
 fi
 #if downloading from dbGaP, need to set NGC to container reachable path to .ngc key file for specific dbGaP study, e.g.:
 #NGC=/container-mounts/recount/ref/prj_<study_id>.ngc
-if [[ -z $MD5 ]]; then
-    export MD5="MD5.txt"
-fi
 
 quad=$1
 srr=$2
