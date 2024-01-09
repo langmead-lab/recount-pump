@@ -50,5 +50,7 @@ for f in `aws s3 ls $S3path/star_idx/ | tr -s " " $'\t' | cut -f 4 | fgrep -v ".
 done
 #then run STAR load, loads genome and then exits (if successful) leaving genome loaded for other runs
 $STAR --genomeLoad LoadAndExit --genomeDir $outDir
+wait
+rm -f *.jobs *.gz
 popd
 echo "DONE"
