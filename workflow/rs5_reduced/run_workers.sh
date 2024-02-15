@@ -9,6 +9,7 @@
 #c) NUM_CORES (maximum number of CPUs to use per worker, default: 8)
 #d) SSD_MIN_SIZE (minimum size of local SSDs, default: 600GBs)
 set -exo pipefail
+export MD_IP=169.254.169.254
 dir=$(dirname $0)
 if [[ -n $DEBUG ]]; then
     sleep 1d
@@ -73,6 +74,14 @@ if [[ ! -d /work1/ref/${REF} ]]; then
     /usr/bin/time -v $dir/get_ref_indexes_fast.sh $REF > get_ref_indexes_fast.sh.run 2>&1
     popd
 fi 
+
+#for logging purposes, read the 1) IP address and 2) node type from AWS and write to where each worker's logger can read it
+IP=$(curl http://${MD_IP}/latest/meta-data/local-ipv4)
+#IP=$(echo "$IP" | sed 's#\.#-#g')
+itype=$(curl http://${MD_IP}/latest/meta-data/instance-type)
+echo "${IP};${itype}" > /dev/shm/INSTANCE_INFO
+#now start monitoring for SPOT shutdown so we can log which samples were in process during that
+/bin/bash $dir/monitor_shutdown_for_spot_instances.sh &
 
 #3) start N concurrent Pump workers
 export REF_DIR=/work1/ref
