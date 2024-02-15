@@ -46,7 +46,7 @@ if [[ -z $OUTPUT_DIR_GLOBAL ]]; then
     export OUTPUT_DIR_GLOBAL="$fs/pump"
 fi
 if [[ -z $S3_OUTPUT ]]; then
-    export S3_OUTPUT="s3://monorail-batch/pump_outputs2"
+    export S3_OUTPUT="s3://monorail-batch/pump_outputs6"
 fi
 
 #1) check for new studies on the queue
@@ -75,18 +75,25 @@ while [[ -n $msg_json ]]; do
     #/usr/bin/time -v aws s3 cp $s3_accessions_path/$lo/${study}.txt ./
     mkdir -p runs
     #3) Run Pump
+    #this is for the SPOT shutdown monitoring script to know which runs are in process
+    /bin/bash $dir/monorail_pump_log.sh $sample $study START
+    echo "$sample" > /dev/shm/PUMP_RUN.${sample}
     #TODO: double check params
     /usr/bin/time -v /bin/bash -x $dir/run_recount_pump_within_container.sh $sample $study $REF $NUM_CORES $REF_DIR > run_recount_pump_within_container.sh.run 2>&1
     success=$(egrep -e '^SUCCESS$' run_recount_pump_within_container.sh.run)
     if [[ -z $success ]]; then
         echo "pump failed for $sample in $study, skipping"
+        /bin/bash $dir/monorail_pump_log.sh $sample $study PUMP_FAILED
         msg_json=$(aws sqs receive-message --queue-url $Q)
         continue
     fi
-    #4) copy unifier results back to S3
+    /bin/bash $dir/monorail_pump_log.sh $sample $study PUMP_DONE
+    #4) copy pump results back to S3
     lo2=${sample: -2}
     /usr/bin/time -v aws s3 cp --recursive `pwd`/output/ $S3_OUTPUT/$lo/$study/$lo2/${sample}.${date}/ > s3upload.run 2>&1
     #get next message repeat
     aws sqs delete-message --queue-url $Q --receipt-handle $handle
+    rm -f /dev/shm/PUMP_RUN.${sample}
+    /bin/bash $dir/monorail_pump_log.sh $sample $study END
     msg_json=$(aws sqs receive-message --queue-url $Q)
 done
