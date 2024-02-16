@@ -54,23 +54,35 @@ if [[ ${method} == "sra" ]] ; then
     if [[ -n $NGC ]]; then
         prefetch_args="--ngc $NGC $prefetch_args"
     fi
-    for i in { 1..${retries} } ; do
-        if [[ ! -f dl-${srr}/$srr/${srr}.sra  && ! -f dl-${srr}/$srr/${srr}.sralite ]]; then
-            if time $prefetch_cmd ${prefetch_args} -t http -O dl-${srr} ${srr} 2>&1 >> ${log} ; then
-                SUCCESS=1
-                echo "COUNT_HTTPDownloads 1"
-                break
+    #try to download the files directly from AWS first, if this fails, fallback to prefetch
+    mkdir -p dl-${srr}/$srr
+    set +eo pipefail
+    aws s3 cp --no-sign-request s3://sra-pub-run-odp/sra/${srr}/${srr} dl-${srr}/$srr/${srr}.sra
+    error=$?
+    set -eo pipefail
+    #aws cp failed, fallback to prefetch
+    if [[ $error -ne 0 ]]; then
+        for i in { 1..${retries} } ; do
+            if [[ ! -f dl-${srr}/$srr/${srr}.sra  && ! -f dl-${srr}/$srr/${srr}.sralite ]]; then
+                if time $prefetch_cmd ${prefetch_args} -t http -O dl-${srr} ${srr} 2>&1 >> ${log} ; then
+                    SUCCESS=1
+                    echo "COUNT_HTTPDownloads 1"
+                    break
+                else
+                    echo "COUNT_SraRetries 1"
+                    TIMEOUT=$((${TIMEOUT} * 2))
+                    sleep ${TIMEOUT}
+                fi
             else
-                echo "COUNT_SraRetries 1"
-                TIMEOUT=$((${TIMEOUT} * 2))
-                sleep ${TIMEOUT}
+                    SUCCESS=1
+                    echo "COUNT_HTTPDownloads 1"
+                    break
             fi
-        else
-                SUCCESS=1
-                echo "COUNT_HTTPDownloads 1"
-                break
-        fi
-    done
+        done
+    else
+        SUCCESS=1
+        echo "COUNT_AWSDownloads 1"
+    fi
     popd
     if (( $SUCCESS == 0 )) ; then
         echo "COUNT_SraFailures 1"
