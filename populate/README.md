@@ -136,3 +136,14 @@ If the chromosome sequence names in the genome FASTA file (`Sus_scrofa.Sscrofa11
 
 Then add the ERCC + SIRV gene annotations to the GTF file:
 ```cat Sus_scrofa.Sscrofa11.1.111.chr.fixed.gtf /shared-data/research/genomics/datasets/recount3/ref/ERCC_SIRV.gtf > Sus_scrofa.Sscrofa11.1.111.chr.fixed.ERCC_SIRV.gtf```
+
+and to the transcripts fasta file:
+```
+mkdir transcriptome
+cat Sscrofa11.1.transcripts.fa ERCC_SIRV.fa > transcriptome/transcripts.fa
+```
+
+Now index for `Salmon 0.12.0`:
+```
+salmon index -i salmon_index -t transcriptome/transcripts.fa
+```
