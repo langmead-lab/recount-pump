@@ -116,6 +116,8 @@ Then fix the chromosome IDs to match the genome FASTA above:
 This is next step requires `gffread` to extract out the gene level FASTA file from the genome but based on the gene GTF (get it from https://github.com/gpertea/gffread):
 ```gffread -w Sscrofa11.1.transcripts.fa -g Sus_scrofa.Sscrofa11.1.dna.toplevel.chrprefixes.nospaces.fa Sus_scrofa.Sscrofa11.1.111.chr.fixed.gtf```
 
+NOTE: while gffread 0.9.12 was originally used, it's very likely fine to use a later version (e.g. `gffread-0.12.7` was recently tested and resulted in the same output).
+
 If the chromosome sequence names in the genome FASTA file (`Sus_scrofa.Sscrofa11.1.dna.toplevel.chrprefixes.nospaces.fa`) do not match the chromosome sequence names in the GTF (`Sus_scrofa.Sscrofa11.1.111.chr.fixed.gtf`), you'll need to provide a mapping file for `gffread` to map between them:
 ```-m Sus_scrofa.Sscrofa11.1.dna.toplevel.chrprefixes.nospaces.fa.mapping```
 
