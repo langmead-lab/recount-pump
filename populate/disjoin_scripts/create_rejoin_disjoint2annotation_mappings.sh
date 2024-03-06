@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -exo pipefail
 export LC_ALL=C
-export rejoin_repo_path=/path/to/where/you/cloned/recount-unify
+root=$(dirname $0)
+export rejoin_repo_path=$root/../../../recount-unify
 
 #e.g. G029.G026.R109.F006.20190220.gtf w/ ERCC & SIRV transcripts
 ORIG_UNIONED_GTF=$1
@@ -13,7 +14,6 @@ annotation_short=$3
 #optional, in case we're rerunning *after* the disjoin_docker call has already successfully run
 skip_disjoin_docker_call=$4
 
-root=$(dirname $0)
 
 #run recount-pump/populate/docker_disjoin.sh first on the original GTF file
 if [[ -z $skip_disjoin_docker_call ]]; then
@@ -100,3 +100,5 @@ cut -f 3-5,7 exon_bitmasks.tsv | perl -ne 'chomp; $f=$_; ($c,$s,$e,$o)=split(/\t
 
 #build annotation files for recount
 /bin/bash -x $root/build_non_recount3_annotation_files.sh $ORIG_UNIONED_GTF "$orgn" "$annotation_short" disjoint2exons2genes.bed.gene_bpl.tsv ${ORIG_UNIONED_GTF}.original > build_non_recount3_annotation_files.sh.run0 2>&1
+
+zcat ${orgn}.gene_sums.${annotation_short}.gtf.gz | cut -f 9 | cut -d' ' -f 2 | sed 's#"##g' | sed 's#;##g' > ${annotation_short}.gene_sums.gene_order.tsv
