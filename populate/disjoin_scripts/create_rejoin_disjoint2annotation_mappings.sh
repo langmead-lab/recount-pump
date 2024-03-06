@@ -81,7 +81,7 @@ cat disjoint2exons.bed | perl -ne 'BEGIN { open(IN,"<disjoint2exons2genes.bed");
 cut -f 1-6 disjoint2exons.bed | sort -k1,1 -k2,2n -k3,3n | uniq > disjoint_exons.bed
 
 #now add non-exon-overlapping introns for QC/stats
-/bin/bash -x ${root}/add_introns.sh ${ORIG_UNIONED_GTF} disjoint_exons.bed
+/bin/bash -x ${root}/add_introns.sh ${ORIG_UNIONED_GTF} disjoint_exons.bed "$annotation_short"
 
 cut -f 7-12 disjoint2exons2genes.bed | perl -ne 'chomp; @f=split(/\t/,$_,-1); if($f[0]=~/((ERCC)|(SIRV))/) { $n=$1; $f[3]=$f[3].".".$n; } else { $f[3]=$f[3].".'"${annotation_short}"'"; } print join("\t",@f)."\n";' > disjoint2exons2genes.rejoin_genes.bed
 
