@@ -109,11 +109,6 @@ Then we convert the genome FASTA to use "chr" prefix for autosomes/sex/mito, and
 zcat Sus_scrofa.Sscrofa11.1.dna.toplevel.fa.gz | perl -ne 'chomp; $f=$_; if($f=~/^>/) { if($f=~/^>(\d+|X|Y|MT) /) { $f=~s/^>/>chr/; if($f=~/^>chrMT/) { $f=~s/^>chrMT/>chrM/; }} $f=~s/^>([^\s]+).*$/>$1/; } print "$f\n";' > Sus_scrofa.Sscrofa11.1.dna.toplevel.chrprefixes.nospaces.fa
 ```
 
-Add ERCC + SIRV spikein FASTAs:
-```
-cat Sus_scrofa.Sscrofa11.1.dna.toplevel.chrprefixes.nospaces.fa ERCC_SIRV.fa > Sus_scrofa.Sscrofa11.1.dna.toplevel.chrprefixes.nospaces.ERCC_SIRV.fa
-```
-
 Then pull the gene annotation to match (only get the autosomal + sex + MT chromosomes):
 ```
 wget https://ftp.ensembl.org/pub/release-111/gtf/sus_scrofa/Sus_scrofa.Sscrofa11.1.111.chr.gtf.gz
@@ -134,6 +129,12 @@ NOTE: while `gffread 0.9.12` was originally used, it's very likely fine to use a
 If the chromosome sequence names in the genome FASTA file (`Sus_scrofa.Sscrofa11.1.dna.toplevel.chrprefixes.nospaces.fa`) do not match the chromosome sequence names in the GTF (`Sus_scrofa.Sscrofa11.1.111.chr.fixed.gtf`), you'll need to provide a mapping file for `gffread` to map between them:
 ```-m Sus_scrofa.Sscrofa11.1.dna.toplevel.chrprefixes.nospaces.fa.mapping```
 
+Add ERCC + SIRV spikein FASTAs to the genome reference:
+```
+mkdir fasta
+cat Sus_scrofa.Sscrofa11.1.dna.toplevel.chrprefixes.nospaces.fa ERCC_SIRV.fa > fasta/genome.fa
+```
+
 Then add the ERCC + SIRV gene annotations to the GTF file:
 ```cat Sus_scrofa.Sscrofa11.1.111.chr.fixed.gtf /shared-data/research/genomics/datasets/recount3/ref/ERCC_SIRV.gtf > Sus_scrofa.Sscrofa11.1.111.chr.fixed.ERCC_SIRV.gtf```
 
@@ -142,8 +143,16 @@ and to the transcripts fasta file:
 mkdir transcriptome
 cat Sscrofa11.1.transcripts.fa ERCC_SIRV.fa > transcriptome/transcripts.fa
 ```
+For the following 2 commands you can use the latest recount-pump Docker container to use the exact versions of Salmon and STAR needed for Monorail.
 
-Now index for `Salmon 0.12.0`:
+Index for `Salmon 0.12.0`:
 ```
 salmon index -i salmon_index -t transcriptome/transcripts.fa
+```
+
+You can also index the genome FASTA file from above during this process for `STAR 2.7.3a` (if you have enough CPU cores to do this in parallel):
+```
+rm -rf temp
+mkdir star_idx
+STAR --runThreadN 24 --runMode genomeGenerate --genomeDir star_idx --outTmpDir ./temp --genomeFastaFiles fasta/genome.fa
 ```
