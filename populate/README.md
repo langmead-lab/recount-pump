@@ -95,3 +95,55 @@ Some examples:
 * Human FANTOM v6: `F006`
 * Mouse gencode M23: `M023`
 * Rat Rbn 7.2 ensembl release 105: `M105`
+* Pig Sus scrofa release 11.1: `P111`
+
+## Case Study: Adding the Pig Genome to Monorail
+
+Get the Ensembl FASTA for the latest genome (Sscrofa11.1), toplevel here is same as primary assembly, don't use any masking (soft or hard):
+```
+wget https://ftp.ensembl.org/pub/release-111/fasta/sus_scrofa/dna/Sus_scrofa.Sscrofa11.1.dna.toplevel.fa.gz
+```
+
+Then we convert the genome FASTA to use "chr" prefix for autosomes/sex/mito, and convert chrMT to chrM, remove spaces in the headers:
+```
+zcat Sus_scrofa.Sscrofa11.1.dna.toplevel.fa.gz | perl -ne 'chomp; $f=$_; if($f=~/^>/) { if($f=~/^>(\d+|X|Y|MT) /) { $f=~s/^>/>chr/; if($f=~/^>chrMT/) { $f=~s/^>chrMT/>chrM/; }} $f=~s/^>([^\s]+).*$/>$1/; } print "$f\n";' > Sus_scrofa.Sscrofa11.1.dna.toplevel.chrprefixes.nospaces.fa
+```
+
+Add ERCC + SIRV spikein FASTAs:
+```
+cat Sus_scrofa.Sscrofa11.1.dna.toplevel.chrprefixes.nospaces.fa ERCC_SIRV.fa > Sus_scrofa.Sscrofa11.1.dna.toplevel.chrprefixes.nospaces.ERCC_SIRV.fa
+```
+
+Then pull the gene annotation to match (only get the autosomal + sex + MT chromosomes):
+```
+wget https://ftp.ensembl.org/pub/release-111/gtf/sus_scrofa/Sus_scrofa.Sscrofa11.1.111.chr.gtf.gz
+```
+
+Then fix the chromosome IDs to match the genome FASTA above:
+```
+zcat Sus_scrofa.Sscrofa11.1.111.chr.gtf.gz | perl -ne 'chomp; $f=$_; if($f=~/^(\d+|X|Y|MT)\t/) { $f=~s/^/chr/; if($f=~/^chrMT/) { $f=~s/^chrMT/chrM/; }} print "$f\n";' > Sus_scrofa.Sscrofa11.1.111.chr.fixed.gtf
+```
+
+This is next step requires `gffread` to extract out the gene level FASTA file from the genome but based on the gene GTF (get it from https://github.com/gpertea/gffread):
+```
+gffread -w Sscrofa11.1.transcripts.fa -g Sus_scrofa.Sscrofa11.1.dna.toplevel.chrprefixes.nospaces.fa Sus_scrofa.Sscrofa11.1.111.chr.fixed.gtf
+```
+
+NOTE: while `gffread 0.9.12` was originally used, it's very likely fine to use a later version (e.g. `gffread 0.12.7` was recently tested and resulted in the same output).
+
+If the chromosome sequence names in the genome FASTA file (`Sus_scrofa.Sscrofa11.1.dna.toplevel.chrprefixes.nospaces.fa`) do not match the chromosome sequence names in the GTF (`Sus_scrofa.Sscrofa11.1.111.chr.fixed.gtf`), you'll need to provide a mapping file for `gffread` to map between them:
+```-m Sus_scrofa.Sscrofa11.1.dna.toplevel.chrprefixes.nospaces.fa.mapping```
+
+Then add the ERCC + SIRV gene annotations to the GTF file:
+```cat Sus_scrofa.Sscrofa11.1.111.chr.fixed.gtf /shared-data/research/genomics/datasets/recount3/ref/ERCC_SIRV.gtf > Sus_scrofa.Sscrofa11.1.111.chr.fixed.ERCC_SIRV.gtf```
+
+and to the transcripts fasta file:
+```
+mkdir transcriptome
+cat Sscrofa11.1.transcripts.fa ERCC_SIRV.fa > transcriptome/transcripts.fa
+```
+
+Now index for `Salmon 0.12.0`:
+```
+salmon index -i salmon_index -t transcriptome/transcripts.fa
+```
