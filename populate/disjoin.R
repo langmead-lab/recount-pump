@@ -34,5 +34,5 @@ outfn <- opts[['<outfile>']]
 gtf <- makeTxDbFromGFF(url, format='gtf',  dataSource=source_name,
                        organism=organism_name, taxonomyId=tax_id)
 
-export(exonicParts(gtf, linked.to.single.gene.only=exclude_olaps),
-       outfn, 'gff3')
+export(exonicParts(gtf, linked.to.single.gene.only=exclude_olaps),outfn, 'gff3')
+print("DONE")
