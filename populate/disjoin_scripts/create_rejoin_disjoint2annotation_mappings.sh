@@ -81,24 +81,33 @@ cat disjoint2exons.bed | perl -ne 'BEGIN { open(IN,"<disjoint2exons2genes.bed");
 cut -f 1-6 disjoint2exons.bed | sort -k1,1 -k2,2n -k3,3n | uniq > disjoint_exons.bed
 
 #now add non-exon-overlapping introns for QC/stats
+#also generate blank sums file matching number of split exon segments
 /bin/bash -x ${root}/add_introns.sh ${ORIG_UNIONED_GTF} disjoint_exons.bed "$annotation_short"
 
+#used to avoid rejoin-collision bug where split exon segments were only mapped back to genes based on gene span coordinates + strand
 cut -f 7-12 disjoint2exons2genes.bed | perl -ne 'chomp; @f=split(/\t/,$_,-1); if($f[0]=~/((ERCC)|(SIRV))/) { $n=$1; $f[3]=$f[3].".".$n; } else { $f[3]=$f[3].".'"${annotation_short}"'"; } print join("\t",@f)."\n";' > disjoint2exons2genes.rejoin_genes.bed
 
+#also used in checking in recount-unify, to make sure we get exactly the right number of rows per-annotation in the gene and exon count matrix files
 cut -f 7-10 disjoint2exons2genes.bed | fgrep -v "ERCC" | fgrep -v "SIRV" | LC_ALL=C sort -u | wc -l | sed 's#^#gene\t'"${annotation_short}"'\t#' > gene_exon_annotation_row_counts.tsv
 for a in ERCC SIRV; do echo -n $'gene\t'"$a	"; cut -f 7-10 disjoint2exons2genes.bed | fgrep "$a" | LC_ALL=C sort -u | wc -l; done >> gene_exon_annotation_row_counts.tsv
+
 #get exons counts from the very original GTF
 fgrep $'\texon\t' ${ORIG_UNIONED_GTF}.original | fgrep $'\tLexogenSIRVData\t' | wc -l | sed 's#^#exon\tSIRV\t#' >> gene_exon_annotation_row_counts.tsv
 fgrep $'\texon\t' ${ORIG_UNIONED_GTF}.original | fgrep $'\tERCC\t' | wc -l | sed 's#^#exon\tERCC\t#' >> gene_exon_annotation_row_counts.tsv
 fgrep $'\texon\t' ${ORIG_UNIONED_GTF}.original | fgrep -v $'\tERCC\t' | fgrep -v $'\tLexogenSIRVData\t' | wc -l | sed 's#^#exon\t'"${annotation_short}"'\t#' >> gene_exon_annotation_row_counts.tsv
 
+#setup for recount-unify's bitmasking needed for mapping to original annotated exons from the split exon segments
 cut -f 7-12 disjoint2exons.bed | LC_ALL=C sort -k1,1 -k2,2n -k3,3n -k6,6 -k4,4 -u | perl -ne 'chomp; ($c,$s,$e,$g,$j,$o)=split(/\t/,$_,-1); if($pg) { if($pc eq $c && $s == $ps && $e == $pe && $o eq $po) { $pgs.=";$g"; next; } else { $sz=$pe-$ps; print "$pgs\t$pc\t$ps\t$pe\t$sz\t$po\n"; }} $pg=$g; $pgs=$g; $pc=$c; $ps=$s; $pe=$e; $po=$o; END { if($pg) { $sz=$pe-$ps; print "$pgs\t$pc\t$ps\t$pe\t$sz\t$po\n"; }}' > disjoint2exons.bed.sorted15.input2mapforbitmasks
 
 cat disjoint2exons.bed.sorted15.input2mapforbitmasks | python3 $rejoin_repo_path/rejoin/map_exon_sum_rows_to_annotations.py exons2genes "${annotation_short},ERCC,SIRV" > exon_bitmasks.tsv
 
 cut -f 3-5,7 exon_bitmasks.tsv | perl -ne 'chomp; $f=$_; ($c,$s,$e,$o)=split(/\t/,$f,-1); $s++; print join("|",($c,$s,$e,$o))."\n";' > exon_bitmask_coords.tsv
 
-#build annotation files for recount
+#use this for recount3 annotation files
 /bin/bash -x $root/build_non_recount3_annotation_files.sh $ORIG_UNIONED_GTF "$orgn" "$annotation_short" disjoint2exons2genes.bed.gene_bpl.tsv ${ORIG_UNIONED_GTF}.original > build_non_recount3_annotation_files.sh.run0 2>&1
 
+#another check in recount unify, to make sure we have the same order in the counts' matrices as in the recount3 annotation files
 zcat ${orgn}.gene_sums.${annotation_short}.gtf.gz | cut -f 9 | cut -d' ' -f 2 | sed 's#"##g' | sed 's#;##g' > ${annotation_short}.gene_sums.gene_order.tsv
+
+#create primary annotation's file for Megadepth/bamcount checking of sums at the end of the unifier
+fgrep -v ".ERCC" disjoint2exons2genes.bed | fgrep -v ".SIRV" | cut -f 1-6 | LC_ALL=C sort -k1,1 -k2,2n -k3,3n > disjoint2exons2genes.${annotation_short}.sorted.cut.bed

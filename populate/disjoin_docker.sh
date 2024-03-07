@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-image=quay.io/broadsword/recount_pump_populate:1.0.0
+#image=quay.io/broadsword/recount_pump_populate:1.0.0
+#don't assume any repo
+image=recount_pump_populate:1.0.0
 
 d=$(dirname $0)
 [[ ! -f disjoin.R ]] && cp $d/disjoin.R .
