@@ -89,6 +89,8 @@ The way to create these GTF files...
 Some examples:
 
 * Human Gencode v26: `G026`
+* Human Gencode v29: `G029`
+* RefSeq v109: `R109`
 * Human FANTOM v6: `F006`
 * Mouse gencode M23: `M023`
 * Rat Rbn 7.2 ensembl release 105: `M105`
