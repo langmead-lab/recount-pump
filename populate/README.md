@@ -9,7 +9,7 @@ Applications required to be installed and in `$PATH`:
 4) gffread
 http://ccb.jhu.edu/software/stringtie/dl/gffread-0.9.12.Linux_x86_64.tar.gz
 
-## Genome Reference Preparation
+## New Genome Reference Preparation
 
 https://github.com/langmead-lab/recount-pump/blob/master/populate/from_igenomes.sh
 is the script to use as the basis for adding a new genome reference.  
@@ -96,6 +96,7 @@ Some examples:
 
 ## Case Study: Adding the Pig Genome to Monorail
 
+### Download FASTA and Gene annotation files
 Get the Ensembl FASTA for the latest genome (Sscrofa11.1), toplevel here is same as primary assembly, don't use any masking (soft or hard):
 ```
 wget https://ftp.ensembl.org/pub/release-111/fasta/sus_scrofa/dna/Sus_scrofa.Sscrofa11.1.dna.toplevel.fa.gz
@@ -116,7 +117,8 @@ Then fix the chromosome IDs to match the genome FASTA above:
 zcat Sus_scrofa.Sscrofa11.1.111.chr.gtf.gz | perl -ne 'chomp; $f=$_; if($f=~/^(\d+|X|Y|MT)\t/) { $f=~s/^/chr/; if($f=~/^chrMT/) { $f=~s/^chrMT/chrM/; }} print "$f\n";' > Sus_scrofa.Sscrofa11.1.111.chr.fixed.gtf
 ```
 
-This is next step requires `gffread` to extract out the gene level FASTA file from the genome but based on the gene GTF (get it from https://github.com/gpertea/gffread):
+### Extract transcriptome and add spike-ins to genome and transcriptome
+This is next step requires `gffread` to extract out the gene level FASTA file from the genome but based on the gene GTF (get it from https://github.com/gpertea/gffread) or the link above for the exact version:
 ```
 gffread -w Sscrofa11.1.transcripts.fa -g Sus_scrofa.Sscrofa11.1.dna.toplevel.chrprefixes.nospaces.fa Sus_scrofa.Sscrofa11.1.111.chr.fixed.gtf
 ```
@@ -142,6 +144,7 @@ cat Sscrofa11.1.transcripts.fa ERCC_SIRV.fa > transcriptome/transcripts.fa
 ```
 For the following 2 commands you can use the latest recount-pump Docker container to use the exact versions of Salmon and STAR needed for Monorail.
 
+### Index for Salmon, STAR, and HISAT2
 Index for `Salmon 0.12.0`:
 ```
 salmon index -i salmon_index -t transcriptome/transcripts.fa
@@ -153,3 +156,28 @@ rm -rf temp
 mkdir star_idx
 STAR --runThreadN 24 --runMode genomeGenerate --genomeDir star_idx --outTmpDir ./temp --genomeFastaFiles fasta/genome.fa
 ```
+
+Pull the existing hisat2 virus index for unmapped reads:
+```
+wget https://recount-ref.s3.amazonaws.com/hg38/unmapped_hisat2_idx.tar.gz
+```
+
+### Create annotation reference and indexes for recount-pump and recount-unify
+
+Pre-reqs:
+* Make sure `bedtools` in the `PATH`
+* Make sure you have cloned recount-unify in addition to recount-pump and that recount-unify is on the same filesystem and in the same parent directory that the recount-pump directory you're running out of is in (or else change the path variable `rejoin_repo_path` in `create_rejoin_disjoint2annotation_mappings.sh` script we'll be running below)
+* Make sure you already have a "unioned" GTF file with your primary annotation (e.g. `Sus_scrofa.Sscrofa11.1.111.chr.fixed.gtf`) and ERCC + SIRV GTFs together already
+* A recent version of Docker is installed on the system you're running this and `recount_pump_populate:1.0.0` has been built locally
+
+```
+/usr/bin/time -v /bin/bash -x /path/to/recount-pump/populate/disjoin_scripts/create_rejoin_disjoint2annotation_mappings.sh Sus_scrofa.Sscrofa11.1.111.chr.fixed.ERCC_SIRV.gtf pig MP11 > create_rejoin_disjoint2annotation_mappings.sh.run0 2>&1
+```
+
+The above script is actually a pipeline of multiple commands + other scripts/tools to produce a set of files which recount-unify (mainly) will use when re-building the original annotated genes and exons around sums for a given study's per-sample pump alignments.  The complexities here arise mainly due to 2 design descisions in recount-unify and the original Monorail runs for recount3:
+  1) recount-unify was designed for scale around aggregating the sums for multiple studies' samples at the same time
+  2) annotated exons were further split into unique segments to avoid re-counting sums across the same region more than once during the pump step (via megadepth/bamcount)
+
+For human, 2) above was done across 4 different annotations (RefSeq, Gencode V26, Gencode V29, and FANTOM6) which also shared exons, inter-annotation to result in a final set of "split" exon segments unique both within and across annotations.
+
+For every other annotation (mouse, rat, pig, yours) there will likely only be one primary annotation (e.g. for Pig that's just the Ensembl 11.1) and ERCC + SIRV making some of extra complexity unnecessary but still present.
