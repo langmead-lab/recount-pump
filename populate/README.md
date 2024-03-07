@@ -34,9 +34,6 @@ It also gets the gene annotation GTF file for the organism (genome annotation se
 9) adds ERCC and SIRV gene/transcript annotations to the gene annotation GTF file
 10) creates a `salmon` index using the combination transcript FASTA file created in the previous step
 11) this results in 2 additional items needed for `recount/monorail pump`: a) `genes.gtf` b) `salmon_index` (directory)
-
-The combined GTF file created in step 9 above is also used as the annotation for `
-
 12) the `STAR` index of whole genome FASTA
 
 Monorail also requires a secondary aligner index using `HISAT2`, which is not covered in any of the build steps above.
@@ -62,8 +59,8 @@ The script:
 https://github.com/langmead-lab/recount-pump/blob/master/populate/disjoin_scripts/combine_annotations_and_disjoin_exons.sh
 
 is only for re-creating the combined 4 human annotations (along with ERCC and SIRV), it should not necessarily be used as a basis for other genomes unless:
-1) multiple different annoations are being used (other than ERCC and SIRV)
-2) one or more of the annotations are from RefSeq
+a) multiple different annoations are being used (other than ERCC and SIRV)
+b) one or more of the annotations are from RefSeq
 
 The main script for generating most of the required files for sets 1) and 2) above is:
 
@@ -87,7 +84,7 @@ The exon annotation file used by recount3 for 2) above need to be the *exact* sa
 The way to create these GTF files...
 
 ### Annotation Naming
-Annotation short names should be exactly 4 characters and any organism other than human needs to have an annotation short name that starts with a capital `M`.
+#### Annotation short names should be exactly 4 characters and any organism other than human needs to have an annotation short name that starts with a capital `M`.
 
 Some examples:
 
