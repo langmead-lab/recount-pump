@@ -137,7 +137,7 @@ cat Sus_scrofa.Sscrofa11.1.dna.toplevel.chrprefixes.nospaces.fa ERCC_SIRV.fa > f
 ```
 
 Then add the ERCC + SIRV gene annotations to the GTF file:
-```cat Sus_scrofa.Sscrofa11.1.111.chr.fixed.gtf /shared-data/research/genomics/datasets/recount3/ref/ERCC_SIRV.gtf > Sus_scrofa.Sscrofa11.1.111.chr.fixed.ERCC_SIRV.gtf```
+```cat Sus_scrofa.Sscrofa11.1.111.chr.fixed.gtf ERCC_SIRV.gtf > Sus_scrofa.Sscrofa11.1.111.chr.fixed.ERCC_SIRV.gtf```
 
 and to the transcripts fasta file:
 ```
