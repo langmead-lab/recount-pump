@@ -95,7 +95,7 @@ Some examples:
 * Human FANTOM v6: `F006`
 * Mouse gencode M23: `M023`
 * Rat Rbn 7.2 ensembl release 105: `M105`
-* Pig Sus scrofa release 11.1: `P111`
+* Pig Sus scrofa release 11.1: `MP11`
 
 ## Case Study: Adding the Pig Genome to Monorail
 
