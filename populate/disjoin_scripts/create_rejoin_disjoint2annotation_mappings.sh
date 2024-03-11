@@ -25,7 +25,7 @@ if [[ -z $skip_disjoin_docker_call ]]; then
 
     /bin/bash -x $root/../disjoin_docker.sh $ORIG_UNIONED_GTF &
     #try to workaround the hang in the docker image run above 
-fi
+#fi
     check_file="${ORIG_UNIONED_GTF}.bed"
     last_line1="NOT"
     last_line2="NOT"
@@ -41,7 +41,7 @@ fi
     set +eo pipefail
     pkill -9 -f "disjoin_docker"
     set -eo pipefail
-#fi
+fi
 ORIG_UNIONED_GTF=$(basename $ORIG_UNIONED_GTF)
 #the previous script will copy the original input file into the current dir
 #and will output the results to the current dir with a bed suffix regardless of the actual file format
