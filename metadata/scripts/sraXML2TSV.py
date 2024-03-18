@@ -11,6 +11,13 @@ ATTR_DELIM=';;'
 ATTRS_DELIM='|'
 
 fname=sys.argv[1]
+#write_header = len(sys.argv) > 2
+
+#just header
+if fname == "HEADER":
+    sys.stdout.write("\t".join(["run_acc","study_acc","sample_acc","experiment_acc","submission_acc","submission_center","submission_lab","study_title","study_abstract","study_description","experiment_title","design_description","sample_description","library_name","library_strategy","library_source","library_selection","library_layout","paired_nominal_length","paired_nominal_stdev","library_construction_protocol","platform_model","sample_attributes","experiment_attributes","spot_length", "taxon_id", "sci_name", "common_name", "sample_name","sample_title","sample_bases","sample_spots","run_published","size","run_total_bases","run_total_spots","num_reads","num_spots","read_info","run_alias","run_center_name","run_broker_name","run_center","inferred_read_length","inferred_total_read_count"])+"\n")
+    sys.exit(0)
+
 fin=open(fname,"rb")
 raw_xml = fin.read()
 fin.close()
@@ -45,8 +52,6 @@ def process_attributes(root_element, tag):
     #case insensitive search
     return ATTRS_DELIM.join(sorted(tags, key=lambda x: x.lower()))
 
-#header
-#sys.stdout.write("\t".join(["run_acc","study_acc","sample_acc","experiment_acc","submission_acc","submission_center","submission_lab","study_title","study_abstract","study_description","experiment_title","design_description","sample_description","library_name","library_strategy","library_source","library_selection","library_layout","paired_nominal_length","paired_nominal_stdev","library_construction_protocol","platform_model","sample_attributes","experiment_attributes","spot_length", "taxon_id", "sci_name", "common_name", "sample_name","sample_title","sample_bases","sample_spots","run_published","size","run_total_bases","run_total_spots","num_reads","num_spots","read_info","run_alias","run_center_name","run_broker_name","run_center","inferred_read_length","inferred_total_read_count"])+"\n")
 
 #Top Level: EXPERIMENT_PACKAGE
 for exp in root.findall('EXPERIMENT_PACKAGE'):
@@ -142,7 +147,7 @@ for exp in root.findall('EXPERIMENT_PACKAGE'):
                 #COMMON_NAME, e.g. "human"
     common_name = exp.findtext('./SAMPLE/SAMPLE_NAME/COMMON_NAME',default="")
 
-    exp_fields = [study_acc, sample_acc, exp_acc, sub_acc, sub_center, sub_lab, study_title, study_abstract, study_desc, exp_title, design_desc, sample_desc, lib_name, lib_strat, lib_src, lib_sel, lib_layout, paired_nominal_length, paired_nominal_stdev, lib_construct_prot, platform, sample_attributes, exp_attributes, spot_length, taxon_id, sci_name, common_name]
+    exp_fields = [f.replace('\t',' ') for f in [study_acc, sample_acc, exp_acc, sub_acc, sub_center, sub_lab, study_title, study_abstract, study_desc, exp_title, design_desc, sample_desc, lib_name, lib_strat, lib_src, lib_sel, lib_layout, paired_nominal_length, paired_nominal_stdev, lib_construct_prot, platform, sample_attributes, exp_attributes, spot_length, taxon_id, sci_name, common_name]]
     exp_fields_str = "\t".join(exp_fields)
 
 ##RUN_SET section
@@ -230,7 +235,10 @@ for exp in root.findall('EXPERIMENT_PACKAGE'):
             inferred_read_length = read_length_sum / read_rec_count
             inferred_total_read_count = read_count_sum
 
+#header
+#18 fields (+26 within exp_fields_str) matches above header fields (total)
+
         #put it all together at the level of a single RUN
-        run_str = [exp_fields_str, run_sample_name, run_sample_title, run_sample_bases, run_sample_spots, published, size, total_bases, total_spots, nreads, nspots, reads_str,run_alias,run_center_name,run_broker_name,run_center,str(inferred_read_length),str(inferred_total_read_count)]
-        out_str = run_acc+"\t"+"\t".join(run_str)+"\n"
+        run_str = [f.replace('\t',' ') for f in [run_sample_name, run_sample_title, run_sample_bases, run_sample_spots, published, size, total_bases, total_spots, nreads, nspots, reads_str,run_alias,run_center_name,run_broker_name,run_center,str(inferred_read_length),str(inferred_total_read_count)]]
+        out_str = run_acc.replace('\t','')+"\t"+exp_fields_str+"\t"+"\t".join(run_str)+"\n"
         sys.stdout.write(out_str.encode('utf-8'))
