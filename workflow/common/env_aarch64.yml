@@ -1,0 +1,10 @@
+name: recount
+channels:
+  - defaults
+  - conda-forge
+  - bioconda
+dependencies:
+  - sra-tools
+  - zstd
+  - salmon
+  - seqtk
