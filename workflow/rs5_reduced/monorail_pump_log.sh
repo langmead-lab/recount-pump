@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #set -exo pipefail
 export MD_IP=169.254.169.254
-export LOG_GROUP="monorail"
-export LOG_STREAM="pump"
+export LOG_GROUP="monorail-pump"
+export LOG_STREAM="pump_runs"
 run=$1
 study=$2
 #checkpoint OR path2fastqfiles,
@@ -11,7 +11,9 @@ study=$2
 #+) STAR_DONE
 #+) INDEX_DONE
 #+) BAMCOUNT_DONE
-#+) END
+#+) PUMP_FAILED
+#+) PUMP_DONE (before copy back to S3)
+#+) END (after copy back to S3)
 #if path2fastqfiles, files are checked for a  small sample of reads to see if there's evidence of true scRNA (chromium/10x/droplet)
 #also paired status and read length in both reads1 and reads2 files are logged
 mode=$3
