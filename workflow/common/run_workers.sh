@@ -9,6 +9,7 @@
 #c) NUM_CORES (maximum number of CPUs to use per worker, default: 8)
 #d) SSD_MIN_SIZE (minimum size of local SSDs, default: 600GBs)
 set -exo pipefail
+export MD_IP=169.254.169.254
 dir=$(dirname $0)
 if [[ -n $DEBUG ]]; then
     sleep 1d
@@ -42,17 +43,24 @@ if [[ -z $SSD_MIN_SIZE ]]; then
 fi
 
 user=$(whoami)
-#check for local SSDs, creates file local_disks.txt
 set +eo pipefail
-sudo /usr/bin/time -v /bin/bash -x $dir/check_and_create_fs_for_ephemeral_disks.sh
+df=$(df | fgrep "/md1" | fgrep "/work1" | wc -l)
 set -eo pipefail
+#check for local SSDs, creates file local_disks.txt
+if [[ $df -eq 0 ]]; then
+    MAKE_1_FS=1
+    set +eo pipefail
+    #defaults to /work1
+    sudo /usr/bin/time -v /bin/bash -x $dir/check_and_create_fs_for_ephemeral_disks.sh $MAKE_1_FS
+    set -eo pipefail
 
-num_ssds=$(cat local_disks.txt | wc -l)
-if [[ $num_ssds -eq 0 ]]; then
-    export NO_SSD=1
-    sudo mkdir /work1
-    sudo chown ubuntu /work1
-    sudo chmod u+rwx /work1
+    num_ssds=$(cat local_disks.txt | wc -l)
+    if [[ $num_ssds -eq 0 ]]; then
+        export NO_SSD=1
+        sudo mkdir /work1
+        sudo chown ubuntu /work1
+        sudo chmod u+rwx /work1
+    fi
 fi
 
 #2) download Pump references to SSD
@@ -72,6 +80,14 @@ if [[ ! -d /work1/ref/${REF} ]]; then
     fi
     popd
 fi 
+
+#for logging purposes, read the 1) IP address and 2) node type from AWS and write to where each worker's logger can read it
+IP=$(curl http://${MD_IP}/latest/meta-data/local-ipv4)
+#IP=$(echo "$IP" | sed 's#\.#-#g')
+itype=$(curl http://${MD_IP}/latest/meta-data/instance-type)
+echo "${IP};${itype}" > /dev/shm/INSTANCE_INFO
+#now start monitoring for SPOT shutdown so we can log which samples were in process during that
+/bin/bash $dir/monitor_shutdown_for_spot_instances.sh &
 
 #3) start N concurrent Pump workers
 export REF_DIR=/work1/ref
