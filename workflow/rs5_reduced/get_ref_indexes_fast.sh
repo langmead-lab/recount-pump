@@ -22,6 +22,7 @@ echo "curl $prefix/gtf.tar.gz 2> gtf.run | tar -zxvf - 2>> gtf.run" > detar.jobs
 echo "curl $prefix/fasta.tar.gz 2> fasta.run | tar -zxvf - 2>> fasta.run" >> detar.jobs
 
 threads=$(cat s3dn.jobs | wc -l)
+#export threads=14
 echo "/usr/bin/time -v parallel -j${threads} < s3dn.jobs > s3dn.jobs.run${threads} 2>&1" > s3dn.sh
 echo "pushd star_idx" >> s3dn.sh
 echo "/usr/bin/time -v parallel -j2 < ../cat.jobs > ../cat.jobs.run2 2>&1" >> s3dn.sh
@@ -33,4 +34,5 @@ echo "/usr/bin/time -v parallel -j2 < detar.jobs > detar.jobs.run2 2>&1" >> main
 /usr/bin/time -v parallel -j2 < main.jobs > main.jobs.run2 2>&1
 aws s3 cp s3://monorail-batch/faster_refs/$ref/gtf/exons_new.bed.gz - | zcat > gtf/exons_new.bed
 aws s3 cp s3://monorail-batch/faster_refs/$ref/gtf/split_exons_new.bed.gz - | zcat > gtf/split_exons_new.bed
+STAR --genomeLoad LoadAndExit --genomeDir `pwd`/star_idx
 popd
