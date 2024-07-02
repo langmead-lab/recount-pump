@@ -26,6 +26,7 @@ for dev in `lsblk | tail -n+2 | egrep -v -e '^loop' | fgrep -v "$root" | tr -s "
 done
 
 if [[ -n $make1FS ]]; then
+    echo "/work1" > local_disks.txt
     mdadm --create /dev/md1 --run --force --level=0 --raid-devices=${num_drives} $drives
     mdadm --detail /dev/md1
     mkfs.ext4 -F /dev/md1
