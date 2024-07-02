@@ -49,8 +49,9 @@ for f in `aws s3 ls $S3path/star_idx/ | tr -s " " $'\t' | cut -f 4 | fgrep -v ".
     aws s3 cp $S3path/star_idx/$f - > $outDir/$f &
 done
 #then run STAR load, loads genome and then exits (if successful) leaving genome loaded for other runs
-$STAR --genomeLoad LoadAndExit --genomeDir $outDir
-wait
+#want to load while we're downloading samples' data in parallel
+$STAR --genomeLoad LoadAndExit --genomeDir $outDir &
+#wait
 rm -f *.jobs *.gz
 popd
 echo "DONE"
