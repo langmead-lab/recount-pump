@@ -10,8 +10,8 @@ RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-aarch64.zip" -o "awscliv
 WORKDIR /
 
 # install Snakefile
-COPY Snakefile /Snakefile
-RUN chmod a+r /Snakefile
+COPY Snakefile.extra_bamcount /Snakefile.extra_bamcount
+RUN chmod a+r /Snakefile.extra_bamcount
 
 # install generic workflow wrapper script
 COPY workflow.bash /workflow.bash

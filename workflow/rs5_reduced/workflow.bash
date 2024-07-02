@@ -95,7 +95,7 @@ if [[ ! -z $NO_SHARED_MEM ]]; then
     echo "STAR will run w/o sharing the index"
 fi
 
-if [[ -f /Snakefile ]] ; then
+if [[ -f /Snakefile.extra_bamcount ]] ; then
     mkdir -p ${RECOUNT_TEMP_BIG}/snakemake-wd
     pushd ${RECOUNT_TEMP_BIG}/snakemake-wd
     #CONFIGFILE should be set to container reachable path to a json file
