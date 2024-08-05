@@ -8,13 +8,16 @@
 #b) NUM_WORKERS (number of concurrent workers to start, default: 16)
 #c) NUM_CORES (maximum number of CPUs to use per worker, default: 8)
 #d) SSD_MIN_SIZE (minimum size of local SSDs, default: 600GBs)
+#OPTIONAL:
+#KEEP_RUNNING=1 means this script will keep running and polling the queue indefinitely
 set -exo pipefail
 export MD_IP=169.254.169.254
 dir=$(dirname $0)
 if [[ -n $DEBUG ]]; then
     sleep 1d
 fi
-DEFAULT_NUM_WORKERS=16
+
+DEFAULT_NUM_WORKERS=16 #if we have enough cores + SSD space
 DEFAULT_SSD_MIN_SIZE=600000000000
 DEFAULT_NUM_CORES=8
 if [[ -z $REF ]]; then
@@ -24,6 +27,12 @@ fi
 
 #check for # of processors to determine instance type being run on:
 num_procs=$(fgrep processor /proc/cpuinfo | wc -l)
+if [[ $num_procs -eq 8 ]]; then
+    DEFAULT_NUM_WORKERS=2
+fi
+if [[ $num_procs -eq 16 ]]; then
+    DEFAULT_NUM_WORKERS=4
+fi
 if [[ $num_procs -eq 32 ]]; then
     DEFAULT_NUM_WORKERS=8
 fi
@@ -41,26 +50,26 @@ if [[ -z $SSD_MIN_SIZE ]]; then
     export SSD_MIN_SIZE=$DEFAULT_SSD_MIN_SIZE
 fi
 
-
-set +eo pipefail
-df=$(df | fgrep "/work" | wc -l)
-set -eo pipefail
-#1) format and mount SSDs (but skip root)
 user=$(whoami)
-i=1
+set +eo pipefail
+df=$(df | fgrep "/md1" | fgrep "/work1" | wc -l)
+set -eo pipefail
+#check for local SSDs, creates file local_disks.txt
 if [[ $df -eq 0 ]]; then
-    for d in `lsblk -b | egrep -e '^nvme' | fgrep -v nvme0n1 | perl -ne '@f=split(/\s+/,$_,-1); next if($f[3] < '$SSD_MIN_SIZE'); print $f[0]."\n";'`; do 
-        sudo mkfs -q -t ext4 /dev/$d
-        sudo mkdir -p /work${i}
-        sudo mount /dev/$d /work${i}/
-        sudo chown -R $user /work${i}
-        sudo chmod -R a+rw /work${i}
-        i=$((i + 1))
-    done
-else
-    i=$((df + 1))
+    MAKE_1_FS=1
+    set +eo pipefail
+    #defaults to /work1
+    sudo /usr/bin/time -v /bin/bash -x $dir/check_and_create_fs_for_ephemeral_disks.sh $MAKE_1_FS
+    set -eo pipefail
+
+    num_ssds=$(cat local_disks.txt | wc -l)
+    if [[ $num_ssds -eq 0 ]]; then
+        export NO_SSD=1
+        sudo mkdir /work1
+        sudo chown ubuntu /work1
+        sudo chmod u+rwx /work1
+    fi
 fi
-num_ssds=$((i - 1))
 
 #2) download Pump references to SSD
 if [[ ! -d /work1/ref/${REF} ]]; then
@@ -70,8 +79,13 @@ if [[ ! -d /work1/ref/${REF} ]]; then
     fi
     mkdir -p /work1/ref
     pushd /work1/ref
-    #run the multi-threaded retrieval of the minimal set of indexes (just STAR, annotation, and FASTA sequence)
-    /usr/bin/time -v $dir/get_ref_indexes_fast.sh $REF > get_ref_indexes_fast.sh.run 2>&1
+    if [[ -z $NO_SSD ]]; then
+        #run the multi-threaded retrieval of the minimal set of indexes (just STAR, annotation, and FASTA sequence) ~3m:20s
+        /usr/bin/time -v $dir/get_ref_indexes_fast.sh $REF > get_ref_indexes_fast.sh.run 2>&1
+    else
+        #stream STAR index to FIFO version ~4m
+        /usr/bin/time -v /bin/bash -x $dir/stream_STAR_indexes_from_S3.sh s3://neuro-recount-ds/recount3/$org/annotations/ref $REF        
+    fi
     popd
 fi 
 
