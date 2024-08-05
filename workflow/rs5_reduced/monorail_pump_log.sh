@@ -5,6 +5,12 @@ export LOG_GROUP="monorail-pump"
 export LOG_STREAM="pump_runs"
 run=$1
 study=$2
+mode=$3
+REGION=$4
+rdir=$5
+if [[ -z $REGION ]]; then
+    export REGION="us-east-1"
+fi
 #checkpoint OR path2fastqfiles,
 #checkpoint is one of:
 #+) START
@@ -16,7 +22,6 @@ study=$2
 #+) END (after copy back to S3)
 #if path2fastqfiles, files are checked for a  small sample of reads to see if there's evidence of true scRNA (chromium/10x/droplet)
 #also paired status and read length in both reads1 and reads2 files are logged
-mode=$3
 
 #need to establish a unique ID for this instance of processing this RUN accession through pump:
 #date.run_acc.study_acc.node_ip
@@ -54,4 +59,10 @@ load_avg=$(top -b -n  1  | awk '/load average/ { printf "%s\n", $12 }' | sed 's#
 entry="${DATE};${mode};${JOB_ID};${IP};${itype};${ncores};${load_avg};${ram};${df}"
 echo "$entry"
 d2=$(($(date +%s)*1000))
-aws logs put-log-events --log-group-name $LOG_GROUP --log-stream-name $LOG_STREAM --log-events "timestamp=${d2},message=${entry}"
+if [[ "$mode" == "$PUMP_FAILED" ]]; then
+    standardout=$(cat $rdir/std.out | sed 's#;#,#g' | tr $'\n' ";")
+    entry="${entry}|||${standardout}"
+    aws logs put-log-events --region $REGION --log-group-name $LOG_GROUP --log-stream-name $LOG_STREAM --log-events "timestamp=${d2},message=${entry}"
+else    
+    aws logs put-log-events --region $REGION --log-group-name $LOG_GROUP --log-stream-name $LOG_STREAM --log-events "timestamp=${d2},message=${entry}"
+fi
