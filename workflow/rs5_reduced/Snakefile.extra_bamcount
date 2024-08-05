@@ -657,7 +657,7 @@ rule align:
     threads: 16
     shell:
         """
-        genome_load="LoadAndRemove"
+        genome_load="LoadAndKeep"
         if [[ "{params.no_shared}" == "1" ]]; then
             genome_load="NoSharedMemory"
         fi

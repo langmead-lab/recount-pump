@@ -508,10 +508,7 @@ rule align:
         bam=temp(config['temp_big'] + '/{quad}.bam'),
         jxs=config['output'] + '/{quad}.sjout.zst',
         chimeric=config['output'] + '/{quad}.Chimeric.out.junction.zst',
-        chimeric_sam=config['output'] + '/{quad}.Chimeric.out.sam.zst',
-        unmapped0=config['temp'] + '/{quad}_0.unmappedfastq',
-        unmapped1=config['temp'] + '/{quad}_1.unmappedfastq',
-        unmapped2=config['temp'] + '/{quad}_2.unmappedfastq'
+        chimeric_sam=config['output'] + '/{quad}.Chimeric.out.sam.zst'
     log:
         config['output'] + '/{quad}.align.log'
     params:
@@ -523,7 +520,7 @@ rule align:
     threads: 16
     shell:
         """
-        genome_load="LoadAndRemove"
+        genome_load="LoadAndKeep"
         if [[ "{params.no_shared}" == "1" ]]; then
             genome_load="NoSharedMemory"
         fi
@@ -604,16 +601,6 @@ rule align:
         rm -f Chimeric.out.sam
         size=$(wc -c < {output.chimeric_sam})
         echo "COUNT_ChimericSAMBytes ${{size}}"
-
-        #
-        # Unmapped
-        #
-        touch {output.unmapped2}
-        test -f Unmapped.out.mate1
-        mv Unmapped.out.mate1 {output.unmapped1}
-        if [[ -f Unmapped.out.mate2 ]] ; then
-            mv Unmapped.out.mate2 {output.unmapped2}
-        fi
 
         #
         # Alignments
@@ -712,12 +699,6 @@ rule align:
             echo "COUNT_ChimericSAMBytes_both ${{size}}"
 
             #
-            # Unmapped
-            #
-            test -f Unmapped.out.mate1
-            mv Unmapped.out.mate1 {output.unmapped0}
-
-            #
             # Alignments
             #
             size=$(wc -c < Aligned.out.bam)
@@ -730,8 +711,6 @@ rule align:
             samtools cat {output.bam} {output.bam}.0 -o {output.bam}.2
             mv {output.bam}.2 {output.bam}
             rm {output.bam}.0
-        else
-            touch {output.unmapped0}
         fi
         """
 
