@@ -1,10 +1,14 @@
 #!/bin/bash
 #needs to be run as root/sudo
 FSXPATH=$1
+REGION=$2
+if [[ -z $REGION ]]; then
+    export REGION="us-east-1"
+fi
 IP=169.254.169.254
 PORT=80
-export LOG_GROUP="monorail"
-export LOG_STREAM="pump"
+export LOG_GROUP="monorail-pump"
+export LOG_STREAM="pump_runs"
 #testing IPs and PORTs
 #IP=localhost
 #IP=10.7.57.255
@@ -51,7 +55,7 @@ do
     log="${DATE};TERMINATED;${samplesINprocess};${IP};${itype}"
     echo "$log"
     d2=$(($(date +%s)*1000))
-    aws logs put-log-events --log-group-name $LOG_GROUP --log-stream-name $LOG_STREAM --log-events "timestamp=${d2},message=${log}"
+    aws logs put-log-events --region $REGION --log-group-name $LOG_GROUP --log-stream-name $LOG_STREAM --log-events "timestamp=${d2},message=${log}"
     shutdown now
     exit 0
 done
