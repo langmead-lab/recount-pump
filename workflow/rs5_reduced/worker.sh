@@ -54,6 +54,8 @@ if [[ -z $S3_OUTPUT ]]; then
     export S3_OUTPUT="s3://monorail-batch/pump-outputs"
 fi
 
+export S3_PUMP_DONES="s3://monorail-batch/PUMP_DONES"
+
 #1) check for new studies on the queue
 msg_json=$(aws sqs receive-message --region us-east-1 --queue-url $Q)
 while [[ -n $msg_json || -n $KEEP_RUNNING ]]; do
@@ -106,6 +108,8 @@ while [[ -n $msg_json || -n $KEEP_RUNNING ]]; do
         #Copy back whole pump output for this sample/run
         #this should only be logs, bc exon counts, auc, star jxns, regtools jxns, chimeric jxns, fc counts, bigwigs to save on transfer costs
         /usr/bin/time -v aws s3 cp --recursive `pwd`/output/ $S3_OUTPUT/$lo/$study/$lo2/${sample}.${date}/ > s3upload.run 2>&1
+        echo "$S3_OUTPUT/$lo/$study/$lo2/${sample}.${date}" > ${sample}.${date}.DONE
+        aws s3 cp ${sample}.${date}.DONE $S3_PUMP_DONES/
         popd
         #get next message repeat
         aws sqs delete-message --region $REGION --queue-url $Q --receipt-handle $handle
