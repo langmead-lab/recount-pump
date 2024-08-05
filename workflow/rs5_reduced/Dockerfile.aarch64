@@ -9,13 +9,40 @@ RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-aarch64.zip" -o "awscliv
 
 WORKDIR /
 
+RUN apt-get update --fix-missing -y && apt install sudo lsof psmisc time vim -y
+#for multi-ssd spanning single filesystem
+RUN apt install mdadm --no-install-recommends -y
+RUN useradd -rm -d /home/recount -s /bin/bash -g root -G sudo -u 1000 recount && chpasswd recount:recount
+#RUN useradd -rm -d /home/ubuntu -s /bin/bash -g root -G sudo -u 1000 ubuntu
+RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+
+RUN wget https://github.com/ChristopherWilks/megadepth/releases/download/0.4.0/bamcount.aarch64.just_auc_fixed
+RUN rsync -av bamcount.aarch64.just_auc_fixed /monorail_bin/bamcount_justannot
+RUN mkdir -p /bamcount
+RUN rsync -av bamcount.aarch64.just_auc_fixed /bamcount/bamcount_justannot
+RUN chmod a+x /monorail_bin/bamcount_justannot
+RUN chmod a+x /bamcount/bamcount_justannot
+
+RUN apt-get update --fix-missing -y && apt install htop iftop build-essential libncurses-dev libncursesw5-dev pkg-config -y
+RUN git clone https://github.com/Tomas-M/iotop /iotop
+WORKDIR /iotop
+RUN make -j4
+
 # install Snakefile
+COPY Snakefile /Snakefile
+RUN chmod a+r /Snakefile
 COPY Snakefile.extra_bamcount /Snakefile.extra_bamcount
 RUN chmod a+r /Snakefile.extra_bamcount
 
 # install generic workflow wrapper script
 COPY workflow.bash /workflow.bash
 RUN chmod a+rx /workflow.bash
+
+COPY monitor_shutdown_for_spot_instances.sh /monitor_shutdown_for_spot_instances.sh
+RUN chmod a+rx /monitor_shutdown_for_spot_instances.sh
+
+COPY monorail_pump_log.sh /monorail_pump_log.sh
+RUN chmod a+rx /monorail_pump_log.sh
 
 # install download.sh
 COPY download.sh /download.sh
@@ -30,23 +57,18 @@ RUN chmod a+rx /run_workers.sh
 COPY worker.sh /worker.sh
 RUN chmod a+rx /worker.sh
 
+COPY check_and_create_fs_for_ephemeral_disks.sh /check_and_create_fs_for_ephemeral_disks.sh
+RUN chmod a+rx /check_and_create_fs_for_ephemeral_disks.sh
+
 COPY get_ref_indexes_fast.sh /get_ref_indexes_fast.sh
 RUN chmod a+rx /get_ref_indexes_fast.sh
+
+COPY stream_STAR_indexes_from_S3.reduced.sh /stream_STAR_indexes_from_S3.reduced.sh
+RUN chmod a+rx /stream_STAR_indexes_from_S3.reduced.sh
 
 COPY run_recount_pump_within_container.sh /run_recount_pump_within_container.sh
 RUN chmod a+rx /run_recount_pump_within_container.sh
 
-RUN apt-get update --fix-missing -y && apt install sudo lsof psmisc time -y
-RUN useradd -rm -d /home/recount -s /bin/bash -g root -G sudo -u 1000 recount && chpasswd recount:recount
-#RUN useradd -rm -d /home/ubuntu -s /bin/bash -g root -G sudo -u 1000 ubuntu
-RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
-
-RUN wget https://github.com/ChristopherWilks/megadepth/releases/download/0.4.0/bamcount.aarch64.just_auc_fixed
-RUN rsync -av bamcount.aarch64.just_auc_fixed /monorail_bin/bamcount_justannot
-RUN mkdir -p /bamcount
-RUN rsync -av bamcount.aarch64.just_auc_fixed /bamcount/bamcount_justannot
-RUN chmod a+x /monorail_bin/bamcount_justannot
-RUN chmod a+x /bamcount/bamcount_justannot
 
 USER recount
 WORKDIR /home/recount
